@@ -30,7 +30,8 @@ flex-pse/
 │   │   │                           # constant_intensity.py
 │   │   ├── logic/                  # status.py, startup_shutdown.py, dwell.py, delays.py,
 │   │   │                           # conditional.py, degeneracy.py (model-level), bypass.py
-│   │   ├── costing/                # flex_costing.py, tariff.py (eeco calls collected here by convention)
+│   │   ├── costing/                # capex.py, opex.py (eeco calls collected here by convention),
+│   │   │                           # tariff.py
 │   │   │   └── unit_models/        # unit_costing.py (per-unit costing methods, one costing package per unit)
 │   │   ├── design/                 # multi-period design wrapper (M16): DesignModel, merge_for_design
 │   │   ├── properties/             # simple_aqueous.py
@@ -139,7 +140,7 @@ Enforced by import-linter in CI (`.importlinter`):
 `idaes.*`, `pyomo.*`, and `eeco` are imported **directly at point of use** — no
 compat layer, no whitelist, no forbidden contract. The project pins exact tested
 versions of these in `pyproject.toml` and maintainers bump them manually. By
-convention `eeco` calls are collected in `flexops/costing/tariff.py` (a thin
+convention `eeco` calls are collected in `flexops/costing/opex.py` (a thin
 wrapper), but this is not enforced.
 
 ## 7. Testing (summary — full spec in plan/02_testing_and_ci.md)
