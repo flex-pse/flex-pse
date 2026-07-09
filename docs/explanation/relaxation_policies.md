@@ -8,7 +8,8 @@ relaxed MIP schedule sent to a real plant is a correctness hazard, so any such
 transformation must be requested explicitly, not applied behind the user's back.
 
 The default open-source solver stack routes each class to a genuine solver for
-that class — HiGHS for LP/MILP, IPOPT for NLP, and **SCIP** for MINLP. Solving a
+that class — HiGHS for LP, **SCIP** for MILP and MINLP, and IPOPT (built from
+idaes with the HSL ``ma27`` linear solver when available) for NLP. Solving a
 MINLP directly with a MINLP-capable solver is not the silent transformation R5
 forbids; it is the sanctioned path ("install a MINLP-capable solver"). What R5
 rules out is the facade *itself* relaxing integrality to make a MINLP fit a MILP

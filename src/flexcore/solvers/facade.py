@@ -6,10 +6,17 @@ loudly when none qualifies — it **never** transforms the model (decision R5,
 no trust regions. MINLP routes to SCIP (the default open-source MINLP solver)
 when installed; with no MINLP-capable solver available it is a hard error
 pointing at SCIP or ``flexschedule.SolveSequence``, not silent model surgery.
+
+IPOPT is bound to idaes's HSL-built binary (``idaes.bin_directory/ipopt``, whose
+default linear solver is ``ma27``) when idaes is importable, rather than the
+MUMPS-linked stock IPOPT — an order of magnitude faster and more robust on stiff
+NLPs. It falls back to ``pyo.SolverFactory`` when idaes is unavailable, keeping
+idaes an optional dependency (see :func:`_idaes_ipopt`).
 """
 
 import dataclasses
 import logging
+import os
 
 import pyomo.environ as pyo
 
@@ -19,10 +26,62 @@ from flexcore.solvers.registry import _solver_runtime_env, available_solvers
 
 _log = logging.getLogger(__name__)
 
-# Fixed fallback priority (implementer's choice): commercial first, then the
-# open-source LP/MILP solvers (HiGHS preferred), then SCIP (the default
-# open-source MINLP solver, also MILP-capable), then the NLP solver.
-_PRIORITY = ["gurobi", "highs", "cbc", "scip", "ipopt"]
+# Fixed fallback priority (implementer's choice): commercial first, then SCIP
+# (benchmark-preferred over HiGHS for MILP, and the default open-source MINLP
+# solver), then the open-source LP/MILP solvers, then the NLP solver. SCIP is
+# not LP-capable in the registry, so pure LP still resolves to HiGHS.
+_PRIORITY = ["gurobi", "scip", "highs", "cbc", "ipopt"]
+
+
+def _idaes_ipopt():
+    """Return idaes's HSL-linked IPOPT solver, or ``None`` if idaes is absent.
+
+    ``idaes get-extensions`` installs an IPOPT built against HSL under
+    ``idaes.bin_directory``; its default linear solver is ``ma27`` — an order of
+    magnitude faster and more robust on stiff NLPs than the MUMPS-linked stock
+    IPOPT. The binary is targeted **explicitly** rather than via
+    :func:`idaes.core.solvers.get_solver`: in a conda env that also ships an
+    IPOPT (``scip`` pulls one in), idaes's ``get_solver`` resolves to the conda
+    binary on ``PATH`` while ``import idaes`` prepends idaes's libraries to the
+    loader path — the mismatched ``libipopt`` then segfaults (the same clash
+    :func:`~flexcore.solvers.registry._clean_idaes_from_libpath` handles for
+    SCIP). idaes is optional, so a missing import or binary returns ``None`` and
+    the caller falls back to the stock IPOPT.
+
+    Returns:
+        A Pyomo IPOPT solver bound to idaes's binary, or ``None`` when idaes or
+        its IPOPT binary is unavailable.
+    """
+    try:
+        import idaes
+    except ImportError:
+        _log.debug("idaes not importable; using stock IPOPT via SolverFactory.")
+        return None
+    executable = os.path.join(idaes.bin_directory, "ipopt")
+    if not os.path.isfile(executable):
+        _log.debug("no idaes IPOPT binary at %s; using stock IPOPT.", executable)
+        return None
+    return pyo.SolverFactory("ipopt", executable=executable)
+
+
+def _pyomo_solver(name: str):
+    """Construct the Pyomo solver object for a solver name.
+
+    IPOPT is routed through idaes (see :func:`_idaes_ipopt`) when available so
+    the faster HSL ``ma27`` build is used; every other solver — and IPOPT when
+    idaes is unavailable — is constructed with ``pyo.SolverFactory``.
+
+    Args:
+        name: The Pyomo solver name.
+
+    Returns:
+        The constructed Pyomo solver object.
+    """
+    if name == "ipopt":
+        solver = _idaes_ipopt()
+        if solver is not None:
+            return solver
+    return pyo.SolverFactory(name)
 
 
 @dataclasses.dataclass
@@ -52,7 +111,7 @@ class SolverFacade:
         """
         kwargs.setdefault("tee", False)
         with _solver_runtime_env(self.name):
-            return pyo.SolverFactory(self.name).solve(model, **kwargs)
+            return _pyomo_solver(self.name).solve(model, **kwargs)
 
 
 def get_solver(
@@ -66,9 +125,11 @@ def get_solver(
     given it is classified via :func:`classify`; if neither is given the class
     defaults to ``ProblemClass.LP`` (smallest choice, implementer's).
     Candidate order is ``prefer`` (if named and capable) then the fixed
-    priority list ``["gurobi", "highs", "cbc", "scip", "ipopt"]``. If ``prefer``
+    priority list ``["gurobi", "scip", "highs", "cbc", "ipopt"]``. If ``prefer``
     is named but unavailable or incapable, a warning is logged and selection
-    falls through to the priority list. In particular MINLP routes to SCIP (the
+    falls through to the priority list. SCIP is tried before HiGHS, so MILP
+    routes to SCIP when installed (benchmark-preferred); pure LP still routes to
+    HiGHS since SCIP is not LP-capable. In particular MINLP routes to SCIP (the
     default open-source MINLP solver) when it is installed; only when no
     MINLP-capable solver is available does MINLP raise (decision R5).
 

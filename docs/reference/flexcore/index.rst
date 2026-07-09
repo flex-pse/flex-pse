@@ -43,8 +43,8 @@ calling :func:`get_solver`.
    * - ``cbc``
      - LP, MILP
    * - ``ipopt``
-     - NLP
+     - NLP (built from idaes with HSL ``ma27`` when available, else stock IPOPT)
    * - ``scip``
-     - MILP, MINLP (the default open-source MINLP solver)
+     - MILP, MINLP (preferred over HiGHS for MILP; the default open-source MINLP solver)
    * - ``gurobi``
      - LP, QP, MILP

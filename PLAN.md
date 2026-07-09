@@ -144,7 +144,7 @@ Dependencies are strict unless marked ∥ (parallelizable with the previous one)
 
 | # | Title | Effort | Depends on | Headline deliverable |
 |---|---|---|---|---|
-| [M00](plan/milestones/M00_repo_scaffold.md) | Repo scaffold & CI skeleton | 1 | — | conda env from `environment.yml` + `uv pip install -e ".[dev]"` works; PR CI green; import-linter contracts active |
+| [M00](plan/milestones/M00_repo_scaffold.md) | Repo scaffold & CI skeleton | 1 | — | conda env from `environment.yml` (installs the stack and the editable package via its `pip:` subsection) works; PR CI green; import-linter contracts active |
 | [M01](plan/milestones/M01_compat_layer.md) | Exception hierarchy & dependency pinning | 0.5 | M00 | `FlexError` hierarchy; pinned idaes-pse/pyomo versions |
 | [M02](plan/milestones/M02_timeblock.md) | TimeBlock | 2 | M01 | Discrete ≤1-month substrate, any resolution (15-min default); horizon builds < 1 s |
 | [M03](plan/milestones/M03_properties_opsblock.md) | SimpleAqueousFlow + OpsBlock base | 2–3 | M02 | IO/parameter registration; `electrical_power`/`thermal_power`; external-dispatch + UC config hooks; config schema (`UnitConfig`…`ModelConfig`) |

@@ -8,10 +8,10 @@ Stand up the repository skeleton so that every later milestone drops code into a
 structure that already enforces the rules: the four-package src layout, the
 import-linter DAG, pytest tier markers with collection-time enforcement, and a
 green PR CI pipeline. Nothing here contains domain logic — the deliverable is
-that the environment install (`conda` from `environment.yml` for the Python
-version + `pyomo`/`idaes-pse`, then `uv pip install -e ".[dev]"` for the rest —
-see README), `pytest -m unit`, `lint-imports`, and CI all pass on an essentially
-empty codebase.
+that the environment install (`conda env create -f environment.yml`, which
+installs the Python version + `pyomo`/`idaes-pse`/solvers and then the editable
+package via its `pip:` subsection — see README), `pytest -m unit`,
+`lint-imports`, and CI all pass on an essentially empty codebase.
 
 ## Read first
 
@@ -212,9 +212,9 @@ All in this milestone are `@pytest.mark.unit`:
 ## Documentation tasks
 
 - `README.md` stub: what flex-pse is (one paragraph, lift from PLAN.md §2),
-  install instructions (`conda env create -f environment.yml` for the
-  optimization stack, `uv pip install -e ".[dev]"` for the rest), pointer to
-  `PLAN.md` and `plan/00_conventions.md`.
+  install instructions (`conda env create -f environment.yml`, which installs
+  both the optimization stack and the editable package via its `pip:`
+  subsection), pointer to `PLAN.md` and `plan/00_conventions.md`.
 - `CHANGELOG.md` initialized ("Unreleased" heading; entry: project scaffold).
 - `CLAUDE.md`: conventions §9 agent rules verbatim + a "Generic Definition of
   Done" checklist (all tests green, lint/black/import-linter clean, CHANGELOG
@@ -224,7 +224,7 @@ All in this milestone are `@pytest.mark.unit`:
 
 ## Definition of Done
 
-- [ ] Fresh conda env from `environment.yml` + `uv pip install -e ".[dev]"` succeeds
+- [ ] Fresh conda env from `environment.yml` succeeds (its `pip:` subsection installs the editable package and dev deps)
 - [ ] `pytest -m unit` green (4 placeholder import tests + 2 meta-tests pass)
 - [ ] `pytest -m "unit or component"` green (component set is empty; collection succeeds)
 - [ ] A deliberately unmarked test fails collection with an actionable message

@@ -68,7 +68,11 @@ def test_minlp_routes_to_scip_when_available(monkeypatch):
 
 @pytest.mark.unit
 def test_default_routing_by_class(monkeypatch):
-    """HiGHS for LP/MILP, IPOPT for NLP, SCIP for MINLP when all are installed."""
+    """HiGHS for LP, SCIP for MILP/MINLP, IPOPT for NLP when all are installed.
+
+    SCIP is preferred over HiGHS for MILP (benchmark-driven); HiGHS still wins
+    LP because SCIP is not LP-capable in the registry.
+    """
     available = {
         "highs": {ProblemClass.LP, ProblemClass.MILP},
         "ipopt": {ProblemClass.NLP},
@@ -76,7 +80,7 @@ def test_default_routing_by_class(monkeypatch):
     }
     monkeypatch.setattr(facade, "available_solvers", lambda: available)
     assert get_solver(problem_class=ProblemClass.LP).name == "highs"
-    assert get_solver(problem_class=ProblemClass.MILP).name == "highs"
+    assert get_solver(problem_class=ProblemClass.MILP).name == "scip"
     assert get_solver(problem_class=ProblemClass.NLP).name == "ipopt"
     assert get_solver(problem_class=ProblemClass.MINLP).name == "scip"
 
@@ -88,6 +92,36 @@ def test_model_vs_problem_class_exclusive():
     m.obj = pyo.Objective(expr=m.x)
     with pytest.raises(ValueError):
         get_solver(model=m, problem_class=ProblemClass.LP)
+
+
+@pytest.mark.unit
+def test_ipopt_routes_through_idaes(monkeypatch):
+    """IPOPT is built from idaes (HSL ma27) when idaes is importable."""
+    sentinel = object()
+    monkeypatch.setattr(facade, "_idaes_ipopt", lambda: sentinel)
+    assert facade._pyomo_solver("ipopt") is sentinel
+
+
+@pytest.mark.unit
+def test_ipopt_falls_back_to_solver_factory(monkeypatch):
+    """When idaes is unavailable, IPOPT falls back to stock SolverFactory."""
+    monkeypatch.setattr(facade, "_idaes_ipopt", lambda: None)
+    made = []
+    monkeypatch.setattr(facade.pyo, "SolverFactory", lambda name: made.append(name))
+    facade._pyomo_solver("ipopt")
+    assert made == ["ipopt"]
+
+
+@pytest.mark.unit
+def test_non_ipopt_uses_solver_factory(monkeypatch):
+    """Every non-IPOPT solver is constructed with pyo.SolverFactory, not idaes."""
+    monkeypatch.setattr(
+        facade, "_idaes_ipopt", lambda: pytest.fail("idaes path used for non-ipopt")
+    )
+    made = []
+    monkeypatch.setattr(facade.pyo, "SolverFactory", lambda name: made.append(name))
+    facade._pyomo_solver("highs")
+    assert made == ["highs"]
 
 
 @pytest.mark.unit
