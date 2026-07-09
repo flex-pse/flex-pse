@@ -13,13 +13,13 @@ repos:
     hooks:
       - id: import-linter
         name: import-linter
-        entry: lint-imports
+        entry: conda run --no-capture-output -n flex-pse lint-imports
         language: system
         pass_filenames: false
 
       - id: pre-push-suite
         name: full test suite (pre-push)
-        entry: bash -c 'ruff check . && black --check . && lint-imports && pytest -q'
+        entry: conda run --no-capture-output -n flex-pse bash -c 'ruff check . && black --check . && lint-imports && pytest -q'
         language: system
         pass_filenames: false
         stages: [pre-push]
