@@ -9,9 +9,11 @@ design and operations optimization.
    :caption: Explanation
 
    explanation/time_and_dynamics
+   explanation/relaxation_policies
 
 .. toctree::
    :maxdepth: 2
    :caption: Reference
 
+   reference/flexcore/index
    reference/flexops/core

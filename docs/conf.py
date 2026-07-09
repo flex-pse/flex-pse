@@ -40,8 +40,9 @@ nitpick_ignore = [
     ("py:class", "function"),
     ("py:class", "class"),
     # flexcore.exceptions has no reference page yet (added in a later
-    # milestone); TimeBlock's Raises: entries point at it.
+    # milestone); TimeBlock's and get_solver's Raises: entries point at it.
     ("py:exc", "FlexConfigError"),
+    ("py:exc", "FlexSolverError"),
 ]
 
 html_theme = "furo"
