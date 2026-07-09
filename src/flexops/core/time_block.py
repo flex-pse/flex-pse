@@ -105,6 +105,21 @@ def _step_seconds(time_step) -> float:
     return seconds
 
 
+def _describe_max_length(max_length: relativedelta) -> str:
+    """Name the max-length limit for use in error messages.
+
+    Args:
+        max_length: The configured maximum horizon length.
+
+    Returns:
+        A hyphenated adjective phrase (e.g. ``"one-calendar-month"``) naming the
+        limit; a generic label for any non-default value.
+    """
+    if max_length == relativedelta(months=1):
+        return "one-calendar-month"
+    return "configured maximum-length"
+
+
 @dataclass(frozen=True)
 class TimeWindow:
     """Metadata for a slice of a ``TimeBlock``'s horizon.
@@ -129,18 +144,20 @@ class TimeWindow:
 
 @declare_process_block_class("TimeBlock")
 class TimeBlockData(ProcessBlockData):
-    """A discrete, ≤1-calendar-month time horizon at a configurable resolution.
+    """A discrete, bounded time horizon at a configurable resolution.
 
-    Holds the ordered integer time set (`time_points`), the unit-carrying step
-    size (`dt`), datetime↔index utilities, and the rolling-horizon hooks
+    Holds the ordered integer time set (`time_index`), the elapsed-time Param
+    (`time`, ``i*dt``), the unit-carrying step size (`dt`), datetime↔index
+    utilities, and the rolling-horizon hooks
     (`register_initial_state`, `window`) that ``flexschedule`` drives. Time
     points are interval starts: point ``i`` is the timestamp
     ``start_date + i * dt``; ``end_date`` is the exclusive horizon end and is
     not itself a time point.
 
-    A single ``TimeBlock`` spans at most one calendar month (see decision R2);
-    longer studies are composed from multiple ``TimeBlock`` blocks by the
-    rolling-horizon driver or the design-mode wrapper.
+    A single ``TimeBlock`` spans at most ``max_length`` (default one calendar
+    month; see decision R2); longer studies are composed from multiple
+    ``TimeBlock`` blocks by the rolling-horizon driver or the design-mode
+    wrapper.
 
     Example:
         >>> from pyomo.environ import units as pyunits
@@ -174,9 +191,19 @@ class TimeBlockData(ProcessBlockData):
             "e.g. 15 * pyunits.min. Any positive duration is accepted.",
         ),
     )
+    CONFIG.declare(
+        "max_length",
+        ConfigValue(
+            default=relativedelta(months=1),
+            description="Maximum horizon length as a dateutil.relativedelta, "
+            "measured with calendar arithmetic from start_date. Defaults to one "
+            "calendar month; widen it only if the rolling-horizon driver "
+            "(flexschedule) or design-mode wrapper (flexops.design) cannot.",
+        ),
+    )
 
     def build(self) -> None:
-        """Construct `time_points`, `dt`, and the datetime/state registries."""
+        """Construct `time_index`, `time`, `dt`, and the datetime/state registries."""
         super().build()
 
         start = _parse_date(self.config.start_date)
@@ -191,11 +218,12 @@ class TimeBlockData(ProcessBlockData):
                 value=self.config.end_date,
             )
 
-        max_end = start + relativedelta(months=1)
+        max_length = self.config.max_length
+        max_end = start + max_length
         if end > max_end:
             raise FlexConfigError(
                 f"Horizon {start.isoformat()} -> {end.isoformat()} exceeds "
-                f"the one-calendar-month limit (max end_date is "
+                f"the {_describe_max_length(max_length)} limit (max end_date is "
                 f"{max_end.isoformat()}). Use the rolling-horizon driver "
                 "(flexschedule) or the design-mode wrapper (flexops.design) "
                 "for longer studies.",
@@ -224,10 +252,18 @@ class TimeBlockData(ProcessBlockData):
                 value=self.config.end_date,
             )
 
-        self.time_points = pyo.Set(
+        self.time_index = pyo.Set(
             initialize=range(n),
             ordered=True,
             doc="Ordered integer time-point indices 0..N-1.",
+        )
+        step_value = pyo.value(self.config.time_step)
+        step_units = pyunits.get_units(self.config.time_step)
+        self.time = pyo.Param(
+            self.time_index,
+            initialize={i: i * step_value for i in range(n)},
+            units=step_units,
+            doc="Elapsed time at each point, i*dt, in the user's units.",
         )
         # dt keeps the user's units (e.g. 15 min), per the milestone spec;
         # step_seconds is the once-converted value used for date arithmetic.
@@ -251,7 +287,7 @@ class TimeBlockData(ProcessBlockData):
     @property
     def n_points(self) -> int:
         """int: Number of time points, ``N``."""
-        return len(self.time_points)
+        return len(self.time_index)
 
     @property
     def horizon(self):

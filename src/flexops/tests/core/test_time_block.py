@@ -5,6 +5,7 @@ import time
 import pandas as pd
 import pyomo.environ as pyo
 import pytest
+from dateutil.relativedelta import relativedelta
 from pyomo.environ import units as pyunits
 
 from flexcore.exceptions import FlexConfigError
@@ -28,6 +29,27 @@ def test_n_points_and_horizon(tb):
     assert pyo.value(pyunits.convert(tb.horizon, pyunits.hr)) == pytest.approx(
         24.0, rel=1e-9
     )
+
+
+@pytest.mark.unit
+def test_time_index_is_integer_set(tb):
+    """time_index holds the plain integers 0..N-1, never timestamps."""
+    assert list(tb.time_index) == list(range(96))
+
+
+@pytest.mark.unit
+def test_time_param_elapsed(tb):
+    """time[i] is the elapsed time i*dt, carrying the user's units."""
+    assert set(tb.time.keys()) == set(tb.time_index)
+    assert pyo.value(tb.time[0]) == 0.0
+    # 15-minute step: point 4 is at 1 hour of elapsed time.
+    assert pyo.value(pyunits.convert(tb.time[4], pyunits.hr)) == pytest.approx(
+        1.0, rel=1e-9
+    )
+    assert pyo.value(pyunits.convert(tb.time[95], pyunits.min)) == pytest.approx(
+        95 * 15, rel=1e-9
+    )
+    assert pyunits.get_units(tb.time[1]) == pyunits.min
 
 
 @pytest.mark.unit
@@ -119,6 +141,35 @@ def test_over_one_month_rejected():
     with pytest.raises(FlexConfigError, match="one-calendar-month"):
         m.tb_feb_over = TimeBlock(
             start_date="2025-02-01", end_date="2025-03-02", time_step=15 * pyunits.min
+        )
+
+
+@pytest.mark.unit
+def test_max_length_configurable():
+    """max_length overrides the default one-calendar-month horizon cap."""
+    # A two-month horizon is rejected under the default one-month cap...
+    m = pyo.ConcreteModel()
+    with pytest.raises(FlexConfigError, match="one-calendar-month"):
+        m.tb_default = TimeBlock(
+            start_date="2025-01-01", end_date="2025-03-01", time_step=1 * pyunits.hr
+        )
+    # ...but builds when max_length is widened to two months.
+    m.tb_wide = TimeBlock(
+        start_date="2025-01-01",
+        end_date="2025-03-01",
+        time_step=1 * pyunits.hr,
+        max_length=relativedelta(months=2),
+    )
+    assert m.tb_wide.n_points == (31 + 28) * 24
+
+    # A tighter max_length rejects a horizon the default would allow.
+    m2 = pyo.ConcreteModel()
+    with pytest.raises(FlexConfigError, match="maximum-length"):
+        m2.tb_tight = TimeBlock(
+            start_date="2025-01-01",
+            end_date="2025-01-15",
+            time_step=1 * pyunits.hr,
+            max_length=relativedelta(weeks=1),
         )
 
 

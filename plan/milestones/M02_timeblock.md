@@ -67,7 +67,7 @@ Normalize dates with a single helper `_parse_date(value) -> datetime` using
 
 ### Horizon scope and grid semantics
 
-`time_points` are **interval starts**: point `i` corresponds to timestamp
+`time_index` members are **interval starts**: point `i` corresponds to timestamp
 `start_date + i * dt`. `end_date` is the exclusive end of the horizon and is
 *not* a time point. `N = (end_date - start_date) / dt`.
 
@@ -91,8 +91,12 @@ Normalize dates with a single helper `_parse_date(value) -> datetime` using
 
 ### Components and attributes (built in `build()`)
 
-- `time_points` — `pyo.Set(initialize=range(n), ordered=True, doc=...)`.
+- `time_index` — `pyo.Set(initialize=range(n), ordered=True, doc=...)`.
   Members are plain integers `0..N-1`, never timestamps (see Pitfalls).
+- `time` — `pyo.Param(time_index, initialize={i: i*dt_value}, units=<units of
+  time_step>, doc=...)`: the "actual" time points, i.e. elapsed time `i*dt` in
+  the user's units. This is the one sanctioned per-point indexed Param (a single
+  numeric value per index); see the amended Pitfall 3.
 - `dt` — `pyo.Param(initialize=<numeric value>, units=<units of time_step>,
   mutable=False, doc="Time-step length")`. Keep the user's units: extract them
   with `pyunits.get_units(time_step)` and the magnitude with `pyo.value(...)`.
@@ -106,7 +110,7 @@ Normalize dates with a single helper `_parse_date(value) -> datetime` using
 
 ```python
 @property
-def n_points(self) -> int: ...                     # len(time_points)
+def n_points(self) -> int: ...                     # len(time_index)
 @property
 def horizon(self):                                  # n_points * dt, a unit-carrying
     ...                                             # Pyomo expression (implementer's choice)
@@ -163,9 +167,12 @@ hand-written difference equations, never `dynamic=True`/DAE) and cross-links
    `self.datetime_index = pd.date_range(...)` without the underscore
    attribute + property split). Pyomo's `Block.__setattr__` will complain or,
    worse, wrap it. Use `self._datetime_index` and expose via `@property`.
-3. **Per-point Params.** Do not build an indexed Param of timestamps or
-   anything else O(n) beyond `time_points` itself — that is what blows the
-   1-second budget.
+3. **Per-point Params.** Beyond `time_index` and the single numeric `time`
+   Param (elapsed `i*dt`), do not build further O(n) per-point components —
+   especially an indexed Param of timestamps — as that blows the 1-second
+   budget. The `time` Param is cheap (one float per index) and must stay within
+   the worst-case build budget; the `datetime_index` timestamps remain a plain
+   pandas attribute, never a Pyomo component.
 4. **Unit handling on `dt`.** `pyo.value(15 * pyunits.min)` is `15`, in
    minutes. Comparing against a horizon in seconds without
    `pyunits.convert` gives a 60× error. Convert exactly once, in `build()`.

@@ -198,7 +198,9 @@ plus a property package. ProcessBlock comes from IDAES as-is (no custom version)
 ### 3.1 TimeBlock (`flexops/core/time_block.py`)
 
 - The discrete-time substrate for everything. Holds:
-  - `time_points`: ordered Pyomo Set of integer indices `0..N-1`;
+  - `time_index`: ordered Pyomo Set of integer indices `0..N-1`;
+  - `time`: Param indexed over `time_index` giving elapsed time `i*dt` in the
+    user's units (the "actual" time points);
   - `dt`: Param with `pyunits` (the resolution, e.g. `15 * pyunits.min`);
   - datetime↔index utilities: `index_of(timestamp)`, `timestamp_of(i)`,
     `datetime_index` (a `pd.DatetimeIndex` mirror for tariff/EECO alignment);

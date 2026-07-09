@@ -62,7 +62,7 @@ When a package is later split into its own repo, its tests move with it.
     the name — the name is the project-wide standard).
   - `thermal_power[t]` — thermal/gas-driven duty of a unit, **kW**.
   - Never introduce variables named bare `power`, `energy`, or `work`.
-- Time index is always named `t`, iterating `time_block.time_points`.
+- Time index is always named `t`, iterating `time_block.time_index`.
 - User-facing constructors take **keyword arguments only** (enforce with `*` in
   signatures). ISO-8601 date strings (`"2025-01-01"`) or `datetime` objects; never
   ambiguous `"1-1-2025"`.
