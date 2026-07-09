@@ -1,5 +1,8 @@
-# conda environment for the optimization stack installed outside uv (see README "Install").
-# Everything else is installed via `uv pip install -e ".[dev]"`.
+# Single conda environment for the whole project.
+# The optimization stack (Python, pyomo, idaes-pse, scip, highspy) ships its
+# binaries through conda-forge; the editable package and its remaining Python
+# dependencies (including the pip-only `eeco`) are installed by pip in the
+# `pip:` subsection below, so `conda env create` is the only install command.
 # Usage: conda env create -f environment.yml
 name: flex-pse
 channels:
@@ -10,3 +13,6 @@ dependencies:
   - idaes-pse=2.12
   - scip=10.0
   - highspy=1.15
+  - pip
+  - pip:
+      - -e .[dev]
