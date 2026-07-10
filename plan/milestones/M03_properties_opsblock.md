@@ -55,10 +55,10 @@ hooks, and is discoverable model-wide.
 ### flexcore/nomenclature.py
 
 ```python
-ELECTRICAL_WORK = "electrical_work"   # unit-level electrical draw, kW
-THERMAL_WORK = "thermal_work"         # unit-level thermal/gas duty, kW
+ELECTRICAL_POWER = "electrical_power"   # unit-level electrical draw, kW
+THERMAL_POWER = "thermal_power"         # unit-level thermal/gas duty, kW
 
-class EnergyKind(str, enum.Enum):
+class PowerKind(str, enum.Enum):
     ELECTRICAL = "electrical"
     THERMAL = "thermal"
 ```
@@ -154,10 +154,10 @@ Plain dataclasses; `var`/`param` fields hold live Pyomo references typed `Any`:
 - `IOVariableRecord(var, name: str, role: str, tag_hint: str | None,
   units: str, time_indexed: bool)`
 - `ParameterRecord(param, name: str, regressable: bool)`
-- `EnergyRecord(var, name: str, kind: str)` — `name` is the nomenclature
-  constant value; `kind` an `EnergyKind` value
+- `PowerRecord(var, name: str, kind: str)` — `name` is the nomenclature
+  constant value; `kind` a `PowerKind` value
 - `IORegistry` — container with `io_variables: list[IOVariableRecord]`,
-  `parameters: list[ParameterRecord]`, `energy: list[EnergyRecord]`
+  `parameters: list[ParameterRecord]`, `power: list[PowerRecord]`
   (all `field(default_factory=list)`)
 - `iter_io_registry(model) -> Iterator[tuple[Any, IORegistry]]` — walk
   `model.block_data_objects(descend_into=True)` (plus the model itself), yield
@@ -206,7 +206,7 @@ API — copy these signatures exactly (later milestones and docs reference them)
 ```python
 def register_io_variable(self, var, role="input", tag_hint=None) -> None: ...
 def register_process_parameter(self, param_or_var, regressable=True) -> None: ...
-def register_energy(self, var, kind="electrical") -> None: ...
+def register_power(self, var, kind="electrical") -> None: ...
 ```
 
 - `register_io_variable`: `role` ∉ {"input","output"} → `FlexConfigError`.
@@ -215,7 +215,7 @@ def register_energy(self, var, kind="electrical") -> None: ...
   **fixed during regression**.
 - `register_process_parameter`: Param or Var; **found during regression** when
   `regressable=True`.
-- `register_energy`: `kind` must be an `EnergyKind` value else `FlexConfigError`.
+- `register_power`: `kind` must be a `PowerKind` value else `FlexConfigError`.
 
 #### External dispatch hook (DERMS, §3.2)
 
@@ -264,18 +264,18 @@ def replace_unit(parent, name: str, new_block) -> None: ...
   are FlexParameterize's job (M10); M03 provides the raw in-place rewire on the
   block tree and proves it works on a child block.
 
-Energy Vars are base-provided, created when the unit declares it consumes that
+Power Vars are base-provided, created when the unit declares it consumes that
 kind (01_architecture §3.2):
 
 ```python
-def declare_energy(self, kind="electrical"):   # method name: implementer's choice
-    """Create electrical_work[t] / thermal_work[t] (kW), register it, return it."""
+def declare_power(self, kind="electrical"):   # method name: implementer's choice
+    """Create electrical_power[t] / thermal_power[t] (kW), register it, return it."""
 ```
 
 Creates `Var(tb.time_points, initialize=0.0, units=pyunits.kW, doc="Electrical
 draw of the unit")`, attached via `setattr` under
-`flexcore.nomenclature.ELECTRICAL_WORK` (resp. `THERMAL_WORK`), then calls
-`register_energy`. No bounds at the base (implementer's choice).
+`flexcore.nomenclature.ELECTRICAL_POWER` (resp. `THERMAL_POWER`), then calls
+`register_power`. No bounds at the base (implementer's choice).
 
 Time access: the `flowsheet()` chain arrives with PlantBlock in M09. Interim
 (implementer's choice, clearly marked): `_find_time_block()` searches
@@ -326,7 +326,7 @@ WaterTAP `prop_ZO`; all IDAES bases via `flexcore.compat.idaes`.
    `Block.__setattr__` machinery interfering.
 3. **Missing `doc=`.** The M04 harness and M14 docs generator require non-empty
    `doc` on registered variables. Set `doc=` on every Var/Constraint, starting now.
-4. **Hand-typing `"electrical_work"`.** Always import from
+4. **Hand-typing `"electrical_power"`.** Always import from
    `flexcore.nomenclature`; the literal string anywhere else is review-blocking.
 5. **pydantic v1 idioms.** Use `model_validate`/`model_dump_json`/
    `model_json_schema`; no `parse_obj`, no `class Config`.
@@ -358,16 +358,16 @@ All `@pytest.mark.unit` (no solver; DoF checks count, they don't solve).
 `src/flexops/tests/core/test_ops_block.py` — defines `DummyOps` in the test
 module: registers `flow_in[t]`/`flow_out[t]` (m³/hr; input/output), a mutable
 `energy_intensity` Param (kWh/m³) as a regressable process parameter, calls
-`declare_energy("electrical")`, and adds constraints
+`declare_power("electrical")`, and adds constraints
 `flow_out[t] == 0.9 * flow_in[t]` and
-`electrical_work[t] == pyunits.convert(energy_intensity * flow_in[t], pyunits.kW)`.
+`electrical_power[t] == pyunits.convert(energy_intensity * flow_in[t], pyunits.kW)`.
 
 - `test_dummy_ops_builds` — on `ConcreteModel` + 4-point TimeBlock;
-  `electrical_work` exists, indexed by `time_points`, in kW.
+  `electrical_power` exists, indexed by `time_points`, in kW.
 - `test_registration_records` — registry holds 2 `IOVariableRecord` (roles
   input/output, `time_indexed=True`, non-empty units strings), 1
-  `ParameterRecord` (`regressable=True`), 1 `EnergyRecord`
-  (`kind == "electrical"`, `name == ELECTRICAL_WORK`).
+  `ParameterRecord` (`regressable=True`), 1 `PowerRecord`
+  (`kind == "electrical"`, `name == ELECTRICAL_POWER`).
 - `test_iter_io_registry_finds_dummy` — yields exactly one `(block, registry)`
   pair; the block is the DummyOps instance.
 - `test_units_consistent` — `assert_units_consistent(unit)` (via compat).
@@ -463,7 +463,7 @@ module: registers `flow_in[t]`/`flow_out[t]` (m³/hr; input/output), a mutable
 - [ ] JSON Schema exported to `src/flexcore/config/schemas/`, checked in, up-to-date test green
 - [ ] `from_config(UnitConfig)` raises `NotImplementedError` referencing M09;
       whole-model `flexops.build_model` noted as M09
-- [ ] No literal `"electrical_work"`/`"thermal_work"` outside `flexcore/nomenclature.py`
+- [ ] No literal `"electrical_power"`/`"thermal_power"` outside `flexcore/nomenclature.py`
 - [ ] `pytest -m unit` green; `lint-imports` passes
 - [ ] `NB_EXECUTION_MODE=off sphinx-build -W --keep-going -b html docs docs/_build` clean
 - [ ] plus the generic DoD in CLAUDE.md

@@ -237,7 +237,7 @@ The base class of every flex-pse unit model.
     during regression** (they carry the data).
   - `register_process_parameter(param_or_var, regressable=True)` — design or
     regression parameters, **found during regression**.
-  - `register_energy(var, kind="electrical"|"thermal")` — wires a unit's kW
+  - `register_power(var, kind="electrical"|"thermal")` — wires a unit's kW
     draw into plant/costing aggregation.
   - Registries are dataclasses in `flexops/core/registration.py`
     (`IORegistry`), discoverable model-wide via `iter_io_registry(model)`.
@@ -415,7 +415,7 @@ A composable unit-commitment (UC) formulation, applied per unit via its
 | `electrical_power[t]` | unit-level electrical draw (motor/drive) | kW | FlexCosting → EECO (energy + demand charges + DR); plant aggregation |
 | `thermal_power[t]` | unit-level heat/gas-driven duty | kW | separate thermal aggregation/costing |
 
-Rules: every unit model registers at least one of these via `register_energy`.
+Rules: every unit model registers at least one of these via `register_power`.
 FlexCosting aggregates them into a kW time series and hands it to EECO both
 in-model (objective) and as a post-solve numpy array (reporting, §3.6/§6); EECO
 computes kWh internally from the timestep.

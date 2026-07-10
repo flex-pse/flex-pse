@@ -13,8 +13,8 @@ becomes an import error rather than a silently-unaggregated variable.
 Rules (`plan/00_conventions.md` §2, `plan/01_architecture.md` §4):
 
 - Every unit model registers at least one of these via
-  {meth}`~flexops.core.ops_block.OpsBlockData.register_energy` (or creates one
-  with {meth}`~flexops.core.ops_block.OpsBlockData.declare_energy`).
+  {meth}`~flexops.core.ops_block.OpsBlockData.register_power` (or creates one
+  with {meth}`~flexops.core.ops_block.OpsBlockData.declare_power`).
 - Both quantities are **powers in kW**, despite the domain word "energy".
   FlexCosting aggregates them into a kW time series and hands it to EECO both
   in-model (objective) and as a post-solve numpy array (reporting); EECO derives

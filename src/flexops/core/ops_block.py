@@ -6,8 +6,8 @@ subclasses hand-write their 1-3 balance constraints. It provides the
 registration API that FlexParameterize and the docs generator consume
 (:meth:`OpsBlockData.register_io_variable`,
 :meth:`~OpsBlockData.register_process_parameter`,
-:meth:`~OpsBlockData.register_energy`), the base energy Vars
-(:meth:`~OpsBlockData.declare_energy`), the external-dispatch hook
+:meth:`~OpsBlockData.register_power`), the base power Vars
+(:meth:`~OpsBlockData.declare_power`), the external-dispatch hook
 (:meth:`~OpsBlockData.set_external_dispatch`), and the config slots
 (``unit_commitment``, ``relaxation``, ``allow_bypass``, ``external_dispatch``)
 that the M08 logic layer will consume.
@@ -37,19 +37,19 @@ from flexcore.exceptions import FlexConfigError
 from flexcore.nomenclature import (
     ELECTRICAL_POWER,
     THERMAL_POWER,
-    EnergyKind,
+    PowerKind,
 )
 from flexops.core.registration import (
-    EnergyRecord,
     IORegistry,
     IOVariableRecord,
     ParameterRecord,
+    PowerRecord,
 )
 from flexops.core.time_block import TimeBlockData
 
-_ENERGY_VARS = {
-    EnergyKind.ELECTRICAL.value: (ELECTRICAL_POWER, "Electrical draw of the unit"),
-    EnergyKind.THERMAL.value: (THERMAL_POWER, "Thermal/gas-driven duty of the unit"),
+_POWER_VARS = {
+    PowerKind.ELECTRICAL.value: (ELECTRICAL_POWER, "Electrical draw of the unit"),
+    PowerKind.THERMAL.value: (THERMAL_POWER, "Thermal/gas-driven duty of the unit"),
 }
 
 
@@ -270,53 +270,53 @@ class OpsBlockData(UnitModelBlockData):
             )
         )
 
-    def register_energy(self, var, kind: str = "electrical") -> None:
-        """Register an energy-draw variable for plant/costing aggregation.
+    def register_power(self, var, kind: str = "electrical") -> None:
+        """Register a power-draw variable for plant/costing aggregation.
 
         Args:
             var: The Pyomo ``Var`` (kW) to register.
-            kind: An :class:`~flexcore.nomenclature.EnergyKind` value.
+            kind: A :class:`~flexcore.nomenclature.PowerKind` value.
 
         Raises:
-            FlexConfigError: If ``kind`` is not a valid ``EnergyKind`` value.
+            FlexConfigError: If ``kind`` is not a valid ``PowerKind`` value.
         """
-        kind_value = kind.value if isinstance(kind, EnergyKind) else kind
-        if kind_value not in _ENERGY_VARS:
-            allowed = ", ".join(repr(k) for k in _ENERGY_VARS)
+        kind_value = kind.value if isinstance(kind, PowerKind) else kind
+        if kind_value not in _POWER_VARS:
+            allowed = ", ".join(repr(k) for k in _POWER_VARS)
             raise FlexConfigError(
-                f"Energy kind must be one of {allowed}, got {kind!r}.",
+                f"Power kind must be one of {allowed}, got {kind!r}.",
                 field="kind",
                 value=kind,
             )
-        self._io_registry.energy.append(
-            EnergyRecord(var=var, name=var.local_name, kind=kind_value)
+        self._io_registry.power.append(
+            PowerRecord(var=var, name=var.local_name, kind=kind_value)
         )
 
-    def declare_energy(self, kind: str = "electrical"):
-        """Create, register, and return this unit's energy-draw Var (kW).
+    def declare_power(self, kind: str = "electrical"):
+        """Create, register, and return this unit's power-draw Var (kW).
 
         Creates ``electrical_power[t]`` (resp. ``thermal_power[t]``) indexed over
         the time set, attaches it under the nomenclature constant name, registers
         it, and returns it.
 
         Args:
-            kind: An :class:`~flexcore.nomenclature.EnergyKind` value.
+            kind: A :class:`~flexcore.nomenclature.PowerKind` value.
 
         Returns:
             The created, time-indexed ``Var`` in kW.
 
         Raises:
-            FlexConfigError: If ``kind`` is not a valid ``EnergyKind`` value.
+            FlexConfigError: If ``kind`` is not a valid ``PowerKind`` value.
         """
-        kind_value = kind.value if isinstance(kind, EnergyKind) else kind
-        if kind_value not in _ENERGY_VARS:
-            allowed = ", ".join(repr(k) for k in _ENERGY_VARS)
+        kind_value = kind.value if isinstance(kind, PowerKind) else kind
+        if kind_value not in _POWER_VARS:
+            allowed = ", ".join(repr(k) for k in _POWER_VARS)
             raise FlexConfigError(
-                f"Energy kind must be one of {allowed}, got {kind!r}.",
+                f"Power kind must be one of {allowed}, got {kind!r}.",
                 field="kind",
                 value=kind,
             )
-        name, doc = _ENERGY_VARS[kind_value]
+        name, doc = _POWER_VARS[kind_value]
         tb = self._find_time_block()
         setattr(
             self,
@@ -324,7 +324,7 @@ class OpsBlockData(UnitModelBlockData):
             pyo.Var(tb.time_index, initialize=0.0, units=pyunits.kW, doc=doc),
         )
         var = getattr(self, name)
-        self.register_energy(var, kind=kind_value)
+        self.register_power(var, kind=kind_value)
         return var
 
     # -- external dispatch (DERMS, §3.2) ----------------------------------

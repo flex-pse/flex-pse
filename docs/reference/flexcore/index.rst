@@ -100,7 +100,7 @@ The canonical energy-variable names (see
 
 .. autodata:: THERMAL_POWER
 
-.. autoclass:: EnergyKind
+.. autoclass:: PowerKind
    :members:
 
 Exceptions

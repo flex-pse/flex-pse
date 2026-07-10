@@ -2,7 +2,7 @@
 
 Every :class:`~flexops.core.ops_block.OpsBlockData` holds an :class:`IORegistry`
 of what it exposes to FlexParameterize and the docs generator: its process IO
-variables, its regressable parameters, and its energy-draw variables. The record
+variables, its regressable parameters, and its power-draw variables. The record
 dataclasses hold **live** Pyomo references (typed ``Any`` — a Pyomo component
 has no useful static type here). :func:`iter_io_registry` walks a whole model to
 find every block that registered something.
@@ -50,13 +50,13 @@ class ParameterRecord:
 
 
 @dataclass
-class EnergyRecord:
-    """A registered energy-draw variable.
+class PowerRecord:
+    """A registered power-draw variable.
 
     Attributes:
         var: The live Pyomo ``Var`` (kW).
         name: The nomenclature constant value (e.g. ``"electrical_power"``).
-        kind: The :class:`~flexcore.nomenclature.EnergyKind` value.
+        kind: The :class:`~flexcore.nomenclature.PowerKind` value.
     """
 
     var: Any
@@ -71,16 +71,16 @@ class IORegistry:
     Attributes:
         io_variables: Registered process IO variables.
         parameters: Registered design/regression parameters.
-        energy: Registered energy-draw variables.
+        power: Registered power-draw variables.
     """
 
     io_variables: list[IOVariableRecord] = field(default_factory=list)
     parameters: list[ParameterRecord] = field(default_factory=list)
-    energy: list[EnergyRecord] = field(default_factory=list)
+    power: list[PowerRecord] = field(default_factory=list)
 
     def is_empty(self) -> bool:
         """Return True if nothing has been registered on this block."""
-        return not (self.io_variables or self.parameters or self.energy)
+        return not (self.io_variables or self.parameters or self.power)
 
 
 def iter_io_registry(model) -> Iterator[tuple[Any, IORegistry]]:

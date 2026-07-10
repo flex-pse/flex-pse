@@ -1,7 +1,7 @@
 """Tests for OpsBlock: the base class of every flex-pse unit model.
 
 Defines a throwaway ``DummyOps`` unit in this module and exercises the
-registration API, the base-provided energy Var, model-wide registry discovery,
+registration API, the base-provided power Var, model-wide registry discovery,
 the external-dispatch hook, and the hierarchy-agnostic ``replace_unit`` helper.
 """
 
@@ -18,9 +18,9 @@ from flexcore.exceptions import FlexConfigError
 from flexcore.nomenclature import ELECTRICAL_POWER
 from flexops.core.ops_block import OpsBlockData, replace_unit
 from flexops.core.registration import (
-    EnergyRecord,
     IOVariableRecord,
     ParameterRecord,
+    PowerRecord,
     iter_io_registry,
 )
 from flexops.core.time_block import TimeBlock
@@ -54,7 +54,7 @@ class DummyOpsData(OpsBlockData):
         self.register_io_variable(self.flow_in, role="input")
         self.register_io_variable(self.flow_out, role="output")
         self.register_process_parameter(self.energy_intensity, regressable=True)
-        power = self.declare_energy("electrical")
+        power = self.declare_power("electrical")
 
         self.inlet = Port(initialize={"flow_vol": self.flow_in}, doc="Inlet port")
         self.outlet = Port(initialize={"flow_vol": self.flow_out}, doc="Outlet port")
@@ -108,7 +108,7 @@ def test_dummy_ops_builds(dummy_model):
 
 @pytest.mark.unit
 def test_registration_records(dummy_model):
-    """The registry captures the two IO vars, the parameter, and the energy var."""
+    """The registry captures the two IO vars, the parameter, and the power var."""
     reg = dummy_model.unit._io_registry
     assert len(reg.io_variables) == 2
     for rec in reg.io_variables:
@@ -122,10 +122,10 @@ def test_registration_records(dummy_model):
     assert isinstance(reg.parameters[0], ParameterRecord)
     assert reg.parameters[0].regressable is True
 
-    assert len(reg.energy) == 1
-    assert isinstance(reg.energy[0], EnergyRecord)
-    assert reg.energy[0].kind == "electrical"
-    assert reg.energy[0].name == ELECTRICAL_POWER
+    assert len(reg.power) == 1
+    assert isinstance(reg.power[0], PowerRecord)
+    assert reg.power[0].kind == "electrical"
+    assert reg.power[0].name == ELECTRICAL_POWER
 
 
 @pytest.mark.unit
@@ -161,9 +161,9 @@ def test_bad_role_raises(dummy_model):
 
 @pytest.mark.unit
 def test_bad_kind_raises(dummy_model):
-    """An unknown energy kind is a config error."""
+    """An unknown power kind is a config error."""
     with pytest.raises(FlexConfigError):
-        dummy_model.unit.register_energy(dummy_model.unit.flow_in, kind="kinetic")
+        dummy_model.unit.register_power(dummy_model.unit.flow_in, kind="kinetic")
 
 
 @pytest.mark.unit
