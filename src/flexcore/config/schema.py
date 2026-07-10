@@ -1,0 +1,266 @@
+"""The versioned flex-pse config schema (pydantic v2, the schema authority).
+
+A whole flex-pse model and run are built from a single version-controlled
+config artifact (``flexops.build_model(config)``, M09): the TimeBlock,
+properties, costing, and the network/plant/unit tree all come from one
+:class:`ModelConfig`. These pydantic models are the **authority** for that
+config (``plan/01_architecture.md`` §2.3, decision R3); YAML is the canonical
+on-disk format and JSON is also accepted (see :mod:`flexcore.config.io`).
+
+Every field carries a ``description`` (it renders into the docs) and every model
+forbids unknown keys (``plan/00_conventions.md`` §4: an undocumented key does
+not get to exist). Only the persisted (Layer-1) config lives here; runtime Pyomo
+``ConfigDict`` options are a separate layer and are never serialized.
+"""
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+CURRENT_SCHEMA_VERSION = 1
+"""int: the schema version this build writes and validates against."""
+
+
+class _StrictModel(BaseModel):
+    """Base for every config model: reject undocumented keys (conventions §4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class IOVariableSpec(_StrictModel):
+    """A declared process input or output variable of a unit."""
+
+    name: str = Field(description="Local variable name on the unit block.")
+    role: Literal["input", "output"] = Field(
+        description="Whether the variable is a process input or output."
+    )
+    units: str = Field(description="Units of the variable as a string, e.g. 'm^3/hr'.")
+    tag_hint: str | None = Field(
+        default=None,
+        description="Optional historian-tag hint for FlexParameterize aliasing.",
+    )
+    time_indexed: bool = Field(
+        default=True,
+        description="Whether the variable is indexed over the time set.",
+    )
+
+
+class SurrogateSpec(_StrictModel):
+    """A fitted (or default) energy/IO relationship for a unit."""
+
+    functional_form: Literal[
+        "constant_intensity", "linear", "nn", "arima", "multiconvex"
+    ] = Field(
+        description="Functional form of the relationship. 'nn', 'arima', and "
+        "'multiconvex' are reserved: the schema accepts them but construction "
+        "rejects them until post-v0."
+    )
+    coefficients: dict[str, float] = Field(
+        default_factory=dict,
+        description="Named numeric coefficients of the fitted relationship.",
+    )
+    input_variables: list[str] = Field(
+        default_factory=list,
+        description="Names of the relationship's input variables.",
+    )
+    output_variables: list[str] = Field(
+        default_factory=list,
+        description="Names of the relationship's output variables.",
+    )
+    provenance: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Free-form fit metadata (metrics, data window, versions).",
+    )
+
+
+class ExternalDispatchSpec(_StrictModel):
+    """Declares an external (DERMS) command source for a controllable var (§3.2)."""
+
+    variable: str = Field(
+        description="Name of the controllable variable to drive externally."
+    )
+    source: str = Field(
+        description="File or tag pointing at the time-indexed command series."
+    )
+    fix: bool = Field(
+        default=True,
+        description="Whether to fix the variable to the series (remove its DOF).",
+    )
+
+
+class UnitCommitmentConfig(_StrictModel):
+    """Per-unit unit-commitment configuration (§3.5).
+
+    A validated container only in M03; the constraint-building logic layer that
+    consumes it is built in M08. Every piece is optional except ``status``.
+    """
+
+    status: bool = Field(
+        default=True,
+        description="Whether the unit has an on/off status binary (a tank sets "
+        "this False).",
+    )
+    startup_shutdown: bool = Field(
+        default=False,
+        description="Whether to build startup/shutdown transition logic.",
+    )
+    dwell: bool = Field(
+        default=False,
+        description="Whether to build minimum up/down-time (dwell) constraints.",
+    )
+    min_up: int | None = Field(
+        default=None,
+        description="Minimum number of steps the unit must stay up once started.",
+    )
+    min_down: int | None = Field(
+        default=None,
+        description="Minimum number of steps the unit must stay down once " "stopped.",
+    )
+    delays: dict[str, Any] | None = Field(
+        default=None,
+        description="Upstream-linked startup-delay specification (M08).",
+    )
+    conditional: dict[str, Any] | None = Field(
+        default=None,
+        description="Conditional status implications between units (M08).",
+    )
+
+
+class UnitConfig(_StrictModel):
+    """A single unit model: its class, construction options, and IO/logic."""
+
+    unit_model_class: str = Field(
+        description="Name of the flexops unit-model class to construct."
+    )
+    construction_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Keyword options passed to the unit-model constructor.",
+    )
+    io_variables: list[IOVariableSpec] = Field(
+        default_factory=list,
+        description="Declared process input/output variables of the unit.",
+    )
+    surrogate: SurrogateSpec | None = Field(
+        default=None,
+        description="Optional fitted energy/IO relationship for the unit.",
+    )
+    unit_commitment: UnitCommitmentConfig = Field(
+        default_factory=UnitCommitmentConfig,
+        description="Per-unit unit-commitment configuration.",
+    )
+    external_dispatch: ExternalDispatchSpec | None = Field(
+        default=None,
+        description="Optional external (DERMS) dispatch source for the unit.",
+    )
+
+
+class ArcSpec(_StrictModel):
+    """A directed connection between two unit (or plant) ports."""
+
+    source: str = Field(description="Source endpoint as a 'unit.port' string.")
+    destination: str = Field(
+        description="Destination endpoint as a 'unit.port' string."
+    )
+
+
+class PlantConfig(_StrictModel):
+    """A named collection of unit models and the arcs between them."""
+
+    name: str = Field(description="Human-readable plant name.")
+    units: dict[str, UnitConfig] = Field(
+        description="Units of the plant, keyed by their attribute name."
+    )
+    arcs: list[ArcSpec] = Field(
+        default_factory=list,
+        description="Arcs connecting unit ports within the plant.",
+    )
+
+
+class NetworkConfig(_StrictModel):
+    """A named collection of plants and the inter-plant arcs between them."""
+
+    name: str = Field(description="Human-readable network name.")
+    plants: dict[str, PlantConfig] = Field(
+        description="Plants of the network, keyed by their attribute name."
+    )
+    arcs: list[ArcSpec] = Field(
+        default_factory=list,
+        description="Arcs connecting plant ports across the network.",
+    )
+
+
+class TimeConfig(_StrictModel):
+    """The discrete-time horizon specification (§3.1)."""
+
+    start_date: str = Field(description="Inclusive ISO-8601 start of the horizon.")
+    end_date: str = Field(description="Exclusive ISO-8601 end of the horizon.")
+    time_step: str = Field(
+        description="Time-step as a units-carrying expression string, e.g. "
+        "'15 min'; parsed at build time."
+    )
+
+
+class DRConfig(_StrictModel):
+    """Demand-response container slot (§2.4/§3.6).
+
+    A placeholder in v0: DR containers exist so wiring is stable, but no DR
+    constraints are built. Turning DR on later is additive.
+    """
+
+    events_source: str | None = Field(
+        default=None,
+        description="Optional file or tag pointing at demand-response events.",
+    )
+
+
+class CostingConfig(_StrictModel):
+    """Tariff, demand-response, and solve/objective options for a run."""
+
+    tariff_source: str = Field(
+        description="File or tag pointing at the EECO tariff definition."
+    )
+    dr: DRConfig | None = Field(
+        default=None,
+        description="Optional demand-response container (containers-only in v0).",
+    )
+    objective: Literal["cost"] = Field(
+        default="cost",
+        description="Objective to minimize (only tariff cost in v0).",
+    )
+    solver: str | None = Field(
+        default=None,
+        description="Optional explicit solver name; None lets the facade pick.",
+    )
+
+
+class ModelConfig(_StrictModel):
+    """The top-level config artifact the whole model+run is built from (§2.3)."""
+
+    schema_version: int = Field(
+        description="Schema version of this config; mandatory, no default."
+    )
+    time: TimeConfig = Field(description="The discrete-time horizon.")
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Property-package specification (kept loose at v1).",
+    )
+    costing: CostingConfig = Field(description="Tariff/DR/solve options.")
+    network: NetworkConfig | None = Field(
+        default=None,
+        description="A network of plants; mutually exclusive with 'plant'.",
+    )
+    plant: PlantConfig | None = Field(
+        default=None,
+        description="A single plant of units; mutually exclusive with 'network'.",
+    )
+
+    @model_validator(mode="after")
+    def _exactly_one_topology(self) -> "ModelConfig":
+        """Require exactly one of ``network`` or ``plant`` (pitfall 10)."""
+        if (self.network is None) == (self.plant is None):
+            raise ValueError(
+                "Set exactly one of 'network' or 'plant' on ModelConfig "
+                f"(got network={self.network is not None}, "
+                f"plant={self.plant is not None})."
+            )
+        return self

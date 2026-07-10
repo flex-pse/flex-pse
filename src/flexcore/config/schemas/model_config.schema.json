@@ -1,0 +1,513 @@
+{
+  "$defs": {
+    "ArcSpec": {
+      "additionalProperties": false,
+      "description": "A directed connection between two unit (or plant) ports.",
+      "properties": {
+        "destination": {
+          "description": "Destination endpoint as a 'unit.port' string.",
+          "title": "Destination",
+          "type": "string"
+        },
+        "source": {
+          "description": "Source endpoint as a 'unit.port' string.",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "destination"
+      ],
+      "title": "ArcSpec",
+      "type": "object"
+    },
+    "CostingConfig": {
+      "additionalProperties": false,
+      "description": "Tariff, demand-response, and solve/objective options for a run.",
+      "properties": {
+        "dr": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DRConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional demand-response container (containers-only in v0)."
+        },
+        "objective": {
+          "const": "cost",
+          "default": "cost",
+          "description": "Objective to minimize (only tariff cost in v0).",
+          "title": "Objective",
+          "type": "string"
+        },
+        "solver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional explicit solver name; None lets the facade pick.",
+          "title": "Solver"
+        },
+        "tariff_source": {
+          "description": "File or tag pointing at the EECO tariff definition.",
+          "title": "Tariff Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tariff_source"
+      ],
+      "title": "CostingConfig",
+      "type": "object"
+    },
+    "DRConfig": {
+      "additionalProperties": false,
+      "description": "Demand-response container slot (\u00a72.4/\u00a73.6).\n\nA placeholder in v0: DR containers exist so wiring is stable, but no DR\nconstraints are built. Turning DR on later is additive.",
+      "properties": {
+        "events_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional file or tag pointing at demand-response events.",
+          "title": "Events Source"
+        }
+      },
+      "title": "DRConfig",
+      "type": "object"
+    },
+    "ExternalDispatchSpec": {
+      "additionalProperties": false,
+      "description": "Declares an external (DERMS) command source for a controllable var (\u00a73.2).",
+      "properties": {
+        "fix": {
+          "default": true,
+          "description": "Whether to fix the variable to the series (remove its DOF).",
+          "title": "Fix",
+          "type": "boolean"
+        },
+        "source": {
+          "description": "File or tag pointing at the time-indexed command series.",
+          "title": "Source",
+          "type": "string"
+        },
+        "variable": {
+          "description": "Name of the controllable variable to drive externally.",
+          "title": "Variable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "variable",
+        "source"
+      ],
+      "title": "ExternalDispatchSpec",
+      "type": "object"
+    },
+    "IOVariableSpec": {
+      "additionalProperties": false,
+      "description": "A declared process input or output variable of a unit.",
+      "properties": {
+        "name": {
+          "description": "Local variable name on the unit block.",
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "description": "Whether the variable is a process input or output.",
+          "enum": [
+            "input",
+            "output"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "tag_hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional historian-tag hint for FlexParameterize aliasing.",
+          "title": "Tag Hint"
+        },
+        "time_indexed": {
+          "default": true,
+          "description": "Whether the variable is indexed over the time set.",
+          "title": "Time Indexed",
+          "type": "boolean"
+        },
+        "units": {
+          "description": "Units of the variable as a string, e.g. 'm^3/hr'.",
+          "title": "Units",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "role",
+        "units"
+      ],
+      "title": "IOVariableSpec",
+      "type": "object"
+    },
+    "NetworkConfig": {
+      "additionalProperties": false,
+      "description": "A named collection of plants and the inter-plant arcs between them.",
+      "properties": {
+        "arcs": {
+          "description": "Arcs connecting plant ports across the network.",
+          "items": {
+            "$ref": "#/$defs/ArcSpec"
+          },
+          "title": "Arcs",
+          "type": "array"
+        },
+        "name": {
+          "description": "Human-readable network name.",
+          "title": "Name",
+          "type": "string"
+        },
+        "plants": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PlantConfig"
+          },
+          "description": "Plants of the network, keyed by their attribute name.",
+          "title": "Plants",
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "plants"
+      ],
+      "title": "NetworkConfig",
+      "type": "object"
+    },
+    "PlantConfig": {
+      "additionalProperties": false,
+      "description": "A named collection of unit models and the arcs between them.",
+      "properties": {
+        "arcs": {
+          "description": "Arcs connecting unit ports within the plant.",
+          "items": {
+            "$ref": "#/$defs/ArcSpec"
+          },
+          "title": "Arcs",
+          "type": "array"
+        },
+        "name": {
+          "description": "Human-readable plant name.",
+          "title": "Name",
+          "type": "string"
+        },
+        "units": {
+          "additionalProperties": {
+            "$ref": "#/$defs/UnitConfig"
+          },
+          "description": "Units of the plant, keyed by their attribute name.",
+          "title": "Units",
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "units"
+      ],
+      "title": "PlantConfig",
+      "type": "object"
+    },
+    "SurrogateSpec": {
+      "additionalProperties": false,
+      "description": "A fitted (or default) energy/IO relationship for a unit.",
+      "properties": {
+        "coefficients": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Named numeric coefficients of the fitted relationship.",
+          "title": "Coefficients",
+          "type": "object"
+        },
+        "functional_form": {
+          "description": "Functional form of the relationship. 'nn', 'arima', and 'multiconvex' are reserved: the schema accepts them but construction rejects them until post-v0.",
+          "enum": [
+            "constant_intensity",
+            "linear",
+            "nn",
+            "arima",
+            "multiconvex"
+          ],
+          "title": "Functional Form",
+          "type": "string"
+        },
+        "input_variables": {
+          "description": "Names of the relationship's input variables.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Input Variables",
+          "type": "array"
+        },
+        "output_variables": {
+          "description": "Names of the relationship's output variables.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Variables",
+          "type": "array"
+        },
+        "provenance": {
+          "additionalProperties": true,
+          "description": "Free-form fit metadata (metrics, data window, versions).",
+          "title": "Provenance",
+          "type": "object"
+        }
+      },
+      "required": [
+        "functional_form"
+      ],
+      "title": "SurrogateSpec",
+      "type": "object"
+    },
+    "TimeConfig": {
+      "additionalProperties": false,
+      "description": "The discrete-time horizon specification (\u00a73.1).",
+      "properties": {
+        "end_date": {
+          "description": "Exclusive ISO-8601 end of the horizon.",
+          "title": "End Date",
+          "type": "string"
+        },
+        "start_date": {
+          "description": "Inclusive ISO-8601 start of the horizon.",
+          "title": "Start Date",
+          "type": "string"
+        },
+        "time_step": {
+          "description": "Time-step as a units-carrying expression string, e.g. '15 min'; parsed at build time.",
+          "title": "Time Step",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_date",
+        "end_date",
+        "time_step"
+      ],
+      "title": "TimeConfig",
+      "type": "object"
+    },
+    "UnitCommitmentConfig": {
+      "additionalProperties": false,
+      "description": "Per-unit unit-commitment configuration (\u00a73.5).\n\nA validated container only in M03; the constraint-building logic layer that\nconsumes it is built in M08. Every piece is optional except ``status``.",
+      "properties": {
+        "conditional": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Conditional status implications between units (M08).",
+          "title": "Conditional"
+        },
+        "delays": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Upstream-linked startup-delay specification (M08).",
+          "title": "Delays"
+        },
+        "dwell": {
+          "default": false,
+          "description": "Whether to build minimum up/down-time (dwell) constraints.",
+          "title": "Dwell",
+          "type": "boolean"
+        },
+        "min_down": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Minimum number of steps the unit must stay down once stopped.",
+          "title": "Min Down"
+        },
+        "min_up": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Minimum number of steps the unit must stay up once started.",
+          "title": "Min Up"
+        },
+        "startup_shutdown": {
+          "default": false,
+          "description": "Whether to build startup/shutdown transition logic.",
+          "title": "Startup Shutdown",
+          "type": "boolean"
+        },
+        "status": {
+          "default": true,
+          "description": "Whether the unit has an on/off status binary (a tank sets this False).",
+          "title": "Status",
+          "type": "boolean"
+        }
+      },
+      "title": "UnitCommitmentConfig",
+      "type": "object"
+    },
+    "UnitConfig": {
+      "additionalProperties": false,
+      "description": "A single unit model: its class, construction options, and IO/logic.",
+      "properties": {
+        "construction_options": {
+          "additionalProperties": true,
+          "description": "Keyword options passed to the unit-model constructor.",
+          "title": "Construction Options",
+          "type": "object"
+        },
+        "external_dispatch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExternalDispatchSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional external (DERMS) dispatch source for the unit."
+        },
+        "io_variables": {
+          "description": "Declared process input/output variables of the unit.",
+          "items": {
+            "$ref": "#/$defs/IOVariableSpec"
+          },
+          "title": "Io Variables",
+          "type": "array"
+        },
+        "surrogate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SurrogateSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional fitted energy/IO relationship for the unit."
+        },
+        "unit_commitment": {
+          "$ref": "#/$defs/UnitCommitmentConfig",
+          "description": "Per-unit unit-commitment configuration."
+        },
+        "unit_model_class": {
+          "description": "Name of the flexops unit-model class to construct.",
+          "title": "Unit Model Class",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit_model_class"
+      ],
+      "title": "UnitConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The top-level config artifact the whole model+run is built from (\u00a72.3).",
+  "properties": {
+    "costing": {
+      "$ref": "#/$defs/CostingConfig",
+      "description": "Tariff/DR/solve options."
+    },
+    "network": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NetworkConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "A network of plants; mutually exclusive with 'plant'."
+    },
+    "plant": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PlantConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "A single plant of units; mutually exclusive with 'network'."
+    },
+    "properties": {
+      "additionalProperties": true,
+      "description": "Property-package specification (kept loose at v1).",
+      "title": "Properties",
+      "type": "object"
+    },
+    "schema_version": {
+      "description": "Schema version of this config; mandatory, no default.",
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "time": {
+      "$ref": "#/$defs/TimeConfig",
+      "description": "The discrete-time horizon."
+    }
+  },
+  "required": [
+    "schema_version",
+    "time",
+    "costing"
+  ],
+  "title": "ModelConfig",
+  "type": "object"
+}
