@@ -45,6 +45,14 @@ nitpick_ignore = [
     ("py:exc", "FlexSolverError"),
 ]
 
+# autodoc renders the subscripted generics in a pydantic model's constructor
+# signature (e.g. ``dict[str, float]``) as a single xref target and splits it at
+# the comma, producing an unresolvable ``dict[str`` fragment. The real types
+# resolve fine; ignore only these signature-parsing fragments.
+nitpick_ignore_regex = [
+    ("py:class", r"dict\[.*"),
+]
+
 html_theme = "furo"
 
 

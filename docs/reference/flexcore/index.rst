@@ -48,3 +48,70 @@ calling :func:`get_solver`.
      - MILP, MINLP (preferred over HiGHS for MILP; the default open-source MINLP solver)
    * - ``gurobi``
      - LP, QP, MILP
+
+Config schema
+-------------
+
+.. currentmodule:: flexcore.config.schema
+
+The versioned, YAML-canonical config the whole model+run is built from
+(decision R3; see :doc:`../../explanation/config_schema`). Pydantic is the
+schema authority; :data:`CURRENT_SCHEMA_VERSION` tags what this build writes.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   ModelConfig
+   NetworkConfig
+   PlantConfig
+   UnitConfig
+   IOVariableSpec
+   SurrogateSpec
+   ExternalDispatchSpec
+   UnitCommitmentConfig
+   ArcSpec
+   TimeConfig
+   CostingConfig
+   DRConfig
+
+.. autodata:: CURRENT_SCHEMA_VERSION
+
+Config I/O
+~~~~~~~~~~
+
+.. currentmodule:: flexcore.config.io
+
+.. autofunction:: load_model_config
+
+.. autofunction:: dump_model_config
+
+.. autofunction:: export_json_schemas
+
+Nomenclature
+------------
+
+.. currentmodule:: flexcore.nomenclature
+
+The canonical energy-variable names (see
+:doc:`../../explanation/energy_nomenclature`).
+
+.. autodata:: ELECTRICAL_POWER
+
+.. autodata:: THERMAL_POWER
+
+.. autoclass:: EnergyKind
+   :members:
+
+Exceptions
+----------
+
+.. currentmodule:: flexcore.exceptions
+
+.. autoexception:: FlexError
+
+.. autoexception:: FlexConfigError
+
+.. autoexception:: FlexSolverError
+
+.. autoexception:: FlexDataError
