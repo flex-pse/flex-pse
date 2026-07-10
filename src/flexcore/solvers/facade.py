@@ -61,7 +61,9 @@ def _idaes_ipopt():
     if not os.path.isfile(executable):
         _log.debug("no idaes IPOPT binary at %s; using stock IPOPT.", executable)
         return None
-    return pyo.SolverFactory("ipopt", executable=executable)
+    solver = pyo.SolverFactor("ipopt", executable=executable)
+    solver.options["linear_solver"] = "ma27"  # ensure ma27 is default
+    return solver
 
 
 def _pyomo_solver(name: str):
