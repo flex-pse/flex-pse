@@ -9,10 +9,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.13
-  - pyomo=6.10
-  - idaes-pse=2.12
-  - scip=10.0
-  - highspy=1.15
   - pip
   - pip:
       - -e .[dev]
