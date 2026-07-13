@@ -403,7 +403,7 @@
       "properties": {
         "construction_options": {
           "additionalProperties": true,
-          "description": "Keyword options passed to the unit-model constructor.",
+          "description": "Keyword options passed to the unit-model constructor. Units use units-carrying expression rendered as a string, e.g. '15 gal'",
           "title": "Construction Options",
           "type": "object"
         },
