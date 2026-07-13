@@ -29,7 +29,7 @@ class SISOBlockData(OpsBlockData):
     per-stream pass-through mass balance, and the convenience ``flow_vol``
     Reference to the inlet state's flow. Subclasses that need a different
     balance (e.g. the tank's holdup difference equation) override
-    :meth:`_build_mass_balance`.
+    ``_build_mass_balance``.
 
     Config: the base OpsBlock config (``unit_commitment``, ``relaxation``,
     ``allow_bypass``, ``external_dispatch``) plus a required
