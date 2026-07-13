@@ -7,3 +7,14 @@ import pytest
 def test_import():
     """Importing flexops succeeds."""
     import flexops  # noqa: F401
+
+
+@pytest.mark.unit
+def test_top_level_exports():
+    """The property packages and PowerKind are importable from flexops."""
+    from flexops import PowerKind, SimpleAqueousFlow, SimpleGasFlow
+
+    assert PowerKind.ELECTRICAL == "electrical"
+    assert PowerKind.THERMAL == "thermal"
+    assert SimpleAqueousFlow is not None
+    assert SimpleGasFlow is not None

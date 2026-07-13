@@ -2,7 +2,7 @@
 
 Defines a throwaway ``DummyOps`` unit in this module and exercises the
 registration API, the base-provided power Var, model-wide registry discovery,
-the external-dispatch hook, and the hierarchy-agnostic ``replace_unit`` helper.
+the external-dispatch hook, and the in-place ``update_parameters`` helper.
 """
 
 import pyomo.environ as pyo
@@ -10,13 +10,13 @@ import pytest
 from idaes.core import declare_process_block_class
 from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.environ import units as pyunits
-from pyomo.network import Arc, Port
+from pyomo.network import Port
 from pyomo.util.check_units import assert_units_consistent
 
 from flexcore.config.schema import UnitConfig
 from flexcore.exceptions import FlexConfigError
 from flexcore.nomenclature import ELECTRICAL_POWER
-from flexops.core.ops_block import OpsBlockData, replace_unit
+from flexops.core.ops_block import OpsBlockData
 from flexops.core.registration import (
     IOVariableRecord,
     ParameterRecord,
@@ -222,43 +222,28 @@ def test_set_external_dispatch_unindexed_raises(dummy_model):
 
 
 @pytest.mark.unit
-def test_replace_unit_rewires():
-    """replace_unit swaps a child block and re-points the arc at its port."""
-    m = _model(4)
-    m.plant = pyo.Block()
-    m.plant.child_a = DummyOps()
-    m.plant.child_b = DummyOps()
-    m.plant.a_to_b = Arc(
-        source=m.plant.child_a.outlet, destination=m.plant.child_b.inlet
-    )
+def test_update_parameters_in_place(dummy_model):
+    """update_parameters mutates the live Param; existing constraints see it.
 
-    new_block = DummyOps()
-    replace_unit(m.plant, "child_b", new_block)
+    The energy_eq constraint built at construction time must reflect the new
+    parameter value without any component being deleted or rebuilt (the
+    flex-pse no-delete update path).
+    """
+    unit = dummy_model.unit
+    constraint = unit.energy_eq[0]
+    unit.flow_in[0].fix(2.0)
+    body_before = pyo.value(constraint.body)
 
-    assert m.plant.child_b is new_block
-    assert m.plant.a_to_b.destination is new_block.inlet
-    assert m.plant.a_to_b.source is m.plant.child_a.outlet
+    unit.update_parameters({"energy_intensity": 1.0})
 
-
-@pytest.mark.unit
-def test_replace_unit_missing_name_raises():
-    """Replacing a nonexistent child is a config error."""
-    m = _model(4)
-    m.plant = pyo.Block()
-    m.plant.child_a = DummyOps()
-    with pytest.raises(FlexConfigError):
-        replace_unit(m.plant, "does_not_exist", DummyOps())
+    assert pyo.value(unit.energy_intensity) == pytest.approx(1.0)
+    # Same constraint object, new residual: no rebuild happened.
+    assert unit.energy_eq[0] is constraint
+    assert pyo.value(constraint.body) == pytest.approx(body_before + 1.0)
 
 
 @pytest.mark.unit
-def test_replace_unit_port_mismatch_raises():
-    """A replacement lacking the arc's port is a topology mismatch error."""
-    m = _model(4)
-    m.plant = pyo.Block()
-    m.plant.child_a = DummyOps()
-    m.plant.child_b = DummyOps()
-    m.plant.a_to_b = Arc(
-        source=m.plant.child_a.outlet, destination=m.plant.child_b.inlet
-    )
+def test_update_parameters_unknown_name_raises(dummy_model):
+    """Updating a name that is not a registered parameter is a config error."""
     with pytest.raises(FlexConfigError):
-        replace_unit(m.plant, "child_b", pyo.Block())
+        dummy_model.unit.update_parameters({"not_registered": 1.0})
