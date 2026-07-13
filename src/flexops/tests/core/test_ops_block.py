@@ -237,9 +237,10 @@ def test_update_parameters_in_place(dummy_model):
     unit.update_parameters({"energy_intensity": 1.0})
 
     assert pyo.value(unit.energy_intensity) == pytest.approx(1.0)
-    # Same constraint object, new residual: no rebuild happened.
+    # Same constraint object, new residual: no rebuild happened. The body is
+    # power - intensity*flow, so +0.5 kWh/m^3 at 2 m^3/hr lowers it by 1 kW.
     assert unit.energy_eq[0] is constraint
-    assert pyo.value(constraint.body) == pytest.approx(body_before + 1.0)
+    assert pyo.value(constraint.body) == pytest.approx(body_before - 1.0)
 
 
 @pytest.mark.unit

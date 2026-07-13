@@ -22,7 +22,7 @@ hooks, and is discoverable model-wide.
   sub-config, `from_config`/`build_model`), §3.5 (the UC logic layer the config
   slot feeds — built in M08), §3.7 (SimpleAqueousFlow), §2.3 (the full config
   schema — R3, YAML canonical), §5 (the two-way FlexParameterize coupling and the
-  `replace_unit` replacement hook — R10), §7 (R1, R3, R8, R9, R10)
+  in-place parameter-update hook — R10), §7 (R1, R3, R8, R9, R10)
 - `plan/00_conventions.md` §2 (energy naming), §4 (two config layers, never mixed)
 - `plan/02_testing_and_ci.md` §1, §5
 - `plan/03_documentation.md` §2 (why every Var/Constraint needs `doc=`)
@@ -238,31 +238,27 @@ def set_external_dispatch(self, var, series, *, fix=True) -> None: ...
   no explicit `series` is **not** required in M03 (the loader is M09); here the
   method takes an explicit `series`.
 
-#### Block-replacement hook (FlexParameterize 2-way, §5 / R10)
+#### In-place parameter-update hook (FlexParameterize 2-way, §5 / R10)
 
-FlexParameterize mutates a live model in place: it fixes regressed parameters and
-**replaces placeholder child units with fitted surrogate blocks**. FlexOps owns
-the replacement mechanism; FlexParameterize drives it (M10). Because the block
-that *holds* units is a container (`PlantBlock`, which subclasses
-`FlowsheetBlockData` — a different IDAES hierarchy from `OpsBlockData`, R2/R7),
-the mechanism is a **hierarchy-agnostic core helper**, not a method bound to one
-base class. Introduce it here as a free function in `flexops/core/` (generic
-block surgery + arc re-expansion, testable against a plain parent block);
-`PlantBlock`/`NetworkBlock` expose it as a thin `.replace_unit(...)` wrapper in
-M09, and M10 exercises it end to end. Copy this signature:
+FlexParameterize mutates a live model in place: it writes fitted parameter
+values back onto the existing unit blocks. **flex-pse never deletes model
+components** (blocks, Vars, Params, constraints): anything else on the model
+that referenced a deleted component — an aggregated power constraint, an
+expanded arc — would silently keep the stale reference, and every referencing
+constraint/expression would have to be found and rebuilt. A built model is
+updated only by mutating parameter values on existing components or by
+adding/deactivating constraints. (This supersedes the earlier
+delete-and-rewire `replace_unit` design.)
 
-```python
-def replace_unit(parent, name: str, new_block) -> None: ...
-```
+The mechanism is `OpsBlockData.update_parameters(values)`:
 
-- Replaces the child block attribute `name` on `parent` with `new_block`:
-  delete the old sub-block, attach `new_block` under `name`, and re-point any
-  arcs that referenced the old block's ports at the new block's matching ports
-  (re-expand as needed). A missing `name` or a port-topology mismatch →
-  `FlexConfigError` naming what didn't line up.
-- The *surrogate construction* and arc reconnection driven by a `SurrogateSpec`
-  are FlexParameterize's job (M10); M03 provides the raw in-place rewire on the
-  block tree and proves it works on a child block.
+- Takes a mapping of registered process-parameter name → new value and calls
+  `set_value` on the live (mutable) `Param`/`Var`, so every constraint that
+  references it sees the new value with no rebuild. An unregistered name →
+  `FlexConfigError` naming the field and listing what is registered.
+- Surrogate parameterization (M10) works the same way: units are built with
+  their surrogate structure in place and FlexParameterize updates the fitted
+  parameter values.
 
 Power Vars are base-provided, created when the unit declares it consumes that
 kind (01_architecture §3.2):
@@ -345,11 +341,10 @@ WaterTAP `prop_ZO`; all IDAES bases via `flexcore.compat.idaes`.
 11. **UC/external-dispatch as *logic*, not config.** M03 ships only the validated
     `unit_commitment` config slot and the base `set_external_dispatch` hook.
     Building UC constraints, or wiring the dispatch source from config, is M08 —
-    do not build ahead (conventions §9). `replace_unit(parent, name, new_block)`
-    is a hierarchy-agnostic **core helper** (introduced here, generic block
-    surgery); containers (`PlantBlock`/`NetworkBlock`) expose it as a
-    `.replace_unit(...)` wrapper in **M09**, and FlexParameterize drives it in
-    M10 — do not bind it to `OpsBlockData`'s hierarchy.
+    do not build ahead (conventions §9). Model updates go through
+    `OpsBlockData.update_parameters` (in-place `set_value` on registered
+    mutable params) — never delete-and-rebuild components; FlexParameterize
+    drives it in M10.
 
 ## Tests
 
@@ -383,13 +378,11 @@ module: registers `flow_in[t]`/`flow_out[t]` (m³/hr; input/output), a mutable
   `series[t]` for every `t` and drops the model's degrees of freedom by
   `n_points` (`var[t].fixed` is `True`, values match via `pytest.approx`). A
   misaligned/short `series` → `FlexConfigError`.
-- `test_replace_unit_rewires` — build a small parent block holding two child
-  DummyOps blocks connected by an `Arc`; the core helper
-  `replace_unit(parent, "child_b", new_block)` swaps the child so the attribute
-  resolves to `new_block` and the arc points at the new block's port; a missing
-  name or port-topology mismatch → `FlexConfigError`. (The parent is a plain
-  `ConcreteModel`/Block stand-in in M03 — the helper is hierarchy-agnostic;
-  `PlantBlock`'s `.replace_unit(...)` wrapper arrives in M09.)
+- `test_update_parameters_in_place` — build DummyOps, capture a constraint that
+  references the registered `energy_intensity` Param, call
+  `update_parameters({"energy_intensity": <new>})`, and confirm the *same*
+  constraint object evaluates with the new value (no component deleted or
+  rebuilt); an unregistered name → `FlexConfigError`.
 
 `src/flexops/tests/properties/test_simple_aqueous.py`:
 - `test_build_parameter_and_state_block` — `build_state_block([0])` works;
@@ -452,8 +445,8 @@ module: registers `flow_in[t]`/`flow_out[t]` (m³/hr; input/output), a mutable
 - [ ] `assert_units_consistent` passes; DoF == 0 with inputs fixed
 - [ ] `set_external_dispatch(var, series)` fixes the var to the series and removes
       its DOF; misaligned series errors
-- [ ] core helper `replace_unit(parent, name, new_block)` swaps a child block and rewires arcs;
-      missing name / port mismatch errors
+- [ ] `update_parameters(values)` mutates registered params in place (existing
+      constraints see the new value; nothing deleted); unknown name errors
 - [ ] Full config schema (`IOVariableSpec`…`ModelConfig`, with `UnitConfig`
       carrying `unit_commitment` + `external_dispatch`, `CostingConfig` with a
       `dr` slot) implemented; `ModelConfig` is the top-level artifact with

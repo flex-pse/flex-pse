@@ -12,11 +12,12 @@ registration API that FlexParameterize and the docs generator consume
 (``unit_commitment``, ``relaxation``, ``allow_bypass``, ``external_dispatch``)
 that the M08 logic layer will consume.
 
-The block-replacement helper :func:`replace_unit` is a free function, not a
-method: the block that *holds* units is a ``FlowsheetBlockData`` container, a
-different IDAES hierarchy, so the surgery is deliberately hierarchy-agnostic
-(§5/R10). ``PlantBlock``/``NetworkBlock`` expose it as a thin ``.replace_unit``
-wrapper in M09.
+flex-pse **never deletes** model components (blocks, Vars, Params,
+constraints): anything else on the model that referenced a deleted component —
+an aggregated power constraint, an expanded arc — would silently keep the stale
+reference. A built model is updated only by mutating parameter values in place
+(:meth:`~OpsBlockData.update_parameters`) or by adding/deactivating
+constraints; FlexParameterize drives this in M10.
 """
 
 import enum
@@ -26,7 +27,6 @@ import pyomo.environ as pyo
 from idaes.core import UnitModelBlockData, declare_process_block_class
 from pyomo.common.config import ConfigValue
 from pyomo.environ import units as pyunits
-from pyomo.network import Arc, Port
 
 from flexcore.config.schema import (
     ExternalDispatchSpec,
@@ -327,6 +327,38 @@ class OpsBlockData(UnitModelBlockData):
         self.register_power(var, kind=kind_value)
         return var
 
+    # -- in-place parameter updates (FlexParameterize 2-way, §5) -----------
+
+    def update_parameters(self, values: dict) -> None:
+        """Update registered process parameters in place, by name.
+
+        This is flex-pse's only sanctioned way to change a built model's
+        parameters: mutate the existing (mutable) ``Param``/``Var`` so every
+        constraint and expression that references it sees the new value. Never
+        delete and rebuild components — anything else on the model holding a
+        reference to the old component would silently keep the stale one.
+
+        Args:
+            values: Mapping of registered parameter name (as returned by
+                ``register_process_parameter``) to its new value. Values may
+                carry Pyomo units; bare numbers are taken in the component's
+                declared units.
+
+        Raises:
+            FlexConfigError: If a name is not a registered process parameter.
+        """
+        registered = {rec.name: rec.param for rec in self._io_registry.parameters}
+        for name, value in values.items():
+            if name not in registered:
+                known = ", ".join(repr(n) for n in registered) or "none"
+                raise FlexConfigError(
+                    f"{name!r} is not a registered process parameter on "
+                    f"{self.name!r} (registered: {known}).",
+                    field=name,
+                    value=value,
+                )
+            registered[name].set_value(value)
+
     # -- external dispatch (DERMS, §3.2) ----------------------------------
 
     def _resolve_dispatch_series(self, series, tb) -> dict[int, float]:
@@ -415,122 +447,3 @@ class OpsBlockData(UnitModelBlockData):
             "Config-driven construction lands in M09. Build units directly for "
             "now; whole-model construction is flexops.build_model in M09."
         )
-
-
-def _within(component, block) -> bool:
-    """Return True if ``component`` is ``block`` or nested under it."""
-    node = component.parent_block()
-    while node is not None:
-        if node is block:
-            return True
-        node = node.parent_block()
-    return False
-
-
-def _matching_port(new_block, rel_name: str, name: str) -> Port:
-    """Return the port on ``new_block`` matching ``rel_name`` or error.
-
-    Args:
-        new_block: The replacement block.
-        rel_name: The old port's name relative to the old block.
-        name: The child attribute name being replaced (for error text).
-
-    Raises:
-        FlexConfigError: If ``new_block`` has no matching ``Port``.
-    """
-    port = new_block.find_component(rel_name)
-    if not isinstance(port, Port):
-        raise FlexConfigError(
-            f"replace_unit: the replacement for {name!r} has no port "
-            f"{rel_name!r} to reconnect the arc to (port-topology mismatch).",
-            field=name,
-        )
-    return port
-
-
-def replace_unit(parent, name: str, new_block) -> None:
-    """Swap child block ``name`` on ``parent`` and re-point arcs at its ports.
-
-    Deletes the old child block, attaches ``new_block`` under ``name``, and
-    re-points any arcs that referenced the old block's ports at the new block's
-    matching ports (re-expanding when the originals were expanded). This is the
-    raw, hierarchy-agnostic in-place rewire (§5/R10); surrogate construction and
-    the ``SurrogateSpec``-driven reconnection are FlexParameterize's job (M10).
-
-    Args:
-        parent: The block that holds the child.
-        name: Attribute name of the child block on ``parent``.
-        new_block: The replacement block (constructed on attach).
-
-    Raises:
-        FlexConfigError: If ``parent`` has no child ``name``, or the replacement
-            lacks a port an arc needs (port-topology mismatch).
-    """
-    old_block = parent.component(name)
-    if old_block is None:
-        raise FlexConfigError(
-            f"replace_unit: parent block {parent.name!r} has no child named "
-            f"{name!r}.",
-            field=name,
-        )
-
-    root = parent.model()
-    affected = []
-    for arc in list(root.component_data_objects(Arc, descend_into=True)):
-        src, dst = arc.source, arc.destination
-        src_in = src is not None and _within(src, old_block)
-        dst_in = dst is not None and _within(dst, old_block)
-        if not (src_in or dst_in):
-            continue
-        affected.append(
-            {
-                "arc": arc,
-                "parent": arc.parent_block(),
-                "local_name": arc.local_name,
-                "src": src,
-                "dst": dst,
-                "src_in": src_in,
-                "dst_in": dst_in,
-                "src_rel": src.getname(relative_to=old_block) if src_in else None,
-                "dst_rel": dst.getname(relative_to=old_block) if dst_in else None,
-                "expanded": getattr(arc, "expanded_block", None) is not None,
-            }
-        )
-
-    for info in affected:
-        arc = info["arc"]
-        expanded = getattr(arc, "expanded_block", None)
-        info["parent"].del_component(arc)
-        if expanded is not None:
-            expanded.parent_block().del_component(expanded)
-
-    parent.del_component(name)
-    setattr(parent, name, new_block)
-
-    # Resolve every new endpoint before rebuilding, so a topology mismatch is
-    # reported without leaving half-rewired arcs behind.
-    rewired = []
-    any_expanded = False
-    for info in affected:
-        src = (
-            _matching_port(new_block, info["src_rel"], name)
-            if info["src_in"]
-            else info["src"]
-        )
-        dst = (
-            _matching_port(new_block, info["dst_rel"], name)
-            if info["dst_in"]
-            else info["dst"]
-        )
-        rewired.append((info, src, dst))
-        any_expanded = any_expanded or info["expanded"]
-
-    for info, src, dst in rewired:
-        setattr(
-            info["parent"],
-            info["local_name"],
-            Arc(source=src, destination=dst, doc="Reconnected by replace_unit"),
-        )
-
-    if any_expanded:
-        pyo.TransformationFactory("network.expand_arcs").apply_to(root)

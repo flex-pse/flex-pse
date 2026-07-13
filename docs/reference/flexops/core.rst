@@ -16,9 +16,10 @@ OpsBlock
 
 .. currentmodule:: flexops.core.ops_block
 
-The base class of every flex-pse unit model and the hierarchy-agnostic
-block-replacement helper (see :doc:`../../explanation/relaxation_policies` for
-the relaxation config slot).
+The base class of every flex-pse unit model (see
+:doc:`../../explanation/relaxation_policies` for the relaxation config slot).
+flex-pse never deletes model components; a built model is updated in place via
+:meth:`OpsBlockData.update_parameters`.
 
 .. autosummary::
    :toctree: generated
@@ -27,8 +28,6 @@ the relaxation config slot).
    OpsBlock
    OpsBlockData
    RelaxationPolicy
-
-.. autofunction:: replace_unit
 
 Registration
 ------------

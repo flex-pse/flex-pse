@@ -187,3 +187,10 @@ wrapper), but this is not enforced.
   in the PR description.
 - When a milestone says "copy this signature," copy it exactly — other
   milestones and docs reference these names verbatim.
+- **Never delete Pyomo components** (blocks, Vars, Params, constraints) from a
+  built model: every constraint/expression elsewhere that captured the old
+  component silently keeps the stale reference (e.g. a model-level power
+  aggregation still summing a deleted unit's `electrical_power`). Update models
+  in place instead — `set_value` on mutable Params
+  (`OpsBlockData.update_parameters`), add new Vars/constraints, or
+  `deactivate()` constraints you need to turn off.

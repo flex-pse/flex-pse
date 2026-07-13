@@ -52,6 +52,11 @@ ordered milestones. Your job in any one session is exactly **one milestone**.
 - **Config over cleverness.** Anything a user configures goes through a
   documented pydantic model in `flexcore.config` (persisted) or a declared
   Pyomo ConfigDict entry (runtime). No bare `**kwargs`, no undocumented dict keys.
+- **Never delete Pyomo components** (blocks, Vars, Params, constraints) from a
+  built model — anything else that captured the old component keeps a stale
+  reference. Update models in place: `set_value` on mutable Params
+  (`OpsBlockData.update_parameters`), add new Vars/constraints, or
+  `deactivate()` constraints (conventions §9).
 - If the milestone spec conflicts with reality (upstream API changed, spec
   ambiguous), make the smallest choice consistent with
   `plan/01_architecture.md`, and record the deviation prominently in your PR
