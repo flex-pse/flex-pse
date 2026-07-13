@@ -277,7 +277,10 @@ Two levels of composition, mirroring the "collection of" pattern:
 - **R2 (decision): never `dynamic=True`, never Pyomo.DAE.** Both blocks are thin
   `FlowsheetBlockData` subclasses constructed with `dynamic=False` and `time_set`
   injected from the TimeBlock's ordered discrete set. All dynamics (tank holdup,
-  battery SOC) are explicit difference equations against `time_block.dt`.
+  battery SOC) are explicit **backwards-difference** equations against
+  `time_block.dt`: the state at `t` is written from the state at `t-1` and the
+  flows/rates at `t` (`x[t] = x[t-1] + dt*f[t]`, indexed `t = 1..N-1`; `x[0]`
+  is pinned by the initial condition).
   Rationale: MIP scheduling needs integer index arithmetic (dwell times, startup
   delays, rolling windows); DAE discretization fights binaries and rolling
   horizons.
@@ -307,7 +310,7 @@ physical subclasses add the flow↔energy relationship and any bounds.
 | Class | Base | Notes |
 |---|---|---|
 | `Pump` | `SISOBlock` | `electrical_power[t] = energy_intensity * flow_vol[t]` |
-| `Tank` | `SISOBlock` | holdup `V[t+1] = V[t] + dt*(in − out)`; level bounds; initial level is rolling-horizon state. **Logic/unit-commitment constraints disabled** (a tank has no on/off status) |
+| `Tank` | `SISOBlock` | holdup `V[t] = V[t-1] + dt*(in[t] − out[t])` (backwards difference); level bounds; initial level is rolling-horizon state. **Logic/unit-commitment constraints disabled** (a tank has no on/off status) |
 | `Separator` | `SIDOBlock` | one feed split into two product streams (replaces the old `Electrolyzer` name) |
 | `Exchanger` | `DIDOBlock` | two inlet / two outlet streams exchanging mass/energy |
 | `ElectrolysisSeparator` | `Separator` | electrolysis modeled as a separation; exercises `thermal_power` |

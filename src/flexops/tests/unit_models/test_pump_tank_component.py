@@ -17,8 +17,8 @@ def test_pump_fills_tank_lp():
 
     Asserts optimal termination and the mass-balance identity: total pumped
     volume equals total demand plus the initial→final holdup change. Flows at
-    the last time point enter no holdup constraint (the difference equation
-    stops at N-2), so the sums run over t = 0..N-2.
+    the first time point enter no holdup constraint (the backwards difference
+    equation starts at t = 1), so the sums run over t = 1..N-1.
     """
     m = pyo.ConcreteModel()
     m.time_block = TimeBlock(
@@ -53,7 +53,7 @@ def test_pump_fills_tank_lp():
     results = solver.solve(m)
     assert pyo.check_optimal_termination(results)
 
-    balanced = list(t_index)[:-1]
+    balanced = list(t_index)[1:]
     dt_hr = pyo.value(pyunits.convert(m.time_block.dt, pyunits.hr))
     pumped = dt_hr * sum(pyo.value(m.tank.flow_in[t]) for t in balanced)
     demanded = dt_hr * sum(pyo.value(m.tank.flow_out[t]) for t in balanced)

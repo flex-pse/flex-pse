@@ -9,8 +9,9 @@ from flexops.unit_models import Pump, StorageTank
 
 _FLOW_IN = [100.0, 100.0, 0.0, 0.0]
 _FLOW_OUT = [50.0, 50.0, 50.0, 50.0]
-# Hand-computed from V[0]=200 with dt=0.25 h: V[t+1] = V[t] + 0.25*(in - out).
-_TRAJECTORY = [200.0, 212.5, 225.0, 212.5]
+# Hand-computed from V[0]=200 with dt=0.25 h, backwards difference:
+# V[t] = V[t-1] + 0.25*(in[t] - out[t]).
+_TRAJECTORY = [200.0, 212.5, 200.0, 187.5]
 
 
 def _tank_model(**tank_kwargs) -> pyo.ConcreteModel:
@@ -28,16 +29,16 @@ def _tank_model(**tank_kwargs) -> pyo.ConcreteModel:
 class TestStorageTank(UnitModelTestHarness):
     """A StorageTank on a 4-point dummy model (dt = 0.25 h).
 
-    With the flow profiles below and ``V[0] = 200`` m³, the holdup trajectory
-    is 200, 212.5, 225, 212.5 m³.
+    With the flow profiles below and ``V[0] = 200`` m³, the backwards-difference
+    holdup trajectory is 200, 212.5, 200, 187.5 m³.
     """
 
     expected_dof = 0
     expected_solution = {
         "V[0]": 200.0,
         "V[1]": 212.5,
-        "V[2]": 225.0,
-        "V[3]": 212.5,
+        "V[2]": 200.0,
+        "V[3]": 187.5,
     }
 
     def configure(self):
@@ -54,7 +55,9 @@ def test_mass_balance_by_hand():
     """Every holdup-constraint body evaluates to 0 on the hand trajectory.
 
     Constraint-body point check (testing doc §5): no solver. Also pins the
-    off-by-one contract — exactly N-1 = 3 holdup constraints on 4 points.
+    off-by-one contract — exactly N-1 = 3 backwards-difference holdup
+    constraints on 4 points, indexed t = 1..N-1 (none at t = 0, which would
+    reference V[-1]).
     """
     m = _tank_model()
     unit = m.unit
@@ -66,7 +69,7 @@ def test_mass_balance_by_hand():
         unit.flow_in[t].fix(_FLOW_IN[t])
         unit.flow_out[t].fix(_FLOW_OUT[t])
         unit.V[t].set_value(_TRAJECTORY[t])
-    for t in list(t_index)[:-1]:
+    for t in list(t_index)[1:]:
         assert pyo.value(unit.holdup_balance[t].body) == pytest.approx(0.0, abs=1e-9)
 
 

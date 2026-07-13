@@ -155,11 +155,13 @@ caller passes, and document why in the class docstring.
 - Config: inherits the SISO config; adds `min_volume` (default 0 m³),
   `max_volume` (required, m³), `initial_volume` (required, m³).
 - `V[t]` Var, m³, `doc=` set, bounds `(min_volume, max_volume)` from config.
-- Holdup difference equation, **indexed over `t = 0 .. N-2` only** (N =
-  `len(time_block.time_points)`):
-  `V[t+1] == V[t] + dt * (flow_in[t] - flow_out[t])`.
-  Off-by-one: `V[N-1]` is defined by the constraint at `t = N-2`; there is no
-  constraint indexed `N-1` (it would reference `V[N]`, which does not exist).
+- Holdup difference equation, written as a **backwards difference** (the
+  project-wide convention for all dynamics, architecture §3.3/R2), **indexed
+  over `t = 1 .. N-1` only** (N = `len(time_block.time_points)`):
+  `V[t] == V[t-1] + dt * (flow_in[t] - flow_out[t])`.
+  Off-by-one: there is no constraint indexed `0` (it would reference `V[-1]`,
+  which does not exist); `V[0]` is pinned by the initial condition, and the
+  flows at the first time point drive no holdup change.
   Convert `dt` to hours inside the expression so m³/hr × hr = m³.
 - `flow_in[t]` / `flow_out[t]`: References to the inlet / outlet state
   `flow_vol` on the ports **inherited from `SISOBlock`** (do not re-create the
@@ -179,9 +181,9 @@ caller passes, and document why in the class docstring.
 
 ## Pitfalls
 
-1. **Holdup off-by-one.** Writing the constraint over all `t` raises KeyError at
-   `V[N]` or silently skips — index the Constraint over
-   `list(time_points)[:-1]` explicitly and unit-test the constraint count (N−1).
+1. **Holdup off-by-one.** Writing the backwards difference over all `t` raises
+   KeyError at `V[-1]` or silently skips — index the Constraint over
+   `list(time_points)[1:]` explicitly and unit-test the constraint count (N−1).
 2. **Unit algebra by luck.** Do not multiply by 3600 or 1/60 anywhere in Pump;
    with kWh/m³ and m³/hr the equation is already in kW. In the tank, use
    `pyunits.convert(dt, to_units=pyunits.hr)` — `dt` is 15 min by default.
@@ -219,7 +221,7 @@ caller passes, and document why in the class docstring.
 - `src/flexops/tests/unit_models/test_pump.py` — `class TestPump(UnitModelTestHarness)` (~30 lines): `configure()` builds `dummy_time_block(3)` + one `Pump`, fixes nothing; `expected_dof = 0`; `expected_solution` = hand-computed `electrical_work` for a fixed `flow_vol` (e.g. 100 m³/hr × 0.5 kWh/m³ → `{"electrical_work[0]": 50.0, ...}`).
 - `src/flexops/tests/unit_models/test_storage_tank.py`:
   - `class TestStorageTank(UnitModelTestHarness)` — `configure()` on a 4-point `dummy_time_block(4)`, `max_volume=1000`, `initial_volume=200`; `expected_dof = 0` with flows fixed.
-  - `test_mass_balance_by_hand` — `@pytest.mark.unit`. Build a 4-step tank, fix `flow_in = [100, 100, 0, 0]`, `flow_out = [50, 50, 50, 50]` m³/hr, set `V` values to the hand-computed trajectory from `V[0]=200` with `dt=0.25 h` (200, 212.5, 225, 212.5), and assert each holdup-constraint **body** evaluates to 0 within `pytest.approx(abs=1e-9)` — no solver (testing doc §5). Also assert exactly 3 holdup constraints exist.
+  - `test_mass_balance_by_hand` — `@pytest.mark.unit`. Build a 4-step tank, fix `flow_in = [100, 100, 0, 0]`, `flow_out = [50, 50, 50, 50]` m³/hr, set `V` values to the hand-computed backwards-difference trajectory from `V[0]=200` with `dt=0.25 h` (200, 212.5, 200, 187.5), and assert each holdup-constraint **body** evaluates to 0 within `pytest.approx(abs=1e-9)` — no solver (testing doc §5). Also assert exactly 3 holdup constraints exist (indexed `t = 1..N-1`).
   - `test_tank_logic_disabled` — `@pytest.mark.unit`. The canonical R6 check: build a `StorageTank` (once with no `unit_commitment` config, once **explicitly passing one on**) and assert it has **no** `status` Var and no unit-commitment/semicontinuous logic constraints in either case — a tank has no on/off status (architecture §3.4/§3.5, R6). Contrast with the `Pump`, which does not disable logic.
 - `src/flexops/tests/unit_models/test_pump_tank_component.py`:
   - `test_pump_fills_tank_lp` — `@pytest.mark.component` + `@pytest.mark.needs_highs`. 24-point hourly TimeBlock; Pump → Arc → StorageTank; tank `flow_out` fixed to 50 m³/hr; objective: minimize total `electrical_work`; solve via `get_solver` (same skip guard). Assert optimal, and total pumped volume equals total demand ± initial/final holdup by mass balance, `pytest.approx(rel=1e-6)`.
