@@ -137,6 +137,14 @@ only the electrical-work relationship. Behavior (architecture §3.4):
 - Registration: `register_io_variable(flow_vol, role="input")`,
   `register_io_variable(electrical_work, role="output")`,
   `register_energy(electrical_work, kind="electrical")`.
+- **Selectable energy relation** (config `energy_relation`, default
+  `"energy_intensity"`): with `"efficiency_head"`, the constraint is instead
+  `electrical_power[t] == density * g * head * flow_vol[t] / efficiency`
+  (`pyunits.convert` to kW; density from the property package's fixed
+  `dens_mass`, `g` from idaes `Constants`). Config `efficiency` (default 0.7,
+  dimensionless) and `head` (required, m) become mutable Params, both
+  `register_process_parameter(regressable=True)` — FlexParameterize may later
+  swap the efficiency for a fitted function, but v0 keeps it a parameter.
 
 ### 5. `unit_models/storage_tank.py` — `StorageTank(SISOBlock)`
 
