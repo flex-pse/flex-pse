@@ -305,7 +305,7 @@ physical subclasses add the flow↔energy relationship and any bounds.
 | Class | Base | Notes |
 |---|---|---|
 | `Pump` | `SISOBlock` | `electrical_power[t] = energy_intensity * flow_vol[t]` |
-| `Tank` | `SISOBlock` | holdup `V[t+1] = V[t] + dt*(in − out)`; level bounds; initial level is rolling-horizon state. **Logic/unit-commitment constraints disabled** (a tank has no on/off status) |
+| `Tank` | `SISOBlock` | holdup `V[t+1] = V[t] + dt*(in − out)`; level bounds; initial level is rolling-horizon state. **Logic/unit-commitment constraints disabled** (a tank has no on/off status) | Needs a `phase: Literal["liquid", "gas"]` config field to switch between incompressible/compressible energy calculation.
 | `Separator` | `SIDOBlock` | one feed split into two product streams (replaces the old `Electrolyzer` name) |
 | `Exchanger` | `DIDOBlock` | two inlet / two outlet streams exchanging mass/energy |
 | `ElectrolysisSeparator` | `Separator` | electrolysis modeled as a separation; exercises `thermal_power` |
@@ -317,6 +317,9 @@ physical subclasses add the flow↔energy relationship and any bounds.
 
 The general pattern (the platform's core idea): a unit model defines flows in/out (its topology) and energy draw; **every unit defaults to a constant energy-intensity relationship**. FlexParameterize (§5) is what upgrades that relationship to a fitted linear/multiconvex/NN/ARIMA form — by swapping the
 unit's energy-relationship constraint in place, not by introducing a different unit class. These are usually energy relationships but can also modify the input/output relationship for quantities like biogas production, salt and permeate flux, etc., not by introducing a different unit class. Same base topology, controllable functional form. `Tank` inheriting `SISOBlock` but *disabling* logic constraints is the canonical example of a physical subclass turning off a base capability.
+
+A post-v0 translator will build `PlantConfig`s from WaTr knowledge graphs by mapping ontology equipment classes into this. See §8 which notes the few of the v0 flex-pse choices (SIDO/DIDO port names, UC status default, units convention) that affect downstream mapping potential.
+
 
 ### 3.5 logic layer (`flexops/logic/`) — customizable unit commitment
 
@@ -507,3 +510,64 @@ Pipeline: **tabular data → tag aliasing → sufficiency validation → regress
 | R10 | FlexParameterize↔FlexOps coupling is two-way at runtime (FlexOps builds containers; FlexParameterize fixes params and swaps a unit's energy-relationship constraint in place) though the import stays one-way | matches how parameterization actually works; keeps the layering + serialized-config split seam intact |
 | R11 | Every unit defaults to a constant energy-intensity relationship; there is no separate `LinearRegressionModel` unit class — FlexParameterize upgrades a unit's relationship via an in-place constraint swap, reusing the same registered IO variables | keeps the unit library small and one generic class (`ConstantEnergyIntensityModel`) covers anything without a bespoke physical topology; regression sophistication is FlexParameterize's concern, not FlexOps' |
 | R12 | No compat/isolation layer or import-linter whitelist for `idaes`/`pyomo`/`eeco`; import them directly, pin exact versions in `pyproject.toml`, and have maintainers bump them manually (~quarterly) after tests pass | a re-export whitelist guards only cheap import-path drift, not semantic drift; standard pinning is simpler and the sibling project (WaterTAP) imports `idaes` directly. Collecting `eeco` calls in `costing/opex.py` stays a convention, not an enforced boundary |
+
+## 8. Post-v0: ontology translator (WaTr/PyPES)
+
+The translator will build a `PlantConfig` from a WaTr instance graph using a
+mapping JSON with two sections:
+- `equipment` (maps ontology class to `flexops_class`, plus `port_media` for when same-direction ports differ (e.g., Exchangers))
+- `media` (mapping medium to FlexOps phase, matching s223's `Phase-Liquid`/`Phase-Gas`). A connection point is "fluid" only if its medium is in this table; media absent from it (electricity, signals) never become arcs — electricity aggregation is handled by FlexCosting instead
+
+```json
+{
+  "equipment": {
+    "Tank": {"flexops_class": "Tank"},
+    "Thickener": {"flexops_class": "Separator"},
+    "ReverseOsmosisMembrane": {
+      "flexops_class": "ReverseOsmosisSkid",
+      "port_media": {"Fluid-Water": "outlet_1", "Water-Brine": "outlet_2"}
+    },
+    "Valve": {"flexops_class": "ConstantEnergyIntensityModel"},
+    "Battery": {"flexops_class": "BatteryModel"}
+  },
+  "media": {
+    "Fluid-Water": "liquid",
+    "Water-Brine": "liquid",
+    "Fluid-NaturalGas": "gas"
+  }
+}
+```
+
+Steps for the translate function:
+1) Map each equipment instance to a `flexops_class`. If the exact type
+isn't listed in the mapping json (e.g., `GravityBeltThickener`), climb its
+family tree and take the first mapped class (e.g., `GravityBeltThickener` is
+a kind of `Thickener`, which is listed and mapped to `Separator`; an explicit
+`ReverseOsmosisMembrane` entry wins before reaching `Filter`). Equally-near
+mapped ancestors via multiple parents would give an error. Skip sensors,
+controllers, etc with no connection points (or could be kept for future
+data-driven paramatrization?). Items like valves can map to
+`ConstantEnergyIntensityModel` with EI = 0.
+2) Match each wired fluid connection point to a FlexOps port by direction
+(CP `rdf:type`) + medium `port_media` where ports differ. Same-direction ports with the same medium are interchangeable; assign them in sorted-IRI order (an RDF graph is unordered, so sorting the connection points' IRIs is what makes translation deterministic and repeatable). If there are fewer wired connection points than available ports in the FlexOps unit, leave the unused ports unconnected. If there are more connection points than the FlexOps unit has available, it gives an error. Connection point direction comes from the instance's
+`s223:{Inlet,Outlet,Bidirectional}ConnectionPoint` type. Port names & counts are based on the parent class (SIDO/DIDO/etc) from `base/` .py classes.
+3) Produce a `PlantConfig` with  one `UnitConfig` per item and one `Arc` per fluid Connection.
+4) pass the `PlantConfig` to `flexops.build_model()`. (FlexOps classes
+whose constructor takes a `phase` argument (e.g., Tank with liquid or gas
+storage) derive it from the instance's medium via `media`.)
+
+Constraints on other milestones (the translator is post-v0, but these choices drive earlier development):
+- **M08 (unit commitment):** every unit gets an on/off binary by default (`status: true`). A translated graph contains dozens of valves; the translator must emit `unit_commitment: {status: false}` for them or the MIP gains hundreds of useless binaries.
+- **Properties:** v0 has only `SimpleAqueousFlow` (liquid); no gas package is planned anywhere yet. A unit whose medium resolves to gas (biogas tank, boiler) cannot be built — the translator must error loudly rather than emit an unbuildable config. (Nothing in `SimpleAqueousFlow` is water-specific beyond `LiquidPhase` + default density, so a gas twin is cheap when needed.)
+- **M09 (config build):** values with units inside `construction_options` (e.g. `energy_intensity`) have no serialization rule yet; adopt the same parse-at-build string convention as `TimeConfig.time_step` (`"15 min"`).
+- **M04 (topology bases):** the port names `outlet_1`/`outlet_2` used in `port_media` are not yet in code; whoever writes `sido.py`/`dido.py` must use these names or update the mapping JSON.
+
+### External WaTr Ontology updates needed for compatibility
+
+- `Digester`/`AnaerobicDigester`/`AerobicDigester` need to be a `SeparationTank` with 2 outlets
+- Add `Combustor` equipment with process `Incineration` and make `Boiler`, `Cogenerator`, `Flare` a sub-class
+- Add `Exchanger` equipment that can take two inlet substances and make HeatExchanger, PressureExchanger, ElectrodialysisUnit, IonExchangeMembrane instances
+- `MembraneBioreactor`/`ElectroDialyticCrystallizer` don't reduce to one
+  flexops unit (ontology already multi-inherits them, e.g.
+  `SubEquipOf: Filter, Reactor, SeparationTank`) — translate as a small
+  `PlantBlock` chain instead of adding them to the 1:1 JSON mapping
