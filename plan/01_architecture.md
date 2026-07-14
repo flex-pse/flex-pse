@@ -558,9 +558,7 @@ storage) derive it from the instance's medium via `media`.)
 
 Constraints on other milestones (the translator is post-v0, but these choices drive earlier development):
 - **M08 (unit commitment):** every unit gets an on/off binary by default (`status: true`). A translated graph contains dozens of valves; the translator must emit `unit_commitment: {status: false}` for them or the MIP gains hundreds of useless binaries.
-- **Properties:** v0 has only `SimpleAqueousFlow` (liquid); no gas package is planned anywhere yet. A unit whose medium resolves to gas (biogas tank, boiler) cannot be built — the translator must error loudly rather than emit an unbuildable config. (Nothing in `SimpleAqueousFlow` is water-specific beyond `LiquidPhase` + default density, so a gas twin is cheap when needed.)
-- **M09 (config build):** values with units inside `construction_options` (e.g. `energy_intensity`) have no serialization rule yet; adopt the same parse-at-build string convention as `TimeConfig.time_step` (`"15 min"`).
-- **M04 (topology bases):** the port names `outlet_1`/`outlet_2` used in `port_media` are not yet in code; whoever writes `sido.py`/`dido.py` must use these names or update the mapping JSON.
+- **M04 (topology bases):** the port names `outlet_1`/`outlet_2` used in `port_media` for `sido.py`/`dido.py` should match the eventual mapping JSON.
 
 ### External WaTr Ontology updates needed for compatibility
 
