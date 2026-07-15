@@ -60,6 +60,32 @@ def test_index_roundtrip(tb):
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("time_step", "end_date", "n_points", "horizon_hr"),
+    [
+        (5 * pyunits.min, "2025-01-02", 288, 24.0),
+        (15 * pyunits.min, "2025-01-02", 96, 24.0),
+        (30 * pyunits.min, "2025-01-03", 96, 48.0),
+        (1 * pyunits.hr, "2025-01-08", 168, 168.0),
+        (24 * pyunits.hr, "2025-01-29", 28, 672.0),
+    ],
+)
+def test_resolutions_and_horizons(time_step, end_date, n_points, horizon_hr):
+    """TimeBlock builds correctly across time resolutions and horizon lengths."""
+    m = pyo.ConcreteModel()
+    m.time_block = TimeBlock(
+        start_date="2025-01-01", end_date=end_date, time_step=time_step
+    )
+    tb = m.time_block
+    assert tb.n_points == n_points
+    assert pyo.value(pyunits.convert(tb.horizon, pyunits.hr)) == pytest.approx(
+        horizon_hr, rel=1e-9
+    )
+    for i in (0, n_points - 1):
+        assert tb.index_of(tb.timestamp_of(i)) == i
+
+
+@pytest.mark.unit
 def test_datetime_index_matches(tb):
     """The datetime index matches a plain pandas date_range."""
     expected = pd.date_range("2025-01-01", periods=96, freq="15min")

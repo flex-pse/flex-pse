@@ -4,21 +4,25 @@ A whole flex-pse model and run are built from a single version-controlled
 config artifact (``flexops.build_model(config)``, M09): the TimeBlock,
 properties, costing, and the network/plant/unit tree all come from one
 :class:`ModelConfig`. These pydantic models are the **authority** for that
-config (``plan/01_architecture.md`` §2.3, decision R3); YAML is the canonical
-on-disk format and JSON is also accepted (see :mod:`flexcore.config.io`).
+config (``plan/01_architecture.md`` §2.3, decision R3); JSON is the canonical
+on-disk format and YAML is also accepted (see :mod:`flexcore.config.io`).
 
 Every field carries a ``description`` (it renders into the docs) and every model
 forbids unknown keys (``plan/00_conventions.md`` §4: an undocumented key does
 not get to exist). Only the persisted (Layer-1) config lives here; runtime Pyomo
 ``ConfigDict`` options are a separate layer and are never serialized.
+
+Class docstrings and field descriptions here are exported verbatim into the
+JSON Schema, so keep them plain text: no section signs, RST markup, or manual
+line-break art — rendering is the documentation builder's job.
 """
 
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CURRENT_SCHEMA_VERSION = 1
-"""int: the schema version this build writes and validates against."""
+CURRENT_SCHEMA_VERSION = "0.0.1"
+"""str: the semantic schema version this build writes and validates against."""
 
 
 class _StrictModel(BaseModel):
@@ -73,8 +77,9 @@ class SurrogateSpec(_StrictModel):
     )
 
 
+# Architecture references: external dispatch is plan/01_architecture.md §3.2.
 class ExternalDispatchSpec(_StrictModel):
-    """Declares an external (DERMS) command source for a controllable var (§3.2)."""
+    """Declares an external (DERMS) command source for a controllable variable."""
 
     variable: str = Field(
         description="Name of the controllable variable to drive externally."
@@ -88,12 +93,11 @@ class ExternalDispatchSpec(_StrictModel):
     )
 
 
+# Architecture references: unit commitment is plan/01_architecture.md §3.5.
 class UnitCommitmentConfig(_StrictModel):
-    """Per-unit unit-commitment configuration (§3.5).
-
-    A validated container only in M03; the constraint-building logic layer that
-    consumes it is built in M08. Every piece is optional except ``status``.
-    """
+    """Per-unit unit-commitment configuration, a validated container only in
+    M03; the constraint-building logic layer that consumes it is built in M08.
+    Every piece is optional except status."""
 
     status: bool = Field(
         default=True,
@@ -114,7 +118,7 @@ class UnitCommitmentConfig(_StrictModel):
     )
     min_down: int | None = Field(
         default=None,
-        description="Minimum number of steps the unit must stay down once " "stopped.",
+        description="Minimum number of steps the unit must stay down once stopped.",
     )
     delays: dict[str, Any] | None = Field(
         default=None,
@@ -189,8 +193,9 @@ class NetworkConfig(_StrictModel):
     )
 
 
+# Architecture references: the time horizon is plan/01_architecture.md §3.1.
 class TimeConfig(_StrictModel):
-    """The discrete-time horizon specification (§3.1)."""
+    """The discrete-time horizon specification."""
 
     start_date: str = Field(description="Inclusive ISO-8601 start of the horizon.")
     end_date: str = Field(description="Exclusive ISO-8601 end of the horizon.")
@@ -200,12 +205,11 @@ class TimeConfig(_StrictModel):
     )
 
 
+# Architecture references: demand response is plan/01_architecture.md §2.4/§3.6.
 class DRConfig(_StrictModel):
-    """Demand-response container slot (§2.4/§3.6).
-
-    A placeholder in v0: DR containers exist so wiring is stable, but no DR
-    constraints are built. Turning DR on later is additive.
-    """
+    """Demand-response container slot, a placeholder in v0: DR containers exist
+    so wiring is stable, but no DR constraints are built. Turning DR on later
+    is additive."""
 
     events_source: str | None = Field(
         default=None,
@@ -233,16 +237,20 @@ class CostingConfig(_StrictModel):
     )
 
 
+# Architecture references: the config artifact is plan/01_architecture.md §2.3.
 class ModelConfig(_StrictModel):
-    """The top-level config artifact the whole model+run is built from (§2.3)."""
+    """The top-level config artifact the whole model and run are built from."""
 
-    schema_version: int = Field(
-        description="Schema version of this config; mandatory, no default."
+    schema_version: str = Field(
+        pattern=r"^\d+\.\d+\.\d+$",
+        description="Semantic schema version of this config, an X.Y.Z string; "
+        "mandatory, no default.",
     )
     time: TimeConfig = Field(description="The discrete-time horizon.")
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Property-package specification (kept loose at v1).",
+        description="Property-package specification (kept loose at schema "
+        "version 0.0.1).",
     )
     costing: CostingConfig = Field(description="Tariff/DR/solve options.")
     network: NetworkConfig | None = Field(

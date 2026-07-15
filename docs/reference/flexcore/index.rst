@@ -54,7 +54,7 @@ Config schema
 
 .. currentmodule:: flexcore.config.schema
 
-The versioned, YAML-canonical config the whole model+run is built from
+The versioned, JSON-canonical config the whole model+run is built from
 (decision R3; see :doc:`../../explanation/config_schema`). Pydantic is the
 schema authority; :data:`CURRENT_SCHEMA_VERSION` tags what this build writes.
 

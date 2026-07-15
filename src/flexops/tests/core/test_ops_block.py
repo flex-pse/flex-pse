@@ -13,10 +13,10 @@ from pyomo.environ import units as pyunits
 from pyomo.network import Port
 from pyomo.util.check_units import assert_units_consistent
 
+from flexcore import nomenclature as nm
 from flexcore.config.schema import UnitConfig
 from flexcore.exceptions import FlexConfigError
-from flexcore.nomenclature import ELECTRICAL_POWER
-from flexops.core.ops_block import OpsBlockData
+from flexops.core.ops_block import OpsBlockData, RelaxationPolicy
 from flexops.core.registration import (
     IOVariableRecord,
     ParameterRecord,
@@ -54,7 +54,7 @@ class DummyOpsData(OpsBlockData):
         self.register_io_variable(self.flow_in, role="input")
         self.register_io_variable(self.flow_out, role="output")
         self.register_process_parameter(self.energy_intensity, regressable=True)
-        power = self.declare_power("electrical")
+        power = self.declare_power(nm.PowerKind.ELECTRICAL)
 
         self.inlet = Port(initialize={"flow_vol": self.flow_in}, doc="Inlet port")
         self.outlet = Port(initialize={"flow_vol": self.flow_out}, doc="Outlet port")
@@ -100,7 +100,7 @@ def dummy_model():
 def test_dummy_ops_builds(dummy_model):
     """electrical_power exists, indexed by time_index, carrying kW."""
     unit = dummy_model.unit
-    power = getattr(unit, ELECTRICAL_POWER)
+    power = getattr(unit, nm.ELECTRICAL_POWER)
     assert power.is_indexed()
     assert set(power.index_set()) == set(dummy_model.time_block.time_index)
     assert pyunits.get_units(power[0]) == pyunits.kW
@@ -125,7 +125,7 @@ def test_registration_records(dummy_model):
     assert len(reg.power) == 1
     assert isinstance(reg.power[0], PowerRecord)
     assert reg.power[0].kind == "electrical"
-    assert reg.power[0].name == ELECTRICAL_POWER
+    assert reg.power[0].name == nm.ELECTRICAL_POWER
 
 
 @pytest.mark.unit
@@ -161,7 +161,7 @@ def test_bad_role_raises(dummy_model):
 
 @pytest.mark.unit
 def test_bad_kind_raises(dummy_model):
-    """An unknown power kind is a config error."""
+    """A power kind that is not a PowerKind member is a config error."""
     with pytest.raises(FlexConfigError):
         dummy_model.unit.register_power(dummy_model.unit.flow_in, kind="kinetic")
 
@@ -175,11 +175,11 @@ def test_no_time_block_raises():
 
 
 @pytest.mark.unit
-def test_from_config_not_implemented():
+def test_build_from_config_not_implemented():
     """Config-driven construction is deferred to M09."""
     cfg = UnitConfig(unit_model_class="DummyOps")
     with pytest.raises(NotImplementedError, match="M09"):
-        OpsBlockData.from_config(cfg)
+        OpsBlockData.build_from_config(cfg)
 
 
 @pytest.mark.unit
@@ -248,3 +248,149 @@ def test_update_parameters_unknown_name_raises(dummy_model):
     """Updating a name that is not a registered parameter is a config error."""
     with pytest.raises(FlexConfigError):
         dummy_model.unit.update_parameters({"not_registered": 1.0})
+
+
+@pytest.mark.unit
+def test_update_parameters_with_units(dummy_model):
+    """A unit-carrying value updates the Param in its declared units."""
+    unit = dummy_model.unit
+    unit.update_parameters({"energy_intensity": 0.8 * pyunits.kWh / pyunits.m**3})
+    assert pyo.value(unit.energy_intensity) == pytest.approx(0.8)
+
+
+@pytest.mark.unit
+def test_register_process_parameter_not_regressable(dummy_model):
+    """regressable=False is recorded so FlexParameterize will not fit it."""
+    unit = dummy_model.unit
+    unit.design_capacity = pyo.Param(
+        initialize=10.0, mutable=True, units=pyunits.m**3 / pyunits.hr
+    )
+    unit.register_process_parameter(unit.design_capacity, regressable=False)
+    record = unit._io_registry.parameters[-1]
+    assert record.name == "design_capacity"
+    assert record.regressable is False
+
+
+@pytest.mark.unit
+def test_register_power_rejects_string(dummy_model):
+    """register_power requires a PowerKind; even a valid-value string raises."""
+    unit = dummy_model.unit
+    with pytest.raises(FlexConfigError):
+        unit.register_power(getattr(unit, nm.ELECTRICAL_POWER), kind="electrical")
+
+
+@pytest.mark.unit
+def test_declare_power_thermal(dummy_model):
+    """declare_power(PowerKind.THERMAL) builds and registers thermal_power in kW."""
+    var = dummy_model.unit.declare_power(nm.PowerKind.THERMAL)
+    assert var is getattr(dummy_model.unit, nm.THERMAL_POWER)
+    assert pyunits.get_units(var[0]) == pyunits.kW
+    assert dummy_model.unit._io_registry.power[-1].kind == "thermal"
+
+
+@pytest.mark.unit
+def test_declare_power_bad_kind_raises(dummy_model):
+    """declare_power without a PowerKind is a config error."""
+    with pytest.raises(FlexConfigError):
+        dummy_model.unit.declare_power("kinetic")
+
+
+@pytest.mark.unit
+def test_flexops_config_rejects_raw_dict():
+    """The flexops_config slot rejects a raw dict (never an unvalidated dict)."""
+    m = _model(4)
+    with pytest.raises(ValueError, match="never pass a raw dict"):
+        m.unit = DummyOps(flexops_config={"unit_model_class": "DummyOps"})
+
+
+@pytest.mark.unit
+def test_flexops_config_accepts_unit_config():
+    """A validated UnitConfig is stored on the config block as-is."""
+    m = _model(4)
+    cfg = UnitConfig(unit_model_class="DummyOps")
+    m.unit = DummyOps(flexops_config=cfg)
+    assert m.unit.config.flexops_config is cfg
+
+
+@pytest.mark.unit
+def test_unit_commitment_rejects_raw_dict():
+    """The unit_commitment slot rejects anything but a UnitCommitmentConfig."""
+    m = _model(4)
+    with pytest.raises(ValueError, match="UnitCommitmentConfig"):
+        m.unit = DummyOps(unit_commitment={"status": True})
+
+
+@pytest.mark.unit
+def test_unit_commitment_none_coerces_to_defaults():
+    """unit_commitment=None coerces to an all-defaults UnitCommitmentConfig."""
+    from flexcore.config.schema import UnitCommitmentConfig
+
+    m = _model(4)
+    m.unit = DummyOps(unit_commitment=None)
+    assert m.unit.config.unit_commitment == UnitCommitmentConfig()
+
+
+@pytest.mark.unit
+def test_external_dispatch_slot_rejects_raw_dict():
+    """The external_dispatch slot rejects anything but an ExternalDispatchSpec."""
+    m = _model(4)
+    with pytest.raises(ValueError, match="ExternalDispatchSpec"):
+        m.unit = DummyOps(external_dispatch={"variable": "x", "source": "s.csv"})
+
+
+@pytest.mark.unit
+def test_relaxation_invalid_value_raises():
+    """An unknown relaxation policy is a config error naming the choices."""
+    m = _model(4)
+    with pytest.raises(ValueError, match="'exact', 'relaxed'"):
+        m.unit = DummyOps(relaxation="bogus")
+
+
+@pytest.mark.unit
+def test_relaxation_valid_value_stored():
+    """A valid relaxation string coerces to the RelaxationPolicy enum."""
+    m = _model(4)
+    m.unit = DummyOps(relaxation="relaxed")
+    assert m.unit.config.relaxation is RelaxationPolicy.RELAXED
+
+
+@pytest.mark.unit
+def test_multiple_time_blocks_raises():
+    """A model with two TimeBlocks errors clearly at unit build."""
+    m = _model(4)
+    m.time_block_2 = TimeBlock(
+        start_date="2025-01-01",
+        end_date="2025-01-01T01:00",
+        time_step=15 * pyunits.min,
+    )
+    with pytest.raises(FlexConfigError, match="found 2"):
+        m.unit = DummyOps()
+
+
+@pytest.mark.unit
+def test_set_external_dispatch_without_fixing(dummy_model):
+    """fix=False sets the trajectory but leaves the degrees of freedom."""
+    tb = dummy_model.time_block
+    dof_before = degrees_of_freedom(dummy_model)
+    series = {i: 2.0 for i in tb.time_index}
+    dummy_model.unit.set_external_dispatch(dummy_model.unit.flow_in, series, fix=False)
+    for t in tb.time_index:
+        assert dummy_model.unit.flow_in[t].fixed is False
+        assert pyo.value(dummy_model.unit.flow_in[t]) == pytest.approx(2.0)
+    assert degrees_of_freedom(dummy_model) == dof_before
+
+
+@pytest.mark.unit
+def test_set_external_dispatch_non_mapping_raises(dummy_model):
+    """A series without items() (e.g. a bare list) is a config error."""
+    with pytest.raises(FlexConfigError, match="mapping or pandas Series"):
+        dummy_model.unit.set_external_dispatch(
+            dummy_model.unit.flow_in, [1.0, 2.0, 3.0, 4.0]
+        )
+
+
+@pytest.mark.unit
+def test_set_external_dispatch_out_of_range_index_raises(dummy_model):
+    """An integer key outside [0, n_points) is a config error."""
+    with pytest.raises(FlexConfigError, match="out of range"):
+        dummy_model.unit.set_external_dispatch(dummy_model.unit.flow_in, {99: 1.0})

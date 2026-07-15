@@ -1,16 +1,18 @@
 """Load, dump, migrate, and export the flex-pse config (R3).
 
-YAML is the canonical on-disk format (pydantic stays the schema authority); JSON
-is also accepted. The format is chosen by file suffix. Loading validates the
-version first (missing or too-new ``schema_version`` is an error; older versions
-step through :data:`MIGRATIONS`), then validates against
+JSON is the canonical on-disk format (pydantic stays the schema authority); YAML
+is also accepted. The format is chosen by file suffix, and an already-parsed
+dict is accepted directly. Loading validates the version first (a missing,
+malformed, or too-new ``schema_version`` is an error; older versions step
+through :data:`MIGRATIONS`), then validates against
 :class:`~flexcore.config.schema.ModelConfig`, wrapping any pydantic error in a
 :class:`~flexcore.exceptions.FlexConfigError` that preserves the offending field
 path.
 """
 
 import json
-from collections.abc import Callable
+import re
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import yaml
@@ -19,10 +21,12 @@ from pydantic import ValidationError
 from flexcore.config.schema import CURRENT_SCHEMA_VERSION, ModelConfig
 from flexcore.exceptions import FlexConfigError
 
-MIGRATIONS: dict[int, Callable[[dict], dict]] = {}
-"""Version -> one-step upgrade hook, applied in sequence on load. Empty at v1."""
+MIGRATIONS: dict[str, Callable[[dict], dict]] = {}
+"""Source version -> upgrade hook, applied in sequence on load. Each hook must
+set the new ``schema_version`` on the dict it returns. Empty at 0.0.1."""
 
 _SCHEMA_FILENAME = "model_config.schema.json"
+_SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 def _format_validation_error(exc: ValidationError) -> str:
@@ -42,11 +46,32 @@ def _format_validation_error(exc: ValidationError) -> str:
     return "Invalid model config:\n" + "\n".join(lines)
 
 
+def _parse_version(version, source: str) -> tuple[int, int, int]:
+    """Parse an ``X.Y.Z`` schema version into a comparable tuple.
+
+    Args:
+        version: The declared ``schema_version`` value.
+        source: Where the version came from, for the error message.
+
+    Raises:
+        FlexConfigError: If ``version`` is not a semantic-version string.
+    """
+    if not isinstance(version, str) or not _SEMVER.match(version):
+        raise FlexConfigError(
+            f"'schema_version' must be a semantic-version string like "
+            f"{CURRENT_SCHEMA_VERSION!r}, got {version!r} in {source}.",
+            field="schema_version",
+            value=version,
+        )
+    major, minor, patch = version.split(".")
+    return (int(major), int(minor), int(patch))
+
+
 def _read(path: Path) -> dict:
     """Parse a config file to a plain dict, dispatching on the suffix.
 
     Args:
-        path: The config file path (``.yaml``/``.yml`` or ``.json``).
+        path: The config file path (``.json`` or ``.yaml``/``.yml``).
 
     Returns:
         The parsed top-level mapping.
@@ -56,14 +81,14 @@ def _read(path: Path) -> dict:
     """
     suffix = path.suffix.lower()
     text = path.read_text()
-    if suffix in (".yaml", ".yml"):
-        data = yaml.safe_load(text)
-    elif suffix == ".json":
+    if suffix == ".json":
         data = json.loads(text)
+    elif suffix in (".yaml", ".yml"):
+        data = yaml.safe_load(text)
     else:
         raise FlexConfigError(
-            f"Unsupported config format {suffix!r} for {path}. Use a .yaml, "
-            ".yml, or .json file.",
+            f"Unsupported config format {suffix!r} for {path}. Use a .json, "
+            ".yaml, or .yml file.",
             value=str(path),
         )
     if not isinstance(data, dict):
@@ -75,56 +100,66 @@ def _read(path: Path) -> dict:
     return data
 
 
-def load_model_config(path) -> ModelConfig:
-    """Load and validate a config file into a model config.
+def load_model_config(source) -> ModelConfig:
+    """Load and validate a config file or dict into a model config.
 
     Args:
-        path: Path to a ``.yaml``/``.yml`` or ``.json`` config file.
+        source: Path to a ``.json`` or ``.yaml``/``.yml`` config file, or an
+            already-parsed config mapping (which is not mutated).
 
     Returns:
         The validated :class:`~flexcore.config.schema.ModelConfig`.
 
     Raises:
         FlexConfigError: If the format is unsupported, ``schema_version`` is
-            missing or newer than this build, a migration step is missing, or
-            the config fails validation (the message names the bad field path).
+            missing, malformed, or newer than this build, a migration step is
+            missing, or the config fails validation (the message names the bad
+            field path).
     """
-    path = Path(path)
-    data = _read(path)
+    if isinstance(source, Mapping):
+        data, name = dict(source), "the config dict"
+    else:
+        path = Path(source)
+        data, name = _read(path), str(path)
 
     version = data.get("schema_version")
     if version is None:
         raise FlexConfigError(
-            f"Config {path} has no 'schema_version'. Every persisted config "
+            f"Config {name} has no 'schema_version'. Every persisted config "
             f"must declare one (this build writes version "
-            f"{CURRENT_SCHEMA_VERSION}).",
+            f"{CURRENT_SCHEMA_VERSION!r}).",
             field="schema_version",
         )
-    if not isinstance(version, int) or isinstance(version, bool):
+    parsed = _parse_version(version, name)
+    current = _parse_version(CURRENT_SCHEMA_VERSION, "this build")
+    if parsed > current:
         raise FlexConfigError(
-            f"'schema_version' must be an integer, got {version!r}.",
+            f"Config {name} declares schema_version {version!r}, newer than "
+            f"this build supports ({CURRENT_SCHEMA_VERSION!r}). Upgrade "
+            f"flex-pse.",
             field="schema_version",
             value=version,
         )
-    if version > CURRENT_SCHEMA_VERSION:
-        raise FlexConfigError(
-            f"Config {path} declares schema_version {version}, newer than this "
-            f"build supports ({CURRENT_SCHEMA_VERSION}). Upgrade flex-pse.",
-            field="schema_version",
-            value=version,
-        )
-    while version < CURRENT_SCHEMA_VERSION:
+    while parsed < current:
         migrate = MIGRATIONS.get(version)
         if migrate is None:
             raise FlexConfigError(
-                f"No migration registered from schema_version {version} to "
-                f"{version + 1}; cannot upgrade {path}.",
+                f"No migration registered from schema_version {version!r}; "
+                f"cannot upgrade {name} to {CURRENT_SCHEMA_VERSION!r}.",
                 field="schema_version",
                 value=version,
             )
         data = migrate(data)
-        version += 1
-        data["schema_version"] = version
+        new_version = data.get("schema_version")
+        new_parsed = _parse_version(new_version, name)
+        if new_parsed <= parsed:
+            raise FlexConfigError(
+                f"Migration from schema_version {version!r} did not advance "
+                f"the version (got {new_version!r}).",
+                field="schema_version",
+                value=new_version,
+            )
+        version, parsed = new_version, new_parsed
 
     try:
         return ModelConfig.model_validate(data)
@@ -135,21 +170,23 @@ def load_model_config(path) -> ModelConfig:
 def dump_model_config(cfg: ModelConfig, path) -> None:
     """Write a model config to disk in the format its file suffix names.
 
-    ``.yaml``/``.yml`` targets are written as YAML (the canonical format);
-    ``.json`` targets as indented JSON. Ambiguous bare scalars (``no``/``on``/
+    ``.json`` targets are written as indented JSON (the canonical format);
+    ``.yaml``/``.yml`` targets as YAML. Ambiguous bare scalars (``no``/``on``/
     ``yes``) are quoted by ``yaml.safe_dump`` so the YAML "Norway problem"
     cannot bite on reload.
 
     Args:
         cfg: The :class:`~flexcore.config.schema.ModelConfig` to serialize.
-        path: Destination path with a ``.yaml``/``.yml`` or ``.json`` suffix.
+        path: Destination path with a ``.json`` or ``.yaml``/``.yml`` suffix.
 
     Raises:
         FlexConfigError: For an unsupported suffix.
     """
     path = Path(path)
     suffix = path.suffix.lower()
-    if suffix in (".yaml", ".yml"):
+    if suffix == ".json":
+        path.write_text(cfg.model_dump_json(indent=2))
+    elif suffix in (".yaml", ".yml"):
         text = yaml.safe_dump(
             cfg.model_dump(mode="json"),
             sort_keys=False,
@@ -157,29 +194,45 @@ def dump_model_config(cfg: ModelConfig, path) -> None:
             allow_unicode=True,
         )
         path.write_text(text)
-    elif suffix == ".json":
-        path.write_text(cfg.model_dump_json(indent=2))
     else:
         raise FlexConfigError(
-            f"Unsupported config format {suffix!r} for {path}. Use a .yaml, "
-            ".yml, or .json file.",
+            f"Unsupported config format {suffix!r} for {path}. Use a .json, "
+            ".yaml, or .yml file.",
             value=str(path),
         )
 
 
-def export_json_schemas(directory) -> None:
+def _plain_descriptions(node) -> None:
+    """Collapse every ``description`` in an exported schema to one line."""
+    if isinstance(node, dict):
+        description = node.get("description")
+        if isinstance(description, str):
+            node["description"] = " ".join(description.split())
+        for value in node.values():
+            _plain_descriptions(value)
+    elif isinstance(node, list):
+        for value in node:
+            _plain_descriptions(value)
+
+
+def export_json_schemas(directory, filename: str = _SCHEMA_FILENAME) -> None:
     """Write the exported JSON Schema for the model config to ``directory``.
 
     Serializes :class:`~flexcore.config.schema.ModelConfig`'s JSON Schema with
-    ``indent=2`` and ``sort_keys=True`` so the
-    checked-in schema diffs only on real schema changes (pitfall 7). Run once
-    and commit the result to ``src/flexcore/config/schemas/``.
+    ``indent=2`` and ``sort_keys=True`` so the checked-in schema diffs only on
+    real schema changes (pitfall 7). Descriptions are collapsed to single-line
+    plain text — line wrapping is the documentation builder's job, not the
+    schema's. Run once and commit the result to
+    ``src/flexcore/config/schemas/``.
 
     Args:
-        directory: Destination directory for ``model_config.schema.json``.
+        directory: Destination directory for the schema file.
+        filename: Output filename; override it to keep schemas for several
+            versions side by side in one directory.
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     schema = ModelConfig.model_json_schema()
+    _plain_descriptions(schema)
     text = json.dumps(schema, indent=2, sort_keys=True)
-    (directory / _SCHEMA_FILENAME).write_text(text)
+    (directory / filename).write_text(text)

@@ -12,6 +12,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from flexcore.nomenclature import PowerKind
+
 
 @dataclass
 class IOVariableRecord:
@@ -56,12 +58,12 @@ class PowerRecord:
     Attributes:
         var: The live Pyomo ``Var`` (kW).
         name: The nomenclature constant value (e.g. ``"electrical_power"``).
-        kind: The :class:`~flexcore.nomenclature.PowerKind` value.
+        kind: The :class:`~flexcore.nomenclature.PowerKind` of the draw.
     """
 
     var: Any
     name: str
-    kind: str
+    kind: PowerKind
 
 
 @dataclass

@@ -54,7 +54,7 @@ class SimpleGasFlowData(PhysicalParameterBlock):
 
     @classmethod
     def define_metadata(cls, obj) -> None:
-        """Declare supported properties and default units (all five required)."""
+        """Declare supported properties and the five required default units."""
         obj.add_properties(
             {
                 "flow_vol": {"method": None, "units": "m^3/hr"},

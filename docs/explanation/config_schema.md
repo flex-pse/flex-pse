@@ -7,7 +7,7 @@ API-freeze script) stays a supported thin path, but nothing essential lives only
 in imperative code: if it can be configured, it is in the file (decision R3,
 `plan/01_architecture.md` §2.3).
 
-## Pydantic is the authority; YAML is canonical on disk
+## Pydantic is the authority; JSON is canonical on disk
 
 The schema **authority** is the set of pydantic v2 models in
 `flexcore.config.schema`. They define every field, its type, and its
@@ -15,23 +15,28 @@ one-line description (which renders into these docs), and they reject
 undocumented keys (`extra="forbid"` — an undocumented key does not get to exist,
 conventions §4).
 
-The **canonical on-disk format is YAML**: config files are both human-tracked in
-version control (comments, readable diffs, anchors for repeated tariff/unit
-blocks) and written programmatically by external tools. JSON is also accepted on
-load. The loader dispatches on the file suffix and the dumper quotes ambiguous
-bare scalars, so the YAML "Norway problem" (`no`/`on`/`yes` parsing as booleans)
-never bites. {func}`flexcore.config.io.load_model_config` and
+The **canonical on-disk format is JSON**: it round-trips losslessly, matches
+the exported JSON Schema that external writers validate against, and parses
+without surprises. YAML is also accepted for hand-maintained configs (comments,
+anchors); the loader dispatches on the file suffix and the dumper quotes
+ambiguous bare scalars, so the YAML "Norway problem" (`no`/`on`/`yes` parsing
+as booleans) never bites. An already-parsed `dict` can be passed to the loader
+directly. {func}`flexcore.config.io.load_model_config` and
 {func}`~flexcore.config.io.dump_model_config` are the entry points.
 
 ## Versioning and migrations
 
-Every persisted config carries a mandatory integer `schema_version`. On load, a
-missing or too-new version is a `FlexConfigError`; older versions step through
-the `MIGRATIONS` table (empty at v1) before validation. A JSON Schema exported
-from `ModelConfig.model_json_schema()` is checked in under
+Every persisted config carries a mandatory `schema_version`: a semantic-version
+string like `"0.0.1"` (`CURRENT_SCHEMA_VERSION`). On load, a missing,
+malformed, or too-new version is a `FlexConfigError`; older versions step
+through the `MIGRATIONS` table (empty at 0.0.1; each hook stamps the version it
+upgrades to) before validation. A JSON Schema exported from
+`ModelConfig.model_json_schema()` is checked in under
 `src/flexcore/config/schemas/` (with `sort_keys=True, indent=2` for stable
-diffs) so schema drift shows up in review and external writers can validate
-against it.
+diffs, and descriptions collapsed to plain single-line text — wrapping is the
+doc builder's job) so schema drift shows up in review and external writers can
+validate against it. `export_json_schemas` takes an optional `filename` so
+schemas for several versions can sit side by side.
 
 ## The model set
 

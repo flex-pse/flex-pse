@@ -28,17 +28,13 @@ from idaes.core import UnitModelBlockData, declare_process_block_class
 from pyomo.common.config import ConfigValue
 from pyomo.environ import units as pyunits
 
+from flexcore import nomenclature as nm
 from flexcore.config.schema import (
     ExternalDispatchSpec,
     UnitCommitmentConfig,
     UnitConfig,
 )
 from flexcore.exceptions import FlexConfigError
-from flexcore.nomenclature import (
-    ELECTRICAL_POWER,
-    THERMAL_POWER,
-    PowerKind,
-)
 from flexops.core.registration import (
     IORegistry,
     IOVariableRecord,
@@ -48,8 +44,8 @@ from flexops.core.registration import (
 from flexops.core.time_block import TimeBlockData
 
 _POWER_VARS = {
-    PowerKind.ELECTRICAL.value: (ELECTRICAL_POWER, "Electrical draw of the unit"),
-    PowerKind.THERMAL.value: (THERMAL_POWER, "Thermal/gas-driven duty of the unit"),
+    nm.PowerKind.ELECTRICAL: (nm.ELECTRICAL_POWER, "Electrical draw of the unit"),
+    nm.PowerKind.THERMAL: (nm.THERMAL_POWER, "Thermal/gas-driven duty of the unit"),
 }
 
 
@@ -183,6 +179,10 @@ class OpsBlockData(UnitModelBlockData):
     def build(self) -> None:
         """Set up dynamics defaults and the empty IO registry (no constraints)."""
         super().build()
+        # Pyomo skips a ConfigValue's domain for an explicit None, so the
+        # None -> all-defaults coercion has to happen here, not in the domain.
+        if self.config.unit_commitment is None:
+            self.config.unit_commitment = UnitCommitmentConfig()
         self._io_registry = IORegistry()
 
     # -- time access ------------------------------------------------------
@@ -270,29 +270,41 @@ class OpsBlockData(UnitModelBlockData):
             )
         )
 
-    def register_power(self, var, kind: str = "electrical") -> None:
+    @staticmethod
+    def _check_power_kind(kind) -> None:
+        """Raise unless ``kind`` is a :class:`~flexcore.nomenclature.PowerKind`.
+
+        Args:
+            kind: The value to check; even a valid-value plain string (e.g.
+                ``"electrical"``) is rejected — pass the enum member.
+
+        Raises:
+            FlexConfigError: If ``kind`` is not a ``PowerKind`` member.
+        """
+        if not isinstance(kind, nm.PowerKind):
+            allowed = ", ".join(f"PowerKind.{k.name}" for k in nm.PowerKind)
+            raise FlexConfigError(
+                f"Power kind must be a PowerKind member ({allowed}), got " f"{kind!r}.",
+                field="kind",
+                value=kind,
+            )
+
+    def register_power(self, var, kind: nm.PowerKind = nm.PowerKind.ELECTRICAL) -> None:
         """Register a power-draw variable for plant/costing aggregation.
 
         Args:
             var: The Pyomo ``Var`` (kW) to register.
-            kind: A :class:`~flexcore.nomenclature.PowerKind` value.
+            kind: The :class:`~flexcore.nomenclature.PowerKind` of the draw.
 
         Raises:
-            FlexConfigError: If ``kind`` is not a valid ``PowerKind`` value.
+            FlexConfigError: If ``kind`` is not a ``PowerKind`` member.
         """
-        kind_value = kind.value if isinstance(kind, PowerKind) else kind
-        if kind_value not in _POWER_VARS:
-            allowed = ", ".join(repr(k) for k in _POWER_VARS)
-            raise FlexConfigError(
-                f"Power kind must be one of {allowed}, got {kind!r}.",
-                field="kind",
-                value=kind,
-            )
+        self._check_power_kind(kind)
         self._io_registry.power.append(
-            PowerRecord(var=var, name=var.local_name, kind=kind_value)
+            PowerRecord(var=var, name=var.local_name, kind=kind)
         )
 
-    def declare_power(self, kind: str = "electrical"):
+    def declare_power(self, kind: nm.PowerKind = nm.PowerKind.ELECTRICAL):
         """Create, register, and return this unit's power-draw Var (kW).
 
         Creates ``electrical_power[t]`` (resp. ``thermal_power[t]``) indexed over
@@ -300,23 +312,16 @@ class OpsBlockData(UnitModelBlockData):
         it, and returns it.
 
         Args:
-            kind: A :class:`~flexcore.nomenclature.PowerKind` value.
+            kind: The :class:`~flexcore.nomenclature.PowerKind` of the draw.
 
         Returns:
             The created, time-indexed ``Var`` in kW.
 
         Raises:
-            FlexConfigError: If ``kind`` is not a valid ``PowerKind`` value.
+            FlexConfigError: If ``kind`` is not a ``PowerKind`` member.
         """
-        kind_value = kind.value if isinstance(kind, PowerKind) else kind
-        if kind_value not in _POWER_VARS:
-            allowed = ", ".join(repr(k) for k in _POWER_VARS)
-            raise FlexConfigError(
-                f"Power kind must be one of {allowed}, got {kind!r}.",
-                field="kind",
-                value=kind,
-            )
-        name, doc = _POWER_VARS[kind_value]
+        self._check_power_kind(kind)
+        name, doc = _POWER_VARS[kind]
         tb = self._find_time_block()
         setattr(
             self,
@@ -324,7 +329,7 @@ class OpsBlockData(UnitModelBlockData):
             pyo.Var(tb.time_index, initialize=0.0, units=pyunits.kW, doc=doc),
         )
         var = getattr(self, name)
-        self.register_power(var, kind=kind_value)
+        self.register_power(var, kind=kind)
         return var
 
     # -- in-place parameter updates (FlexParameterize 2-way, §5) -----------
@@ -366,6 +371,15 @@ class OpsBlockData(UnitModelBlockData):
 
         Accepts a mapping or pandas Series keyed by integer time index or by
         timestamp (coerced through ``TimeBlock.index_of``).
+
+        Args:
+            series: The mapping or pandas Series of dispatch values, keyed by
+                integer time index or timestamp.
+            tb: The model's ``TimeBlockData``, used to bound integer keys and
+                resolve timestamps.
+
+        Returns:
+            The resolved ``{time_index: float value}`` mapping.
 
         Raises:
             FlexConfigError: If ``series`` is not a mapping/Series, or a key is
@@ -436,7 +450,7 @@ class OpsBlockData(UnitModelBlockData):
     # -- config-driven construction (M09) ---------------------------------
 
     @classmethod
-    def from_config(cls, cfg: UnitConfig, **kwargs):
+    def build_from_config(cls, cfg: UnitConfig, **kwargs):
         """Construct a unit from a validated ``UnitConfig`` (deferred to M09).
 
         Raises:

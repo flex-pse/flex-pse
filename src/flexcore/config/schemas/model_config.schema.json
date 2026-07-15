@@ -72,7 +72,7 @@
     },
     "DRConfig": {
       "additionalProperties": false,
-      "description": "Demand-response container slot (\u00a72.4/\u00a73.6).\n\nA placeholder in v0: DR containers exist so wiring is stable, but no DR\nconstraints are built. Turning DR on later is additive.",
+      "description": "Demand-response container slot, a placeholder in v0: DR containers exist so wiring is stable, but no DR constraints are built. Turning DR on later is additive.",
       "properties": {
         "events_source": {
           "anyOf": [
@@ -93,7 +93,7 @@
     },
     "ExternalDispatchSpec": {
       "additionalProperties": false,
-      "description": "Declares an external (DERMS) command source for a controllable var (\u00a73.2).",
+      "description": "Declares an external (DERMS) command source for a controllable variable.",
       "properties": {
         "fix": {
           "default": true,
@@ -291,7 +291,7 @@
     },
     "TimeConfig": {
       "additionalProperties": false,
-      "description": "The discrete-time horizon specification (\u00a73.1).",
+      "description": "The discrete-time horizon specification.",
       "properties": {
         "end_date": {
           "description": "Exclusive ISO-8601 end of the horizon.",
@@ -319,7 +319,7 @@
     },
     "UnitCommitmentConfig": {
       "additionalProperties": false,
-      "description": "Per-unit unit-commitment configuration (\u00a73.5).\n\nA validated container only in M03; the constraint-building logic layer that\nconsumes it is built in M08. Every piece is optional except ``status``.",
+      "description": "Per-unit unit-commitment configuration, a validated container only in M03; the constraint-building logic layer that consumes it is built in M08. Every piece is optional except status.",
       "properties": {
         "conditional": {
           "anyOf": [
@@ -457,7 +457,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "The top-level config artifact the whole model+run is built from (\u00a72.3).",
+  "description": "The top-level config artifact the whole model and run are built from.",
   "properties": {
     "costing": {
       "$ref": "#/$defs/CostingConfig",
@@ -489,14 +489,15 @@
     },
     "properties": {
       "additionalProperties": true,
-      "description": "Property-package specification (kept loose at v1).",
+      "description": "Property-package specification (kept loose at schema version 0.0.1).",
       "title": "Properties",
       "type": "object"
     },
     "schema_version": {
-      "description": "Schema version of this config; mandatory, no default.",
+      "description": "Semantic schema version of this config, an X.Y.Z string; mandatory, no default.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
       "title": "Schema Version",
-      "type": "integer"
+      "type": "string"
     },
     "time": {
       "$ref": "#/$defs/TimeConfig",

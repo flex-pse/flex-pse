@@ -6,8 +6,9 @@ flexops.properties
 The minimal flow-carrying property packages (§3.7). Ports built from their
 state blocks carry volumetric flow between units via standard IDAES/Pyomo arcs.
 
-``SimpleAqueousFlow`` is flow-only by default, with opt-in pressure/temperature
-state variables and an optional fixed density parameter.
+``SimpleAqueousFlow`` state blocks carry ``flow_vol`` and ``dens_mass`` (fixed
+at the configured density by default), with opt-in pressure/temperature state
+variables.
 
 .. autosummary::
    :toctree: generated
