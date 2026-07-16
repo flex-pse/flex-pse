@@ -84,7 +84,7 @@ class SimpleAqueousFlowData(PhysicalParameterBlock):
 
     def build(self) -> None:
         """Set the state-block class and the single liquid phase/component."""
-        super().build()
+        super(SimpleAqueousFlowData, self).build()
         self._state_block_class = SimpleAqueousStateBlock
 
         self.Liq = LiquidPhase()
