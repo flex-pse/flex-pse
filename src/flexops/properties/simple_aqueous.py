@@ -153,7 +153,7 @@ class SimpleAqueousStateBlockData(StateBlockData):
 
     def build(self) -> None:
         """Create ``flow_vol``, ``dens_mass``, and any enabled intensive states."""
-        super().build()
+        super(SimpleAqueousStateBlockData, self).build()
         self.flow_vol = Var(
             initialize=1.0,
             domain=NonNegativeReals,
