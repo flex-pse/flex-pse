@@ -1,9 +1,9 @@
 """Load, dump, migrate, and export the flex-pse config (R3).
 
-JSON is the canonical on-disk format (pydantic stays the schema authority); YAML
-is also accepted. The format is chosen by file suffix, and an already-parsed
-dict is accepted directly. Loading validates the version first (a missing,
-malformed, or too-new ``schema_version`` is an error; older versions step
+JSON is the canonical on-disk format (pydantic stays the schema authority); an
+already-parsed dict is accepted directly. Loading validates the version first
+(a missing, malformed, or too-new ``schema_version`` is an error; older
+versions step
 through :data:`MIGRATIONS`), then validates against
 :class:`~flexcore.config.schema.ModelConfig`, wrapping any pydantic error in a
 :class:`~flexcore.exceptions.FlexConfigError` that preserves the offending field
@@ -15,7 +15,6 @@ import re
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-import yaml
 from pydantic import ValidationError
 
 from flexcore.config.schema import CURRENT_SCHEMA_VERSION, ModelConfig
@@ -68,29 +67,24 @@ def _parse_version(version, source: str) -> tuple[int, int, int]:
 
 
 def _read(path: Path) -> dict:
-    """Parse a config file to a plain dict, dispatching on the suffix.
+    """Parse a JSON config file to a plain dict.
 
     Args:
-        path: The config file path (``.json`` or ``.yaml``/``.yml``).
+        path: The config file path (``.json``).
 
     Returns:
         The parsed top-level mapping.
 
     Raises:
-        FlexConfigError: For an unsupported suffix or a non-mapping document.
+        FlexConfigError: For a non-``.json`` suffix or a non-mapping document.
     """
-    suffix = path.suffix.lower()
-    text = path.read_text()
-    if suffix == ".json":
-        data = json.loads(text)
-    elif suffix in (".yaml", ".yml"):
-        data = yaml.safe_load(text)
-    else:
+    if path.suffix.lower() != ".json":
         raise FlexConfigError(
-            f"Unsupported config format {suffix!r} for {path}. Use a .json, "
-            ".yaml, or .yml file.",
+            f"Unsupported config format {path.suffix!r} for {path}. Use a "
+            ".json file.",
             value=str(path),
         )
+    data = json.loads(path.read_text())
     if not isinstance(data, dict):
         raise FlexConfigError(
             f"Config file {path} must contain a mapping at the top level, got "
@@ -104,8 +98,8 @@ def load_model_config(source) -> ModelConfig:
     """Load and validate a config file or dict into a model config.
 
     Args:
-        source: Path to a ``.json`` or ``.yaml``/``.yml`` config file, or an
-            already-parsed config mapping (which is not mutated).
+        source: Path to a ``.json`` config file, or an already-parsed config
+            mapping (which is not mutated).
 
     Returns:
         The validated :class:`~flexcore.config.schema.ModelConfig`.
@@ -168,38 +162,23 @@ def load_model_config(source) -> ModelConfig:
 
 
 def dump_model_config(cfg: ModelConfig, path) -> None:
-    """Write a model config to disk in the format its file suffix names.
-
-    ``.json`` targets are written as indented JSON (the canonical format);
-    ``.yaml``/``.yml`` targets as YAML. Ambiguous bare scalars (``no``/``on``/
-    ``yes``) are quoted by ``yaml.safe_dump`` so the YAML "Norway problem"
-    cannot bite on reload.
+    """Write a model config to disk as indented JSON.
 
     Args:
         cfg: The :class:`~flexcore.config.schema.ModelConfig` to serialize.
-        path: Destination path with a ``.json`` or ``.yaml``/``.yml`` suffix.
+        path: Destination path with a ``.json`` suffix.
 
     Raises:
-        FlexConfigError: For an unsupported suffix.
+        FlexConfigError: For a non-``.json`` suffix.
     """
     path = Path(path)
-    suffix = path.suffix.lower()
-    if suffix == ".json":
-        path.write_text(cfg.model_dump_json(indent=2))
-    elif suffix in (".yaml", ".yml"):
-        text = yaml.safe_dump(
-            cfg.model_dump(mode="json"),
-            sort_keys=False,
-            default_flow_style=False,
-            allow_unicode=True,
-        )
-        path.write_text(text)
-    else:
+    if path.suffix.lower() != ".json":
         raise FlexConfigError(
-            f"Unsupported config format {suffix!r} for {path}. Use a .json, "
-            ".yaml, or .yml file.",
+            f"Unsupported config format {path.suffix!r} for {path}. Use a "
+            ".json file.",
             value=str(path),
         )
+    path.write_text(cfg.model_dump_json(indent=2))
 
 
 def _plain_descriptions(node) -> None:

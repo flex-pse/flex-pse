@@ -1,4 +1,4 @@
-"""Tests for the versioned config schema and its JSON/YAML load-dump round-trip."""
+"""Tests for the versioned config schema and its JSON load-dump round-trip."""
 
 import json
 
@@ -71,13 +71,17 @@ def test_model_config_json_roundtrip(tmp_path):
 
 
 @pytest.mark.unit
-def test_model_config_yaml_roundtrip(tmp_path):
-    """The same config also round-trips through the accepted YAML format."""
+@pytest.mark.parametrize("suffix", [".yaml", ".yml", ".toml"])
+def test_non_json_suffix_rejected(tmp_path, suffix):
+    """JSON is the only on-disk format: other suffixes are rejected on load
+    and dump."""
     cfg = _model_config()
-    path = tmp_path / "model.yaml"
-    dump_model_config(cfg, path)
-    reloaded = load_model_config(path)
-    assert reloaded.model_dump() == cfg.model_dump()
+    path = tmp_path / f"model{suffix}"
+    with pytest.raises(FlexConfigError):
+        dump_model_config(cfg, path)
+    path.write_text(json.dumps(cfg.model_dump(mode="json")))
+    with pytest.raises(FlexConfigError):
+        load_model_config(path)
 
 
 @pytest.mark.unit

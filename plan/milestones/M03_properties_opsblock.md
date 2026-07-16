@@ -131,16 +131,10 @@ Also `CURRENT_SCHEMA_VERSION = 1` and `export_json_schemas(directory)` writing
 `MIGRATIONS: dict[int, Callable[[dict], dict]] = {}` (version→one-step upgrade
 hook table, empty at v1).
 
-- **Format.** YAML is the canonical on-disk format (pydantic remains the schema
-  authority); JSON is also accepted on load. Dispatch on the file suffix
-  (`.yaml`/`.yml` → YAML, `.json` → JSON); parse to a plain dict, then validate.
-  Use a **strict, typed** YAML loader (`yaml.safe_load`) so the "Norway problem"
-  bites nothing — pydantic coerces, and the dumper quotes ambiguous bare scalars
-  (`no`/`on`/`yes`). Add `PyYAML` to core deps if not already present.
-- **Dump.** `dump_model_config` writes YAML for `.yaml`/`.yml` targets (round-trip
-  through `cfg.model_dump(mode="json")` then `yaml.safe_dump`, with the
-  ambiguous-scalar quoting above) and JSON for `.json` targets
-  (`cfg.model_dump_json(indent=2)`).
+- **Format.** JSON is the canonical on-disk format (pydantic remains the schema
+  authority); 
+- **Dump.** `dump_model_config` writes JSON for `.json` targets (round-trip
+  through `cfg.model_dump(mode="json")`).
 - **Version handling.** Load: missing or greater-than-current `schema_version` →
   `FlexConfigError`; older versions step through `MIGRATIONS`; then
   `ModelConfig.model_validate`, wrapping `ValidationError` in `FlexConfigError`
@@ -451,8 +445,7 @@ module: registers `flow_in[t]`/`flow_out[t]` (m³/hr; input/output), a mutable
       carrying `unit_commitment` + `external_dispatch`, `CostingConfig` with a
       `dr` slot) implemented; `ModelConfig` is the top-level artifact with
       exactly-one-of `network`/`plant`
-- [ ] `ModelConfig` **YAML** round-trip *and* JSON round-trip green; invalid
-      configs error with field path; `schema_version` missing/too-new errors
+- [ ] `ModelConfig` **YAML** round-trip *and* JSON round-trip green; invalid configs error with field path; `schema_version` missing/too-new errors
 - [ ] JSON Schema exported to `src/flexcore/config/schemas/`, checked in, up-to-date test green
 - [ ] `from_config(UnitConfig)` raises `NotImplementedError` referencing M09;
       whole-model `flexops.build_model` noted as M09

@@ -17,10 +17,7 @@ conventions §4).
 
 The **canonical on-disk format is JSON**: it round-trips losslessly, matches
 the exported JSON Schema that external writers validate against, and parses
-without surprises. YAML is also accepted for hand-maintained configs (comments,
-anchors); the loader dispatches on the file suffix and the dumper quotes
-ambiguous bare scalars, so the YAML "Norway problem" (`no`/`on`/`yes` parsing
-as booleans) never bites. An already-parsed `dict` can be passed to the loader
+without surprises. An already-parsed `dict` can be passed to the loader
 directly. {func}`flexcore.config.io.load_model_config` and
 {func}`~flexcore.config.io.dump_model_config` are the entry points.
 
