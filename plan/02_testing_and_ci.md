@@ -105,7 +105,7 @@ class UnitModelTestHarness:
     # test_build             — constructs without exception; ports exist
     # test_units_consistent  — assert_units_consistent(unit)
     # test_io_registration   — registered IO vars exist, have units, are time-indexed
-    # test_energy_naming     — electrical_power/thermal_power present iff declared
+    # test_energy_naming     — power_electrical/power_thermal present iff declared
     # test_dof               — degrees of freedom == expected_dof after fixing declared inputs
     # test_solve             — (component tier) get_solver() solve is optimal
     # test_solution          — solved values match expected_solution within tolerance

@@ -44,8 +44,8 @@ from flexops.core.registration import (
 from flexops.core.time_block import TimeBlockData
 
 _POWER_VARS = {
-    nm.PowerKind.ELECTRICAL: (nm.ELECTRICAL_POWER, "Electrical draw of the unit"),
-    nm.PowerKind.THERMAL: (nm.THERMAL_POWER, "Thermal/gas-driven duty of the unit"),
+    nm.PowerKind.ELECTRICAL: (nm.POWER_ELECTRICAL, "Electrical draw of the unit"),
+    nm.PowerKind.THERMAL: (nm.POWER_THERMAL, "Thermal/gas-driven duty of the unit"),
 }
 
 
@@ -307,7 +307,7 @@ class OpsBlockData(UnitModelBlockData):
     def declare_power(self, kind: nm.PowerKind = nm.PowerKind.ELECTRICAL):
         """Create, register, and return this unit's power-draw Var (kW).
 
-        Creates ``electrical_power[t]`` (resp. ``thermal_power[t]``) indexed over
+        Creates ``power_electrical[t]`` (resp. ``power_thermal[t]``) indexed over
         the time set, attaches it under the nomenclature constant name, registers
         it, and returns it.
 

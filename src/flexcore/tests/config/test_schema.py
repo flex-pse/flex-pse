@@ -38,13 +38,13 @@ def _model_config() -> ModelConfig:
             functional_form="linear",
             coefficients={"slope": 0.5, "intercept": 0.1},
             input_variables=["flow_in"],
-            output_variables=["electrical_power"],
+            output_variables=["power_electrical"],
         ),
     )
     plant_unit = UnitConfig(
         unit_model_class="ConstantEnergyIntensityModel",
         external_dispatch=ExternalDispatchSpec(
-            variable="electrical_power", source="dispatch.csv"
+            variable="power_electrical", source="dispatch.csv"
         ),
         unit_commitment=UnitCommitmentConfig(
             startup_shutdown=True, dwell=True, min_up=4, min_down=2

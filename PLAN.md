@@ -147,7 +147,7 @@ Dependencies are strict unless marked ∥ (parallelizable with the previous one)
 | [M00](plan/milestones/M00_repo_scaffold.md) | Repo scaffold & CI skeleton | 1 | — | conda env from `environment.yml` (installs the stack and the editable package via its `pip:` subsection) works; PR CI green; import-linter contracts active |
 | [M01](plan/milestones/M01_compat_layer.md) | Exception hierarchy & dependency pinning | 0.5 | M00 | `FlexError` hierarchy; pinned idaes-pse/pyomo versions |
 | [M02](plan/milestones/M02_timeblock.md) | TimeBlock | 2 | M01 | Discrete ≤1-month substrate, any resolution (15-min default); horizon builds < 1 s |
-| [M03](plan/milestones/M03_properties_opsblock.md) | SimpleAqueousFlow + OpsBlock base | 2–3 | M02 | IO/parameter registration; `electrical_power`/`thermal_power`; external-dispatch + UC config hooks; config schema (`UnitConfig`…`ModelConfig`) |
+| [M03](plan/milestones/M03_properties_opsblock.md) | SimpleAqueousFlow + OpsBlock base | 2–3 | M02 | IO/parameter registration; `power_electrical`/`power_thermal`; external-dispatch + UC config hooks; config schema (`UnitConfig`…`ModelConfig`) |
 | [M04](plan/milestones/M04_harness_pump_tank.md) | Test harness + SISO base + Pump + Tank | 2–3 | M03 | Public `UnitModelTestHarness`; `SISOBlock`; Pump; Tank (logic disabled) |
 | [M05](plan/milestones/M05_solver_facade.md) | Solver abstraction | 2 | M00 ∥ | Model classifier + capability-matrix `get_solver()` |
 | [M06](plan/milestones/M06_eeco_integration.md) | EECO integration (tariffs & costs) | 2 | M00 ∥ | `eeco` wired; tariff-signal helpers; in-objective cost + post-solve numpy evaluator; DR containers |

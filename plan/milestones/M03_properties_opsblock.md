@@ -55,8 +55,8 @@ hooks, and is discoverable model-wide.
 ### flexcore/nomenclature.py
 
 ```python
-ELECTRICAL_POWER = "electrical_power"   # unit-level electrical draw, kW
-THERMAL_POWER = "thermal_power"         # unit-level thermal/gas duty, kW
+POWER_ELECTRICAL = "power_electrical"   # unit-level electrical draw, kW
+POWER_THERMAL = "power_thermal"         # unit-level thermal/gas duty, kW
 
 class PowerKind(str, enum.Enum):
     ELECTRICAL = "electrical"
@@ -259,12 +259,12 @@ kind (01_architecture §3.2):
 
 ```python
 def declare_power(self, kind="electrical"):   # method name: implementer's choice
-    """Create electrical_power[t] / thermal_power[t] (kW), register it, return it."""
+    """Create power_electrical[t] / power_thermal[t] (kW), register it, return it."""
 ```
 
 Creates `Var(tb.time_points, initialize=0.0, units=pyunits.kW, doc="Electrical
 draw of the unit")`, attached via `setattr` under
-`flexcore.nomenclature.ELECTRICAL_POWER` (resp. `THERMAL_POWER`), then calls
+`flexcore.nomenclature.POWER_ELECTRICAL` (resp. `POWER_THERMAL`), then calls
 `register_power`. No bounds at the base (implementer's choice).
 
 Time access: the `flowsheet()` chain arrives with PlantBlock in M09. Interim
@@ -316,7 +316,7 @@ WaterTAP `prop_ZO`; all IDAES bases via `flexcore.compat.idaes`.
    `Block.__setattr__` machinery interfering.
 3. **Missing `doc=`.** The M04 harness and M14 docs generator require non-empty
    `doc` on registered variables. Set `doc=` on every Var/Constraint, starting now.
-4. **Hand-typing `"electrical_power"`.** Always import from
+4. **Hand-typing `"power_electrical"`.** Always import from
    `flexcore.nomenclature`; the literal string anywhere else is review-blocking.
 5. **pydantic v1 idioms.** Use `model_validate`/`model_dump_json`/
    `model_json_schema`; no `parse_obj`, no `class Config`.
@@ -349,14 +349,14 @@ module: registers `flow_in[t]`/`flow_out[t]` (m³/hr; input/output), a mutable
 `energy_intensity` Param (kWh/m³) as a regressable process parameter, calls
 `declare_power("electrical")`, and adds constraints
 `flow_out[t] == 0.9 * flow_in[t]` and
-`electrical_power[t] == pyunits.convert(energy_intensity * flow_in[t], pyunits.kW)`.
+`power_electrical[t] == pyunits.convert(energy_intensity * flow_in[t], pyunits.kW)`.
 
 - `test_dummy_ops_builds` — on `ConcreteModel` + 4-point TimeBlock;
-  `electrical_power` exists, indexed by `time_points`, in kW.
+  `power_electrical` exists, indexed by `time_points`, in kW.
 - `test_registration_records` — registry holds 2 `IOVariableRecord` (roles
   input/output, `time_indexed=True`, non-empty units strings), 1
   `ParameterRecord` (`regressable=True`), 1 `PowerRecord`
-  (`kind == "electrical"`, `name == ELECTRICAL_POWER`).
+  (`kind == "electrical"`, `name == POWER_ELECTRICAL`).
 - `test_iter_io_registry_finds_dummy` — yields exactly one `(block, registry)`
   pair; the block is the DummyOps instance.
 - `test_units_consistent` — `assert_units_consistent(unit)` (via compat).
@@ -449,7 +449,7 @@ module: registers `flow_in[t]`/`flow_out[t]` (m³/hr; input/output), a mutable
 - [ ] JSON Schema exported to `src/flexcore/config/schemas/`, checked in, up-to-date test green
 - [ ] `from_config(UnitConfig)` raises `NotImplementedError` referencing M09;
       whole-model `flexops.build_model` noted as M09
-- [ ] No literal `"electrical_power"`/`"thermal_power"` outside `flexcore/nomenclature.py`
+- [ ] No literal `"power_electrical"`/`"power_thermal"` outside `flexcore/nomenclature.py`
 - [ ] `pytest -m unit` green; `lint-imports` passes
 - [ ] `NB_EXECUTION_MODE=off sphinx-build -W --keep-going -b html docs docs/_build` clean
 - [ ] plus the generic DoD in CLAUDE.md

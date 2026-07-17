@@ -58,11 +58,11 @@ When a package is later split into its own repo, its tests move with it.
 - Pyomo model components follow IDAES conventions where one exists
   (`flow_vol`, `pressure`, `temperature`), and this project's energy
   nomenclature otherwise (see `plan/01_architecture.md` §4):
-  - `electrical_power[t]` — electrical draw of a unit, **kW** (a power, despite
+  - `power_electrical[t]` — electrical draw of a unit, **kW** (a power, despite
     the name — the name is the project-wide standard).
-  - `thermal_power[t]` — thermal/gas-driven duty of a unit, **kW**.
+  - `power_thermal[t]` — thermal/gas-driven duty of a unit, **kW**.
   - Never introduce variables named bare `power`, `energy`, or `work`.
-  - Power always takes units of kW while energy or work takes units of kWh.
+  - Power always takes units of kW while energy takes units of kWh. 
 - Time index is always named `t`, iterating `time_block.time_index`.
 - User-facing constructors take **keyword arguments only** (enforce with `*` in
   signatures). ISO-8601 date strings (`"2025-01-01"`) or `datetime` objects; never
@@ -190,7 +190,7 @@ wrapper), but this is not enforced.
 - **Never delete Pyomo components** (blocks, Vars, Params, constraints) from a
   built model: every constraint/expression elsewhere that captured the old
   component silently keeps the stale reference (e.g. a model-level power
-  aggregation still summing a deleted unit's `electrical_power`). Update models
+  aggregation still summing a deleted unit's `power_electrical`). Update models
   in place instead — `set_value` on mutable Params
   (`OpsBlockData.update_parameters`), add new Vars/constraints, or
   `deactivate()` constraints you need to turn off.

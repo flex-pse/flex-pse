@@ -98,9 +98,9 @@ def dummy_model():
 
 @pytest.mark.unit
 def test_dummy_ops_builds(dummy_model):
-    """electrical_power exists, indexed by time_index, carrying kW."""
+    """power_electrical exists, indexed by time_index, carrying kW."""
     unit = dummy_model.unit
-    power = getattr(unit, nm.ELECTRICAL_POWER)
+    power = getattr(unit, nm.POWER_ELECTRICAL)
     assert power.is_indexed()
     assert set(power.index_set()) == set(dummy_model.time_block.time_index)
     assert pyunits.get_units(power[0]) == pyunits.kW
@@ -125,7 +125,7 @@ def test_registration_records(dummy_model):
     assert len(reg.power) == 1
     assert isinstance(reg.power[0], PowerRecord)
     assert reg.power[0].kind == "electrical"
-    assert reg.power[0].name == nm.ELECTRICAL_POWER
+    assert reg.power[0].name == nm.POWER_ELECTRICAL
 
 
 @pytest.mark.unit
@@ -276,14 +276,14 @@ def test_register_power_rejects_string(dummy_model):
     """register_power requires a PowerKind; even a valid-value string raises."""
     unit = dummy_model.unit
     with pytest.raises(FlexConfigError):
-        unit.register_power(getattr(unit, nm.ELECTRICAL_POWER), kind="electrical")
+        unit.register_power(getattr(unit, nm.POWER_ELECTRICAL), kind="electrical")
 
 
 @pytest.mark.unit
 def test_declare_power_thermal(dummy_model):
-    """declare_power(PowerKind.THERMAL) builds and registers thermal_power in kW."""
+    """declare_power(PowerKind.THERMAL) builds and registers power_thermal in kW."""
     var = dummy_model.unit.declare_power(nm.PowerKind.THERMAL)
-    assert var is getattr(dummy_model.unit, nm.THERMAL_POWER)
+    assert var is getattr(dummy_model.unit, nm.POWER_THERMAL)
     assert pyunits.get_units(var[0]) == pyunits.kW
     assert dummy_model.unit._io_registry.power[-1].kind == "thermal"
 

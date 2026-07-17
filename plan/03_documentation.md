@@ -22,7 +22,7 @@ docs/
 ├── explanation/                # narrative design rationale
 │   ├── time_and_dynamics.md    # R2: why discrete TimeBlock, never dynamic=True
 │   ├── relaxation_policies.md  # R5: explicit SolveSequence philosophy
-│   ├── energy_nomenclature.md  # electrical_power / thermal_power standard
+│   ├── energy_nomenclature.md  # power_electrical / power_thermal standard
 │   └── config_schema.md        # rendered JSON Schema of ModelConfig et al.
 ├── reference/
 │   ├── flexops/

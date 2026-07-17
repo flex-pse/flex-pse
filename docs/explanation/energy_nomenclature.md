@@ -7,8 +7,8 @@ becomes an import error rather than a silently-unaggregated variable.
 
 | Name | Meaning | Units | Consumer |
 |---|---|---|---|
-| {data}`~flexcore.nomenclature.ELECTRICAL_POWER` (`electrical_power[t]`) | unit-level electrical draw (motor/drive) | kW | FlexCosting → EECO (energy + demand charges + DR); plant aggregation |
-| {data}`~flexcore.nomenclature.THERMAL_POWER` (`thermal_power[t]`) | unit-level heat/gas-driven duty | kW | separate thermal aggregation/costing |
+| {data}`~flexcore.nomenclature.POWER_ELECTRICAL` (`power_electrical[t]`) | unit-level electrical draw (motor/drive) | kW | FlexCosting → EECO (energy + demand charges + DR); plant aggregation |
+| {data}`~flexcore.nomenclature.POWER_THERMAL` (`power_thermal[t]`) | unit-level heat/gas-driven duty | kW | separate thermal aggregation/costing |
 
 Rules (`plan/00_conventions.md` §2, `plan/01_architecture.md` §4):
 

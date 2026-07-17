@@ -241,7 +241,7 @@ The base class of every flex-pse unit model.
     draw into plant/costing aggregation.
   - Registries are dataclasses in `flexops/core/registration.py`
     (`IORegistry`), discoverable model-wide via `iter_io_registry(model)`.
-- Base-class-provided `electrical_power[t]` / `thermal_power[t]` Vars (kW),
+- Base-class-provided `power_electrical[t]` / `power_thermal[t]` Vars (kW),
   created when the unit declares it consumes that energy kind.
 - Config flags every unit inherits: `relaxation` policy for its discrete
   structure, a `unit_commitment` sub-config (§3.5), `allow_bypass`, and an
@@ -285,7 +285,7 @@ Two levels of composition, mirroring the "collection of" pattern:
   parent via the IDAES `flowsheet()` chain). Auto-discovery of a unique
   root-model TimeBlock may be a convenience default, but explicit must work
   first. Aggregation composes: `NetworkBlock` totals = sum of child
-  `PlantBlock` totals = sum of their unit `electrical_power`/`thermal_power`.
+  `PlantBlock` totals = sum of their unit `power_electrical`/`power_thermal`.
 
 ### 3.4 Unit model library — IO-topology base classes + a physical zoo
 
@@ -306,11 +306,11 @@ physical subclasses add the flow↔energy relationship and any bounds.
 
 | Class | Base | Notes |
 |---|---|---|
-| `Pump` | `SISOBlock` | `electrical_power[t] = energy_intensity * flow_vol[t]` |
+| `Pump` | `SISOBlock` | `power_electrical[t] = energy_intensity * flow_vol[t]` |
 | `Tank` | `SISOBlock` | holdup `V[t+1] = V[t] + dt*(in − out)`; level bounds; initial level is rolling-horizon state. **Logic/unit-commitment constraints disabled** (a tank has no on/off status) |
 | `Separator` | `SIDOBlock` | one feed split into two product streams (replaces the old `Electrolyzer` name) |
 | `Exchanger` | `DIDOBlock` | two inlet / two outlet streams exchanging mass/energy |
-| `ElectrolysisSeparator` | `Separator` | electrolysis modeled as a separation; exercises `thermal_power` |
+| `ElectrolysisSeparator` | `Separator` | electrolysis modeled as a separation; exercises `power_thermal` |
 | `ElectrolysisExchanger` | `Exchanger` | electrolysis with two coupled streams |
 | `ReverseOsmosisSkid` | `Separator` | RO skid: feed → permeate + concentrate |
 | `Combustor` | `Separator` | combustion as a separation of products |
@@ -373,8 +373,8 @@ A composable unit-commitment (UC) formulation, applied per unit via its
     names, mapping totals into IDAES aggregates (`aggregate_operating_cost`,
     `aggregate_capital_cost`) — objective and downstream code never touch raw
     EECO internals (§2.4).
-  - **Aggregation.** Sum registered units' `electrical_power[t]` (and
-    `thermal_power[t]`) into the kW series EECO consumes, in-model and as the
+  - **Aggregation.** Sum registered units' `power_electrical[t]` (and
+    `power_thermal[t]`) into the kW series EECO consumes, in-model and as the
     post-solve numpy array.
   - **CapEx + modes** (below).
 - EECO receives a **kW series**; kWh conversion is EECO's. Keep the LP/relaxable
@@ -412,8 +412,8 @@ A composable unit-commitment (UC) formulation, applied per unit via its
 
 | Name | Meaning | Units | Consumer |
 |---|---|---|---|
-| `electrical_power[t]` | unit-level electrical draw (motor/drive) | kW | FlexCosting → EECO (energy + demand charges + DR); plant aggregation |
-| `thermal_power[t]` | unit-level heat/gas-driven duty | kW | separate thermal aggregation/costing |
+| `power_electrical[t]` | unit-level electrical draw (motor/drive) | kW | FlexCosting → EECO (energy + demand charges + DR); plant aggregation |
+| `power_thermal[t]` | unit-level heat/gas-driven duty | kW | separate thermal aggregation/costing |
 
 Rules: every unit model registers at least one of these via `register_power`.
 FlexCosting aggregates them into a kW time series and hands it to EECO both

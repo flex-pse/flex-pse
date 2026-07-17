@@ -57,7 +57,7 @@ class PowerRecord:
 
     Attributes:
         var: The live Pyomo ``Var`` (kW).
-        name: The nomenclature constant value (e.g. ``"electrical_power"``).
+        name: The nomenclature constant value (e.g. ``"power_electrical"``).
         kind: The :class:`~flexcore.nomenclature.PowerKind` of the draw.
     """
 

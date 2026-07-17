@@ -96,9 +96,9 @@ Nomenclature
 The canonical energy-variable names (see
 :doc:`../../explanation/energy_nomenclature`).
 
-.. autodata:: ELECTRICAL_POWER
+.. autodata:: POWER_ELECTRICAL
 
-.. autodata:: THERMAL_POWER
+.. autodata:: POWER_THERMAL
 
 .. autoclass:: PowerKind
    :members:
