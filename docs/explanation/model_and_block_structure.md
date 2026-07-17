@@ -114,9 +114,11 @@ with ordinary index arithmetic — `V[t+1] == V[t] + dt*(inflow[t] - outflow[t])
 
 The state variables `flow_vol_phase`, `dens_mass`, `pressure`, and `temperature`
 are declared inside `StateBlockData.build`, **indexed over the time set
-directly**: `flow_vol_phase` is `Var(phase_list, time)` (phase first, time
-second) and the intensive states are `Var(time)`. A single state block therefore
-describes a stream over the whole horizon.
+directly**: the extensive, per-phase `flow_vol_phase` is `Var(time, phase_list)`
+(time first, phase second), while the intensive stream properties `dens_mass`,
+`pressure`, and `temperature` drop the phase index and are `Var(time)` (assumed
+equal across phases in a stream). A single state block therefore describes a
+stream over the whole horizon.
 
 The time set is delivered to the state block through its `time_index` config
 option: a property package's `build_state_block(time_index=<time Set>)` returns a
@@ -128,15 +130,15 @@ for its inlet/outlet streams, then wires the flows and ports:
 # inside a unit's build():
 self.add_stream_ports()             # builds scalar inlet_state, outlet_state + ports
 # then, per time point t:
-self.inlet_state.flow_vol_phase["Liq", t]   # volumetric flow at time t
+self.inlet_state.flow_vol_phase[t, "Liq"]   # volumetric flow at time t
 self.inlet_state.dens_mass[t]               # density at time t
 ```
 
 So indexing is **single-layer**: there is one state block per stream, and time
-is an index on the state variables inside it (`flow_vol_phase` additionally
-carries the phase index). This is why the tests build a three-point stream with
-`build_state_block(time_index=m.time)` and then read
-`state.flow_vol_phase["Liq", 0]`, `state.flow_vol_phase["Liq", 1]`, and so on.
+is the leading index on the state variables inside it (`flow_vol_phase`
+additionally carries a trailing phase index). This is why the tests build a
+three-point stream with `build_state_block(time_index=m.time)` and then read
+`state.flow_vol_phase[0, "Liq"]`, `state.flow_vol_phase[1, "Liq"]`, and so on.
 
 ### Extensive vs. intensive: how state variables cross an arc
 

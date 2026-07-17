@@ -3,7 +3,7 @@
 Mirrors the test skeleton of ``test_simple_gas.py``; package-specific extras
 (density config options, opt-in pressure/temperature) come last.
 
-State variables are indexed over time directly (``flow_vol_phase[phase, t]``,
+State variables are indexed over time directly (``flow_vol_phase[t, phase]``,
 ``dens_mass[t]``); the owning unit passes a ``time_index`` Set and gets a single
 scalar state block rather than one block per time point.
 """
@@ -31,11 +31,11 @@ def model():
 
 @pytest.mark.unit
 def test_build_parameter_and_state_block(model):
-    """A state block builds flow_vol_phase indexed by (phase, time) in m^3/hr."""
+    """A state block builds flow_vol_phase indexed by (time, phase) in m^3/hr."""
     model.state = model.props.build_state_block(time_index=model.time)
     flow = model.state.flow_vol_phase
-    assert set(flow.index_set()) == {("Liq", t) for t in TIMES}
-    assert_units_equivalent(flow["Liq", 0], pyunits.m**3 / pyunits.hr)
+    assert set(flow.index_set()) == {(t, "Liq") for t in TIMES}
+    assert_units_equivalent(flow[0, "Liq"], pyunits.m**3 / pyunits.hr)
 
 
 @pytest.mark.unit
@@ -70,7 +70,7 @@ def test_state_var_units(model):
     model.state = model.props.build_state_block(time_index=model.time)
     state_block = model.state
     assert_units_equivalent(
-        state_block.flow_vol_phase["Liq", 0], pyunits.m**3 / pyunits.hr
+        state_block.flow_vol_phase[0, "Liq"], pyunits.m**3 / pyunits.hr
     )
     assert_units_equivalent(state_block.dens_mass[0], pyunits.kg / pyunits.m**3)
 
@@ -80,7 +80,7 @@ def test_state_var_domains(model):
     """flow_vol_phase is non-negative; dens_mass is strictly positive."""
     model.state = model.props.build_state_block(time_index=model.time)
     state_block = model.state
-    assert state_block.flow_vol_phase["Liq", 0].domain is pyo.NonNegativeReals
+    assert state_block.flow_vol_phase[0, "Liq"].domain is pyo.NonNegativeReals
     assert state_block.dens_mass[0].domain is pyo.PositiveReals
 
 

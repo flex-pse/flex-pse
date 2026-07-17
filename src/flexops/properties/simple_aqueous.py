@@ -155,8 +155,10 @@ class SimpleAqueousStateBlockData(StateBlockData):
 
     State variables are indexed over time directly: the owning unit passes the
     ``time_index`` Set via ``build_state_block(time_index=...)`` and gets a
-    single scalar state block whose variables span the horizon
-    (``flow_vol_phase[phase, t]``, ``dens_mass[t]``).
+    single scalar state block whose variables span the horizon. Extensive,
+    per-phase quantities lead with time then phase (``flow_vol_phase[t, phase]``);
+    intensive stream properties drop the phase index (``dens_mass[t]``, and the
+    opt-in ``pressure[t]``/``temperature[t]``, assumed equal across phases).
     """
 
     CONFIG = StateBlockData.CONFIG()
@@ -181,12 +183,12 @@ class SimpleAqueousStateBlockData(StateBlockData):
                 value=None,
             )
         self.flow_vol_phase = Var(
-            self.params.phase_list,
             time,
+            self.params.phase_list,
             initialize=1.0,
             domain=NonNegativeReals,
             units=pyunits.m**3 / pyunits.hr,
-            doc="Volumetric flowrate by phase and time",
+            doc="Volumetric flowrate by time and phase",
         )
         self.dens_mass = Var(
             time,

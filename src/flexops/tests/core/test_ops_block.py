@@ -51,14 +51,14 @@ class DummyOpsData(OpsBlockData):
         @self.Constraint(tb.time_index, doc="Mass balance: 10% loss")
         def mass_balance(b, t):
             return (
-                b.outlet_state.flow_vol_phase["Liq", t]
-                == 0.9 * b.inlet_state.flow_vol_phase["Liq", t]
+                b.outlet_state.flow_vol_phase[t, "Liq"]
+                == 0.9 * b.inlet_state.flow_vol_phase[t, "Liq"]
             )
 
         @self.Constraint(tb.time_index, doc="Electrical energy per unit outlet flow")
         def energy_eq(b, t):
             return power[t] == pyunits.convert(
-                b.energy_intensity * b.outlet_state.flow_vol_phase["Liq", t],
+                b.energy_intensity * b.outlet_state.flow_vol_phase[t, "Liq"],
                 pyunits.kW,
             )
 

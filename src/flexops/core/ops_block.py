@@ -350,7 +350,7 @@ class OpsBlockData(UnitModelBlockData):
         The registered flow is the ``flow_vol_phase`` of the package's single
         phase (``"Liq"`` for
         :class:`~flexops.properties.simple_aqueous.SimpleAqueousFlow`), reached
-        as ``inlet_state.flow_vol_phase[phase, t]``.
+        as ``inlet_state.flow_vol_phase[t, phase]``.
 
         Raises:
             FlexConfigError: If the unit has no ``property_package`` configured.
@@ -367,8 +367,8 @@ class OpsBlockData(UnitModelBlockData):
         phase = next(iter(pkg.phase_list))
         self.inlet_state = pkg.build_state_block(time_index=tb.time_index)
         self.outlet_state = pkg.build_state_block(time_index=tb.time_index)
-        self.inlet_flow = pyo.Reference(self.inlet_state.flow_vol_phase[phase, :])
-        self.outlet_flow = pyo.Reference(self.outlet_state.flow_vol_phase[phase, :])
+        self.inlet_flow = pyo.Reference(self.inlet_state.flow_vol_phase[:, phase])
+        self.outlet_flow = pyo.Reference(self.outlet_state.flow_vol_phase[:, phase])
         self.register_io_variable(self.inlet_flow, role="input")
         self.register_io_variable(self.outlet_flow, role="output")
         self.add_inlet_port(name="inlet", block=self.inlet_state, doc="Inlet stream")
