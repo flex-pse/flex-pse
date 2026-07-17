@@ -57,11 +57,13 @@ hand-writes its one-to-three balance constraints as difference equations against
   to it (an aggregated-power constraint, an expanded arc) would silently keep the
   stale one. Mutate Params in place or `deactivate()` constraints instead.
 - the stream-port helper
-  {meth}`~flexops.core.ops_block.OpsBlockData.add_stream_ports` — builds the
-  unit's inlet/outlet state blocks from the configured `property_package`,
-  registers each side's volumetric flow as an input/output IO variable, and
-  exposes the `inlet`/`outlet` ports via the inherited IDAES
-  `add_inlet_port`/`add_outlet_port` helpers.
+  {meth}`~flexops.core.ops_block.OpsBlockData.add_stream_ports` — builds one
+  `{port}_state` block per requested port from the configured `property_package`
+  (default one `inlet` and one `outlet`), registers the caller-chosen `io_vars`
+  on each (the actual state-block `Var`, not a `Reference`) as input/output IO
+  variables — the default `flow_vol_phase`, since which variables are the
+  meaningful IO is property-package dependent — and exposes the ports via the
+  inherited IDAES `add_inlet_port`/`add_outlet_port` helpers.
 
 ### Property packages — parameter block plus state blocks
 

@@ -142,7 +142,7 @@ def test_units_consistent(dummy_model):
 def test_dof_zero_when_inputs_fixed(dummy_model):
     """Fixing the input flow at every time point determines the model."""
     for t in dummy_model.time_block.time_index:
-        dummy_model.unit.inlet_flow[t].fix(2.0)
+        dummy_model.unit.inlet_state.flow_vol_phase[t, "Liq"].fix(2.0)
     assert degrees_of_freedom(dummy_model) == 0
 
 
@@ -150,14 +150,18 @@ def test_dof_zero_when_inputs_fixed(dummy_model):
 def test_bad_role_raises(dummy_model):
     """An unknown IO role is a config error."""
     with pytest.raises(FlexConfigError):
-        dummy_model.unit.register_io_variable(dummy_model.unit.inlet_flow, role="both")
+        dummy_model.unit.register_io_variable(
+            dummy_model.unit.inlet_state.flow_vol_phase, role="both"
+        )
 
 
 @pytest.mark.unit
 def test_bad_kind_raises(dummy_model):
     """A power kind that is not a PowerKind member is a config error."""
     with pytest.raises(FlexConfigError):
-        dummy_model.unit.register_power(dummy_model.unit.inlet_flow, kind="kinetic")
+        dummy_model.unit.register_power(
+            dummy_model.unit.inlet_state.flow_vol_phase, kind="kinetic"
+        )
 
 
 @pytest.mark.unit
@@ -181,12 +185,13 @@ def test_build_from_config_not_implemented():
 def test_set_external_dispatch_removes_dof(dummy_model):
     """Dispatching a free controllable var fixes it and drops n_points DOF."""
     tb = dummy_model.time_block
+    power = getattr(dummy_model.unit, nm.POWER_ELECTRICAL)
     dof_before = degrees_of_freedom(dummy_model)
     series = {i: 1.5 + i for i in tb.time_index}
-    dummy_model.unit.set_external_dispatch(dummy_model.unit.inlet_flow, series)
+    dummy_model.unit.set_external_dispatch(power, series)
     for t in tb.time_index:
-        assert dummy_model.unit.inlet_flow[t].fixed is True
-        assert pyo.value(dummy_model.unit.inlet_flow[t]) == pytest.approx(series[t])
+        assert power[t].fixed is True
+        assert pyo.value(power[t]) == pytest.approx(series[t])
     assert degrees_of_freedom(dummy_model) == dof_before - tb.n_points
 
 
@@ -194,18 +199,20 @@ def test_set_external_dispatch_removes_dof(dummy_model):
 def test_set_external_dispatch_by_timestamp(dummy_model):
     """A timestamp-keyed series is aligned via the TimeBlock's index_of."""
     tb = dummy_model.time_block
+    power = getattr(dummy_model.unit, nm.POWER_ELECTRICAL)
     series = {tb.timestamp_of(i): float(i) for i in tb.time_index}
-    dummy_model.unit.set_external_dispatch(dummy_model.unit.inlet_flow, series)
+    dummy_model.unit.set_external_dispatch(power, series)
     for t in tb.time_index:
-        assert pyo.value(dummy_model.unit.inlet_flow[t]) == pytest.approx(float(t))
+        assert pyo.value(power[t]) == pytest.approx(float(t))
 
 
 @pytest.mark.unit
 def test_set_external_dispatch_misaligned_raises(dummy_model):
     """A series that does not cover every time point is a config error."""
     short = {0: 1.0, 1: 2.0}
+    power = getattr(dummy_model.unit, nm.POWER_ELECTRICAL)
     with pytest.raises(FlexConfigError):
-        dummy_model.unit.set_external_dispatch(dummy_model.unit.inlet_flow, short)
+        dummy_model.unit.set_external_dispatch(power, short)
 
 
 @pytest.mark.unit
@@ -226,14 +233,14 @@ def test_update_parameters_in_place(dummy_model):
     """
     unit = dummy_model.unit
     constraint = unit.energy_eq[0]
-    unit.outlet_flow[0].fix(2.0)
+    unit.outlet_state.flow_vol_phase[0, "Liq"].fix(2.0)
     body_before = pyo.value(constraint.body)
 
     unit.update_parameters({"energy_intensity": 1.0})
 
     assert pyo.value(unit.energy_intensity) == pytest.approx(1.0)
     # Same constraint object, new residual: no rebuild happened. The body is
-    # power - intensity*outlet_flow, so +0.5 kWh/m^3 at 2 m^3/hr lowers it by
+    # power - intensity*outlet flow, so +0.5 kWh/m^3 at 2 m^3/hr lowers it by
     # 1 kW.
     assert unit.energy_eq[0] is constraint
     assert pyo.value(constraint.body) == pytest.approx(body_before - 1.0)
@@ -367,28 +374,27 @@ def test_multiple_time_blocks_raises():
 def test_set_external_dispatch_without_fixing(dummy_model):
     """fix=False sets the trajectory but leaves the degrees of freedom."""
     tb = dummy_model.time_block
+    power = getattr(dummy_model.unit, nm.POWER_ELECTRICAL)
     dof_before = degrees_of_freedom(dummy_model)
     series = {i: 2.0 for i in tb.time_index}
-    dummy_model.unit.set_external_dispatch(
-        dummy_model.unit.inlet_flow, series, fix=False
-    )
+    dummy_model.unit.set_external_dispatch(power, series, fix=False)
     for t in tb.time_index:
-        assert dummy_model.unit.inlet_flow[t].fixed is False
-        assert pyo.value(dummy_model.unit.inlet_flow[t]) == pytest.approx(2.0)
+        assert power[t].fixed is False
+        assert pyo.value(power[t]) == pytest.approx(2.0)
     assert degrees_of_freedom(dummy_model) == dof_before
 
 
 @pytest.mark.unit
 def test_set_external_dispatch_non_mapping_raises(dummy_model):
     """A series without items() (e.g. a bare list) is a config error."""
+    power = getattr(dummy_model.unit, nm.POWER_ELECTRICAL)
     with pytest.raises(FlexConfigError, match="mapping or pandas Series"):
-        dummy_model.unit.set_external_dispatch(
-            dummy_model.unit.inlet_flow, [1.0, 2.0, 3.0, 4.0]
-        )
+        dummy_model.unit.set_external_dispatch(power, [1.0, 2.0, 3.0, 4.0])
 
 
 @pytest.mark.unit
 def test_set_external_dispatch_out_of_range_index_raises(dummy_model):
     """An integer key outside [0, n_points) is a config error."""
+    power = getattr(dummy_model.unit, nm.POWER_ELECTRICAL)
     with pytest.raises(FlexConfigError, match="out of range"):
-        dummy_model.unit.set_external_dispatch(dummy_model.unit.inlet_flow, {99: 1.0})
+        dummy_model.unit.set_external_dispatch(power, {99: 1.0})

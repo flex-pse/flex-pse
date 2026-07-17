@@ -22,6 +22,7 @@ constraints; FlexParameterize drives this in M10.
 
 import enum
 import numbers
+from collections.abc import Sequence
 
 import pyomo.environ as pyo
 from idaes.core import UnitModelBlockData, declare_process_block_class
@@ -333,24 +334,35 @@ class OpsBlockData(UnitModelBlockData):
 
     # -- stream state blocks + ports (property package, §3.7) --------------
 
-    def add_stream_ports(self) -> None:
-        """Build inlet/outlet state blocks and expose them as IDAES ports.
+    def add_stream_ports(
+        self,
+        inlet_ports: Sequence[str] = ("inlet",),
+        outlet_ports: Sequence[str] = ("outlet",),
+        io_vars: Sequence[str] = ("flow_vol_phase",),
+    ) -> None:
+        """Build the configured stream state blocks and expose them as ports.
 
-        Uses this unit's configured ``property_package`` to construct a single
-        scalar state block on each side (``inlet_state``, ``outlet_state``)
-        whose state variables are indexed over the time set, registers each
-        side's volumetric flow as a process IO variable — the inlet as
-        ``"input"``, the outlet as ``"output"`` — through a time-indexed
-        ``Reference``, and builds the ``inlet``/``outlet`` ports from the state
-        blocks via the inherited IDAES ``add_inlet_port``/``add_outlet_port``
-        helpers. The extensive flow and intensive states carried by the ports
-        are wired onto arcs with their extensive/intensive split by the topology
-        layer in M09.
+        For each requested port, constructs a scalar state block from this
+        unit's configured ``property_package`` (its state variables indexed over
+        the time set), registers the named ``io_vars`` on that block as process
+        IO variables — inlet ports as ``"input"``, outlet ports as
+        ``"output"`` — and builds the IDAES port from the state block via the
+        inherited ``add_inlet_port``/``add_outlet_port`` helpers. Each state
+        block is named ``"{port}_state"`` (e.g. ``inlet_state``), and each
+        registered IO variable is the live state-block ``Var`` itself (e.g.
+        ``inlet_state.flow_vol_phase``), never a ``Reference`` or slice. The
+        extensive/intensive split of the states a port carries is applied when
+        the topology layer wires the ports onto arcs in M09.
 
-        The registered flow is the ``flow_vol_phase`` of the package's single
-        phase (``"Liq"`` for
-        :class:`~flexops.properties.simple_aqueous.SimpleAqueousFlow`), reached
-        as ``inlet_state.flow_vol_phase[t, phase]``.
+        Args:
+            inlet_ports: Names of the inlet ports to build (default one
+                ``"inlet"``).
+            outlet_ports: Names of the outlet ports to build (default one
+                ``"outlet"``).
+            io_vars: State-block variable names to register as process IO on
+                every port (default the volumetric ``"flow_vol_phase"``). Which
+                variables are the meaningful IO is property-package dependent,
+                so the caller chooses them.
 
         Raises:
             FlexConfigError: If the unit has no ``property_package`` configured.
@@ -364,17 +376,30 @@ class OpsBlockData(UnitModelBlockData):
                 value=None,
             )
         tb = self._find_time_block()
-        phase = next(iter(pkg.phase_list))
-        self.inlet_state = pkg.build_state_block(time_index=tb.time_index)
-        self.outlet_state = pkg.build_state_block(time_index=tb.time_index)
-        self.inlet_flow = pyo.Reference(self.inlet_state.flow_vol_phase[:, phase])
-        self.outlet_flow = pyo.Reference(self.outlet_state.flow_vol_phase[:, phase])
-        self.register_io_variable(self.inlet_flow, role="input")
-        self.register_io_variable(self.outlet_flow, role="output")
-        self.add_inlet_port(name="inlet", block=self.inlet_state, doc="Inlet stream")
-        self.add_outlet_port(
-            name="outlet", block=self.outlet_state, doc="Outlet stream"
-        )
+        for port_name in inlet_ports:
+            self._add_stream_port(pkg, tb, port_name, io_vars, role="input")
+        for port_name in outlet_ports:
+            self._add_stream_port(pkg, tb, port_name, io_vars, role="output")
+
+    def _add_stream_port(self, pkg, tb, port_name, io_vars, role) -> None:
+        """Build one ``{port_name}_state`` block, register its IO, add the port.
+
+        Args:
+            pkg: The unit's configured property (parameter) block.
+            tb: The model's ``TimeBlockData``, supplying the time index.
+            port_name: The port (and ``"{port_name}_state"`` block) name.
+            io_vars: State-block variable names to register as process IO.
+            role: ``"input"`` for an inlet port, ``"output"`` for an outlet port.
+        """
+        state_name = f"{port_name}_state"
+        self.add_component(state_name, pkg.build_state_block(time_index=tb.time_index))
+        state = self.find_component(state_name)
+        for var_name in io_vars:
+            self.register_io_variable(getattr(state, var_name), role=role)
+        if role == "input":
+            self.add_inlet_port(name=port_name, block=state, doc=f"{port_name} stream")
+        else:
+            self.add_outlet_port(name=port_name, block=state, doc=f"{port_name} stream")
 
     # -- in-place parameter updates (FlexParameterize 2-way, §5) -----------
 
