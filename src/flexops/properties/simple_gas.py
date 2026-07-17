@@ -4,7 +4,7 @@ The gas-phase counterpart of
 :mod:`flexops.properties.simple_aqueous`. Where the aqueous package is
 flow-only with opt-in extras, a gas stream's density varies with pressure and
 temperature, so every ``SimpleGasFlow`` state block **always** carries four
-state variables: ``flow_vol``, ``dens_mass``, ``pressure``, and
+state variables: ``flow_vol_phase``, ``dens_mass``, ``pressure``, and
 ``temperature``. No equation of state links them — units add whatever relation
 they need as their own constraints.
 
@@ -23,15 +23,18 @@ from idaes.core import (
     declare_process_block_class,
 )
 from idaes.core.util.initialization import fix_state_vars, revert_state_vars
+from pyomo.common.config import ConfigValue
 from pyomo.environ import NonNegativeReals, PositiveReals, Var
 from pyomo.environ import units as pyunits
+
+from flexcore.exceptions import FlexConfigError
 
 
 @declare_process_block_class("SimpleGasFlow")
 class SimpleGasFlowData(PhysicalParameterBlock):
     """Parameter block for a simple gas stream.
 
-    State blocks built from this package always carry ``flow_vol``,
+    State blocks built from this package always carry ``flow_vol_phase``,
     ``dens_mass``, ``pressure``, and ``temperature``; there are no config
     options beyond the ``PhysicalParameterBlock`` base.
 
@@ -57,7 +60,7 @@ class SimpleGasFlowData(PhysicalParameterBlock):
         """Declare supported properties and the five required default units."""
         obj.add_properties(
             {
-                "flow_vol": {"method": None, "units": "m^3/hr"},
+                "flow_vol_phase": {"method": None, "units": "m^3/hr"},
                 "dens_mass": {"method": None, "units": "kg/m^3"},
                 "pressure": {"method": None, "units": "Pa"},
                 "temperature": {"method": None, "units": "K"},
@@ -109,30 +112,59 @@ class _SimpleGasStateBlock(StateBlock):
 
 @declare_process_block_class("SimpleGasStateBlock", block_class=_SimpleGasStateBlock)
 class SimpleGasStateBlockData(StateBlockData):
-    """State block carrying flow, density, pressure, and temperature."""
+    """State block carrying flow, density, pressure, and temperature.
+
+    State variables are indexed over time directly: the owning unit passes the
+    ``time_index`` Set via ``build_state_block(time_index=...)`` and gets a
+    single scalar state block whose variables span the horizon
+    (``flow_vol_phase[phase, t]``, ``dens_mass[t]``, and so on).
+    """
+
+    CONFIG = StateBlockData.CONFIG()
+    CONFIG.declare(
+        "time_index",
+        ConfigValue(
+            default=None,
+            description="Ordered Pyomo time Set the state variables are indexed "
+            "over (the owning unit passes TimeBlock.time_index).",
+        ),
+    )
 
     def build(self) -> None:
-        """Create the four gas state variables."""
+        """Create the four time-indexed gas state variables."""
         super().build()
-        self.flow_vol = Var(
+        time = self.config.time_index
+        if time is None:
+            raise FlexConfigError(
+                "SimpleGasStateBlock requires a time_index; build it with "
+                "build_state_block(time_index=tb.time_index).",
+                field="time_index",
+                value=None,
+            )
+        self.flow_vol_phase = Var(
+            self.params.phase_list,
+            time,
             initialize=1.0,
             domain=NonNegativeReals,
             units=pyunits.m**3 / pyunits.hr,
-            doc="Volumetric flowrate",
+            doc="Volumetric flowrate by phase and time",
         )
         self.dens_mass = Var(
+            time,
             initialize=1.2,
             domain=PositiveReals,
             units=pyunits.kg / pyunits.m**3,
             doc="Mass density",
         )
         self.pressure = Var(
+            time,
             initialize=101325.0,
             domain=PositiveReals,
             units=pyunits.Pa,
             doc="Pressure",
         )
         self.temperature = Var(
+            time,
             initialize=298.15,
             domain=PositiveReals,
             units=pyunits.K,
@@ -142,7 +174,7 @@ class SimpleGasStateBlockData(StateBlockData):
     def define_state_vars(self) -> dict:
         """Return the state-variable dict (all four gas states)."""
         return {
-            "flow_vol": self.flow_vol,
+            "flow_vol_phase": self.flow_vol_phase,
             "dens_mass": self.dens_mass,
             "pressure": self.pressure,
             "temperature": self.temperature,

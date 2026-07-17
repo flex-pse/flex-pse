@@ -5,8 +5,8 @@ blocks and how variables on those blocks are indexed. Two questions recur when
 reading or writing a unit model, and they have different answers:
 
 - **Time indexing** — which variables vary over the horizon, and against what set.
-- **Property (state) indexing** — where a stream's `flow_vol`, `dens_mass`,
-  `pressure`, and `temperature` live, and how they pick up a time dimension.
+- **Property (state) indexing** — where a stream's `flow_vol_phase`, `dens_mass`,
+  `pressure`, and `temperature` live, and how they carry a time dimension.
 
 ## The block hierarchy
 
@@ -21,7 +21,7 @@ ConcreteModel
 └── <unit>  : OpsBlock             one per process unit
     ├── power_electrical[t]        base power Var(s), kW, time-indexed
     ├── power_thermal[t]
-    ├── <state blocks>             built from the property package, indexed over time
+    ├── <state blocks>             built from the property package, one scalar block per stream
     ├── <balance constraints>      1–3, hand-written (no ControlVolumes)
     └── _io_registry               what this unit exposes (IORegistry)
 ```
@@ -56,6 +56,12 @@ hand-writes its one-to-three balance constraints as difference equations against
   **never deletes** a built component, because anything else holding a reference
   to it (an aggregated-power constraint, an expanded arc) would silently keep the
   stale one. Mutate Params in place or `deactivate()` constraints instead.
+- the stream-port helper
+  {meth}`~flexops.core.ops_block.OpsBlockData.add_stream_ports` — builds the
+  unit's inlet/outlet state blocks from the configured `property_package`,
+  registers each side's volumetric flow as an input/output IO variable, and
+  exposes the `inlet`/`outlet` ports via the inherited IDAES
+  `add_inlet_port`/`add_outlet_port` helpers.
 
 ### Property packages — parameter block plus state blocks
 
@@ -65,12 +71,14 @@ phases, components, supported-property metadata, default units) paired with a
 ships two, both structurally modeled on WaterTAP's zero-order package:
 
 - {py:class}`~flexops.properties.simple_aqueous.SimpleAqueousFlow` — flow-only by
-  default: `flow_vol` and `dens_mass` (density fixed at the configured value
-  unless `fixed_density=False`), with **opt-in** `pressure`/`temperature`.
+  default: `flow_vol_phase` (indexed by the single `Liq` phase and time) and
+  `dens_mass` (density fixed at the configured value unless
+  `fixed_density=False`), with **opt-in** `pressure`/`temperature`.
 - {py:class}`~flexops.properties.simple_gas.SimpleGasFlow` — the gas counterpart,
-  which **always** carries all four state variables because gas density varies
-  with pressure and temperature (no equation of state is imposed; a unit adds any
-  relation it needs as its own constraint).
+  which **always** carries all four state variables (`flow_vol_phase` over the
+  single `Vap` phase and time, plus `dens_mass`/`pressure`/`temperature`) because
+  gas density varies with pressure and temperature (no equation of state is
+  imposed; a unit adds any relation it needs as its own constraint).
 
 Ports built from state blocks carry a stream between units via standard
 IDAES/Pyomo `Arc`s, honoring the extensive/intensive split described below.
@@ -102,29 +110,33 @@ Because `time_index` is a plain integer `Set`, difference equations are written
 with ordinary index arithmetic — `V[t+1] == V[t] + dt*(inflow[t] - outflow[t])`
 — which is exactly why the time set is discrete.
 
-### Property state variables live on state blocks, indexed over time by the unit
+### Property state variables carry the time index themselves
 
-The state variables `flow_vol`, `dens_mass`, `pressure`, and `temperature` are
-declared as **scalar** Vars inside `StateBlockData.build`. They are *not*
-time-indexed at the point of declaration. A state block describes the fluid at a
-**single** point in state-space.
+The state variables `flow_vol_phase`, `dens_mass`, `pressure`, and `temperature`
+are declared inside `StateBlockData.build`, **indexed over the time set
+directly**: `flow_vol_phase` is `Var(phase_list, time)` (phase first, time
+second) and the intensive states are `Var(time)`. A single state block therefore
+describes a stream over the whole horizon.
 
-Time variation comes from **indexing the state block itself** over the time set.
-A property package's `build_state_block(index_set)` returns an *indexed* block —
-one state-block member per index — so a unit builds its inlet/outlet states as:
+The time set is delivered to the state block through its `time_index` config
+option: a property package's `build_state_block(time_index=<time Set>)` returns a
+single **scalar** block whose variables span that set. A unit's
+{meth}`~flexops.core.ops_block.OpsBlockData.add_stream_ports` does exactly this
+for its inlet/outlet streams, then wires the flows and ports:
 
 ```python
-# inside a unit's build(), with tb = self._find_time_block()
-self.properties_in = self.config.property_package.build_state_block(tb.time_index)
+# inside a unit's build():
+self.add_stream_ports()             # builds scalar inlet_state, outlet_state + ports
 # then, per time point t:
-self.properties_in[t].flow_vol      # volumetric flow at time t
-self.properties_in[t].dens_mass     # density at time t
+self.inlet_state.flow_vol_phase["Liq", t]   # volumetric flow at time t
+self.inlet_state.dens_mass[t]               # density at time t
 ```
 
-So indexing is **two-layer**: the *outer* index is time (carried by the indexed
-state block), and the *inner* object is the scalar-per-point state Var. This is
-why the tests build a three-point stream with `build_state_block([0, 1, 2])` and
-then read `state[0].flow_vol`, `state[1].flow_vol`, and so on.
+So indexing is **single-layer**: there is one state block per stream, and time
+is an index on the state variables inside it (`flow_vol_phase` additionally
+carries the phase index). This is why the tests build a three-point stream with
+`build_state_block(time_index=m.time)` and then read
+`state.flow_vol_phase["Liq", 0]`, `state.flow_vol_phase["Liq", 1]`, and so on.
 
 ### Extensive vs. intensive: how state variables cross an arc
 
@@ -133,7 +145,7 @@ connection (relevant when ports/arcs are built in a later milestone):
 
 | State variable | Kind | Across an arc | Port rule |
 |---|---|---|---|
-| `flow_vol` | **extensive** | conserved (sum of flows balances at a node) | `Port.Extensive` |
+| `flow_vol_phase` | **extensive** | conserved (sum of flows balances at a node) | `Port.Extensive` |
 | `dens_mass`, `pressure`, `temperature` | **intensive** | equal on both sides | `Port.Equality` |
 
 This is why volumetric flow is the quantity a mixer sums and a splitter divides,
@@ -147,7 +159,7 @@ while density/pressure/temperature are simply equated across a connection.
 | `power_electrical[t]`, `power_thermal[t]` | the unit (`OpsBlock`) | `time_index` | {meth}`~flexops.core.ops_block.OpsBlockData.declare_power` |
 | process IO variables | the unit (`OpsBlock`) | `time_index` (usually) or scalar | the unit's `build`, then `register_io_variable` |
 | design/regression parameters | the unit (`OpsBlock`) | usually scalar | the unit's `build`, then `register_process_parameter` |
-| `flow_vol`, `dens_mass`, `pressure`, `temperature` | an indexed state block | time (via the state block); scalar per member | the property package's `StateBlockData.build` |
+| `flow_vol_phase`, `dens_mass`, `pressure`, `temperature` | a scalar state block (one per stream) | time (on the variable); `flow_vol_phase` also phase-indexed | the property package's `StateBlockData.build` |
 
 Discovery ties it together: every unit exposes what it declared through its
 {py:class}`~flexops.core.registration.IORegistry`, and

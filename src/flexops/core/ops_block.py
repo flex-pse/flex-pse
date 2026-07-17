@@ -323,14 +323,58 @@ class OpsBlockData(UnitModelBlockData):
         self._check_power_kind(kind)
         name, doc = _POWER_VARS[kind]
         tb = self._find_time_block()
-        setattr(
-            self,
+        self.add_component(
             name,
             pyo.Var(tb.time_index, initialize=0.0, units=pyunits.kW, doc=doc),
         )
-        var = getattr(self, name)
+        var = self.find_component(name)
         self.register_power(var, kind=kind)
         return var
+
+    # -- stream state blocks + ports (property package, §3.7) --------------
+
+    def add_stream_ports(self) -> None:
+        """Build inlet/outlet state blocks and expose them as IDAES ports.
+
+        Uses this unit's configured ``property_package`` to construct a single
+        scalar state block on each side (``inlet_state``, ``outlet_state``)
+        whose state variables are indexed over the time set, registers each
+        side's volumetric flow as a process IO variable — the inlet as
+        ``"input"``, the outlet as ``"output"`` — through a time-indexed
+        ``Reference``, and builds the ``inlet``/``outlet`` ports from the state
+        blocks via the inherited IDAES ``add_inlet_port``/``add_outlet_port``
+        helpers. The extensive flow and intensive states carried by the ports
+        are wired onto arcs with their extensive/intensive split by the topology
+        layer in M09.
+
+        The registered flow is the ``flow_vol_phase`` of the package's single
+        phase (``"Liq"`` for
+        :class:`~flexops.properties.simple_aqueous.SimpleAqueousFlow`), reached
+        as ``inlet_state.flow_vol_phase[phase, t]``.
+
+        Raises:
+            FlexConfigError: If the unit has no ``property_package`` configured.
+        """
+        pkg = self.config.property_package
+        if pkg is None:
+            raise FlexConfigError(
+                "add_stream_ports requires a property_package on the unit; none "
+                "was configured.",
+                field="property_package",
+                value=None,
+            )
+        tb = self._find_time_block()
+        phase = next(iter(pkg.phase_list))
+        self.inlet_state = pkg.build_state_block(time_index=tb.time_index)
+        self.outlet_state = pkg.build_state_block(time_index=tb.time_index)
+        self.inlet_flow = pyo.Reference(self.inlet_state.flow_vol_phase[phase, :])
+        self.outlet_flow = pyo.Reference(self.outlet_state.flow_vol_phase[phase, :])
+        self.register_io_variable(self.inlet_flow, role="input")
+        self.register_io_variable(self.outlet_flow, role="output")
+        self.add_inlet_port(name="inlet", block=self.inlet_state, doc="Inlet stream")
+        self.add_outlet_port(
+            name="outlet", block=self.outlet_state, doc="Outlet stream"
+        )
 
     # -- in-place parameter updates (FlexParameterize 2-way, §5) -----------
 

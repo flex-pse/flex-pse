@@ -27,6 +27,8 @@ from pyomo.common.config import ConfigValue
 from pyomo.environ import NonNegativeReals, PositiveReals, Var, value
 from pyomo.environ import units as pyunits
 
+from flexcore.exceptions import FlexConfigError
+
 
 @declare_process_block_class("SimpleAqueousFlow")
 class SimpleAqueousFlowData(PhysicalParameterBlock):
@@ -84,7 +86,7 @@ class SimpleAqueousFlowData(PhysicalParameterBlock):
 
     def build(self) -> None:
         """Set the state-block class and the single liquid phase/component."""
-        super(SimpleAqueousFlowData, self).build()
+        super().build()
         self._state_block_class = SimpleAqueousStateBlock
 
         self.Liq = LiquidPhase()
@@ -95,7 +97,7 @@ class SimpleAqueousFlowData(PhysicalParameterBlock):
         """Declare supported properties and the five required default units."""
         obj.add_properties(
             {
-                "flow_vol": {"method": None, "units": "m^3/hr"},
+                "flow_vol_phase": {"method": None, "units": "m^3/hr"},
                 "dens_mass": {"method": None, "units": "kg/m^3"},
                 "pressure": {"method": None, "units": "Pa"},
                 "temperature": {"method": None, "units": "K"},
@@ -149,18 +151,45 @@ class _SimpleAqueousStateBlock(StateBlock):
     "SimpleAqueousStateBlock", block_class=_SimpleAqueousStateBlock
 )
 class SimpleAqueousStateBlockData(StateBlockData):
-    """State block carrying volumetric flow, density, and optional extras."""
+    """State block carrying volumetric flow, density, and optional extras.
+
+    State variables are indexed over time directly: the owning unit passes the
+    ``time_index`` Set via ``build_state_block(time_index=...)`` and gets a
+    single scalar state block whose variables span the horizon
+    (``flow_vol_phase[phase, t]``, ``dens_mass[t]``).
+    """
+
+    CONFIG = StateBlockData.CONFIG()
+    CONFIG.declare(
+        "time_index",
+        ConfigValue(
+            default=None,
+            description="Ordered Pyomo time Set the state variables are indexed "
+            "over (the owning unit passes TimeBlock.time_index).",
+        ),
+    )
 
     def build(self) -> None:
-        """Create ``flow_vol``, ``dens_mass``, and any enabled intensive states."""
-        super(SimpleAqueousStateBlockData, self).build()
-        self.flow_vol = Var(
+        """Create time-indexed ``flow_vol_phase``, ``dens_mass``, and extras."""
+        super().build()
+        time = self.config.time_index
+        if time is None:
+            raise FlexConfigError(
+                "SimpleAqueousStateBlock requires a time_index; build it with "
+                "build_state_block(time_index=tb.time_index).",
+                field="time_index",
+                value=None,
+            )
+        self.flow_vol_phase = Var(
+            self.params.phase_list,
+            time,
             initialize=1.0,
             domain=NonNegativeReals,
             units=pyunits.m**3 / pyunits.hr,
-            doc="Volumetric flowrate",
+            doc="Volumetric flowrate by phase and time",
         )
         self.dens_mass = Var(
+            time,
             initialize=value(
                 pyunits.convert(self.params.config.density, pyunits.kg / pyunits.m**3)
             ),
@@ -172,6 +201,7 @@ class SimpleAqueousStateBlockData(StateBlockData):
             self.dens_mass.fix()
         if self.params.config.has_pressure:
             self.pressure = Var(
+                time,
                 initialize=101325.0,
                 domain=PositiveReals,
                 units=pyunits.Pa,
@@ -179,6 +209,7 @@ class SimpleAqueousStateBlockData(StateBlockData):
             )
         if self.params.config.has_temperature:
             self.temperature = Var(
+                time,
                 initialize=298.15,
                 domain=PositiveReals,
                 units=pyunits.K,
@@ -187,7 +218,10 @@ class SimpleAqueousStateBlockData(StateBlockData):
 
     def define_state_vars(self) -> dict:
         """Return the state-variable dict (flow and density plus enabled ones)."""
-        state_vars = {"flow_vol": self.flow_vol, "dens_mass": self.dens_mass}
+        state_vars = {
+            "flow_vol_phase": self.flow_vol_phase,
+            "dens_mass": self.dens_mass,
+        }
         if hasattr(self, "pressure"):
             state_vars["pressure"] = self.pressure
         if hasattr(self, "temperature"):

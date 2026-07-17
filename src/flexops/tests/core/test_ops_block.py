@@ -10,7 +10,6 @@ import pytest
 from idaes.core import declare_process_block_class
 from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.environ import units as pyunits
-from pyomo.network import Port
 from pyomo.util.check_units import assert_units_consistent
 
 from flexcore import nomenclature as nm
@@ -24,49 +23,43 @@ from flexops.core.registration import (
     iter_io_registry,
 )
 from flexops.core.time_block import TimeBlock
+from flexops.properties.simple_aqueous import SimpleAqueousFlow
 
 
 @declare_process_block_class("DummyOps")
 class DummyOpsData(OpsBlockData):
-    """A minimal unit exercising the OpsBlock registration API."""
+    """A minimal unit exercising the OpsBlock registration API.
+
+    Builds its inlet/outlet state blocks and ports from the configured
+    ``property_package`` via :meth:`~OpsBlockData.add_stream_ports`, then keys
+    its electrical energy to the volumetric outlet flow.
+    """
 
     def build(self):
         super().build()
         tb = self._find_time_block()
-        self.flow_in = pyo.Var(
-            tb.time_index,
-            initialize=1.0,
-            units=pyunits.m**3 / pyunits.hr,
-            doc="Inlet volumetric flow",
-        )
-        self.flow_out = pyo.Var(
-            tb.time_index,
-            initialize=1.0,
-            units=pyunits.m**3 / pyunits.hr,
-            doc="Outlet volumetric flow",
-        )
+        self.add_stream_ports()
         self.energy_intensity = pyo.Param(
             initialize=0.5,
             mutable=True,
             units=pyunits.kWh / pyunits.m**3,
-            doc="Electrical energy intensity",
+            doc="Electrical energy per unit outlet flow",
         )
-        self.register_io_variable(self.flow_in, role="input")
-        self.register_io_variable(self.flow_out, role="output")
         self.register_process_parameter(self.energy_intensity, regressable=True)
         power = self.declare_power(nm.PowerKind.ELECTRICAL)
 
-        self.inlet = Port(initialize={"flow_vol": self.flow_in}, doc="Inlet port")
-        self.outlet = Port(initialize={"flow_vol": self.flow_out}, doc="Outlet port")
-
         @self.Constraint(tb.time_index, doc="Mass balance: 10% loss")
         def mass_balance(b, t):
-            return b.flow_out[t] == 0.9 * b.flow_in[t]
+            return (
+                b.outlet_state.flow_vol_phase["Liq", t]
+                == 0.9 * b.inlet_state.flow_vol_phase["Liq", t]
+            )
 
-        @self.Constraint(tb.time_index, doc="Electrical energy relationship")
+        @self.Constraint(tb.time_index, doc="Electrical energy per unit outlet flow")
         def energy_eq(b, t):
             return power[t] == pyunits.convert(
-                b.energy_intensity * b.flow_in[t], pyunits.kW
+                b.energy_intensity * b.outlet_state.flow_vol_phase["Liq", t],
+                pyunits.kW,
             )
 
 
@@ -85,6 +78,7 @@ def _model(n_points: int = 4):
         end_date=f"2025-01-01T0{end_hour}:00",
         time_step=15 * pyunits.min,
     )
+    m.props = SimpleAqueousFlow()
     return m
 
 
@@ -92,7 +86,7 @@ def _model(n_points: int = 4):
 def dummy_model():
     """A ConcreteModel with a 4-point TimeBlock and one DummyOps unit."""
     m = _model(4)
-    m.unit = DummyOps()
+    m.unit = DummyOps(property_package=m.props)
     return m
 
 
@@ -148,7 +142,7 @@ def test_units_consistent(dummy_model):
 def test_dof_zero_when_inputs_fixed(dummy_model):
     """Fixing the input flow at every time point determines the model."""
     for t in dummy_model.time_block.time_index:
-        dummy_model.unit.flow_in[t].fix(2.0)
+        dummy_model.unit.inlet_flow[t].fix(2.0)
     assert degrees_of_freedom(dummy_model) == 0
 
 
@@ -156,22 +150,23 @@ def test_dof_zero_when_inputs_fixed(dummy_model):
 def test_bad_role_raises(dummy_model):
     """An unknown IO role is a config error."""
     with pytest.raises(FlexConfigError):
-        dummy_model.unit.register_io_variable(dummy_model.unit.flow_in, role="both")
+        dummy_model.unit.register_io_variable(dummy_model.unit.inlet_flow, role="both")
 
 
 @pytest.mark.unit
 def test_bad_kind_raises(dummy_model):
     """A power kind that is not a PowerKind member is a config error."""
     with pytest.raises(FlexConfigError):
-        dummy_model.unit.register_power(dummy_model.unit.flow_in, kind="kinetic")
+        dummy_model.unit.register_power(dummy_model.unit.inlet_flow, kind="kinetic")
 
 
 @pytest.mark.unit
 def test_no_time_block_raises():
     """A unit built on a TimeBlock-less model errors clearly."""
     m = pyo.ConcreteModel()
+    m.props = SimpleAqueousFlow()
     with pytest.raises(FlexConfigError):
-        m.unit = DummyOps()
+        m.unit = DummyOps(property_package=m.props)
 
 
 @pytest.mark.unit
@@ -188,10 +183,10 @@ def test_set_external_dispatch_removes_dof(dummy_model):
     tb = dummy_model.time_block
     dof_before = degrees_of_freedom(dummy_model)
     series = {i: 1.5 + i for i in tb.time_index}
-    dummy_model.unit.set_external_dispatch(dummy_model.unit.flow_in, series)
+    dummy_model.unit.set_external_dispatch(dummy_model.unit.inlet_flow, series)
     for t in tb.time_index:
-        assert dummy_model.unit.flow_in[t].fixed is True
-        assert pyo.value(dummy_model.unit.flow_in[t]) == pytest.approx(series[t])
+        assert dummy_model.unit.inlet_flow[t].fixed is True
+        assert pyo.value(dummy_model.unit.inlet_flow[t]) == pytest.approx(series[t])
     assert degrees_of_freedom(dummy_model) == dof_before - tb.n_points
 
 
@@ -200,9 +195,9 @@ def test_set_external_dispatch_by_timestamp(dummy_model):
     """A timestamp-keyed series is aligned via the TimeBlock's index_of."""
     tb = dummy_model.time_block
     series = {tb.timestamp_of(i): float(i) for i in tb.time_index}
-    dummy_model.unit.set_external_dispatch(dummy_model.unit.flow_in, series)
+    dummy_model.unit.set_external_dispatch(dummy_model.unit.inlet_flow, series)
     for t in tb.time_index:
-        assert pyo.value(dummy_model.unit.flow_in[t]) == pytest.approx(float(t))
+        assert pyo.value(dummy_model.unit.inlet_flow[t]) == pytest.approx(float(t))
 
 
 @pytest.mark.unit
@@ -210,7 +205,7 @@ def test_set_external_dispatch_misaligned_raises(dummy_model):
     """A series that does not cover every time point is a config error."""
     short = {0: 1.0, 1: 2.0}
     with pytest.raises(FlexConfigError):
-        dummy_model.unit.set_external_dispatch(dummy_model.unit.flow_in, short)
+        dummy_model.unit.set_external_dispatch(dummy_model.unit.inlet_flow, short)
 
 
 @pytest.mark.unit
@@ -231,14 +226,15 @@ def test_update_parameters_in_place(dummy_model):
     """
     unit = dummy_model.unit
     constraint = unit.energy_eq[0]
-    unit.flow_in[0].fix(2.0)
+    unit.outlet_flow[0].fix(2.0)
     body_before = pyo.value(constraint.body)
 
     unit.update_parameters({"energy_intensity": 1.0})
 
     assert pyo.value(unit.energy_intensity) == pytest.approx(1.0)
     # Same constraint object, new residual: no rebuild happened. The body is
-    # power - intensity*flow, so +0.5 kWh/m^3 at 2 m^3/hr lowers it by 1 kW.
+    # power - intensity*outlet_flow, so +0.5 kWh/m^3 at 2 m^3/hr lowers it by
+    # 1 kW.
     assert unit.energy_eq[0] is constraint
     assert pyo.value(constraint.body) == pytest.approx(body_before - 1.0)
 
@@ -308,7 +304,7 @@ def test_flexops_config_accepts_unit_config():
     """A validated UnitConfig is stored on the config block as-is."""
     m = _model(4)
     cfg = UnitConfig(unit_model_class="DummyOps")
-    m.unit = DummyOps(flexops_config=cfg)
+    m.unit = DummyOps(flexops_config=cfg, property_package=m.props)
     assert m.unit.config.flexops_config is cfg
 
 
@@ -326,7 +322,7 @@ def test_unit_commitment_none_coerces_to_defaults():
     from flexcore.config.schema import UnitCommitmentConfig
 
     m = _model(4)
-    m.unit = DummyOps(unit_commitment=None)
+    m.unit = DummyOps(unit_commitment=None, property_package=m.props)
     assert m.unit.config.unit_commitment == UnitCommitmentConfig()
 
 
@@ -350,7 +346,7 @@ def test_relaxation_invalid_value_raises():
 def test_relaxation_valid_value_stored():
     """A valid relaxation string coerces to the RelaxationPolicy enum."""
     m = _model(4)
-    m.unit = DummyOps(relaxation="relaxed")
+    m.unit = DummyOps(relaxation="relaxed", property_package=m.props)
     assert m.unit.config.relaxation is RelaxationPolicy.RELAXED
 
 
@@ -364,7 +360,7 @@ def test_multiple_time_blocks_raises():
         time_step=15 * pyunits.min,
     )
     with pytest.raises(FlexConfigError, match="found 2"):
-        m.unit = DummyOps()
+        m.unit = DummyOps(property_package=m.props)
 
 
 @pytest.mark.unit
@@ -373,10 +369,12 @@ def test_set_external_dispatch_without_fixing(dummy_model):
     tb = dummy_model.time_block
     dof_before = degrees_of_freedom(dummy_model)
     series = {i: 2.0 for i in tb.time_index}
-    dummy_model.unit.set_external_dispatch(dummy_model.unit.flow_in, series, fix=False)
+    dummy_model.unit.set_external_dispatch(
+        dummy_model.unit.inlet_flow, series, fix=False
+    )
     for t in tb.time_index:
-        assert dummy_model.unit.flow_in[t].fixed is False
-        assert pyo.value(dummy_model.unit.flow_in[t]) == pytest.approx(2.0)
+        assert dummy_model.unit.inlet_flow[t].fixed is False
+        assert pyo.value(dummy_model.unit.inlet_flow[t]) == pytest.approx(2.0)
     assert degrees_of_freedom(dummy_model) == dof_before
 
 
@@ -385,7 +383,7 @@ def test_set_external_dispatch_non_mapping_raises(dummy_model):
     """A series without items() (e.g. a bare list) is a config error."""
     with pytest.raises(FlexConfigError, match="mapping or pandas Series"):
         dummy_model.unit.set_external_dispatch(
-            dummy_model.unit.flow_in, [1.0, 2.0, 3.0, 4.0]
+            dummy_model.unit.inlet_flow, [1.0, 2.0, 3.0, 4.0]
         )
 
 
@@ -393,4 +391,4 @@ def test_set_external_dispatch_non_mapping_raises(dummy_model):
 def test_set_external_dispatch_out_of_range_index_raises(dummy_model):
     """An integer key outside [0, n_points) is a config error."""
     with pytest.raises(FlexConfigError, match="out of range"):
-        dummy_model.unit.set_external_dispatch(dummy_model.unit.flow_in, {99: 1.0})
+        dummy_model.unit.set_external_dispatch(dummy_model.unit.inlet_flow, {99: 1.0})
