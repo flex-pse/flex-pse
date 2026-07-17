@@ -9,6 +9,7 @@ design and operations optimization.
    :caption: Explanation
 
    explanation/time_and_dynamics
+   explanation/model_and_block_structure
    explanation/relaxation_policies
    explanation/config_schema
    explanation/energy_nomenclature
