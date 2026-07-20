@@ -75,10 +75,10 @@ is keyword-only; the API-freeze call it must support is
 
 CONFIG entries (Pyomo `ConfigDict`, each with `description=`):
 - `capacity` — initial capacity value with units (kWh). Required in v0 (implementer's choice: no default).
-- `charge_power_max`, `discharge_power_max` — kW limits (implementer's choice: default `None` = unbounded unless status is enabled, which requires both).
+- `power_charge_max`, `power_discharge_max` — kW limits (implementer's choice: default `None` = unbounded unless status is enabled, which requires both).
 - `eta_charge`, `eta_discharge` — efficiencies in (0, 1], default 1.0 (implementer's choice).
-- `soc_min_frac`, `soc_max_frac` — SOC bounds as fraction of capacity, defaults 0.0 / 1.0.
-- `initial_soc_frac` — initial SOC as fraction of capacity, default 0.5 (implementer's choice).
+- `soc_min`, `soc_max` — SOC bounds as fraction of capacity, defaults 0.0 / 1.0.
+- `initial_soc` — initial SOC as fraction of capacity, default 0.5 (implementer's choice).
 - Inherited flags from OpsBlock (§3.2): `relaxation`, the `unit_commitment`
   sub-config (§3.5), `allow_bypass`, and the optional `external_dispatch` source.
 
@@ -87,37 +87,34 @@ Components (all Vars/Constraints carry `doc=` — the docs generator renders the
   fixed** at construction. This is the sizing Var per R4: register it with the
   costing package so `costing.set_design_mode()` unfixes it and
   `set_operations_mode()` re-fixes it. Do NOT make it a Param.
-- `soc[t]` — Var, kWh, non-negative, `doc="State of charge"`.
-- `charge_power[t]`, `discharge_power[t]` — Vars, kW, non-negative, upper-bounded
+- `soc[t]` — Var, fraction, non-negative, `doc="State of charge"`.
+- `charge[t]` - Var, kWh, non-negative, `doc="Amount of charge"`.
+- `power_charge[t]`, `power_discharge[t]` — Vars, kW, non-negative, upper-bounded
   by the config maxima when given.
 - `power_electrical[t]` — provided by the OpsBlock base (created and registered
   via `declare_power(PowerKind.ELECTRICAL)`, M03). Domain must be **Reals**, not
   NonNegativeReals: discharge exports power.
-- `soc_init` — **mutable Param**, kWh, initialized to
-  `initial_soc_frac * capacity_value`, registered with
+- `charge_init` — **mutable Param**, kWh, initialized to
+  `initial_soc*capacity`, registered with
   `time_block.register_initial_state(soc_init)` so the M12 rolling-horizon driver
   can mutate it between windows.
 
 Constraints (`N = len(time_block.time_index)`, `dt = time_block.dt`):
-- `soc_balance[t]` for `t = 0 .. N-2`:
-  `soc[t+1] == soc[t] + dt * (eta_charge * charge_power[t] - discharge_power[t] / eta_discharge)`
-  (copy this equation exactly; note kW·time → kWh, so units must work out — see Pitfall 2).
+- `charge_balance[t]` for `t = 0 .. N-2`:
+  `charge[t] == charge[t-1] + dt * (eta_charge * power_charge[t] - power_discharge[t] / eta_discharge)`
+  (copy this equation exactly; note kW·time → kWh, so units must work out — see Pitfall 2). Apply 
+  pyunits.convert to the holdup term to force unit consistency. 
+- `charge[t] == soc[t] * capacity`
 - `soc_initial`: `soc[0] == soc_init`.
 - `soc_lower[t]`: `soc[t] >= soc_min_frac * capacity` and
   `soc_upper[t]`: `soc[t] <= soc_max_frac * capacity`. These must be
   **Constraints, not Var bounds**, because `capacity` is a Var (Pitfall 1).
-- `net_electrical[t]`: `power_electrical[t] == charge_power[t] - discharge_power[t]`.
+- `net_electrical[t]`: `power_electrical[t] == power_charge[t] - power_discharge[t]`.
   Discharge makes the unit's draw negative (an export). v0 assumes behind-the-meter
   operation; any "facility net draw ≥ 0" constraint belongs at the plant/costing
   level, not here **(implementer's choice — record this note in the class docstring)**.
-- Unit commitment enabled (via the `unit_commitment` config, §3.5): attach a
-  mutually-exclusive charge/discharge binary through the logic layer — call
-  `add_status(self, self.charge_power, 0, charge_power_max)` to get `status[t]`,
-  then add `discharge_power[t] <= discharge_power_max * (1 - status[t])`
-  (implementer's choice on the exact wiring; requirement: one Binary per t, charging
-  and discharging cannot both be positive, and `relax(unit)` covers it). The
-  battery does **not** enable startup/shutdown/dwell/delays by default; those are
-  opt-in per the config and are exercised by the logic tests, not the battery.
+- Similar to storage tank, a battery has no on/off status, so it forces 
+``unit_commitment.status`` to ``False`` regardless of what a caller passes. 
 
 ### External dispatch (DERMS) — first-classed on `BatteryModel` (§3.2/§3.6, R9)
 The base `set_external_dispatch(var, series, *, fix=True)` (from M03/§3.2) fixes a
@@ -127,7 +124,7 @@ This is the mechanism for third-party-controlled assets (a battery under a
 DERMS/aggregator — Project 1). For `BatteryModel`:
 - A convenience wrapper (implementer's choice of name, e.g.
   `set_dispatch(series)`) that calls `set_external_dispatch` on the battery's
-  net-power actuator (`charge_power`/`discharge_power`, or an equivalent net-power
+  net-power actuator (`power_charge`/`power_discharge`, or an equivalent net-power
   Var) so `series[t]` fixes the dispatch at every `t`. `series` is a mapping or
   sequence aligned to `time_block.time_index` (implementer's choice; document it).
 - An `external_dispatch` config block (§3.2) may declare the variable and data
@@ -138,7 +135,7 @@ DERMS/aggregator — Project 1). For `BatteryModel`:
   and FlexParameterize must respect fixed dispatch (they never unfix it).
 
 Registration: `register_process_parameter(capacity)` (regressable=False —
-implementer's choice), `register_io_variable` for `charge_power`/`discharge_power`
+implementer's choice), `register_io_variable` for `power_charge`/`power_discharge`
 as outputs is optional in v0 (implementer's choice; document what you pick). No
 inlet/outlet material ports — the battery is an energy-only unit (no property
 package needed; keep the constructor tolerant of `property_package` being absent).
@@ -266,7 +263,7 @@ IO-topology zoo (`Separator(SIDOBlock)`, `ElectrolysisSeparator`, etc. —
 architecture §3.4, R6). Do **not** build any electrolyzer/separator unit here.
 
 ## Pitfalls
-1. **SOC bounds as Var bounds.** `soc[t].setub(frac * capacity)` fails or silently
+1. **SOC bounds as Var bounds.** `soc[t].setub(frac)` fails or silently
    snapshots the value because `capacity` is a Var. Write inequality Constraints.
 2. **Units in the SOC equation.** `dt` carries `pyunits` (e.g. minutes); kW·min is
    not kWh. Let Pyomo units handle it and prove it with `assert_units_consistent`
@@ -297,7 +294,7 @@ All in colocated test packages; every test carries exactly one tier marker.
 - `TestBatteryModel(UnitModelTestHarness)` — `configure()` builds a 4-step
   TimeBlock + battery; `expected_dof` / `expected_solution` per the harness
   contract (build/units/registration/DoF stages are `unit`; solve is `component`).
-- `test_soc_constraint_bodies` (`unit`) — fix `charge_power`/`discharge_power`/`soc`
+- `test_soc_constraint_bodies` (`unit`) — fix `power_charge`/`power_discharge`/`soc`
   to hand-picked values over 4 steps; evaluate each `soc_balance[t]` body with
   `pyo.value()` and compare to a hand computation (`pytest.approx(..., rel=1e-6)`).
 - `test_capacity_fix_unfix` (`unit`) — after construction `capacity.fixed` is True
