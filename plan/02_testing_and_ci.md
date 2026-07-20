@@ -95,7 +95,7 @@ class UnitModelTestHarness:
 
     expected_dof: int = 0
     expected_solution: dict[str, float] = {}   # component name -> value
-    solver_tolerance: float = 1e-6
+    solution_rtol: float = 1e-6
 
     def configure(self):
         """Build and return (model, unit). Override this."""
@@ -108,7 +108,7 @@ class UnitModelTestHarness:
     # test_energy_naming     — power_electrical/power_thermal present iff declared
     # test_dof               — degrees of freedom == expected_dof after fixing declared inputs
     # test_solve             — (component tier) get_solver() solve is optimal
-    # test_solution          — solved values match expected_solution within tolerance
+    # test_solution          — solved values match expected_solution within solution_rtol
 ```
 
 A concrete unit's test file is ~30 lines: `configure()` plus the two expected
