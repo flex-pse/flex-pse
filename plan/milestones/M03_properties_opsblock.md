@@ -2,6 +2,12 @@
 
 **Effort:** 2–3 days · **Depends on:** M02 · **Parallelizable:** no
 
+> **Retroactive edit (2026-07-20, with human approval):** references to a
+> `flexcore.compat.idaes` module below were corrected to the direct `idaes.*` /
+> `pyomo.*` import paths. Decision R12 removed the compat layer, and the shipped
+> M03 code (merged in PR #10) always imported directly — this doc was stale
+> prose, not a description of the code. No code changed.
+
 ## Goal
 
 Build the base class of every flex-pse unit model (`OpsBlockData` with the
@@ -162,7 +168,7 @@ Plain dataclasses; `var`/`param` fields hold live Pyomo references typed `Any`:
 ### flexops/core/ops_block.py
 
 ```python
-from flexcore.compat.idaes import declare_process_block_class, UnitModelBlockData
+from idaes.core import declare_process_block_class, UnitModelBlockData
 
 @declare_process_block_class("OpsBlock")
 class OpsBlockData(UnitModelBlockData):
@@ -285,7 +291,7 @@ stays a stub here so the signature is pinned for the milestones that reference i
 ### flexops/properties/simple_aqueous.py (01_architecture §3.7)
 
 Minimal `PhysicalParameterBlock`/`StateBlock` pair, structurally modeled on
-WaterTAP `prop_ZO`; all IDAES bases via `flexcore.compat.idaes`.
+WaterTAP `prop_ZO`; all IDAES bases imported directly from `idaes.core` (R12).
 
 - `@declare_process_block_class("SimpleAqueousFlow")` →
   `SimpleAqueousFlowData(PhysicalParameterBlock)`. CONFIG: `fixed_density`
@@ -359,9 +365,11 @@ module: registers `flow_in[t]`/`flow_out[t]` (m³/hr; input/output), a mutable
   (`kind == "electrical"`, `name == POWER_ELECTRICAL`).
 - `test_iter_io_registry_finds_dummy` — yields exactly one `(block, registry)`
   pair; the block is the DummyOps instance.
-- `test_units_consistent` — `assert_units_consistent(unit)` (via compat).
+- `test_units_consistent` — `assert_units_consistent(unit)` (import directly:
+  `from pyomo.util.check_units import assert_units_consistent`).
 - `test_dof_zero_when_inputs_fixed` — fix `flow_in[t]` ∀t;
-  `degrees_of_freedom(m) == 0` (via compat).
+  `degrees_of_freedom(m) == 0` (import directly:
+  `from idaes.core.util.model_statistics import degrees_of_freedom`).
 - `test_bad_role_raises` / `test_bad_kind_raises` — `FlexConfigError`.
 - `test_no_time_block_raises` — DummyOps on a TimeBlock-less model → `FlexConfigError`.
 - `test_from_config_not_implemented` — message mentions M09.
