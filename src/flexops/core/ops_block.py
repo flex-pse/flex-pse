@@ -455,6 +455,8 @@ class OpsBlockData(UnitModelBlockData):
             ``inlet_var.index_set()`` (e.g. ``(t, phase)``), with no leaked
             reference dimension.
         """
+        if not self.config.allow_bypass:
+            return
         inlet_state = inlet.parent_block().find_component(f"{inlet.local_name}_state")
         outlet_state = outlet.parent_block().find_component(
             f"{outlet.local_name}_state"
@@ -480,8 +482,6 @@ class OpsBlockData(UnitModelBlockData):
                 field="exclude_vars",
                 value=sorted(unknown),
             )
-        if not self.config.allow_bypass:
-            return
         for name, inlet_var in inlet_vars.items():
             if name in exclude_vars:
                 continue
