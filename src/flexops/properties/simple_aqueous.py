@@ -92,6 +92,19 @@ class SimpleAqueousFlowData(PhysicalParameterBlock):
         self.Liq = LiquidPhase()
         self.H2O = Component()
 
+    def get_flow_basis_var_name(self) -> str:
+        """Return the name of this package's extensive flow state variable.
+
+        Lets callers (e.g. ``StorageTank``'s bypass wiring) exclude "the
+        flow" from a generic pass-through without hardcoding a variable name
+        that varies by property package (a future mass/TDS package would
+        return ``"flow_mass_phase_comp"`` instead).
+
+        Returns:
+            The state-variable name carrying extensive flow, ``"flow_vol_phase"``.
+        """
+        return "flow_vol_phase"
+
     @classmethod
     def define_metadata(cls, obj) -> None:
         """Declare supported properties and the five required default units."""

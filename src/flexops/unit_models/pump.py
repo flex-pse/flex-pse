@@ -3,6 +3,12 @@
 Inherits its inlet/outlet ports and pass-through mass balance from
 :class:`~flexops.unit_models.base.siso.SISOBlockData`; adds only the
 flow-to-power relationship.
+
+.. todo::
+    Post-v0: add a detailed pump power law (e.g.
+    ``power ~ density * flowrate * head / efficiency``) as an alternative to
+    the constant energy-intensity relationship below. Not implemented here --
+    this is a placeholder for future work, not a spec for this milestone.
 """
 
 import pyomo.environ as pyo

@@ -115,6 +115,12 @@ def test_define_display_vars(model):
 
 
 @pytest.mark.unit
+def test_get_flow_basis_var_name(model):
+    """get_flow_basis_var_name names the extensive flow state variable."""
+    assert model.props.get_flow_basis_var_name() == "flow_vol_phase"
+
+
+@pytest.mark.unit
 def test_units_consistent(model):
     """The state block is dimensionally consistent."""
     model.state = model.props.build_state_block(time_index=model.time)

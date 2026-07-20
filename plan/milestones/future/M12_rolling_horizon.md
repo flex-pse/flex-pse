@@ -90,7 +90,7 @@ class StateCarryOver:
 - Carry index (implementer's choice, document it): read the Var at local index
   `window.implementation_slice.stop` — the first lookahead point, which *is* the
   state at the start of the next window under the difference-equation convention
-  `V[t+1] = V[t] + dt*(...)`. If that index is not in the Var's index set (tail
+  `volume[t+1] = volume[t] + dt*(...)`. If that index is not in the Var's index set (tail
   window), read `implementation_slice.stop - 1`. No carry-over is applied after
   the final window.
 

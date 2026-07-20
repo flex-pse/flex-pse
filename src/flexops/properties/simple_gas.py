@@ -55,6 +55,14 @@ class SimpleGasFlowData(PhysicalParameterBlock):
         self.Vap = VaporPhase()
         self.gas = Component()
 
+    def get_flow_basis_var_name(self) -> str:
+        """Return the name of this package's extensive flow state variable.
+
+        Returns:
+            The state-variable name carrying extensive flow, ``"flow_vol_phase"``.
+        """
+        return "flow_vol_phase"
+
     @classmethod
     def define_metadata(cls, obj) -> None:
         """Declare supported properties and the five required default units."""

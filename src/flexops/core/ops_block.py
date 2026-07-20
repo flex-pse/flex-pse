@@ -28,6 +28,7 @@ import pyomo.environ as pyo
 from idaes.core import UnitModelBlockData, declare_process_block_class
 from pyomo.common.config import ConfigValue
 from pyomo.environ import units as pyunits
+from pyomo.network import Port
 
 from flexcore import nomenclature as nm
 from flexcore.config.schema import (
@@ -172,8 +173,11 @@ class OpsBlockData(UnitModelBlockData):
         ConfigValue(
             default=False,
             domain=bool,
-            description="Whether a bypass stream is allowed (config slot only in "
-            "M03; the bypass constraints are built in M08).",
+            description="Whether add_bypass_constraints() builds inlet-to-outlet "
+            "pass-through equalities for this unit's non-excluded state "
+            "variables (M04). SISOBlock (and its subclasses Pump/StorageTank) "
+            "override the base default to True so the flow-topology units are "
+            "well-posed out of the box; the base OpsBlock default stays False.",
         ),
     )
 
@@ -400,6 +404,103 @@ class OpsBlockData(UnitModelBlockData):
             self.add_inlet_port(name=port_name, block=state, doc=f"{port_name} stream")
         else:
             self.add_outlet_port(name=port_name, block=state, doc=f"{port_name} stream")
+
+    def add_bypass_constraints(
+        self,
+        inlet: Port,
+        outlet: Port,
+        *,
+        exclude_vars: Sequence[str] = (),
+    ) -> None:
+        """Pass non-excluded, non-fixed inlet state variables straight to the outlet.
+
+        For each state-variable name exposed by ``inlet`` and not in
+        ``exclude_vars``, adds an equality Constraint ``outlet_var[idx] ==
+        inlet_var[idx]`` over every index the variable carries -- unless every
+        entry of that variable is already ``fixed`` (e.g. ``dens_mass`` under
+        ``fixed_density=True``), in which case building a redundant constraint
+        is skipped. This is the generic "everything not otherwise governed
+        flows straight through" wiring: ``SISOBlock`` calls it with no
+        exclusions (the flow pass-through is itself a bypass equality);
+        ``StorageTank`` excludes the flow-basis variable because its holdup
+        equation governs flow instead.
+
+        Gated by ``self.config.allow_bypass``: when it is ``False`` this
+        method builds **no** constraints (a developer wires the missing
+        relationship by hand, and the model's degrees of freedom reflect the
+        unlinked state variables); when ``True`` it builds them.
+
+        Args:
+            inlet: The unit's inlet Port carrying the source state variables.
+            outlet: The unit's outlet Port receiving the passed-through values.
+            exclude_vars: State-variable names to leave unlinked (e.g. a
+                topology's flow-basis variable when the unit governs flow
+                itself).
+
+        Raises:
+            FlexConfigError: If a name in ``exclude_vars`` is not a state
+                variable exposed by ``inlet``, or ``inlet``/``outlet`` were
+                not built by :meth:`add_stream_ports` (no sibling
+                ``"{port_name}_state"`` block).
+
+        Note:
+            Ports built via ``add_inlet_port``/``add_outlet_port`` expose
+            their members as auto-generated ``Reference`` objects
+            (``port.vars[name]``), which carry an extra leading
+            ``UnindexedComponent_set`` dimension and are awkward to index
+            directly. This method instead resolves each port's sibling
+            ``"{port_name}_state"`` block (the convention
+            :meth:`add_stream_ports` establishes) and builds constraints
+            directly against its state variables, so indices stay exactly
+            ``inlet_var.index_set()`` (e.g. ``(t, phase)``), with no leaked
+            reference dimension.
+        """
+        inlet_state = inlet.parent_block().find_component(f"{inlet.local_name}_state")
+        outlet_state = outlet.parent_block().find_component(
+            f"{outlet.local_name}_state"
+        )
+        if inlet_state is None or outlet_state is None:
+            raise FlexConfigError(
+                "add_bypass_constraints requires ports built by "
+                "add_stream_ports (each needs a sibling "
+                f"'{{port_name}}_state' block); got inlet={inlet.local_name!r}, "
+                f"outlet={outlet.local_name!r}.",
+                field="inlet/outlet",
+                value=(inlet.local_name, outlet.local_name),
+            )
+        inlet_vars = inlet_state.define_state_vars()
+        outlet_vars = outlet_state.define_state_vars()
+
+        known = set(inlet_vars)
+        unknown = set(exclude_vars) - known
+        if unknown:
+            raise FlexConfigError(
+                f"add_bypass_constraints: exclude_vars {sorted(unknown)} are "
+                f"not state variables on this port; known: {sorted(known)}.",
+                field="exclude_vars",
+                value=sorted(unknown),
+            )
+        if not self.config.allow_bypass:
+            return
+        for name, inlet_var in inlet_vars.items():
+            if name in exclude_vars:
+                continue
+            if all(inlet_var[idx].fixed for idx in inlet_var):
+                continue
+            outlet_var = outlet_vars[name]
+
+            def _bypass_rule(_b, *idx_parts, _in=inlet_var, _out=outlet_var):
+                idx = idx_parts[0] if len(idx_parts) == 1 else idx_parts
+                return _out[idx] == _in[idx]
+
+            self.add_component(
+                f"bypass_{name}_eq",
+                pyo.Constraint(
+                    inlet_var.index_set(),
+                    rule=_bypass_rule,
+                    doc=f"Bypass pass-through: outlet {name} equals inlet {name}.",
+                ),
+            )
 
     # -- in-place parameter updates (FlexParameterize 2-way, §5) -----------
 

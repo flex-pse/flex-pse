@@ -9,6 +9,14 @@ flow<->energy relationship (or, when their flows genuinely differ, replace
 the mass balance -- see :meth:`SISOBlockData._build_mass_balance`). Registers
 no power itself; a bare ``SISOBlock`` declares neither ``power_electrical``
 nor ``power_thermal``.
+
+The pass-through balance is built via the inherited
+:meth:`~flexops.core.ops_block.OpsBlockData.add_bypass_constraints`: every
+state variable the inlet/outlet ports expose (flow included) flows straight
+through. ``SISOBlock`` overrides the base ``allow_bypass`` default to
+``True`` so the topology is well-posed (DoF == 0) out of the box; pass
+``allow_bypass=False`` to leave the state variables unlinked and wire a
+custom relationship instead.
 """
 
 from idaes.core import declare_process_block_class
@@ -28,6 +36,9 @@ class SISOBlockData(OpsBlockData):
         >>> m.unit = SISOBlock(property_package=m.properties)  # doctest: +SKIP
     """
 
+    CONFIG = OpsBlockData.CONFIG()
+    CONFIG.get("allow_bypass").set_default_value(True)
+
     def build(self) -> None:
         """Build the inlet/outlet ports and the per-stream mass balance."""
         super().build()
@@ -35,21 +46,13 @@ class SISOBlockData(OpsBlockData):
         self._build_mass_balance()
 
     def _build_mass_balance(self) -> None:
-        """Per-stream pass-through balance: outlet flow equals inlet flow.
+        """Per-stream pass-through balance: every inlet state var equals outlet.
 
-        Subclasses whose flows genuinely differ (e.g. ``StorageTank``'s
+        Delegates to :meth:`~flexops.core.ops_block.OpsBlockData.add_bypass_constraints`
+        with no exclusions -- flow's pass-through *is* a bypass equality here.
+        Subclasses whose flow genuinely differs (e.g. ``StorageTank``'s
         holdup) override this instead of building a second, conflicting
         balance alongside the inherited ports (never re-declare the ports or
         the balance in a subclass).
         """
-        tb = self._find_time_block()
-
-        @self.Constraint(
-            tb.time_index,
-            doc="Per-stream mass balance: outlet flow equals inlet flow.",
-        )
-        def mass_balance(b, t):
-            return (
-                b.outlet_state.flow_vol_phase[t, "Liq"]
-                == b.inlet_state.flow_vol_phase[t, "Liq"]
-            )
+        self.add_bypass_constraints(self.inlet, self.outlet, exclude_vars=())

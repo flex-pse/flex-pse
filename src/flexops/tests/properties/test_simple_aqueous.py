@@ -174,6 +174,12 @@ def test_free_density():
 
 
 @pytest.mark.unit
+def test_get_flow_basis_var_name(model):
+    """get_flow_basis_var_name names the extensive flow state variable."""
+    assert model.props.get_flow_basis_var_name() == "flow_vol_phase"
+
+
+@pytest.mark.unit
 def test_optional_pressure_temperature():
     """Pressure/temperature are opt-in intensive state vars with correct units."""
     m = pyo.ConcreteModel()

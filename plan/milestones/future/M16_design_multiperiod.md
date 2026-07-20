@@ -211,6 +211,14 @@ All in `src/flexops/tests/design/`. Exactly one tier marker each.
   aggregates the two periods' EECO post-hoc costs and does **not** return the raw
   solver objective by default. Keep it small (≤ 1-day periods at coarse
   resolution) to stay in the component budget.
+  **Note (M04 tank ripple):** `set_design_mode()` unfixes *every* registered
+  sizing Var, so if this NetworkBlock's tank is also unfixed, its bilinear
+  `level_definition` (`volume[t] == level[t] * capacity`, M04) makes the model
+  **NLP**, not LP — even though only `battery.capacity` is the equality-linked
+  var. If the tank is present here, either exclude its `capacity` from
+  design-mode unfixing (keep it fixed at `max_volume` for this test) or adjust
+  the solver marker to `needs_ipopt` / a relax→NLP `SolveSequence` (R5) instead
+  of `needs_highs`.
 
 ## Documentation tasks
 

@@ -156,6 +156,13 @@ FlexCosting keeps its own registries, populated as units are constructed:
   model; merging multiple representative months and equality-linking sizing vars
   across them is the **M16 design wrapper** (`flexops.design`, architecture §3.6),
   not this mode. Do not build multi-period merging in M07.
+- **Tank design mode is NLP, not LP (M04).** `StorageTank.capacity` is a sizing
+  Var, and `set_design_mode()` unfixes it; but the tank's `level_definition`
+  constraint (`volume[t] == level[t] * capacity`) is then a Var×Var product —
+  a deliberate M04 tradeoff. A model containing a tank in design mode therefore
+  classifies **NLP**, not LP, and must be solved with IPOPT or an explicit
+  `flexschedule.SolveSequence` (R5), not HiGHS. Operations mode (the default,
+  `capacity` fixed) stays LP.
 
 ### 6. `report_cost(model) -> float` — the REPORTED electricity cost (R4/R9)
 
@@ -203,10 +210,13 @@ bounded [0, 300] m³/hr) → Arc → StorageTank (`max_volume=1000`, `initial_vo
 fixed at 100 m³/hr), built with `costing_package=m.costing`;
 `m.costing.cost_process()`; objective =
 `pyo.Objective(expr=m.costing.aggregate_operating_cost)`; add a test-local
-terminal constraint `V[23] >= 200` (else the LP drains the tank). Optimal
+terminal constraint `volume[23] >= 200` (else the LP drains the tank). Optimal
 behavior: zero pumping during the five peak hours (tank capacity comfortably
 covers the 500 m³ peak demand), with the anytime demand charge flattening the
-off-peak profile.
+off-peak profile. This worked example stays in **operations mode** (`capacity`
+fixed), so the model classifies LP despite the tank's bilinear
+`level_definition` (M04) — that constraint only becomes nonlinear when
+`capacity` is unfixed in design mode (see `set_design_mode()` below).
 
 ## Pitfalls
 
