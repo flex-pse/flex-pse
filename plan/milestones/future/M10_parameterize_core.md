@@ -17,7 +17,7 @@ FlexOps model. The two directions must agree:
   **mutates the model**: it fixes regressed parameters in place and, where the
   fit warrants a richer relationship than the unit's default constant intensity,
   **swaps the unit's energy-relationship Constraint in place** — deactivate the
-  default `electrical_work_relation` (M09) and attach a new equality Constraint
+  default `power_electrical_relation` (M09) and attach a new equality Constraint
   built from the fitted `SurrogateSpec`, on the same unit object, same ports and
   arcs (R11; no block replacement, nothing to reconnect).
 
@@ -159,7 +159,7 @@ config file is written. Per unit:
   fixed data-derived constants).
 - **(b) Swap the energy-relationship constraint in place.** Where the fit
   warrants a richer relationship than the unit's default constant intensity,
-  deactivate the unit's `electrical_work_relation` Constraint (M09's documented
+  deactivate the unit's `power_electrical_relation` Constraint (M09's documented
   swap contract, R11) and attach a new equality Constraint built from the fitted
   `SurrogateSpec` (`output[t] == intercept + sum(coef_i * input_i[t])`), reusing
   the unit's existing registered IO Vars — same unit object, same ports/arcs, no
@@ -187,7 +187,7 @@ config file is written. Per unit:
 4. `TagMap` maps them back → `check_sufficiency(...)` passes →
    `ConstantIntensityRegressor.fit` → `emit_model_config` →
    `dump_model_config` → `load_model_config` →
-   rebuild via `ConstantEnergyIntensityModel.from_config`.
+   rebuild via `ConstantEnergyIntensityModel.build_from_config`.
 5. Assert the rebuilt model's intensity coefficient equals the known truth to
    `pytest.approx(rel=1e-6)`.
 
@@ -199,7 +199,7 @@ required, well under 30 s.
   and assert (a) the regressed parameter is now **fixed** on the live model at the
   known truth (rel=1e-6) and its **DOF dropped**; (b) for a unit whose fit
   warranted a richer relationship, `apply_to_model` **deactivated the default
-  `electrical_work_relation` Constraint and attached the new one** built from the
+  `power_electrical_relation` Constraint and attached the new one** built from the
   fitted `SurrogateSpec` on the same unit object (assert the old Constraint is
   inactive, the new one is active, and the unit's ports/arcs are unchanged).
 - The **two-directions-agree invariant**: the in-place `apply_to_model` result and
@@ -228,7 +228,7 @@ required, well under 30 s.
    not an index; v0 requires a `DatetimeIndex` and the sufficiency report must say
    exactly that when it is missing, not crash in pandas internals.
 8. **Rebuilding ports/arcs during the swap.** The constraint swap touches only
-   the named `electrical_work_relation` Constraint and the unit's existing
+   the named `power_electrical_relation` Constraint and the unit's existing
    registered IO Vars (architecture §5, R11) — `apply.py` must not delete/rebuild
    the unit block or its ports. Leaving the old Constraint active alongside the
    new one (double-counting the energy relation) is the classic bug — the apply
@@ -276,7 +276,7 @@ required, well under 30 s.
   Pump model fixes the regressed parameter at the known truth (rel=1e-6); the
   model's degrees of freedom drop by the number of fixed parameters.
 - `test_apply_swaps_energy_relation_in_place` (`component`) — a unit whose fit
-  warrants a richer relationship has its `electrical_work_relation` Constraint
+  warrants a richer relationship has its `power_electrical_relation` Constraint
   deactivated and a new equality Constraint attached from the fitted
   `SurrogateSpec`, on the same unit object; the unit's ports/arcs are unchanged.
 - `test_apply_insufficient_data_raises` (`unit`) — insufficient data →
@@ -314,7 +314,7 @@ required, well under 30 s.
 - [ ] `emit_model_config` emits a `ModelConfig` that `load_model_config` accepts,
       with provenance (metrics, data window, package versions).
 - [ ] `apply_to_model` mutates a live model: fixes regressed parameters in place
-      (DOF drops) and, where warranted, swaps the unit's `electrical_work_relation`
+      (DOF drops) and, where warranted, swaps the unit's `power_electrical_relation`
       Constraint in place for one built from the fitted `SurrogateSpec` (same
       unit, same ports/arcs); raises `FlexDataError` on insufficient data.
 - [ ] apply and emit share one fit / one `SurrogateSpec` construction (no forked

@@ -195,7 +195,7 @@ def get_regressor(name: str) -> type: ...
 - `test_linear_fit_emit_rebuild_predictions` (`component`, skipif sklearn
   absent) — end-to-end: synthetic linear data (fixed seed) → `LinearRegressor.fit`
   → `emit_model_config` → `dump_model_config`/`load_model_config` → rebuild via
-  `ConstantEnergyIntensityModel.from_config` on a small TimeBlock (the `linear`
+  `ConstantEnergyIntensityModel.build_from_config` on a small TimeBlock (the `linear`
   `SurrogateSpec` triggers the in-place constraint swap at construction time,
   M09) → fix inputs at **5 probe points**, evaluate the resulting output-constraint
   bodies, and assert the rebuilt predictions match `regressor` predictions at

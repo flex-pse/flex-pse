@@ -20,7 +20,7 @@ minimum-hold snapping) while provably preserving energy and volume totals.
 - `plan/01_architecture.md` §7 (decision **R9**)
 - `plan/01_architecture.md` §3.2 (IO registration: `register_io_variable`, `IORegistry`, `iter_io_registry(model)`)
 - `plan/01_architecture.md` §3.3 (nested PlantBlocks — set-point `plant` paths must handle nesting)
-- `plan/01_architecture.md` §4 (energy nomenclature — `electrical_work[t]` is kW; kWh needs `dt`)
+- `plan/01_architecture.md` §4 (energy nomenclature — `power_electrical[t]` is kW; kWh needs `dt`)
 - `plan/02_testing_and_ci.md` §5 ("Fixtures for solved models: setpoints/smoothing tests operate on stored solved-model value dictionaries, not fresh solves — keeps them unit tier")
 - `plan/00_conventions.md` §2 (keyword-only args), §3 (exceptions: `FlexDataError`)
 
@@ -49,9 +49,9 @@ def extract_setpoints(model_or_result, *, registry=None) -> pd.DataFrame:
     | timestamp | datetime64[ns] | wall-clock time of the step (TimeBlock mapping) |
     | plant     | str            | dotted PlantBlock path, e.g. "campus.svcw"      |
     | unit      | str            | unit-model local name, e.g. "tank"              |
-    | variable  | str            | variable local name, e.g. "flow_vol"            |
+    | variable  | str            | variable local name, e.g. "flow_vol_phase"       |
     | value     | float64        | solved value at that timestep                   |
-    | units     | str            | pyunits string, e.g. "kW", "m**3/s"             |
+    | units     | str            | pyunits string, e.g. "kW", "m**3/hr"           |
     """
 ```
 

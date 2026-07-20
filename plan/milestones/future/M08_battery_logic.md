@@ -67,8 +67,9 @@ identical parallel trains — no solver required for the logic proofs.
 ## Specification
 
 ### BatteryModel (`src/flexops/unit_models/battery.py`)
-An OpsBlock subclass declared with `declare_process_block_class` (via
-`flexcore.compat.idaes`), exactly like `Pump`/`StorageTank` from M04. Constructor
+An OpsBlock subclass declared with `declare_process_block_class` (imported
+directly from `idaes.core` — R12, no compat layer), exactly like
+`Pump`/`StorageTank` from M04. Constructor
 is keyword-only; the API-freeze call it must support is
 `fo.BatteryModel(capacity=1 * pyunits.kWh, costing_package=m.costing)`.
 
@@ -89,15 +90,15 @@ Components (all Vars/Constraints carry `doc=` — the docs generator renders the
 - `soc[t]` — Var, kWh, non-negative, `doc="State of charge"`.
 - `charge_power[t]`, `discharge_power[t]` — Vars, kW, non-negative, upper-bounded
   by the config maxima when given.
-- `electrical_work[t]` — provided by the OpsBlock base (declared electrical via
-  `register_energy(..., kind="electrical")`). Domain must be **Reals**, not
+- `power_electrical[t]` — provided by the OpsBlock base (created and registered
+  via `declare_power(PowerKind.ELECTRICAL)`, M03). Domain must be **Reals**, not
   NonNegativeReals: discharge exports power.
 - `soc_init` — **mutable Param**, kWh, initialized to
   `initial_soc_frac * capacity_value`, registered with
   `time_block.register_initial_state(soc_init)` so the M12 rolling-horizon driver
   can mutate it between windows.
 
-Constraints (`N = len(time_block.time_points)`, `dt = time_block.dt`):
+Constraints (`N = len(time_block.time_index)`, `dt = time_block.dt`):
 - `soc_balance[t]` for `t = 0 .. N-2`:
   `soc[t+1] == soc[t] + dt * (eta_charge * charge_power[t] - discharge_power[t] / eta_discharge)`
   (copy this equation exactly; note kW·time → kWh, so units must work out — see Pitfall 2).
@@ -105,7 +106,7 @@ Constraints (`N = len(time_block.time_points)`, `dt = time_block.dt`):
 - `soc_lower[t]`: `soc[t] >= soc_min_frac * capacity` and
   `soc_upper[t]`: `soc[t] <= soc_max_frac * capacity`. These must be
   **Constraints, not Var bounds**, because `capacity` is a Var (Pitfall 1).
-- `net_electrical[t]`: `electrical_work[t] == charge_power[t] - discharge_power[t]`.
+- `net_electrical[t]`: `power_electrical[t] == charge_power[t] - discharge_power[t]`.
   Discharge makes the unit's draw negative (an export). v0 assumes behind-the-meter
   operation; any "facility net draw ≥ 0" constraint belongs at the plant/costing
   level, not here **(implementer's choice — record this note in the class docstring)**.
@@ -128,7 +129,7 @@ DERMS/aggregator — Project 1). For `BatteryModel`:
   `set_dispatch(series)`) that calls `set_external_dispatch` on the battery's
   net-power actuator (`charge_power`/`discharge_power`, or an equivalent net-power
   Var) so `series[t]` fixes the dispatch at every `t`. `series` is a mapping or
-  sequence aligned to `time_block.time_points` (implementer's choice; document it).
+  sequence aligned to `time_block.time_index` (implementer's choice; document it).
 - An `external_dispatch` config block (§3.2) may declare the variable and data
   source so the same fixing happens config-driven; wiring only, the actual series
   comes from the caller in v0.
@@ -270,7 +271,7 @@ architecture §3.4, R6). Do **not** build any electrolyzer/separator unit here.
 2. **Units in the SOC equation.** `dt` carries `pyunits` (e.g. minutes); kW·min is
    not kWh. Let Pyomo units handle it and prove it with `assert_units_consistent`
    (harness stage) — do not insert magic `/60` factors.
-3. **`electrical_work` domain.** The base class may default to non-negative; the
+3. **`power_electrical` domain.** The base class may default to non-negative; the
    battery must override to Reals or discharging is infeasible.
 4. **`relax()` that rebuilds.** Deleting and re-adding constraints breaks warm
    starts and any references held by costing. Only `var.domain` changes.

@@ -6,7 +6,7 @@
 
 Wire in the external **EECO** package (`eeco`, PyPI) as flex-pse's tariff /
 operating-cost engine, and build the thin flex-pse interface around it in
-`flexops/costing/tariff.py`. EECO is used **two ways** (architecture §2.4, §3.6):
+`flexops/costing/opex.py`. EECO is used **two ways** (architecture §2.4, §3.6):
 
 1. **In-objective (Pyomo-aware).** EECO builds the time-indexed, **convex-relaxed**
    operating-cost `Expression`s on a Pyomo model — the tractable proxy the
@@ -54,8 +54,8 @@ nothing builds DR event/curtailment constraints yet.
 ## Files to create or modify
 
 - `pyproject.toml` — add `eeco` to core runtime dependencies (verify the exact PyPI/distribution name; import name assumed `eeco`)
-- `.importlinter` — add the forbidden contract "eeco imported only in `flexops.costing`" (if M00 did not already stub it)
-- `src/flexops/costing/tariff.py` — **the sole `eeco` import point**: loaders, signal helpers, the in-objective `add_operating_cost` bridge, the post-optimization `evaluate_cost` evaluator, and the no-op `DRConfig` / DR hook
+- `.importlinter` — **no change**: per decision R12 there is **no `eeco` import-linter contract** (the only contract is the package DAG, conventions §6). Localizing `eeco` in `flexops/costing/opex.py` is a convention verified by `grep`, not an enforced boundary
+- `src/flexops/costing/opex.py` — **the sole `eeco` import point**: loaders, signal helpers, the in-objective `add_operating_cost` bridge, the post-optimization `evaluate_cost` evaluator, and the no-op `DRConfig` / DR hook
 - `src/flexops/costing/__init__.py` — export `load_tariff`, `load_dr_program`, `price_series`, `is_peak`, `peak_windows`, `price_gradient`, `add_operating_cost`, `OperatingCostHandles`, `evaluate_cost`, `DRConfig`
 - `src/flexops/tests/costing/test_tariff_signals.py`, `test_operating_cost.py`
 - `src/flexops/tests/fixtures/tariff_tou_demo.json`, `dr_events_demo.json` — the demo tariff/DR in **EECO's** file format (the DR file is loaded into the container only; no DR constraints are built)
@@ -66,11 +66,12 @@ nothing builds DR event/curtailment constraints yet.
 ### 1. Dependency + import localization
 
 - Add `eeco` to `[project] dependencies` (not an extra — it is as core as pyomo).
-  Pin a minimum version once you know one; note it in the PR.
-- Every `import eeco` in the codebase lives in `flexops/costing/tariff.py`. The
-  import-linter contract from conventions §6 enforces this; a `grep` DoD item
-  backs it up. Rationale: EECO is under active upstream rework — one import
-  point means one file to fix when its API moves.
+  Pin it to an **exact** tested version (`==`, per R12), matching the pin already
+  in `pyproject.toml` (`eeco==0.2.1` at time of writing); note it in the PR.
+- Every `import eeco` in the codebase lives in `flexops/costing/opex.py`. Per
+  decision R12 this is a **convention, not an import-linter contract** (conventions
+  §6): a `grep` DoD item verifies it. Rationale: EECO is under active upstream
+  rework — one import point means one file to fix when its API moves.
 
 ### 2. Flex-pse-facing wrapper API (ours; stable regardless of EECO churn)
 
@@ -107,14 +108,14 @@ class OperatingCostHandles:
 def add_operating_cost(
     *,
     block: "pyo.Block",
-    electrical_work,                     # time-indexed kW Var/Expression (aggregate load)
-    time_index: pd.DatetimeIndex,        # aligns to electrical_work's index order
+    electrical_power,                     # time-indexed kW Var/Expression (aggregate load)
+    time_index: pd.DatetimeIndex,        # aligns to electrical_power's index order
     dt_hours: float,                     # timestep length in hours (kW→kWh)
     tariff,
     dr_config: "DRConfig | None" = None, # v0: container only; no DR constraints built
 ) -> OperatingCostHandles:
     """Ask EECO to build the CONVEX-RELAXED in-objective operating-cost
-    Expressions on `block` from the kW series `electrical_work`, and return
+    Expressions on `block` from the kW series `electrical_power`, and return
     handles under clear flex-pse names. EECO owns the math (energy cost,
     demand-charge epigraphs, kWh conversion); this function only: (1) hands EECO
     the kW series + tariff + timestep, (2) renames EECO's outputs to the stable
@@ -214,7 +215,7 @@ Params — **no FlexOps stack, no TimeBlock dependency**) via
 
 ## Pitfalls
 
-1. **Scattering `eeco` imports.** Anything outside `flexops/costing/tariff.py`
+1. **Scattering `eeco` imports.** Anything outside `flexops/costing/opex.py`
    importing `eeco` breaks the contract and defeats the churn-localization. Grep
    is a DoD item.
 2. **Reimplementing EECO.** If you write a price-lookup loop or a demand epigraph
@@ -267,7 +268,7 @@ Test-first (02 §1a). Fixtures in EECO format; golden constants hand-typed.
   admonition stating the EECO-consistent policy; a short **"In-objective vs.
   reported cost"** note (relaxed proxy vs. post-hoc bill, R4/R9) and a
   **"Demand response (containers-only in v0)"** note.
-- Module docstring of `flexops/costing/tariff.py`: the $/kWh–$/kW conventions,
+- Module docstring of `flexops/costing/opex.py`: the $/kWh–$/kW conventions,
   the "EECO owns the math; this file is glue" rule, the two-ways-EECO
   relationship (relaxed in-objective ≤ or ≈ post-hoc true bill), the
   DR-containers-only stance, and the import-localization rationale.
@@ -277,7 +278,7 @@ Test-first (02 §1a). Fixtures in EECO format; golden constants hand-typed.
 
 ## Definition of Done
 
-- [ ] `eeco` is a core dependency; `import eeco` appears **only** in `flexops/costing/tariff.py` (grep + `lint-imports` both confirm)
+- [ ] `eeco` is a core dependency pinned exactly (`==`, R12); `import eeco` appears **only** in `flexops/costing/opex.py` (verified by `grep` — per R12 there is no `eeco` import-linter contract, only the package DAG)
 - [ ] Wrapper API exports exactly the names above (including `evaluate_cost`, `DRConfig`); signatures match this file; EECO→wrapper API mapping recorded in the PR
 - [ ] Signal helpers pass (`unit` tier, no solver); each documents delegate-to-EECO vs. fallback
 - [ ] `add_operating_cost` builds the **convex-relaxed** in-objective cost Expressions via EECO (no cost math in the wrapper); model classifies **LP**

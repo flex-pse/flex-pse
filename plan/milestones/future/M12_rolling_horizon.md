@@ -18,7 +18,7 @@ Deliverable: a 7-day tank+battery+TOU problem solved as 24 h windows lands withi
 - `plan/01_architecture.md` §2.4 / §3.6 (EECO in-objective cost is a relaxed proxy; `FlexCosting.report_cost(model)` is the de-relaxed, user-facing number)
 - `plan/01_architecture.md` §7 (decision **R9**)
 - `plan/01_architecture.md` §2.2 (solver facade, `get_solver`, **decision R5**: classify loudly, never transform silently)
-- `plan/01_architecture.md` §3.1 (TimeBlock: `register_initial_state`, `window(start, length)`, `dt`, `time_points`)
+- `plan/01_architecture.md` §3.1 (TimeBlock: `register_initial_state`, `window(start, length)`, `dt`, `time_index`)
 - `plan/01_architecture.md` §3.4 (StorageTank initial level and BatteryModel SOC are the carried states)
 - `plan/02_testing_and_ci.md` §1 (tier markers, solver-availability markers) and §5 (test-writing guidance)
 - `plan/00_conventions.md` §2 (keyword-only constructors), §3 (exceptions), §6 (flexschedule imports flexops/flexcore only, never flexparameterize)
@@ -133,7 +133,7 @@ class SolveSequence:
 ```
 
 - `RelaxIntegers`: switch every unfixed Binary/Integer Var domain to its
-  continuous relaxation, preferring `flexops.logic.onoff`'s first-class `relax()`
+  continuous relaxation, preferring `flexops.logic.status`'s first-class `relax()`
   where the unit exposes it (§3.5), plain domain swap otherwise. Record the
   original domains on the model (e.g. a `dict` stashed in a private attribute —
   implementer's choice) so integrality can be restored.

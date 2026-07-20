@@ -148,7 +148,7 @@ generated directives where a directive fits) for:
 - **Composition** (`docs/reference/flexops/core.rst`): `NetworkBlock` (composes
   plants) alongside `PlantBlock` (composes units) — architecture §3.3, R7.
   Document the recursive aggregation (`NetworkBlock` totals = Σ `PlantBlock`
-  totals = Σ unit `electrical_work`/`thermal_work`).
+  totals = Σ unit `power_electrical`/`power_thermal`).
 - **Logic layer** (`docs/reference/flexops/logic.rst`): the customizable
   unit-commitment modules — `status`, `startup_shutdown`, `dwell`, `delays`,
   `conditional`, `bypass`, and the model-level `degeneracy` pass (architecture
@@ -189,7 +189,7 @@ network access; **every notebook ends with an assert cell** on a numeric result
 - `01_build_a_plant.ipynb` — the `examples/api_freeze.py` walkthrough as
   narrative: TimeBlock → properties → costing → PlantBlock → tank/surrogate/
   battery → `cost_process()` → objective → solve, with matplotlib plots of the
-  load shift (electrical_work vs. TOU price). Shrink the horizon to 2 days
+  load shift (power_electrical vs. TOU price). Shrink the horizon to 2 days
   (api_freeze.py itself uses 30 — say so in a note). Tariff/DR/surrogate JSON
   inputs are small files written inline by the notebook or shipped in
   `examples/` (implementer's choice), never fetched. The notebook **may** show
@@ -271,7 +271,7 @@ installed-package run):
 
 - `test_unit_tables_pump` — `@pytest.mark.unit`: call `collect_unit_tables(Pump)`;
   assert the Variables table rows contain the registered variable names
-  (`flow_vol`, `electrical_work` at minimum), every row has a non-empty
+  (`flow_vol_phase`, `power_electrical` at minimum), every row has a non-empty
   description and units string, and the DoF table is non-empty. This is the
   guard against the extension silently emitting empty tables.
 - `test_config_table_model_config` — `@pytest.mark.unit`: field rows for

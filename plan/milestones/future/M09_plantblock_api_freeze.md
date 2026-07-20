@@ -20,7 +20,7 @@ freeze the public API. Deliver:
   via an in-place constraint swap.
 - **Config-driven build**: `flexops.build_model(config)` constructing the whole
   Pyomo model (TimeBlock + properties + costing + network/plant/unit tree + arcs)
-  from one validated config, and a real `OpsBlock.from_config` (§2.3, R3).
+  from one validated config, and a real `OpsBlock.build_from_config` (§2.3, R3).
 
 Then freeze the public API: check in `examples/api_freeze.py` — the verbatim
 script from PLAN.md §2 — with a component test that runs and solves it, plus a
@@ -43,7 +43,7 @@ a breaking change.
 - `plan/01_architecture.md` §2.3 (R3: config-driven-everything;
   `ModelConfig`/`PlantConfig`/`NetworkConfig`/`UnitConfig`/`SurrogateSpec`/
   `IOVariableSpec`, `load_model_config`, YAML canonical) and §3.2
-  (`OpsBlock.from_config`, `flexops.build_model(model_config)`)
+  (`OpsBlock.build_from_config`, `flexops.build_model(model_config)`)
 - `plan/00_conventions.md` §1 (repo layout — `core/network_block.py`,
   `core/build.py`, `unit_models/base/{sido,dido}.py`, the physical-zoo modules),
   §4 (pydantic at the boundary, ConfigDict at runtime)
@@ -64,29 +64,29 @@ a breaking change.
 - `src/flexops/unit_models/ro_skid.py` — `ReverseOsmosisSkid(Separator)` (v0).
 - `src/flexops/unit_models/combustor.py` — `Combustor(Separator)` (stretch).
 - `src/flexops/unit_models/constant_intensity.py` — `ConstantEnergyIntensityModel`.
-- `src/flexops/core/ops_block.py` — implement `from_config` for real (stub since M03); optional TimeBlock auto-discovery.
+- `src/flexops/core/ops_block.py` — implement `build_from_config` for real (stub since M03); optional TimeBlock auto-discovery.
 - `src/flexops/__init__.py` — export `PlantBlock`, `NetworkBlock`, `SIDOBlock`, `DIDOBlock`, `Separator`, `Exchanger`, the v0 derived units, `ConstantEnergyIntensityModel`, and `build_model` (the script and config path use `fo.<Name>` / `fo.build_model`).
 - `examples/api_freeze.py` — VERBATIM copy of the PLAN.md §2 script.
 - `examples/api_freeze_config.yaml` — the config-driven twin of the frozen script.
 - `examples/data/tariff.json`, `examples/data/dr_events.json` — small fixtures the script loads.
-- `src/flexops/tests/core/test_plant_block.py`, `src/flexops/tests/core/test_network_block.py`, `src/flexops/tests/core/test_from_config.py`, `src/flexops/tests/core/test_build_model.py`, `src/flexops/tests/unit_models/test_base_topology.py`, `src/flexops/tests/unit_models/test_separator.py`, `src/flexops/tests/unit_models/test_exchanger.py`, `src/flexops/tests/unit_models/test_constant_intensity.py`, `src/flexops/tests/test_api_freeze.py`.
+- `src/flexops/tests/core/test_plant_block.py`, `src/flexops/tests/core/test_network_block.py`, `src/flexops/tests/core/test_build_from_config.py`, `src/flexops/tests/core/test_build_model.py`, `src/flexops/tests/unit_models/test_base_topology.py`, `src/flexops/tests/unit_models/test_separator.py`, `src/flexops/tests/unit_models/test_exchanger.py`, `src/flexops/tests/unit_models/test_constant_intensity.py`, `src/flexops/tests/test_api_freeze.py`.
 - Docs: `docs/how_to/build_a_plant.md`, `docs/explanation/time_and_dynamics.md`, reference pages.
 
 ## Specification
 
 ### PlantBlock (`src/flexops/core/plant_block.py`)
-Thin subclass of `FlowsheetBlockData` (imported via `flexcore.compat.idaes`),
-declared with `declare_process_block_class("PlantBlock", ...)` per R2/R7 — a
+Thin subclass of `FlowsheetBlockData` (imported directly from `idaes.core` — R12,
+no compat layer), declared with `declare_process_block_class("PlantBlock", ...)` per R2/R7 — a
 **collection of unit blocks** (a facility):
 - CONFIG: `time_block` (the `TimeBlock` instance; `description=` set). Explicit
   `PlantBlock(time_block=m.time_block)` is the primary API.
 - `build()` forces `dynamic=False` and injects
-  `time_set = time_block.time_points` into the flowsheet config before calling
+  `time_set = time_block.time_index` into the flowsheet config before calling
   `super().build()` (exact IDAES mechanism is implementer's choice — smallest
   variant that makes `unit.flowsheet()` resolve time correctly; never Pyomo.DAE).
 - Holds arcs between its units. Aggregation **Expressions** (not Vars):
-  `total_electrical_work[t]` and `total_thermal_work[t]`, each summing the
-  corresponding registered energy Vars (via `register_energy`, architecture
+  `total_electrical_power[t]` and `total_thermal_power[t]`, each summing the
+  corresponding registered energy Vars (via `register_power`, architecture
   §3.2/§4) over child units. Because units are added after the plant exists, build
   these lazily — smallest choice: construct them in a method
   `plant._build_aggregates()` called idempotently by FlexCosting and by users, OR
@@ -96,14 +96,16 @@ declared with `declare_process_block_class("PlantBlock", ...)` per R2/R7 — a
   ordering — FlexCosting's `cost_process()` deferral from M07 is the precedent).
 - **`PlantBlock` composes units, NOT plants** (R7): a plant containing plants is
   now a `NetworkBlock`. Do not overload `PlantBlock` to nest into itself.
-- **`replace_unit` wrapper** (R10, §5): expose `PlantBlock.replace_unit(name,
-  new_block)` as a thin method that calls the hierarchy-agnostic core helper
-  `flexops.core.replace_unit(self, name, new_block)` introduced in M03 (delete
-  old child, attach new under `name`, re-point arcs; `FlexConfigError` on missing
-  name / port mismatch). This is the hook FlexParameterize's in-place path (M10)
-  drives. `NetworkBlock` exposes the same wrapper for replacing a child plant.
-  Add a `unit`-tier test that `plant.replace_unit(...)` swaps a child unit and
-  rewires its arc.
+- **In-place parameterization, not block replacement** (R10/R11, §5): the M03
+  delete-and-rewire `replace_unit` design was **superseded** — flex-pse never
+  deletes Pyomo components (a stale reference in an aggregation constraint would
+  silently persist; conventions §9). So `PlantBlock`/`NetworkBlock` expose **no**
+  `replace_unit` method. FlexParameterize's in-place path (M10) instead mutates
+  units through `OpsBlockData.update_parameters` (fix regressed params on the live
+  mutable Params) and the in-place **energy-relationship constraint swap**
+  (deactivate the unit's `power_electrical_relation`, add the fitted one — the
+  same helper `build_from_config` and `apply_to_model` share, R11). Same unit
+  object, same ports/arcs — nothing to reconnect.
 
 ### NetworkBlock (`src/flexops/core/network_block.py`)
 The **composition of plants** — a portfolio / campus / multi-facility system
@@ -111,10 +113,10 @@ The **composition of plants** — a portfolio / campus / multi-facility system
 `time_set` construction as `PlantBlock`:
 - CONFIG: `time_block` (explicit; `description=` set), same primary API.
 - Holds **child `PlantBlock`s** and **inter-plant arcs** between them.
-- Recursive aggregation: `total_electrical_work[t]` / `total_thermal_work[t]` are
+- Recursive aggregation: `total_electrical_power[t]` / `total_thermal_power[t]` are
   Expressions summing each child **plant's** own totals (which in turn sum their
   units), so `NetworkBlock` total = Σ child `PlantBlock` totals = Σ their units'
-  `electrical_work`/`thermal_work` (the composition invariant, §3.3). Use the same
+  `power_electrical`/`power_thermal` (the composition invariant, §3.3). Use the same
   lazy/idempotent aggregation pattern as `PlantBlock`.
 - Unit/plant discovery must **not double-count**: recurse into child plants OR
   their units, never both (Pitfall 7). A `NetworkBlock` sums plant totals; it does
@@ -132,7 +134,7 @@ balance, and energy-registration wiring (§3.4):
   two coupled per-stream mass balances (implementer's choice on the exact coupling
   form; document it). Registers streams as IO; energy wiring for subclasses.
 All Vars/Constraints carry `doc=`. Follow the `SISOBlock` conventions from M04
-exactly (naming, references to state `flow_vol`, no ControlVolumes — R1).
+exactly (naming, references to state `flow_vol_phase[t, "Liq"]`, no ControlVolumes — R1).
 
 ### Physical zoo (built on the topology bases, §3.4, R6)
 The general pattern: a unit defines its topology (ports + mass balance from the
@@ -144,12 +146,12 @@ functional form.
 least `ReverseOsmosisSkid` + one electrolysis variant:
 - `Separator(SIDOBlock)` — one feed split into two product streams. **This
   replaces the old `Electrolyzer` name** (R6). Constant-intensity energy relation
-  wiring `electrical_work[t]`.
+  wiring `power_electrical[t]`.
 - `Exchanger(DIDOBlock)` — two inlet / two outlet streams exchanging mass/energy.
 - `ReverseOsmosisSkid(Separator)` — RO skid: feed → permeate + concentrate; thin
   subclass fixing the split semantics + energy relation.
 - `ElectrolysisSeparator(Separator)` — electrolysis modeled as a separation;
-  exercises **`thermal_work`** in addition to `electrical_work` (register both
+  exercises **`power_thermal`** in addition to `power_electrical` (register both
   energy kinds). Thin subclass.
 
 **Stretch (this session if time; otherwise MUST land before M14 docs — they are
@@ -169,13 +171,14 @@ bespoke physical topology (R11) — the api_freeze script uses it directly as
 `m.svcw.plant`, standing in for a whole treatment plant:
 - CONFIG: `property_package`, `energy_intensity` (kWh/m³, with units), optional
   `costing_package`; inherited OpsBlock flags.
-- Inlet/outlet ports via the property package; pass-through mass balance
-  `flow_vol_out[t] == flow_vol_in[t]` (or shared state — copy Pump's pattern).
+- Inlet/outlet ports via the property package; pass-through mass balance on
+  `flow_vol_phase[t, "Liq"]` (copy Pump's SISO pattern from M04).
 - `energy_intensity` — Var, fixed at config value, registered via
   `register_process_parameter(..., regressable=True)` (this is what M10 regresses).
-- `electrical_work[t] == energy_intensity * flow_vol[t]`, energy registered
-  electrical; `flow_vol` registered as IO input, `electrical_work` as IO output.
-  Name this Constraint discoverably (e.g. `electrical_work_relation`) — R11's
+- `power_electrical[t] == pyunits.convert(energy_intensity * inlet_state.flow_vol_phase[t, "Liq"], pyunits.kW)`,
+  power registered electrical; `flow_vol_phase` registered as IO input,
+  `power_electrical` as IO output.
+  Name this Constraint discoverably (e.g. `power_electrical_relation`) — R11's
   in-place constraint swap (§5, M10) deactivates exactly this Constraint and
   attaches a new one built from a fitted `SurrogateSpec` when FlexParameterize
   upgrades the relationship; document the name as the swap contract.
@@ -188,26 +191,26 @@ bespoke physical topology (R11) — the api_freeze script uses it directly as
   not M09's — `ConstantEnergyIntensityModel` only ever builds the constant-intensity
   relationship above.
 
-### OpsBlockData.from_config (in `src/flexops/core/ops_block.py`)
+### OpsBlockData.build_from_config (in `src/flexops/core/ops_block.py`)
 Real implementation replacing the M03 stub:
 ```python
 @classmethod
-def from_config(cls, cfg: UnitConfig, **kwargs):
+def build_from_config(cls, cfg: UnitConfig, **kwargs):
 ```
 Validates `cfg` (accept a path/dict by round-tripping through the pydantic
 schema — never pass raw dicts onward, conventions §4), resolves the unit-model
 class from the config's unit-model class name when called on the base class,
 merges `cfg` construction options with `kwargs`, and returns the constructible
 block (the object you assign onto a model — implementer's choice on the exact
-IDAES construction mechanics; requirement: `m.u = SomeModel.from_config(cfg)`
+IDAES construction mechanics; requirement: `m.u = SomeModel.build_from_config(cfg)`
 followed by normal use works, and invalid configs raise pydantic
 `ValidationError` whose message names the offending field path).
 If `cfg` carries a `SurrogateSpec` whose `functional_form` is not
-`constant_intensity` (M10/M11's regressed forms), `from_config` builds the unit
+`constant_intensity` (M10/M11's regressed forms), `build_from_config` builds the unit
 normally and then applies the **same in-place constraint-swap helper**
 FlexParameterize's `apply_to_model` uses (R11) — one swap implementation, two
 callers (construction-time for config-driven rebuild, runtime for
-`apply_to_model`). This is what lets `ConstantEnergyIntensityModel.from_config`
+`apply_to_model`). This is what lets `ConstantEnergyIntensityModel.build_from_config`
 serve as the rebuild target for any fitted `SurrogateSpec`, not just
 `constant_intensity`.
 
@@ -223,7 +226,7 @@ through `load_model_config`/pydantic first — never a raw dict, conventions §4
    (§3.6, M06/M07);
 3. build the composition tree from the config's `NetworkConfig` **or**
    `PlantConfig` (§2.3): a `NetworkBlock` of `PlantBlock`s, or a single
-   `PlantBlock`, each populated with units via `OpsBlock.from_config` on their
+   `PlantBlock`, each populated with units via `OpsBlock.build_from_config` on their
    `UnitConfig`s;
 4. construct the arcs (intra-plant and inter-plant) declared in the config;
 5. apply any per-unit `unit_commitment` (§3.5) and `external_dispatch` (§3.2)
@@ -234,7 +237,7 @@ Requirement: a config that mirrors the imperative api_freeze script yields an
 **equivalent** model (same components, same solved objective). Bad config →
 `pydantic.ValidationError` (or `FlexConfigError` wrapping it) whose message names
 the offending field path. `build_model` is the single config-driven entry point;
-`from_config` is the per-unit primitive it uses.
+`build_from_config` is the per-unit primitive it uses.
 
 ### TimeBlock auto-discovery (documented convenience)
 When `time_block=` is omitted on `PlantBlock`/`NetworkBlock` (and on units that
@@ -280,7 +283,7 @@ explicitly. Explicit argument is the primary, tested-first path (architecture §
    the problem, the fixture tariff/surrogate should stay trivially easy — do NOT
    shrink the script's dates.
 6. **ValidationError laundering.** Don't catch pydantic errors and re-raise
-   stringly — the field path is the tested contract for `from_config` and `build_model`.
+   stringly — the field path is the tested contract for `build_from_config` and `build_model`.
 7. **Double-counting composition.** `PlantBlock` recurses into its units;
    `NetworkBlock` recurses into its child plants' totals — never both levels at
    once. A `NetworkBlock` that also re-walks each plant's units double-counts.
@@ -296,8 +299,8 @@ explicitly. Explicit argument is the primary, tested-first path (architecture §
 `src/flexops/tests/core/test_plant_block.py`
 - `test_aggregation_two_units` (`unit`) — plant with 2 units
   (`ConstantEnergyIntensityModel` + `BatteryModel`); fix all energy Vars to
-  hand-picked values; evaluate `total_electrical_work[t]` /
-  `total_thermal_work[t]` bodies with `pyo.value` and match the hand sum
+  hand-picked values; evaluate `total_electrical_power[t]` /
+  `total_thermal_power[t]` bodies with `pyo.value` and match the hand sum
   (`pytest.approx`, rel=1e-6). No solver.
 - `test_time_block_autodiscovery` (`unit`) — omit `time_block=` with exactly one
   TimeBlock → works; with two → `FlexConfigError`.
@@ -305,8 +308,8 @@ explicitly. Explicit argument is the primary, tested-first path (architecture §
 `src/flexops/tests/core/test_network_block.py`
 - `test_network_aggregates_over_plants` (`unit`) — a `NetworkBlock` with two child
   `PlantBlock`s (each with ≥1 energy-consuming unit) and an inter-plant arc; fix
-  all energy Vars; assert `network.total_electrical_work[t]` equals Σ plant totals
-  equals Σ unit `electrical_work[t]` (constraint-body/expression eval, no solver).
+  all energy Vars; assert `network.total_electrical_power[t]` equals Σ plant totals
+  equals Σ unit `power_electrical[t]` (constraint-body/expression eval, no solver).
 - `test_no_double_count_units` (`unit`) — assert the network sums plant totals and
   does not additionally re-walk each plant's units (a hand count of contributing
   terms matches the number of units exactly once).
@@ -323,17 +326,17 @@ explicitly. Explicit argument is the primary, tested-first path (architecture §
   registration/DoF `unit`; solve `component`).
 - `TestReverseOsmosisSkid(UnitModelTestHarness)` and
   `TestElectrolysisSeparator(UnitModelTestHarness)` — harness subclasses; the
-  electrolysis one asserts **both** `electrical_work` and `thermal_work` are
-  registered (the `thermal_work` exerciser, §3.4).
+  electrolysis one asserts **both** `power_electrical` and `power_thermal` are
+  registered (the `power_thermal` exerciser, §3.4).
 
 `src/flexops/tests/unit_models/test_exchanger.py`
 - `TestExchanger(UnitModelTestHarness)` — harness subclass on the `DIDOBlock`-based
   `Exchanger`.
 
-`src/flexops/tests/core/test_from_config.py`
-- `test_from_config_builds_unit` (`unit`) — valid unit config fixture →
+`src/flexops/tests/core/test_build_from_config.py`
+- `test_build_from_config_builds_unit` (`unit`) — valid unit config fixture →
   constructed unit with registered IO vars matching the spec.
-- `test_from_config_bad_config_raises` (`unit`) — config with a wrong-typed /
+- `test_build_from_config_bad_config_raises` (`unit`) — config with a wrong-typed /
   missing field → `pydantic.ValidationError`; assert the field path appears in
   `str(exc)`.
 
@@ -351,7 +354,7 @@ explicitly. Explicit argument is the primary, tested-first path (architecture §
 `src/flexops/tests/unit_models/test_constant_intensity.py`
 - `TestConstantEnergyIntensityModel(UnitModelTestHarness)` — standard ~30-line
   harness subclass (build/units/registration/DoF as `unit`; solve as `component`).
-- `test_electrical_work_relation_constraint_is_named` (`unit`) — the
+- `test_power_electrical_relation_constraint_is_named` (`unit`) — the
   constant-intensity equality Constraint has the documented discoverable name
   (§ ConstantEnergyIntensityModel spec) — this is the swap contract M10 relies on.
 
@@ -393,9 +396,9 @@ explicitly. Explicit argument is the primary, tested-first path (architecture §
 - [ ] `PlantBlock` aggregates its units correctly (constraint-body test).
 - [ ] `NetworkBlock` composes plants with inter-plant arcs; network total == Σ plant totals == Σ unit works; no double-counting.
 - [ ] `SIDOBlock` and `DIDOBlock` topology bases build with correct ports and mass balances; harness-tested physical units on top.
-- [ ] v0 zoo present: `Separator`, `Exchanger`, `ReverseOsmosisSkid`, and one electrolysis variant (`ElectrolysisSeparator`, exercising `thermal_work`); stretch units built or deferral noted in the PR.
+- [ ] v0 zoo present: `Separator`, `Exchanger`, `ReverseOsmosisSkid`, and one electrolysis variant (`ElectrolysisSeparator`, exercising `power_thermal`); stretch units built or deferral noted in the PR.
 - [ ] No `Electrolyzer` class exists — it is `Separator`/`ElectrolysisSeparator` (R6).
-- [ ] `from_config` builds a real unit; bad config → `ValidationError` naming the field path.
+- [ ] `build_from_config` builds a real unit; bad config → `ValidationError` naming the field path.
 - [ ] `build_model(config)` constructs TimeBlock + properties + costing + tree + arcs from one config; equals the hand-built model; bad config → `ValidationError` naming the field path.
 - [ ] `ConstantEnergyIntensityModel`'s energy-relationship Constraint has the
       documented discoverable name (the swap contract M10 relies on); no

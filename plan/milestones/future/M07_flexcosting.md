@@ -21,7 +21,7 @@ to the external EECO package**, in two ways. It does not re-implement price
 series, demand-charge epigraphs, or cost math — it calls
 `flexops.costing.add_operating_cost` (in-objective, M06) and
 `flexops.costing.evaluate_cost` (post-solve, M06). FlexCosting's own jobs are:
-(1) aggregate registered units' `electrical_work[t]` into the kW series EECO
+(1) aggregate registered units' `power_electrical[t]` into the kW series EECO
 consumes (in-model *and* as the post-solve numpy array); (2) map EECO's outputs
 into IDAES aggregate names (`aggregate_operating_cost`, `aggregate_capital_cost`)
 under stable flex-pse names; (3) provide `report_cost(model)` — the user-facing
@@ -40,7 +40,7 @@ unfixed, CapEx terms active) — do not build any multi-period merging here.
 
 ## Read first
 
-- `plan/01_architecture.md` §3.6 (costing wraps EECO — the whole section, especially R4, the in-objective + post-solve `report_cost` split, DR-containers-only, the construction-order invariant, and the note that multi-period design is the M16 wrapper not this mode), §2.4 (the EECO decision: two ways, DR containers), §6 (reporting rule R9: report `report_cost`, never the objective), §4 (energy nomenclature: EECO receives kW only), §3.2 (`register_energy`), R4/R9 in §7
+- `plan/01_architecture.md` §3.6 (costing wraps EECO — the whole section, especially R4, the in-objective + post-solve `report_cost` split, DR-containers-only, the construction-order invariant, and the note that multi-period design is the M16 wrapper not this mode), §2.4 (the EECO decision: two ways, DR containers), §6 (reporting rule R9: report `report_cost`, never the objective), §4 (energy nomenclature: EECO receives kW only), §3.2 (`register_power`), R4/R9 in §7
 - `plan/milestones/M06_eeco_integration.md` — the wrapper API you consume: `load_tariff`, `load_dr_program`, `add_operating_cost`, `OperatingCostHandles`, `evaluate_cost` (post-hoc), `DRConfig`, and the demo tariff fixture + golden-bill semantics
 - `plan/02_testing_and_ci.md` §1–§2, §5, §1a (constraint-body checks; test-first; the unit-model harness does **not** apply — FlexCosting is not a unit model)
 - `plan/03_documentation.md` §1 (where `costing.rst` and `how_to/build_a_plant.md` live)
@@ -49,8 +49,8 @@ unfixed, CapEx terms active) — do not build any multi-period merging here.
 
 - `src/flexops/costing/__init__.py` — **modify**: also export `FlexCosting`
 - `src/flexops/costing/flex_costing.py` — the costing block
-- `src/flexops/costing/unit_costing.py` — per-unit capex correlations (v0 placeholders)
-- `src/flexops/core/ops_block.py` — **modify**: `register_energy` forwards to the costing package when `costing_package=` was given
+- `src/flexops/costing/unit_models/unit_costing.py` — per-unit capex correlations (v0 placeholders; the `costing/unit_models/` dir already exists, conventions §1)
+- `src/flexops/core/ops_block.py` — **modify**: `register_power` forwards to the costing package when `costing_package=` was given
 - `src/flexops/unit_models/storage_tank.py` — **modify**: register `capacity` as a sizing var with the costing package when present
 - `src/flexops/__init__.py` — **modify**: export `FlexCosting` (`fo.FlexCosting`, per the API-freeze script)
 - `src/flexops/tests/costing/test_flex_costing.py`, `test_load_shifting_component.py` — tests (reuse the M06 tariff/DR fixtures under `src/flexops/tests/fixtures/`)
@@ -62,7 +62,7 @@ unfixed, CapEx terms active) — do not build any multi-period merging here.
 
 ```python
 @declare_process_block_class("FlexCosting")
-class FlexCostingData(FlowsheetCostingBlockData):   # via flexcore.compat.idaes
+class FlexCostingData(FlowsheetCostingBlockData):   # FlowsheetCostingBlockData imported directly from idaes.core (R12)
     CONFIG entries (all with description=):
       time_block      — required; the fo.TimeBlock instance
       tariff_file     — path to an EECO tariff file  } exactly one of these two;
@@ -82,7 +82,7 @@ the `dr` placeholder + no-op `_build_dr()` hook below.
   `flexops.costing.DRConfig` container. Store the tariff and the DR container
   (`self.dr` placeholder attribute) as attributes. Do **not** call EECO's cost
   builders yet, and do **not** build any DR constraints (containers-only, §2.4).
-- Initialize the empty registries (`self._registered_energy = []`,
+- Initialize the empty registries (`self._registered_power = []`,
   `self._registered_sizing = []`).
 - **Build no aggregation and no cost here.** The construction-order invariant
   (architecture §3.6) is that FlexCosting may be constructed before any units
@@ -94,14 +94,14 @@ the `dr` placeholder + no-op `_build_dr()` hook below.
 
 FlexCosting keeps its own registries, populated as units are constructed:
 
-- `FlexCostingData.register_unit_energy(unit, var, kind)` appends
-  `(unit, var, kind)` to `self._registered_energy`.
+- `FlexCostingData.register_unit_power(unit, var, kind)` appends
+  `(unit, var, kind)` to `self._registered_power`.
 - `FlexCostingData.register_sizing_variable(var, capex_constraint=None)` appends
   to `self._registered_sizing` (names are implementer's choice; keep them
   methods on FlexCosting so M08's battery reuses them).
-- **Modify `OpsBlockData.register_energy`** (M03): after its existing
+- **Modify `OpsBlockData.register_power`** (M03): after its existing
   bookkeeping, if `self.config.costing_package` is not None, call
-  `costing_package.register_unit_energy(self, var, kind)`. Units built without
+  `costing_package.register_unit_power(self, var, kind)`. Units built without
   `costing_package=` still work standalone (M04 tests must stay green — the
   forwarding is strictly conditional).
 - **Modify `StorageTank`**: when `costing_package=` is given, call
@@ -109,16 +109,16 @@ FlexCosting keeps its own registries, populated as units are constructed:
 
 ### 4. `cost_process()` builds (in order)
 
-1. `aggregate_electrical_work[t]` — `Expression`, kW: sum of `var[t]` over
+1. `aggregate_electrical_power[t]` — `Expression`, kW: sum of `var[t]` over
    registered `kind="electrical"` entries (include an explicit `0 * pyunits.kW`
    term so the Expression always exists even with an empty registry). Likewise
-   `aggregate_thermal_work[t]` for `kind="thermal"`.
+   `aggregate_thermal_power[t]` for `kind="thermal"`.
 2. **Delegate in-objective OpEx to EECO** — call the M06 bridge:
    ```python
    dt_hours = pyunits.convert(time_block.dt, to_units=pyunits.hr)
    handles = flexops.costing.add_operating_cost(
        block=self,
-       electrical_work=self.aggregate_electrical_work,
+       electrical_power=self.aggregate_electrical_power,
        time_index=time_block.datetime_index,
        dt_hours=pyo.value(dt_hours),
        tariff=self._tariff,
@@ -163,8 +163,8 @@ The user-facing cost, produced **post-solve** and **never** the raw solver
 objective (architecture §6 reporting rule; M13 surfaces it to callers):
 
 - After a solve, extract the realized **aggregate electrical power** as a
-  time-indexed numpy array — `np.array([pyo.value(self.aggregate_electrical_work[t])
-  for t in time_block.time_points])`, kW, ordered by `time_block.time_points`.
+  time-indexed numpy array — `np.array([pyo.value(self.aggregate_electrical_power[t])
+  for t in time_block.time_index])`, kW, ordered by `time_block.time_index`.
 - Compute `dt_hours = pyo.value(pyunits.convert(time_block.dt,
   to_units=pyunits.hr))`.
 - Return `flexops.costing.evaluate_cost(realized_power, self._tariff, dt_hours,
@@ -198,8 +198,8 @@ objective (architecture §6 reporting rule; M13 surfaces it to callers):
 ### Worked example (the headline component test)
 
 24 hourly steps covering 2025-07-08 (a summer Tuesday: peak 16:00–21:00 in the
-demo tariff). Pump (`energy_intensity=0.5` kWh/m³, `flow_vol` bounded [0, 300]
-m³/hr) → Arc → StorageTank (`max_volume=1000`, `initial_volume=200`, outlet flow
+demo tariff). Pump (`energy_intensity=0.5` kWh/m³, inlet `flow_vol_phase[t, "Liq"]`
+bounded [0, 300] m³/hr) → Arc → StorageTank (`max_volume=1000`, `initial_volume=200`, outlet flow
 fixed at 100 m³/hr), built with `costing_package=m.costing`;
 `m.costing.cost_process()`; objective =
 `pyo.Objective(expr=m.costing.aggregate_operating_cost)`; add a test-local
@@ -218,14 +218,14 @@ off-peak profile.
    duplicated M06/EECO. Aggregate the kW series and call `add_operating_cost`
    (in-objective) / `evaluate_cost` (post-solve); the cost math is not yours.
 3. **Passing kWh instead of kW to EECO.** EECO does the kW→kWh conversion with
-   `dt_hours`; hand it the raw kW `aggregate_electrical_work` and the timestep,
+   `dt_hours`; hand it the raw kW `aggregate_electrical_power` and the timestep,
    never a pre-integrated energy series (double-counts on non-hourly grids).
 4. **IDAES `cost_process` collisions.** `FlowsheetCostingBlockData` has its own
    `cost_process`/aggregate machinery; if the parent call fights the flex names
    (`aggregate_*`), build flex-native components first and skip/override the
    conflicting parent step — record what you did under "Deviations from spec".
 5. **Breaking costing-less units.** M04 constructs Pump/StorageTank with no
-   `costing_package`; the `register_energy` forwarding must be strictly
+   `costing_package`; the `register_power` forwarding must be strictly
    conditional.
 6. **Objective referencing EECO internals.** The objective must use
    `aggregate_operating_cost` (flex-pse name), never a raw EECO handle — that
@@ -248,8 +248,8 @@ Test-first (02 §1a). Reuse the M06 fixtures.
 
 - `src/flexops/tests/costing/test_flex_costing.py`:
   - `test_config_exclusivity` — `@pytest.mark.unit`. Both or neither of `tariff_file`/`tariff` → `FlexConfigError` naming the options.
-  - `test_construct_before_units` — `@pytest.mark.unit`. `FlexCosting` builds on a bare model with a TimeBlock and no units; `cost_process()` runs and `aggregate_electrical_work` exists (its body is the `0*kW` placeholder).
-  - `test_aggregate_electrical_work` — `@pytest.mark.unit`. Pump+tank with `costing_package`; after `cost_process()`, fix a known flow profile and assert `value(aggregate_electrical_work[t])` equals the sum of registered units' `electrical_work[t]` at several t (pure `pyo.value`, no solve).
+  - `test_construct_before_units` — `@pytest.mark.unit`. `FlexCosting` builds on a bare model with a TimeBlock and no units; `cost_process()` runs and `aggregate_electrical_power` exists (its body is the `0*kW` placeholder).
+  - `test_aggregate_electrical_power` — `@pytest.mark.unit`. Pump+tank with `costing_package`; after `cost_process()`, fix a known flow profile and assert `value(aggregate_electrical_power[t])` equals the sum of registered units' `power_electrical[t]` at several t (pure `pyo.value`, no solve).
   - `test_operating_cost_is_eeco_total` — `@pytest.mark.unit`. Assert `aggregate_operating_cost` is (or evaluates equal to) `handles.total_operating_cost` — i.e. FlexCosting exposes EECO's total, not a re-derived one.
   - `test_mode_toggles` — `@pytest.mark.unit`. After `cost_process()`: `set_design_mode()` → tank `capacity.fixed is False`, capex constraint `.active is True`; `set_operations_mode()` → fixed/inactive. Toggle twice (idempotence). (Single-model mode only — no multi-period merging; that is M16.)
   - `test_construction_order_permutation` — `@pytest.mark.unit`. Build the pump+tank+costing system in ≥ 2 component-creation orders (costing first vs. costing just before `cost_process`; pump-then-tank vs. tank-then-pump), fix the same flow profile, assert `value(aggregate_operating_cost)` identical (`pytest.approx(rel=1e-12)`).
@@ -257,9 +257,9 @@ Test-first (02 §1a). Reuse the M06 fixtures.
   - `test_model_classifies_lp` — `@pytest.mark.unit`. Built pump+tank+costing model → `flexcore.solvers.classify` returns `LP` (no `max()`/nonlinearity from the EECO bridge).
 - `src/flexops/tests/costing/test_load_shifting_component.py` (each
   `@pytest.mark.component` + `@pytest.mark.needs_highs`, < 10 s):
-  - `test_load_shifting_headline` — the worked example; assert optimal termination; `sum(value(pump.flow_vol[t]) for t in peak hours 16–20) == pytest.approx(0.0, abs=1e-6)`; `value(m.objective) == pytest.approx(EXPECTED_OBJECTIVE, rel=1e-6)` where `EXPECTED_OBJECTIVE` is a stored module constant recorded from the first verified run (regression baseline — changing it is a deliberate diff).
+  - `test_load_shifting_headline` — the worked example; assert optimal termination; `sum(value(pump.inlet_state.flow_vol_phase[t, "Liq"]) for t in peak hours 16–20) == pytest.approx(0.0, abs=1e-6)`; `value(m.objective) == pytest.approx(EXPECTED_OBJECTIVE, rel=1e-6)` where `EXPECTED_OBJECTIVE` is a stored module constant recorded from the first verified run (regression baseline — changing it is a deliberate diff).
   - `test_report_cost_post_hoc` — after the headline solve, `m.costing.report_cost(m)` returns a float (the EECO post-hoc cost on the realized aggregate power) and is a stored regression constant. **Assert it is NOT equal to `value(m.objective)`** (they legitimately differ — the objective is a relaxed/scalarized proxy, R4/R9): `assert report_cost != pytest.approx(value(m.objective), rel=1e-6)` (or an explicit inequality with a comment). This encodes the reporting rule (§6).
-  - `test_demand_charge_reduces_peak` — solve the same system twice: demo tariff vs. a copy with demand charges removed. Assert `max_t value(aggregate_electrical_work[t])` is strictly lower with demand charges.
+  - `test_demand_charge_reduces_peak` — solve the same system twice: demo tariff vs. a copy with demand charges removed. Assert `max_t value(aggregate_electrical_power[t])` is strictly lower with demand charges.
 
 (Note: the tariff *math* — price alignment, epigraph correctness, kWh
 conversion, the golden bill, and the post-hoc `evaluate_cost` accuracy — is
@@ -287,7 +287,7 @@ the end-to-end optimization behavior.)
 ## Definition of Done
 
 - [ ] `fo.FlexCosting(time_block=..., tariff_file=..., dr_event_file=...)` constructs exactly as in the API-freeze script (PLAN.md §2), before any units exist
-- [ ] `cost_process()` aggregates `electrical_work` into a kW series, calls `add_operating_cost` (EECO, in-objective relaxed cost), and exposes `aggregate_operating_cost == handles.total_operating_cost`; no cost math written in FlexCosting
+- [ ] `cost_process()` aggregates `power_electrical` into a kW series, calls `add_operating_cost` (EECO, in-objective relaxed cost), and exposes `aggregate_operating_cost == handles.total_operating_cost`; no cost math written in FlexCosting
 - [ ] `report_cost(model)` extracts realized aggregate power as a numpy array and calls `flexops.costing.evaluate_cost` (M06) to return the reported cost; the headline test asserts it is **not** equal to `value(model.objective)` (§6/R9)
 - [ ] **DR is containers-only**: `dr` placeholder + no-op `_build_dr()` fed by the DR file/`CostingConfig.dr`; no DR constraints built; the container-loads test passes
 - [ ] `set_design_mode()` is single-model CapEx-active only (multi-period merging is M16, not built here)
