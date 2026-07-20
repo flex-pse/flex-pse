@@ -65,10 +65,10 @@ them on every subclass:
 - `test_build` — `@pytest.mark.unit`. `configure()` returns `(model, unit)` without exception; declared ports exist.
 - `test_units_consistent` — `@pytest.mark.unit`. `assert_units_consistent(unit)` (import directly: `from pyomo.util.check_units import assert_units_consistent` — R12, no compat layer).
 - `test_io_registration` — `@pytest.mark.unit`. Every entry in the unit's `IORegistry` (`flexops/core/registration.py`, M03): the referenced component exists on the unit, carries `pyunits`, is indexed by `t`, and has a **non-empty `doc=` string** (the M14 flexdoc generator renders these).
-- `test_energy_naming` — `@pytest.mark.unit`. `electrical_work` / `thermal_work` exist **iff** the unit called `register_energy` for that kind; no component named bare `power`/`energy`/`work` exists.
+- `test_energy_naming` — `@pytest.mark.unit`. `power_electrical` / `power_thermal` exist **iff** the unit called `declare_power`/`register_power` for that `PowerKind`; no component named bare `power`/`energy`/`work` exists.
 - `test_dof` — `@pytest.mark.unit`. Fix every registered `role="input"` IO variable at its current value, then assert `degrees_of_freedom(model) == self.expected_dof` (import directly: `from idaes.core.util.model_statistics import degrees_of_freedom` — R12, no compat layer).
 - `test_solve` — `@pytest.mark.component`. Obtain a solver via `from flexcore.solvers import get_solver` guarded: if the import fails or `get_solver` raises `FlexSolverError`/is a stub, `pytest.skip("flexcore.solvers.get_solver not available (M05 may land in parallel)")`. Solve with inputs fixed; assert optimal termination.
-- `test_solution` — `@pytest.mark.component`. For each `name -> value` in `expected_solution`, resolve `name` dotted against the unit (e.g. `"electrical_work[0]"`) and assert `pyo.value(...) == pytest.approx(value, rel=self.solution_rtol)`. Skip when `expected_solution` is empty. Resolution helper `_component_by_name(unit, name)` (implementer's choice on internals).
+- `test_solution` — `@pytest.mark.component`. For each `name -> value` in `expected_solution`, resolve `name` dotted against the unit (e.g. `"power_electrical[0]"`) and assert `pyo.value(...) == pytest.approx(value, rel=self.solution_rtol)`. Skip when `expected_solution` is empty. Resolution helper `_component_by_name(unit, name)` (implementer's choice on internals).
 
 `test_solve`/`test_solution` must also carry `needs_highs` (these v0 models are
 LP). Cache the `configure()` result per test method call — each stage builds its
@@ -99,18 +99,21 @@ not re-declare it):
 - Config (Pyomo ConfigDict, `description=` on each): `property_package` (IDAES
   standard), plus the base OpsBlock config flags from M03 (`unit_commitment`,
   `relaxation`, `allow_bypass`, `external_dispatch`, `costing_package`).
-- One **`inlet`** `Port` and one **`outlet`** `Port`, each built from a
-  `SimpleAqueousFlow` `StateBlock` indexed by `time_block.time_points` (no
-  ControlVolumes — decision R1).
+- One **`inlet`** `Port` and one **`outlet`** `Port`, built via the inherited
+  `add_stream_ports()` helper (M03, `flexops/core/ops_block.py`) from the
+  configured `SimpleAqueousFlow` property package (no ControlVolumes — decision
+  R1). The helper creates the `inlet_state`/`outlet_state` `StateBlock`s indexed
+  by `time_block.time_index`, builds the two ports, and registers each state's
+  `flow_vol_phase` as a process IO variable (inlet → `role="input"`, outlet →
+  `role="output"`).
 - **Per-stream mass balance**, written by hand, one constraint indexed by `t`:
-  `outlet.flow_vol[t] == inlet.flow_vol[t]` (a `doc=` string on it). Subclasses
-  that need a different balance (e.g. the tank's holdup) may override or replace
-  it — document when they do.
-- Convenience `flow_vol` handle: a `pyo.Reference` to the inlet state's
-  `flow_vol` (implementer's choice of exact wiring; keep the name `flow_vol`).
+  `outlet_state.flow_vol_phase[t, "Liq"] == inlet_state.flow_vol_phase[t, "Liq"]`
+  (a `doc=` string on it). `SimpleAqueousFlow` carries the single `"Liq"` phase.
+  Subclasses that need a different balance (e.g. the tank's holdup) may override
+  or replace it — document when they do.
 - Energy-registration wiring inherited from `OpsBlockData` (§3.2) —
-  `SISOBlock` itself registers **no** energy (it does not know its subclass's
-  draw); subclasses call `register_energy` as needed.
+  `SISOBlock` itself registers **no** power (it does not know its subclass's
+  draw); subclasses call `declare_power` as needed.
 - Logic/unit-commitment is available (the base `status` capability, §3.5) but
   **not built by `SISOBlock`** — it is opt-in via the `unit_commitment` config,
   and a subclass may disable it entirely (see `StorageTank`, §5).
@@ -119,30 +122,36 @@ not re-declare it):
 
 Subclass **`SISOBlock`** via the `declare_process_block_class` pattern (class
 name **`Pump`**, data class `PumpData(SISOBlockData)`). It inherits the inlet/
-outlet ports, mass balance, and `flow_vol` handle from the SISO base, and adds
-only the electrical-work relationship. Behavior (architecture §3.4):
+outlet ports (and their `flow_vol_phase` IO registration) and the mass balance
+from the SISO base, and adds only the electrical-work relationship. Behavior
+(architecture §3.4):
 
 - Config: inherits the SISO config; adds `energy_intensity` — default `0.5` in
   kWh/m³ (implementer's choice of default; document it).
-- Inlet/outlet `Port`s and the mass balance `outlet flow_vol[t] == inlet
-  flow_vol[t]` come **from `SISOBlock`** — do not re-declare them in `Pump`.
+- Inlet/outlet `Port`s and the mass balance
+  `outlet_state.flow_vol_phase[t, "Liq"] == inlet_state.flow_vol_phase[t, "Liq"]`
+  come **from `SISOBlock`** — do not re-declare them in `Pump`.
 - `energy_intensity`: **mutable Param**, units `pyunits.kWh / pyunits.m**3`,
   registered `register_process_parameter(regressable=True)`.
-- `electrical_work[t]` Var in kW (declared by the base class when the unit
-  registers electrical energy), with constraint
-  `electrical_work[t] == energy_intensity * flow_vol[t]`.
-  **Unit algebra:** `flow_vol` is m³/hr, so kWh/m³ × m³/hr = kW — dimensionally
-  exact with no conversion factor. Put this sentence in the constraint's
-  `doc=` and the class docstring; `assert_units_consistent` is the referee.
-- Registration: `register_io_variable(flow_vol, role="input")`,
-  `register_io_variable(electrical_work, role="output")`,
-  `register_energy(electrical_work, kind="electrical")`.
+- `power_electrical[t]` Var in kW (created and registered by the base-class
+  `declare_power(PowerKind.ELECTRICAL)` helper from M03), with constraint
+  `power_electrical[t] == pyunits.convert(energy_intensity *
+  inlet_state.flow_vol_phase[t, "Liq"], pyunits.kW)`.
+  **Unit algebra:** `flow_vol_phase` is m³/hr, so kWh/m³ × m³/hr = kWh/hr = kW —
+  dimensionally exact with no fudge factor (the `pyunits.convert` to kW applies a
+  factor of 1). Put this sentence in the constraint's `doc=` and the class
+  docstring; `assert_units_consistent` is the referee.
+- Registration: `add_stream_ports()` (inherited, called by the SISO base) has
+  already registered the inlet `flow_vol_phase` as `role="input"`; create the
+  power var via `declare_power(PowerKind.ELECTRICAL)` (which both creates
+  `power_electrical[t]` and registers it as a power draw), then
+  `register_io_variable(power_electrical, role="output")`.
 
 ### 5. `unit_models/storage_tank.py` — `StorageTank(SISOBlock)`
 
 Subclass **`SISOBlock`** (class name **`StorageTank`**, data class
-`StorageTankData(SISOBlockData)`). It inherits the inlet/outlet ports and the
-`flow_vol` handles from the SISO base; the tank's dynamics **replace** the SISO
+`StorageTankData(SISOBlockData)`). It inherits the inlet/outlet ports (and their
+`flow_vol_phase` state variables) from the SISO base; the tank's dynamics **replace** the SISO
 pass-through mass balance with a holdup difference equation (inlet and outlet
 flows differ — the tank stores the difference). **A tank has no on/off status,
 so it disables the logic/unit-commitment layer** (architecture §3.4, §3.5, R6):
@@ -161,10 +170,12 @@ caller passes, and document why in the class docstring.
   Off-by-one: `V[N-1]` is defined by the constraint at `t = N-2`; there is no
   constraint indexed `N-1` (it would reference `V[N]`, which does not exist).
   Convert `dt` to hours inside the expression so m³/hr × hr = m³.
-- `flow_in[t]` / `flow_out[t]`: References to the inlet / outlet state
-  `flow_vol` on the ports **inherited from `SISOBlock`** (do not re-create the
-  ports). The tank's holdup equation replaces SISO's pass-through mass balance
-  (in a pump inlet == outlet; in a tank they differ by the stored volume).
+- `flow_in[t]` / `flow_out[t]`: `pyo.Reference`s to the single-phase inlet /
+  outlet flow — `inlet_state.flow_vol_phase[:, "Liq"]` and
+  `outlet_state.flow_vol_phase[:, "Liq"]` on the ports **inherited from
+  `SISOBlock`** (do not re-create the ports). The tank's holdup equation
+  replaces SISO's pass-through mass balance (in a pump inlet == outlet; in a
+  tank they differ by the stored volume).
 - `initial_volume`: **mutable Param** (m³) + constraint `V[0] == initial_volume`.
   Register it **both** via `time_block.register_initial_state(param)` (rolling-
   horizon hook, architecture §3.1) **and**
@@ -172,10 +183,12 @@ caller passes, and document why in the class docstring.
 - `capacity`: Var (m³), a fixable design variable, **fixed by default** to
   `max_volume`, plus constraint `V[t] <= capacity` for all `t` (M07's design
   mode unfixes it). Do not register it as IO.
-- Registration: `register_io_variable(flow_in, role="input")`,
-  `register_io_variable(flow_out, role="input")`,
-  `register_io_variable(V, role="output")`. **No** `register_energy` call — the
-  tank draws nothing; this is the "iff" case for `test_energy_naming`.
+- Registration: the inherited `add_stream_ports()` registers the inlet
+  `flow_vol_phase` as `role="input"`, but for a tank **both** flows are dispatch
+  inputs, so re-register the outlet `flow_vol_phase` as `role="input"` (it is not
+  an output here) and `register_io_variable(V, role="output")`. **No**
+  `declare_power`/`register_power` call — the tank draws nothing; this is the
+  "iff" case for `test_energy_naming`.
 
 ## Pitfalls
 
@@ -183,8 +196,10 @@ caller passes, and document why in the class docstring.
    `V[N]` or silently skips — index the Constraint over
    `list(time_points)[:-1]` explicitly and unit-test the constraint count (N−1).
 2. **Unit algebra by luck.** Do not multiply by 3600 or 1/60 anywhere in Pump;
-   with kWh/m³ and m³/hr the equation is already in kW. In the tank, use
-   `pyunits.convert(dt, to_units=pyunits.hr)` — `dt` is 15 min by default.
+   kWh/m³ × m³/hr = kWh/hr is already kW dimensionally — wrap the product in
+   `pyunits.convert(..., pyunits.kW)` (a factor of 1), never a hand fudge factor.
+   In the tank, use `pyunits.convert(dt, to_units=pyunits.hr)` — `dt` is 15 min
+   by default.
 3. **Missing `doc=` strings.** `test_io_registration` fails on registered vars
    without docs; write them at declaration time, not as a fix-up pass.
 4. **Hard dependency on M05.** The harness must import `flexcore.solvers`
@@ -199,7 +214,7 @@ caller passes, and document why in the class docstring.
    collection on unmarked tests; mark the methods on the harness itself so
    subclasses inherit them.
 8. **Re-declaring ports/mass balance in subclasses.** `Pump` and `StorageTank`
-   inherit inlet/outlet ports and the `flow_vol` handles from `SISOBlock`;
+   inherit inlet/outlet ports and their `flow_vol_phase` state variables from `SISOBlock`;
    redeclaring them duplicates components. Add only the flow↔energy relationship
    (Pump) or the holdup dynamics (Tank). The tank *replaces* the pass-through
    balance rather than adding a second one.
@@ -214,15 +229,15 @@ caller passes, and document why in the class docstring.
   - `test_base_class_not_collected` — no items collected from the bare harness (use `pytest.main` on a tiny in-line module or inspect collection; implementer's choice).
   - `test_dummy_time_block_shape` — `dummy_time_block(3)` has 3 time points, a `SimpleAqueousFlow`, 15-min `dt`.
 - `src/flexops/tests/unit_models/base/test_siso.py` (all `@pytest.mark.unit`):
-  - `test_siso_ports_and_mass_balance` — build a bare `SISOBlock` on `dummy_time_block(3)`: assert an `inlet` and an `outlet` `Port` exist and expose `flow_vol`, and that the per-stream mass-balance constraint exists indexed by `t` (count == N). Fix `inlet.flow_vol` to a known profile and assert the mass-balance constraint **body** evaluates to 0 at each `t` when `outlet.flow_vol` is set equal (constraint-body check, no solver — testing doc §5).
-  - `test_siso_registers_no_energy` — a bare `SISOBlock` has no `electrical_work`/`thermal_work` (energy is a subclass concern), matching the base contract.
-- `src/flexops/tests/unit_models/test_pump.py` — `class TestPump(UnitModelTestHarness)` (~30 lines): `configure()` builds `dummy_time_block(3)` + one `Pump`, fixes nothing; `expected_dof = 0`; `expected_solution` = hand-computed `electrical_work` for a fixed `flow_vol` (e.g. 100 m³/hr × 0.5 kWh/m³ → `{"electrical_work[0]": 50.0, ...}`).
+  - `test_siso_ports_and_mass_balance` — build a bare `SISOBlock` on `dummy_time_block(3)`: assert an `inlet` and an `outlet` `Port` exist and expose `flow_vol_phase`, and that the per-stream mass-balance constraint exists indexed by `t` (count == N). Fix `inlet_state.flow_vol_phase[t, "Liq"]` to a known profile and assert the mass-balance constraint **body** evaluates to 0 at each `t` when `outlet_state.flow_vol_phase[t, "Liq"]` is set equal (constraint-body check, no solver — testing doc §5).
+  - `test_siso_registers_no_energy` — a bare `SISOBlock` has no `power_electrical`/`power_thermal` (power draw is a subclass concern), matching the base contract.
+- `src/flexops/tests/unit_models/test_pump.py` — `class TestPump(UnitModelTestHarness)` (~30 lines): `configure()` builds `dummy_time_block(3)` + one `Pump`, fixes nothing; `expected_dof = 0`; `expected_solution` = hand-computed `power_electrical` for a fixed inlet `flow_vol_phase` (e.g. 100 m³/hr × 0.5 kWh/m³ → `{"power_electrical[0]": 50.0, ...}`).
 - `src/flexops/tests/unit_models/test_storage_tank.py`:
   - `class TestStorageTank(UnitModelTestHarness)` — `configure()` on a 4-point `dummy_time_block(4)`, `max_volume=1000`, `initial_volume=200`; `expected_dof = 0` with flows fixed.
   - `test_mass_balance_by_hand` — `@pytest.mark.unit`. Build a 4-step tank, fix `flow_in = [100, 100, 0, 0]`, `flow_out = [50, 50, 50, 50]` m³/hr, set `V` values to the hand-computed trajectory from `V[0]=200` with `dt=0.25 h` (200, 212.5, 225, 212.5), and assert each holdup-constraint **body** evaluates to 0 within `pytest.approx(abs=1e-9)` — no solver (testing doc §5). Also assert exactly 3 holdup constraints exist.
   - `test_tank_logic_disabled` — `@pytest.mark.unit`. The canonical R6 check: build a `StorageTank` (once with no `unit_commitment` config, once **explicitly passing one on**) and assert it has **no** `status` Var and no unit-commitment/semicontinuous logic constraints in either case — a tank has no on/off status (architecture §3.4/§3.5, R6). Contrast with the `Pump`, which does not disable logic.
 - `src/flexops/tests/unit_models/test_pump_tank_component.py`:
-  - `test_pump_fills_tank_lp` — `@pytest.mark.component` + `@pytest.mark.needs_highs`. 24-point hourly TimeBlock; Pump → Arc → StorageTank; tank `flow_out` fixed to 50 m³/hr; objective: minimize total `electrical_work`; solve via `get_solver` (same skip guard). Assert optimal, and total pumped volume equals total demand ± initial/final holdup by mass balance, `pytest.approx(rel=1e-6)`.
+  - `test_pump_fills_tank_lp` — `@pytest.mark.component` + `@pytest.mark.needs_highs`. 24-point hourly TimeBlock; Pump → Arc → StorageTank; tank `flow_out` fixed to 50 m³/hr; objective: minimize total `power_electrical`; solve via `get_solver` (same skip guard). Assert optimal, and total pumped volume equals total demand ± initial/final holdup by mass balance, `pytest.approx(rel=1e-6)`.
 
 ## Documentation tasks
 
@@ -243,7 +258,7 @@ caller passes, and document why in the class docstring.
 
 - [ ] `UnitModelTestHarness` API matches `plan/02_testing_and_ci.md` §2 verbatim (attribute names, stage names, tier markers).
 - [ ] `dummy_time_block(n=3)` exported from `flexops.testing`.
-- [ ] `SISOBlock` exists in `flexops/unit_models/base/siso.py`: inlet/outlet ports on `SimpleAqueousFlow`, per-stream mass balance, energy-registration wiring; registers no energy itself.
+- [ ] `SISOBlock` exists in `flexops/unit_models/base/siso.py`: inlet/outlet ports on `SimpleAqueousFlow` (via `add_stream_ports`), per-stream mass balance on `flow_vol_phase`, power-registration wiring; registers no power itself.
 - [ ] `Pump(SISOBlock)` and `StorageTank(SISOBlock)` importable from `flexops.unit_models`; both inherit SISO ports/mass balance; all IO/parameter/energy registrations present.
 - [ ] `StorageTank` disables logic/unit-commitment (no `status` var / no UC constraints) even when a `unit_commitment` config is passed (R6); `test_tank_logic_disabled` passes.
 - [ ] SISO base port/mass-balance unit test passes.

@@ -21,3 +21,5 @@ design and operations optimization.
    reference/flexcore/index
    reference/flexops/core
    reference/flexops/properties
+   reference/flexops/testing
+   reference/flexops/unit_models/index

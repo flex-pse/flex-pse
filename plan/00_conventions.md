@@ -64,6 +64,15 @@ When a package is later split into its own repo, its tests move with it.
   - Never introduce variables named bare `power`, `energy`, or `work`.
   - Power always takes units of kW while energy takes units of kWh. 
 - Time index is always named `t`, iterating `time_block.time_index`.
+- **Difference/rate equations use backward (implicit) differencing.** A state
+  variable's value *ending* period `t` is written in terms of the rate
+  *sampled at* `t`: `state[t] == state[t-1] + dt * rate[t]`, indexed over
+  `t = 1, ..., N-1` (the initial condition `state[0] == initial_value` is a
+  separate constraint). Never write the forward/explicit form
+  (`state[t+1] == state[t] + dt * rate[t]`, indexed `t = 0, ..., N-2`) — every
+  hand-written dynamic relationship (tank holdup, battery SOC, ...) follows
+  this convention so the direction of every difference equation in the
+  codebase is consistent and never needs to be re-derived per unit model.
 - User-facing constructors take **keyword arguments only** (enforce with `*` in
   signatures). ISO-8601 date strings (`"2025-01-01"`) or `datetime` objects; never
   ambiguous `"1-1-2025"`.
