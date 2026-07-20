@@ -53,7 +53,7 @@ nothing builds DR event/curtailment constraints yet.
 
 ## Files to create or modify
 
-- `pyproject.toml` — add `eeco` to core runtime dependencies (verify the exact PyPI/distribution name; import name assumed `eeco`)
+- `pyproject.toml` — add `eeco` to core runtime dependencies (verify the exact PyPI/distribution name; import name assumed `eeco`) - import from the latest pip installable version. 
 - `.importlinter` — **no change**: per decision R12 there is **no `eeco` import-linter contract** (the only contract is the package DAG, conventions §6). Localizing `eeco` in `flexops/costing/opex.py` is a convention verified by `grep`, not an enforced boundary
 - `src/flexops/costing/opex.py` — **the sole `eeco` import point**: loaders, signal helpers, the in-objective `add_operating_cost` bridge, the post-optimization `evaluate_cost` evaluator, and the no-op `DRConfig` / DR hook
 - `src/flexops/costing/__init__.py` — export `load_tariff`, `load_dr_program`, `price_series`, `is_peak`, `peak_windows`, `price_gradient`, `add_operating_cost`, `OperatingCostHandles`, `evaluate_cost`, `DRConfig`
