@@ -32,9 +32,9 @@ class TestPumpHydraulic(UnitModelTestHarness):
     """Fixed inlet flow/pressures determine power_electrical via the hydraulic
     relation.
 
-    ``power = pressure_rise * flow / efficiency``, with ``pressure_rise =
+    ``power = delta_pressure * flow / efficiency``, with ``delta_pressure =
     outlet.pressure - inlet.pressure``. With ``inlet.pressure=101325 Pa``,
-    ``outlet.pressure=301325 Pa`` (a ``pressure_rise`` of 200_000 Pa),
+    ``outlet.pressure=301325 Pa`` (a ``delta_pressure`` of 200_000 Pa),
     ``efficiency=0.8``, and inlet flow ``100 m^3/hr = 100/3600 m^3/s``,
     ``power = 200_000 * (100/3600) / 0.8`` W ``= 6944.44...`` W
     ``= 6.94444... kW``.

@@ -70,10 +70,12 @@ class PumpData(SISOBlockData):
 
           P_{elec}[t] = \frac{\Delta P[t] \cdot \dot{V}_{in}[t]}{\eta}
 
-      :math:`\Delta P[t]` is ``pressure_rise[t]``, an ``Expression`` equal to
-      ``outlet_state.pressure[t] - inlet_state.pressure[t]`` -- so this
-      relation requires a ``property_package`` built with
-      ``has_pressure=True``, and excludes ``pressure`` from the inherited
+      :math:`\Delta P[t]` is ``delta_pressure[t]``, a ``Var`` tied to the
+      inlet/outlet pressure states by the ``pressure_change`` equality
+      constraint (``delta_pressure[t] == outlet_state.pressure[t] -
+      inlet_state.pressure[t]``) -- so this relation requires a
+      ``property_package`` built with ``has_pressure=True``, and excludes
+      ``pressure`` from the inherited
       inlet-to-outlet bypass (a pump raises pressure between its ports; it
       does not pass it through unchanged). Both ``inlet_state.pressure`` and
       ``outlet_state.pressure`` are registered as IO inputs -- boundary
@@ -108,9 +110,9 @@ class PumpData(SISOBlockData):
             default=PumpPowerRelation.CONSTANT_INTENSITY,
             domain=_power_relation_domain,
             description="Flow-to-power law: 'constant_intensity' (power = "
-            "energy_intensity * flow) or 'hydraulic' (power = pressure_rise "
-            "* flow / efficiency, pressure_rise computed from inlet/outlet "
-            "pressure).",
+            "energy_intensity * flow) or 'hydraulic' (power = delta_pressure "
+            "* flow / efficiency, delta_pressure tied to inlet/outlet "
+            "pressure by the pressure_change constraint).",
         ),
     )
     CONFIG.declare(
@@ -191,12 +193,12 @@ class PumpData(SISOBlockData):
         Raises:
             FlexConfigError: If the configured ``property_package`` was not
                 built with ``has_pressure=True`` (no ``pressure`` state to
-                compute ``pressure_rise`` from).
+                compute ``delta_pressure`` from).
         """
         if not hasattr(self.inlet_state, "pressure"):
             raise FlexConfigError(
                 "power_relation='hydraulic' requires a property_package "
-                "built with has_pressure=True (pressure_rise is computed "
+                "built with has_pressure=True (delta_pressure is computed "
                 "from the inlet/outlet pressure states).",
                 field="property_package",
                 value=self.config.property_package,
@@ -204,11 +206,22 @@ class PumpData(SISOBlockData):
         self.register_io_variable(self.inlet_state.pressure, role="input")
         self.register_io_variable(self.outlet_state.pressure, role="input")
 
-        @self.Expression(
-            tb.time_index, doc="Pump pressure rise: outlet pressure - inlet pressure."
+        self.delta_pressure = pyo.Var(
+            tb.time_index,
+            initialize=0.0,
+            units=pyunits.Pa,
+            doc="Pump pressure rise: outlet pressure - inlet pressure.",
         )
-        def pressure_rise(b, t):
-            return b.outlet_state.pressure[t] - b.inlet_state.pressure[t]
+
+        @self.Constraint(
+            tb.time_index,
+            doc="delta_pressure = outlet pressure - inlet pressure.",
+        )
+        def pressure_change(b, t):
+            return (
+                b.delta_pressure[t]
+                == b.outlet_state.pressure[t] - b.inlet_state.pressure[t]
+            )
 
         self.efficiency = pyo.Var(
             initialize=self.config.efficiency,
@@ -223,11 +236,11 @@ class PumpData(SISOBlockData):
 
         @self.Constraint(
             tb.time_index,
-            doc="power_electrical = pressure_rise * inlet flow / efficiency.",
+            doc="power_electrical = delta_pressure * inlet flow / efficiency.",
         )
         def power_eq(b, t):
             return power[t] == pyunits.convert(
-                b.pressure_rise[t]
+                b.delta_pressure[t]
                 * b.inlet_state.flow_vol_phase[t, "Liq"]
                 / b.efficiency,
                 pyunits.kW,
