@@ -19,9 +19,18 @@ This milestone delivers (a) the dependency + the sole `eeco` import point, (b)
 tariff-signal helper functions (peak/window/gradient) for logic constraints, (c)
 the Pyomo in-objective bridge `add_operating_cost(...)` that FlexCosting (M07)
 calls, (d) the post-optimization evaluator `evaluate_cost(...)` that produces the
-reported cost, and (e) a golden-file test proving EECO reproduces a hand-computed
-bill to the cent. flex-pse does **not** re-implement price series, demand-charge
-epigraphs, or cost math — that is EECO's job.
+reported electricity cost, (e) the gas-utility mirrors `add_gas_cost(...)` /
+`evaluate_gas_cost(...)`, and (f) a golden-file test proving EECO reproduces a
+hand-computed bill to the cent. flex-pse does **not** re-implement price series,
+demand-charge epigraphs, or cost math — that is EECO's job.
+
+**Total operating cost, and what's in v0 (scope note).** The user-facing
+operating cost flex-pse ultimately reports is: **electricity cost** (EECO,
+`evaluate_cost`) **+ gas cost** (EECO, `evaluate_gas_cost`) **+ user-defined
+fixed operating costs** (maintenance, labor, chemicals, etc. — *not* from
+EECO). This milestone delivers the two EECO-sourced pieces (electricity and
+gas). Fixed operating costs are **out of scope for M06** — see "Deferred:
+fixed operating costs" below; do not build that config in this milestone.
 
 **Why two evaluations (architecture §2.4, R4/R9).** The in-objective cost is a
 *convex relaxation* of a non-convex pricing structure: relaxing is what makes
@@ -55,11 +64,18 @@ nothing builds DR event/curtailment constraints yet.
 
 - `pyproject.toml` — add `eeco` to core runtime dependencies (verify the exact PyPI/distribution name; import name assumed `eeco`) - import from the latest pip installable version. 
 - `.importlinter` — **no change**: per decision R12 there is **no `eeco` import-linter contract** (the only contract is the package DAG, conventions §6). Localizing `eeco` in `flexops/costing/opex.py` is a convention verified by `grep`, not an enforced boundary
-- `src/flexops/costing/opex.py` — **the sole `eeco` import point**: loaders, signal helpers, the in-objective `add_operating_cost` bridge, the post-optimization `evaluate_cost` evaluator, and the no-op `DRConfig` / DR hook
-- `src/flexops/costing/__init__.py` — export `load_tariff`, `load_dr_program`, `price_series`, `is_peak`, `peak_windows`, `price_gradient`, `add_operating_cost`, `OperatingCostHandles`, `evaluate_cost`, `DRConfig`
+- `src/flexops/costing/opex.py` — **the sole `eeco` import point**: loaders, the CSV→dict tariff helper, signal helpers, the in-objective `add_operating_cost` / `add_gas_cost` bridges, the post-optimization `evaluate_cost` / `evaluate_gas_cost` evaluators, and the no-op `DRConfig` / DR hook
+- `src/flexops/costing/__init__.py` — export `load_tariff`, `load_dr_program`, `tariff_csv_to_dict`, `price_series`, `is_peak`, `peak_windows`, `price_gradient`, `add_operating_cost`, `add_gas_cost`, `OperatingCostHandles`, `evaluate_cost`, `evaluate_gas_cost`, `DRConfig`
 - `src/flexops/tests/costing/test_tariff_signals.py`, `test_operating_cost.py`
-- `src/flexops/tests/fixtures/tariff_tou_demo.json`, `dr_events_demo.json` — the demo tariff/DR in **EECO's** file format (the DR file is loaded into the container only; no DR constraints are built)
+- `src/flexops/tests/fixtures/tariff_tou_demo.json`, `tariff_tou_demo.csv`, `dr_events_demo.json` — the demo tariff/DR in **EECO's** file format (the `.csv` fixture is the same tariff in `rate_data` CSV form, for the `tariff_csv_to_dict` test; the DR file is loaded into the container only; no DR constraints are built)
 - `docs/reference/flexops/costing.rst` — start the costing reference (EECO integration section + tz/DST note)
+
+Note: `flexcore.config.schema.CostingConfig.tariff_source` (and `.dr.events_source`) already
+exist (built in M03) as the **Layer-1 persisted** home for "which tariff/DR file to use." This
+milestone does not add config fields — `load_tariff`/`load_dr_program` are the functions that
+resolve a `tariff_source`/`events_source` string into an EECO object; FlexCosting (M07) is what
+reads `ModelConfig.costing` and calls them. Keep `load_tariff`'s `source` param compatible with
+whatever `tariff_source` can hold (a file path — JSON or CSV — today).
 
 ## Specification
 
@@ -78,10 +94,37 @@ nothing builds DR event/curtailment constraints yet.
 ```python
 def load_tariff(source: str | Path | dict | "eeco tariff object") -> "eeco tariff object":
     """Return an EECO tariff object from a path/dict, or pass one through.
-    Wrap EECO/pydantic load errors in FlexDataError naming the file + field."""
+    `source` is what a CostingConfig.tariff_source string resolves to (a JSON
+    or CSV file path, or an in-memory dict/records structure); a `.csv` path
+    is routed through tariff_csv_to_dict() first. Wrap EECO/pydantic load
+    errors in FlexDataError naming the file + field."""
 
 def load_dr_program(source) -> "eeco DR object | None":
     """Same, for a demand-response program; None-safe."""
+
+def tariff_csv_to_dict(
+    source: str | Path | pd.DataFrame,
+    *,
+    write_to: str | Path | None = None,
+) -> dict:
+    """Read a tariff/rate-data CSV (EECO's `rate_data` column schema: utility,
+    type, name, month_start/end, weekday_start/end, hour_start/end, charge,
+    ...; verify exact columns against EECO) and return the equivalent
+    dict/records structure load_tariff accepts.
+
+    `source` is either a path to a CSV file (read from disk) or an already-
+    loaded `pd.DataFrame` with the same rate_data columns (e.g. read from disk
+    by the caller and pre-filtered/edited before conversion) — both go through
+    the same column validation. If `write_to` is given, also persist the
+    converted tariff as a JSON tariff-config file at that path (so a CSV can
+    be converted once and reused thereafter as a `tariff_source` JSON file,
+    per the resolution note above); the dict is returned either way, whether
+    or not `write_to` is set.
+
+    A convenience for authoring or importing tariffs in the common CSV exchange
+    format (e.g. utility rate-sheet exports) instead of hand-typed JSON; does
+    no charge math, just a schema conversion — wrap malformed-CSV errors in
+    FlexDataError naming the file + column."""
 
 # --- tariff signal helpers (pandas out, for logic/heuristic constraints) ---
 def price_series(tariff, index: pd.DatetimeIndex) -> pd.Series:      # $/kWh per stamp
@@ -139,11 +182,41 @@ def evaluate_cost(
     non-convexity is harmless, so this is an exact post-hoc evaluation, not a
     relaxation. Route all `eeco.*` calls through here (sole import point).
     Returns a plain float ($, horizon total)."""
+
+# --- the gas-utility mirrors (verify against EECO: gas is typically a second
+# `utility` key alongside "electric" in the same charge/consumption dicts, not
+# a separate tariff object — confirm and adjust `tariff` typing if so) ---
+def add_gas_cost(
+    *,
+    block: "pyo.Block",
+    gas_power,                            # time-indexed gas usage Var/Expression (EECO's gas units, e.g. therms/hr or m3/hr)
+    time_index: pd.DatetimeIndex,
+    dt_hours: float,
+    tariff,                               # same tariff object as add_operating_cost, filtered to the gas utility
+    dr_config: "DRConfig | None" = None,  # v0: container only; no DR constraints built
+) -> OperatingCostHandles:
+    """Mirrors add_operating_cost for the gas utility: ask EECO to build the
+    CONVEX-RELAXED in-objective gas-cost Expressions on `block` from `gas_power`,
+    returning the same OperatingCostHandles shape (gas-flavored). Same rules as
+    add_operating_cost: EECO owns the math, no cost math in the wrapper, DR is
+    a no-op container in v0."""
+
+def evaluate_gas_cost(
+    aggregate_gas_usage: "np.ndarray",    # realized aggregate gas usage per timestep
+    tariff,
+    dt_hours: float,
+    *,
+    dr_config: "DRConfig | None" = None,  # v0: ignored (containers-only)
+) -> float:
+    """Mirrors evaluate_cost for the gas utility: the post-hoc REPORTED gas
+    bill, evaluated on a fixed realized gas-usage array. Returns a plain float
+    ($, horizon total)."""
 ```
 
 - The signal helpers should prefer **EECO's own** peak/window/price utilities;
   only compute in pandas here what EECO does not expose. Document, per helper,
   whether it delegates to EECO or is a flex-pse fallback.
+- Use the `costs.calculate_itemized_cost` method from EECO to separate the charges. 
 - Neither `add_operating_cost` nor `evaluate_cost` may itself write cost math —
   if you find yourself summing prices or building an epigraph here, that logic
   belongs to EECO; call the EECO API instead (verify against EECO). These
@@ -252,6 +325,8 @@ Test-first (02 §1a). Fixtures in EECO format; golden constants hand-typed.
   - `test_price_gradient` — nonzero at the off-peak→peak and peak→off-peak transitions, 0 within a flat period.
   - `test_tz_or_load_errors` — whatever the EECO-consistent tz policy is (documented), the wrong input raises `FlexDataError` naming the fix.
   - `test_loaders_wrap_errors` — malformed tariff/DR file → `FlexDataError` with file + field path.
+  - `test_tariff_csv_to_dict_accepts_path_or_dataframe` — `tariff_csv_to_dict(tariff_tou_demo.csv)` (a path) and `tariff_csv_to_dict(pd.read_csv(tariff_tou_demo.csv))` (an already-loaded DataFrame) return the same dict; the result round-trips through `load_tariff` to the same EECO tariff object as loading `tariff_tou_demo.json` directly.
+  - `test_tariff_csv_to_dict_write_to` — `tariff_csv_to_dict(tariff_tou_demo.csv, write_to=tmp_path/"tariff.json")` writes a JSON file at that path (loadable via `load_tariff`) **and** returns the same dict as the no-`write_to` call.
   - `test_dr_container_loads_noop` — `@pytest.mark.unit`. `load_dr_program(dr_events_demo.json)` populates a `DRConfig` container; the DR hook is a no-op (no exception, builds nothing). Assert the container carries the loaded program and that passing it to `add_operating_cost` (see below) adds **no** DR components.
 - `src/flexops/tests/costing/test_operating_cost.py`:
   - `test_golden_monthly_bill` — `@pytest.mark.unit` (no solver). Build the realized aggregate-power numpy array (the reference load) and assert `evaluate_cost(realized_power, tariff, dt_hours=1.0)` reproduces each line item **and** the 14,085.00 total, `pytest.approx(abs=0.005)`. This is the clean post-hoc path — no model, no solve.

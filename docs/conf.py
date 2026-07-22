@@ -28,6 +28,7 @@ intersphinx_mapping = {
     "idaes": ("https://idaes-pse.readthedocs.io/en/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "pydantic": ("https://docs.pydantic.dev/latest/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
 }
 
 # Fast local iteration skips notebook execution; the docs CI gate (M14) runs
