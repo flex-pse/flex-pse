@@ -13,6 +13,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `flexops/costing/opex.py` now sources its rate_data column names, charge-column names, and the `electric`/`gas`/`energy` sentinels from `eeco.costs`' own string constants (`UTILITY`, `TYPE`, `CHARGE_METRIC`, `ELECTRIC`, `ENERGY`, …) instead of hardcoded literals, so an upstream EECO column rename tracks automatically rather than silently breaking tariff validation. Which columns flex-pse *requires* stays flex-pse's choice; only the string values are borrowed. A `unit` test guards that the tuples equal EECO's constants (M06).
 - Install pipeline is now conda-only: `uv` is removed and `environment.yml` installs the editable package and its Python dependencies (including the pip-only `eeco`) through a `pip:` subsection, so `conda env create -f environment.yml` is the single install command. README, `PLAN.md`, and the M00 milestone spec updated accordingly.
 
 ### Added

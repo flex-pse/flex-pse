@@ -24,6 +24,7 @@ from flexops.costing import (
     evaluate_gas_cost,
     load_dr_program,
     load_tariff,
+    opex,
 )
 from flexops.costing.opex import _itemized_electricity_cost
 
@@ -62,6 +63,37 @@ def _build_toy_model(load: np.ndarray) -> pyo.ConcreteModel:
     for i in m.step:
         m.agg[i].fix(float(load[i]))
     return m
+
+
+@pytest.mark.unit
+def test_rate_data_columns_track_eeco_constants():
+    """opex's column/utility names are sourced from ``eeco.costs`` constants.
+
+    Guards against an upstream EECO column rename silently diverging from the
+    literals flex-pse validates against: the required-column and charge-column
+    tuples must equal the corresponding ``eeco.costs`` string constants, and the
+    utility sentinels must equal EECO's.
+    """
+    from eeco import costs as eeco_costs
+
+    assert opex._REQUIRED_COLUMNS == (
+        eeco_costs.UTILITY,
+        eeco_costs.TYPE,
+        eeco_costs.NAME,
+        eeco_costs.MONTH_START,
+        eeco_costs.MONTH_END,
+        eeco_costs.WEEKDAY_START,
+        eeco_costs.WEEKDAY_END,
+        eeco_costs.HOUR_START,
+        eeco_costs.HOUR_END,
+    )
+    assert opex._CHARGE_COLUMNS == (
+        eeco_costs.CHARGE_METRIC,
+        eeco_costs.CHARGE_IMPERIAL,
+        eeco_costs.CHARGE,
+    )
+    assert opex._ELECTRIC == eeco_costs.ELECTRIC
+    assert opex._GAS == eeco_costs.GAS
 
 
 @pytest.mark.unit

@@ -64,23 +64,29 @@ from flexcore.exceptions import FlexConfigError, FlexDataError
 _log = logging.getLogger(__name__)
 
 # EECO rate_data columns flex-pse requires present before handing the frame to
-# eeco.costs.get_charge_dict (verified against eeco 0.2.1 costs.get_charge_dict).
+# eeco.costs.get_charge_dict. The *choice* of which columns to require is
+# flex-pse's; the column *names* are sourced from eeco's own constants so an
+# upstream rename tracks automatically instead of silently breaking validation.
 _REQUIRED_COLUMNS = (
-    "utility",
-    "type",
-    "name",
-    "month_start",
-    "month_end",
-    "weekday_start",
-    "weekday_end",
-    "hour_start",
-    "hour_end",
+    _eeco_costs.UTILITY,
+    _eeco_costs.TYPE,
+    _eeco_costs.NAME,
+    _eeco_costs.MONTH_START,
+    _eeco_costs.MONTH_END,
+    _eeco_costs.WEEKDAY_START,
+    _eeco_costs.WEEKDAY_END,
+    _eeco_costs.HOUR_START,
+    _eeco_costs.HOUR_END,
 )
 # One of these charge columns must be present (eeco accepts metric/imperial/bare).
-_CHARGE_COLUMNS = ("charge (metric)", "charge (imperial)", "charge")
+_CHARGE_COLUMNS = (
+    _eeco_costs.CHARGE_METRIC,
+    _eeco_costs.CHARGE_IMPERIAL,
+    _eeco_costs.CHARGE,
+)
 
-_ELECTRIC = "electric"
-_GAS = "gas"
+_ELECTRIC = _eeco_costs.ELECTRIC
+_GAS = _eeco_costs.GAS
 
 # Standard block attribute names the combined :func:`add_operating_cost` reads
 # when a consumption series is not passed explicitly. Electric uses the canonical
@@ -354,7 +360,11 @@ def _energy_price_series(tariff: pd.DataFrame, index: pd.DatetimeIndex) -> pd.Se
         # key form: utility_type_name_start_end_limit
         parts = key.split("_")
         utility, charge_type, limit = parts[0], parts[1], parts[-1]
-        if utility == _ELECTRIC and charge_type == "energy" and int(limit) == 0:
+        if (
+            utility == _ELECTRIC
+            and charge_type == _eeco_costs.ENERGY
+            and int(limit) == 0
+        ):
             prices = prices + np.asarray(array)
     return pd.Series(prices, index=index)
 
