@@ -17,8 +17,9 @@ exception hierarchy.
 
 **Two ways EECO is used** (architecture §2.4, decisions R4/R9):
 
-1. *In-objective* — :func:`add_operating_cost` / :func:`add_gas_cost` ask EECO to
-   build the **convex-relaxed** operating-cost ``Expression`` on a Pyomo block.
+1. *In-objective* — :func:`add_operating_cost` (the facility umbrella over the
+   single-utility :func:`add_electricity_cost` / :func:`add_gas_cost`) asks EECO
+   to build the **convex-relaxed** operating-cost ``Expression`` on a Pyomo block.
    This is the tractable proxy the scheduler minimizes, not the reported bill.
 2. *Post-optimization* — :func:`evaluate_cost` / :func:`evaluate_gas_cost`
    evaluate EECO on a **fixed, realized** aggregate-power numpy array to compute
@@ -57,6 +58,7 @@ import pyomo.environ as pyo
 # THE sole eeco import point in the whole codebase (decision R12, §6).
 from eeco import costs as _eeco_costs
 
+import flexcore.nomenclature as nm
 from flexcore.exceptions import FlexConfigError, FlexDataError
 
 _log = logging.getLogger(__name__)
@@ -79,6 +81,13 @@ _CHARGE_COLUMNS = ("charge (metric)", "charge (imperial)", "charge")
 
 _ELECTRIC = "electric"
 _GAS = "gas"
+
+# Standard block attribute names the combined :func:`add_operating_cost` reads
+# when a consumption series is not passed explicitly. Electric uses the canonical
+# nomenclature name (``power_electrical``); gas has no nomenclature entry in v0,
+# so its name is a documented local convention — a gas-usage series in EECO's gas
+# units (m³/hr by default), not a kW ``power_thermal`` duty.
+_GAS_USAGE_ATTR = "gas_usage"
 
 
 # --------------------------------------------------------------------------- #
@@ -611,7 +620,7 @@ def _assert_linear_demand(demand_charge) -> None:
             )
 
 
-def add_operating_cost(
+def add_electricity_cost(
     *,
     block: pyo.Block,
     electrical_power,
@@ -620,7 +629,11 @@ def add_operating_cost(
     tariff: pd.DataFrame,
     dr_config: "DRConfig | None" = None,
 ) -> OperatingCostHandles:
-    """Build EECO's convex-relaxed in-objective electricity cost on ``block``.
+    """Build EECO's convex-relaxed in-objective **electricity** cost on ``block``.
+
+    The single-utility electric builder. :func:`add_operating_cost` is the
+    facility-level umbrella that wraps this and :func:`add_gas_cost` onto one
+    opex block; call this directly only when you want the electric leg alone.
 
     Hands EECO the kW series, tariff, and timestep; EECO owns the math (energy
     cost, demand-charge epigraphs, kWh conversion). The returned
@@ -667,8 +680,8 @@ def add_gas_cost(
 ) -> OperatingCostHandles:
     """Build EECO's convex-relaxed in-objective gas cost on ``block``.
 
-    Mirrors :func:`add_operating_cost` for the gas utility: same rules (EECO owns
-    the math, no cost math here, DR is a no-op container in v0), same
+    Mirrors :func:`add_electricity_cost` for the gas utility: same rules (EECO
+    owns the math, no cost math here, DR is a no-op container in v0), same
     :class:`OperatingCostHandles` shape (gas-flavored). ``tariff`` is the same
     rate_data object; EECO selects the ``"gas"`` utility rows.
 
@@ -696,6 +709,98 @@ def add_gas_cost(
         tariff=tariff,
         utility=_GAS,
         dr_config=dr_config,
+    )
+
+
+def add_operating_cost(
+    *,
+    block: pyo.Block,
+    time_index: pd.DatetimeIndex,
+    dt_hours: float,
+    tariff: pd.DataFrame,
+    electrical_power=None,
+    gas_power=None,
+    dr_config: "DRConfig | None" = None,
+) -> OperatingCostHandles:
+    """Build the facility's whole in-objective operating cost — electric **and** gas.
+
+    The umbrella over :func:`add_electricity_cost` and :func:`add_gas_cost`: it
+    builds each present utility's convex-relaxed cost on the **same** opex
+    ``block`` (EECO namespaces its components by utility, so the two never
+    collide) and returns one :class:`OperatingCostHandles` whose fields are the
+    per-utility sums — the single ``total_operating_cost`` the scheduler
+    minimizes. Still a RELAXED proxy, not the reported bill (use
+    :func:`evaluate_cost`/:func:`evaluate_gas_cost` post-solve, R4/R9).
+
+    The facility-level consumption defaults to the standard series registered on
+    ``block`` — ``block.power_electrical`` (the canonical
+    :data:`~flexcore.nomenclature.POWER_ELECTRICAL` name) and ``block.gas_usage``
+    — so a caller need not re-declare them each use; pass
+    ``electrical_power``/``gas_power`` to override (e.g. a toy model or a
+    pre-aggregated series). A utility whose series is neither passed nor present
+    on the block is simply omitted; at least one must resolve.
+
+    Args:
+        block: The Pyomo opex block to build both utilities' cost on.
+        time_index: Naive ``pd.DatetimeIndex`` aligning to the power series.
+        dt_hours: Timestep length in hours; passed to EECO once for kW→kWh.
+        tariff: An EECO rate_data DataFrame (its electric and/or gas rows).
+        electrical_power: Time-indexed kW series; defaults to
+            ``block.power_electrical`` if present, or whatever pyo object is provided,
+            else the electric leg is skipped.
+        gas_power: Time-indexed gas-usage series in EECO's gas units; defaults to
+            ``block.gas_usage`` if present, else the gas leg is skipped.
+        dr_config: Optional DR container (v0: no constraints built).
+
+    Returns:
+        A combined :class:`OperatingCostHandles`: ``energy_cost``,
+        ``demand_charge`` and ``total_operating_cost`` are the sums across the
+        built utilities, and ``eeco_block`` maps each built utility name
+        (``"electric"``/``"gas"``) to its raw EECO itemized structure.
+
+    Raises:
+        FlexConfigError: If neither an electric nor a gas consumption series is
+            passed or found on ``block``.
+        FlexDataError: If ``time_index`` is timezone-aware.
+    """
+    if electrical_power is None:
+        electrical_power = getattr(block, nm.POWER_ELECTRICAL, None)
+    if gas_power is None:
+        gas_power = getattr(block, _GAS_USAGE_ATTR, None)
+    if electrical_power is None and gas_power is None:
+        raise FlexConfigError(
+            "add_operating_cost found no utility consumption to cost: pass "
+            "electrical_power and/or gas_power, or register them on the block as "
+            f"'{nm.POWER_ELECTRICAL}' / '{_GAS_USAGE_ATTR}'.",
+            field="electrical_power",
+        )
+
+    per_utility: dict[str, OperatingCostHandles] = {}
+    if electrical_power is not None:
+        per_utility[_ELECTRIC] = add_electricity_cost(
+            block=block,
+            electrical_power=electrical_power,
+            time_index=time_index,
+            dt_hours=dt_hours,
+            tariff=tariff,
+            dr_config=dr_config,
+        )
+    if gas_power is not None:
+        per_utility[_GAS] = add_gas_cost(
+            block=block,
+            gas_power=gas_power,
+            time_index=time_index,
+            dt_hours=dt_hours,
+            tariff=tariff,
+            dr_config=dr_config,
+        )
+
+    legs = list(per_utility.values())
+    return OperatingCostHandles(
+        energy_cost=sum(leg.energy_cost for leg in legs),
+        demand_charge=sum(leg.demand_charge for leg in legs),
+        total_operating_cost=sum(leg.total_operating_cost for leg in legs),
+        eeco_block={util: leg.eeco_block for util, leg in per_utility.items()},
     )
 
 

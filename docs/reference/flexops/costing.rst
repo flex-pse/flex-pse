@@ -75,8 +75,19 @@ In-objective cost bridge
    :nosignatures:
 
    add_operating_cost
+   add_electricity_cost
    add_gas_cost
    OperatingCostHandles
+
+:func:`add_operating_cost` is the facility-level umbrella: it builds **both**
+the electricity and gas costs onto one opex block (EECO namespaces its Pyomo
+components by utility, so ``electric_*`` and ``gas_*`` never collide) and returns
+a single :class:`OperatingCostHandles` whose ``total_operating_cost`` is the sum
+across utilities. The facility consumption defaults to the standard series on the
+block — ``block.power_electrical`` and ``block.gas_usage`` — so a caller need not
+re-declare them each use; pass ``electrical_power``/``gas_power`` to override. The
+single-utility builders :func:`add_electricity_cost` and :func:`add_gas_cost`
+remain available for building one leg alone.
 
 Post-optimization evaluators
 ----------------------------

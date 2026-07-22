@@ -8,6 +8,7 @@ collected in :mod:`flexops.costing.opex` (the sole import point, decision R12).
 from flexops.costing.opex import (
     DRConfig,
     OperatingCostHandles,
+    add_electricity_cost,
     add_gas_cost,
     add_operating_cost,
     evaluate_cost,
@@ -30,6 +31,7 @@ __all__ = [
     "peak_windows",
     "price_gradient",
     "add_operating_cost",
+    "add_electricity_cost",
     "add_gas_cost",
     "OperatingCostHandles",
     "evaluate_cost",

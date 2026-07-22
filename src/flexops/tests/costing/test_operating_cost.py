@@ -10,14 +10,18 @@ relaxed proxy against the post-hoc bill, the DR no-op, and LP classification.
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pyomo.environ as pyo
 import pytest
 
+from flexcore.exceptions import FlexConfigError
 from flexcore.solvers import ProblemClass, classify
 from flexops.costing import (
     DRConfig,
+    add_electricity_cost,
     add_operating_cost,
     evaluate_cost,
+    evaluate_gas_cost,
     load_dr_program,
     load_tariff,
 )
@@ -160,3 +164,137 @@ def test_demand_charge_is_linear():
     )
     m.objective = pyo.Objective(expr=handles.total_operating_cost, sense=pyo.minimize)
     assert classify(m) is ProblemClass.LP
+
+
+# --------------------------------------------------------------------------- #
+# Combined opex block: one block carries both electric and gas utility costs.
+# --------------------------------------------------------------------------- #
+_N24 = 24
+
+
+def _flat_two_utility_tariff():
+    """A flat (no-tier, no-demand) tariff with one electric and one gas charge."""
+    records = [
+        {
+            "utility": "electric",
+            "type": "energy",
+            "name": "allday",
+            "month_start": 1,
+            "month_end": 12,
+            "weekday_start": 0,
+            "weekday_end": 6,
+            "hour_start": 0,
+            "hour_end": 24,
+            "basic_charge_limit (metric)": 0,
+            "charge (metric)": 0.10,
+            "units": "$/kWh",
+        },
+        {
+            "utility": "gas",
+            "type": "energy",
+            "name": "allday",
+            "month_start": 1,
+            "month_end": 12,
+            "weekday_start": 0,
+            "weekday_end": 6,
+            "hour_start": 0,
+            "hour_end": 24,
+            "basic_charge_limit (metric)": 0,
+            "charge (metric)": 0.50,
+            "units": "$/m3",
+        },
+    ]
+    return load_tariff(records)
+
+
+def _two_utility_model(elec_kw: np.ndarray, gas_flow: np.ndarray) -> pyo.ConcreteModel:
+    """A toy block carrying the standard `power_electrical`/`gas_usage` Vars (fixed)."""
+    m = pyo.ConcreteModel()
+    m.t = pyo.RangeSet(0, _N24 - 1)
+    m.power_electrical = pyo.Var(m.t, bounds=(0, None))
+    m.gas_usage = pyo.Var(m.t, bounds=(0, None))
+    for i in m.t:
+        m.power_electrical[i].fix(float(elec_kw[i]))
+        m.gas_usage[i].fix(float(gas_flow[i]))
+    return m
+
+
+@pytest.mark.unit
+def test_add_electricity_cost_builds_electric_components():
+    """`add_electricity_cost` (the renamed electric builder) builds electric terms."""
+    tariff = load_tariff(_TARIFF_JSON)
+    m = _build_toy_model(_reference_load())
+    handles = add_electricity_cost(
+        block=m,
+        electrical_power=m.agg,
+        time_index=_july_index(),
+        dt_hours=1.0,
+        tariff=tariff,
+    )
+    assert "electric" in handles.eeco_block
+    assert any(v.name.startswith("electric_") for v in m.component_objects(pyo.Var))
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_add_operating_cost_combines_electric_and_gas():
+    """One opex block carries both utilities; its total is electric + gas."""
+    from flexcore.solvers import get_solver
+
+    tariff = _flat_two_utility_tariff()
+    elec = np.full(_N24, 100.0)
+    gas = np.full(_N24, 10.0)
+    index = pd.date_range("2025-07-01", periods=_N24, freq="h")
+
+    m = _two_utility_model(elec, gas)
+    handles = add_operating_cost(
+        block=m,
+        electrical_power=m.power_electrical,
+        gas_power=m.gas_usage,
+        time_index=index,
+        dt_hours=1.0,
+        tariff=tariff,
+    )
+    m.objective = pyo.Objective(expr=handles.total_operating_cost, sense=pyo.minimize)
+    get_solver(model=m, prefer="highs").solve(m)
+
+    combined = pyo.value(handles.total_operating_cost)
+    expected = evaluate_cost(
+        elec, tariff, dt_hours=1.0, time_index=index
+    ) + evaluate_gas_cost(gas, tariff, dt_hours=1.0, time_index=index)
+    assert set(handles.eeco_block) == {"electric", "gas"}
+    assert combined == pytest.approx(expected, abs=1e-3)
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_add_operating_cost_reads_block_defaults():
+    """With no power args, reads block.power_electrical / block.gas_usage."""
+    from flexcore.solvers import get_solver
+
+    tariff = _flat_two_utility_tariff()
+    elec = np.full(_N24, 100.0)
+    gas = np.full(_N24, 10.0)
+    index = pd.date_range("2025-07-01", periods=_N24, freq="h")
+
+    m = _two_utility_model(elec, gas)
+    handles = add_operating_cost(block=m, time_index=index, dt_hours=1.0, tariff=tariff)
+    m.objective = pyo.Objective(expr=handles.total_operating_cost, sense=pyo.minimize)
+    get_solver(model=m, prefer="highs").solve(m)
+
+    combined = pyo.value(handles.total_operating_cost)
+    expected = evaluate_cost(
+        elec, tariff, dt_hours=1.0, time_index=index
+    ) + evaluate_gas_cost(gas, tariff, dt_hours=1.0, time_index=index)
+    assert set(handles.eeco_block) == {"electric", "gas"}
+    assert combined == pytest.approx(expected, abs=1e-3)
+
+
+@pytest.mark.unit
+def test_add_operating_cost_requires_a_utility():
+    """No power passed and no standard components on the block → FlexConfigError."""
+    tariff = _flat_two_utility_tariff()
+    index = pd.date_range("2025-07-01", periods=_N24, freq="h")
+    m = pyo.ConcreteModel()
+    with pytest.raises(FlexConfigError, match="power_electrical"):
+        add_operating_cost(block=m, time_index=index, dt_hours=1.0, tariff=tariff)
