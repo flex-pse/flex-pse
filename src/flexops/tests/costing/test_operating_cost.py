@@ -13,9 +13,11 @@ import numpy as np
 import pandas as pd
 import pyomo.environ as pyo
 import pytest
+from pyomo.environ import units as pyunits
 
 from flexcore.exceptions import FlexConfigError
 from flexcore.solvers import ProblemClass, classify
+from flexops.core.time_block import TimeBlock
 from flexops.costing import (
     DRConfig,
     add_electricity_cost,
@@ -330,3 +332,54 @@ def test_add_operating_cost_requires_a_utility():
     m = pyo.ConcreteModel()
     with pytest.raises(FlexConfigError, match="power_electrical"):
         add_operating_cost(block=m, time_index=index, dt_hours=1.0, tariff=tariff)
+
+
+@pytest.mark.unit
+def test_wrapper_block_t_matches_time_block_time_index():
+    """The injected `block.t` EECO iterates aligns with the TimeBlock's time_index.
+
+    Guards the M07 integration contract: a power Var indexed on
+    `time_block.time_index` is consumed correctly by EECO under `block.t`.
+    """
+    tariff = load_tariff(_TARIFF_JSON)
+    m = pyo.ConcreteModel()
+    m.time_block = TimeBlock(
+        start_date="2025-01-01", end_date="2025-01-02", time_step=15 * pyunits.min
+    )
+    tb = m.time_block
+    m.power_electrical = pyo.Var(tb.time_index, initialize=0.0, units=pyunits.kW)
+    for i in tb.time_index:
+        m.power_electrical[i].fix(100.0)
+    dt_hours = pyo.value(pyunits.convert(tb.dt, pyunits.hr))
+
+    assert not hasattr(m, "t")  # TimeBlock exposes `time_index`, not `t`
+    add_operating_cost(
+        block=m,
+        electrical_power=m.power_electrical,
+        time_index=tb.datetime_index,
+        dt_hours=dt_hours,
+        tariff=tariff,
+    )
+    # Three-way alignment: injected step set == TimeBlock time set == Var domain,
+    # and all N match the datetime stamp count.
+    assert list(m.t) == list(tb.time_index)
+    assert set(m.t) == set(m.power_electrical.index_set())
+    assert len(m.t) == len(tb.datetime_index)
+
+
+@pytest.mark.unit
+def test_wrapper_preserves_existing_block_t():
+    """When the block already defines `t`, the wrapper reuses it, not re-creates it."""
+    tariff = load_tariff(_TARIFF_JSON)
+    index = _july_index()
+    m = _build_toy_model(_reference_load())
+    m.t = pyo.RangeSet(0, len(index) - 1)
+    existing = m.t
+    add_operating_cost(
+        block=m,
+        electrical_power=m.agg,
+        time_index=index,
+        dt_hours=1.0,
+        tariff=tariff,
+    )
+    assert m.t is existing  # guard did not overwrite it
