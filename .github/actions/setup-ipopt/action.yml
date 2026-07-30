@@ -44,19 +44,3 @@ runs:
     # would not see it; exporting it here makes `ipopt` resolvable job-wide.
     - shell: bash
       run: echo "${{ steps.bindir.outputs.path }}" >> "$GITHUB_PATH"
-
-    # Actually solve something. `SolverFactory("ipopt").available()` only checks
-    # that the binary exists, so a binary that cannot load its shared libraries
-    # probes as available and then fails inside the test suite; this makes that
-    # fail here, in setup, with the loader error in the log.
-    - shell: bash
-      run: |
-        python - <<'PY'
-        import pyomo.environ as pyo
-
-        m = pyo.ConcreteModel()
-        m.x = pyo.Var(initialize=0.0)
-        m.obj = pyo.Objective(expr=(m.x - 2.0) ** 2)
-        pyo.SolverFactory("ipopt").solve(m)
-        print(f"ipopt OK: x = {pyo.value(m.x):.6f}")
-        PY
