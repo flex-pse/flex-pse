@@ -232,7 +232,7 @@ def test_charge_registered_as_output_io_variable():
 @pytest.mark.unit
 def test_soh_capacity_limit_constraint_body():
     """soh_capacity_limit bounds charge by soh * capacity, independent of soc_max."""
-    _, unit = _battery(4, initial_soh=0.6, soc_max=1.0)
+    _, unit = _battery(4, soh=0.6, soc_max=1.0)
     capacity_val = pyo.value(unit.capacity)
 
     unit.charge[0].set_value(0.6 * capacity_val)

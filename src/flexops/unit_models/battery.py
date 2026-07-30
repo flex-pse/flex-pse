@@ -71,7 +71,7 @@ Usage::
     >>> m.battery = BatteryModel(capacity=10 * pyunits.kWh)  # doctest: +SKIP
 
 Config: see ``capacity``, ``power_charge_max``/``power_discharge_max``,
-``eta_charge``/``eta_discharge``, ``soc_min``/``soc_max``, ``initial_soc``,
+``eta_charge``/``eta_discharge``, ``soc_min``/``soc_max``, ``initial_soc``, ``soh``,
 ``charge_leakage_rate`` below, plus the inherited
 ``relaxation``/``unit_commitment``/``external_dispatch``/``costing_package``
 (architecture §3.2).
@@ -180,13 +180,13 @@ class BatteryModelData(OpsBlockData):
         ),
     )
     CONFIG.declare(
-        "initial_soh",
+        "soh",
         ConfigValue(
             default=0.85,
             domain=_fraction_domain,
-            description="Initial/current state of health, a fraction of "
-            "nameplate capacity still available due to degradation; fixes "
-            "soh at construction. Default 0.85 represents a mid-life battery.",
+            description="State of health, a fraction of nameplate capacity "
+            "still available due to degradation; fixes soh at construction. "
+            "Default 0.85 represents a mid-life battery.",
         ),
     )
     CONFIG.declare(
@@ -233,7 +233,7 @@ class BatteryModelData(OpsBlockData):
         if costing_package is not None:
             costing_package.register_sizing_variable(self.capacity)
 
-        soh_val = self.config.initial_soh
+        soh_val = self.config.soh
         self.soh = pyo.Var(
             initialize=soh_val,
             bounds=(0.0, 1.0),
