@@ -8,21 +8,13 @@ fixed at the constructor value by default (operations mode); a
 ``costing_package=`` associates it with :meth:`FlexCostingData.set_design_mode`/
 :meth:`~flexops.costing.flex_costing.FlexCostingData.set_operations_mode`.
 
-**Deviations from the milestone spec** (recorded per ``CLAUDE.md``; see the PR
-description for the full rationale):
-
-* ``unit_commitment.status`` is **not** forced off. The milestone text has one
-  line claiming a battery forces it off "similar to a storage tank," which
-  directly contradicts the same document's "Applying UC per unit" section
-  ("the battery enables status for mutually-exclusive charge/discharge") and
-  its own required tests (an arbitrage MIP with unit commitment enabled, then
-  relaxed for an LP bound). ``UnitCommitmentConfig.status`` defaults ``True``
-  project-wide; here, when ``True``, :func:`~flexops.logic.status.add_status`
-  is attached to ``power_charge`` and a symmetric ``discharge_exclusivity``
-  constraint bounds ``power_discharge`` by ``(1 - status)`` -- one binary
-  gives mutually-exclusive charge/discharge. This requires both
-  ``power_charge_max``/``power_discharge_max`` (the semicontinuous link needs
-  a finite bound); a caller who wants an unbounded, non-UC battery passes
+* ``UnitCommitmentConfig.status`` defaults ``True`` project-wide; here, when
+  ``True``, :func:`~flexops.logic.status.add_status` is attached to
+  ``power_charge`` and a symmetric ``discharge_exclusivity`` constraint bounds
+  ``power_discharge`` by ``(1 - status)`` -- one binary gives
+  mutually-exclusive charge/discharge. This requires both
+  ``power_charge_max``/``power_discharge_max`` (the semicontinuous link needs a
+  finite bound); a caller who wants an unbounded, non-UC battery passes
   ``unit_commitment=UnitCommitmentConfig(status=False)``.
 * ``soc[t]`` is a Var, bounded by ``soc_min``/``soc_max``, tied to
   ``charge[t]``/``capacity`` by the equality Constraint ``soc_capacity_link``
