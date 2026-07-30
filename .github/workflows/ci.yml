@@ -45,9 +45,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev]"
-      # TODO(M04/M05): install/cache HiGHS (highspy) and IPOPT (idaes get-extensions)
-      # once component-tier tests start solving models.
+      - run: pip install -e ".[dev,solvers]"
+      - uses: ./.github/actions/setup-ipopt
       - run: pytest -m "unit or component" --cov --cov-report=xml
 
   # TODO: uncomment this job once the repo is public. It installs from the
@@ -115,7 +114,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,solvers]"
+      - uses: ./.github/actions/setup-ipopt
       # The integration set is empty until M12; pytest exits 5 (no tests
       # collected) in that case, which is treated as success so this job is
       # structural from day one rather than aspirational. `shell: bash` forces
