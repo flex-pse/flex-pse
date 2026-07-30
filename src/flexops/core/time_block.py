@@ -155,7 +155,7 @@ class TimeBlockData(ProcessBlockData):
     not itself a time point.
 
     A single ``TimeBlock`` spans at most ``max_length`` (default one calendar
-    month; see decision R2); longer studies are composed from multiple
+    month); longer studies are composed from multiple
     ``TimeBlock`` blocks by the rolling-horizon driver or the design-mode
     wrapper.
 

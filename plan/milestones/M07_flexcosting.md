@@ -79,7 +79,7 @@ populate it is M08's battery.
 
 ## Files to create or modify
 
-- `src/flexcore/config/schema.py` — **modify**: add `fixed_operating_cost` to `CostingConfig` (Layer-1 persisted; a `description`'d pydantic field, default `0.0`, $ over the horizon). This is the only flexcore change in M07.
+- `src/flexcore/config/schema.py` — **modify**: add `fixed_operating_cost` to `CostingConfig`. This is the only flexcore change in M07.
 - `src/flexops/costing/__init__.py` — **modify**: also export `FlexCosting` and the `report_cost` breakdown dataclasses (`CostReport`, `OperatingCostBreakdown`, `CapitalCostBreakdown`), so M13/downstream can consume them
 - `src/flexops/costing/flex_costing.py` — the costing block (owns the `opex` and `capex` sub-blocks) and the `CostReport` breakdown dataclasses (§6)
 - `src/flexops/core/ops_block.py` — **modify**: `register_power` forwards to the costing package when `costing_package=` was given (feeds the `opex` electricity aggregation)

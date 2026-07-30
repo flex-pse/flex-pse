@@ -1,4 +1,4 @@
-"""Golden-bill and in-objective tests for the EECO cost bridge (M06).
+"""Golden-bill and in-objective tests for the EECO cost bridge.
 
 ``test_golden_monthly_bill`` is the ``unit``-tier truth check: it evaluates a
 hand-computed PG&E-B-20-flavored bill on a fixed realized load, no solve. The
@@ -23,7 +23,7 @@ from flexops.costing import (
     add_electricity_cost,
     add_operating_cost,
     evaluate_cost,
-    evaluate_gas_cost,
+    evaluate_fuel_cost,
     load_dr_program,
     load_tariff,
     opex,
@@ -242,14 +242,14 @@ def _flat_two_utility_tariff():
 
 
 def _two_utility_model(elec_kw: np.ndarray, gas_flow: np.ndarray) -> pyo.ConcreteModel:
-    """A toy block carrying the standard `power_electrical`/`gas_usage` Vars (fixed)."""
+    """A toy block carrying the standard `power_electrical`/`fuel_usage` Vars, fixed."""
     m = pyo.ConcreteModel()
     m.t = pyo.RangeSet(0, _N24 - 1)
     m.power_electrical = pyo.Var(m.t, bounds=(0, None))
-    m.gas_usage = pyo.Var(m.t, bounds=(0, None))
+    m.fuel_usage = pyo.Var(m.t, bounds=(0, None))
     for i in m.t:
         m.power_electrical[i].fix(float(elec_kw[i]))
-        m.gas_usage[i].fix(float(gas_flow[i]))
+        m.fuel_usage[i].fix(float(gas_flow[i]))
     return m
 
 
@@ -284,7 +284,7 @@ def test_add_operating_cost_combines_electric_and_gas():
     handles = add_operating_cost(
         block=m,
         electrical_power=m.power_electrical,
-        gas_power=m.gas_usage,
+        fuel_power=m.fuel_usage,
         time_index=index,
         dt_hours=1.0,
         tariff=tariff,
@@ -295,7 +295,7 @@ def test_add_operating_cost_combines_electric_and_gas():
     combined = pyo.value(handles.total_operating_cost)
     expected = evaluate_cost(
         elec, tariff, dt_hours=1.0, time_index=index
-    ) + evaluate_gas_cost(gas, tariff, dt_hours=1.0, time_index=index)
+    ) + evaluate_fuel_cost(gas, tariff, dt_hours=1.0, time_index=index)
     assert set(handles.eeco_block) == {"electric", "gas"}
     assert combined == pytest.approx(expected, abs=1e-3)
 
@@ -303,7 +303,7 @@ def test_add_operating_cost_combines_electric_and_gas():
 @pytest.mark.component
 @pytest.mark.needs_highs
 def test_add_operating_cost_reads_block_defaults():
-    """With no power args, reads block.power_electrical / block.gas_usage."""
+    """With no power args, reads block.power_electrical / block.fuel_usage."""
     from flexcore.solvers import get_solver
 
     tariff = _flat_two_utility_tariff()
@@ -319,7 +319,7 @@ def test_add_operating_cost_reads_block_defaults():
     combined = pyo.value(handles.total_operating_cost)
     expected = evaluate_cost(
         elec, tariff, dt_hours=1.0, time_index=index
-    ) + evaluate_gas_cost(gas, tariff, dt_hours=1.0, time_index=index)
+    ) + evaluate_fuel_cost(gas, tariff, dt_hours=1.0, time_index=index)
     assert set(handles.eeco_block) == {"electric", "gas"}
     assert combined == pytest.approx(expected, abs=1e-3)
 
@@ -338,8 +338,8 @@ def test_add_operating_cost_requires_a_utility():
 def test_wrapper_block_t_matches_time_block_time_index():
     """The injected `block.t` EECO iterates aligns with the TimeBlock's time_index.
 
-    Guards the M07 integration contract: a power Var indexed on
-    `time_block.time_index` is consumed correctly by EECO under `block.t`.
+    Makes sure the power Var indexed on`time_block.time_index` is consumed correctly
+    by EECO under `block.t`.
     """
     tariff = load_tariff(_TARIFF_JSON)
     m = pyo.ConcreteModel()
@@ -383,3 +383,75 @@ def test_wrapper_preserves_existing_block_t():
         tariff=tariff,
     )
     assert m.t is existing  # guard did not overwrite it
+
+
+# --------------------------------------------------------------------------- #
+# Sub-monthly prorating of monthly-assessed charges
+# --------------------------------------------------------------------------- #
+def _one_day_index():
+    """Hourly index over a single summer weekday (2025-07-08, a Tuesday)."""
+    return pd.date_range("2025-07-08", periods=24, freq="h")
+
+
+# The demo tariff's monthly-assessed charges, at a flat 100 kW draw:
+# $150/month customer + ($21.50 + $19.00)/kW demand.
+_MONTHLY_ASSESSED_AT_100KW = 150.0 + (21.5 + 19.0) * 100.0
+# One summer weekday's energy at 100 kW: 5 peak hours @ $0.18, 19 off-peak @ $0.09.
+_ONE_DAY_ENERGY_AT_100KW = 100.0 * (5 * 0.18 + 19 * 0.09)
+
+
+@pytest.mark.unit
+def test_prorate_false_bills_full_monthly_charges():
+    """prorate=False bills the whole monthly demand + fixed charge on one day."""
+    tariff = load_tariff(_TARIFF_JSON)
+    load = np.full(24, 100.0)
+    total = evaluate_cost(
+        load, tariff, dt_hours=1.0, time_index=_one_day_index(), prorate=False
+    )
+    assert total == pytest.approx(
+        _ONE_DAY_ENERGY_AT_100KW + _MONTHLY_ASSESSED_AT_100KW, abs=0.005
+    )
+
+
+@pytest.mark.unit
+def test_prorate_scales_only_the_monthly_assessed_charges():
+    """Prorating scales demand + fixed by days/month and leaves energy alone."""
+    tariff = load_tariff(_TARIFF_JSON)
+    load = np.full(24, 100.0)
+    scale = 24.0 / 744.0  # one day of a 31-day month
+    total = evaluate_cost(
+        load, tariff, dt_hours=1.0, time_index=_one_day_index(), prorate=True
+    )
+    assert total == pytest.approx(
+        _ONE_DAY_ENERGY_AT_100KW + _MONTHLY_ASSESSED_AT_100KW * scale, abs=0.005
+    )
+
+
+@pytest.mark.unit
+def test_prorate_is_a_noop_on_a_full_month():
+    """A full-month horizon covers the whole month, so nothing is scaled."""
+    tariff = load_tariff(_TARIFF_JSON)
+    load = _reference_load()
+    index = _july_index()
+    prorated = evaluate_cost(load, tariff, dt_hours=1.0, time_index=index, prorate=True)
+    assert prorated == pytest.approx(14085.00, abs=0.005)
+
+
+@pytest.mark.unit
+def test_daily_assessed_demand_charge_is_not_prorated():
+    """A demand charge assessed per day is already horizon-scaled; leave it be."""
+    tariff = load_tariff(_TARIFF_JSON)
+    # Reassess the anytime demand charge daily; the peak one stays monthly.
+    tariff = tariff.copy()
+    tariff["assessed"] = "monthly"
+    tariff.loc[tariff["name"] == "anytime-demand", "assessed"] = "daily"
+    load = np.full(24, 100.0)
+    scale = 24.0 / 744.0
+
+    total = evaluate_cost(
+        load, tariff, dt_hours=1.0, time_index=_one_day_index(), prorate=True
+    )
+    # Daily anytime demand bills in full ($19/kW x 100 kW); the monthly peak
+    # demand and the customer charge are prorated.
+    expected = _ONE_DAY_ENERGY_AT_100KW + 19.0 * 100.0 + (150.0 + 21.5 * 100.0) * scale
+    assert total == pytest.approx(expected, abs=0.005)

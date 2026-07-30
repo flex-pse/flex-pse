@@ -2,7 +2,8 @@
 
 Every :class:`~flexops.core.ops_block.OpsBlockData` holds an :class:`IORegistry`
 of what it exposes to FlexParameterize and the docs generator: its process IO
-variables, its regressable parameters, and its power-draw variables. The record
+variables, its regressable parameters, its power-draw variables (kW), and its
+fuel-usage variables (volumetric flows, m³/hr). The record
 dataclasses hold **live** Pyomo references (typed ``Any`` — a Pyomo component
 has no useful static type here). :func:`iter_io_registry` walks a whole model to
 find every block that registered something.
@@ -59,11 +60,30 @@ class PowerRecord:
         var: The live Pyomo ``Var`` (kW).
         name: The nomenclature constant value (e.g. ``"power_electrical"``).
         kind: The :class:`~flexcore.nomenclature.PowerKind` of the draw.
+        temperature: The heat duty's temperature (a unit-carrying value); set
+            only when ``kind is PowerKind.THERMAL``, else ``None``.
     """
 
     var: Any
     name: str
     kind: PowerKind
+    temperature: Any | None = None
+
+
+@dataclass
+class FuelUsageRecord:
+    """A registered fuel-usage variable — a volumetric flow, not a power.
+
+    Attributes:
+        var: The live Pyomo ``Var`` (a volumetric rate, convertible to m³/hr).
+        name: The variable's local name on its unit block.
+        fuel_name: The fuel's name (e.g. ``"natural_gas"``), the key its flow
+            aggregates and bills under.
+    """
+
+    var: Any
+    name: str
+    fuel_name: str
 
 
 @dataclass
@@ -73,16 +93,18 @@ class IORegistry:
     Attributes:
         io_variables: Registered process IO variables.
         parameters: Registered design/regression parameters.
-        power: Registered power-draw variables.
+        power: Registered power-draw variables (kW).
+        fuel: Registered fuel-usage variables (volumetric).
     """
 
     io_variables: list[IOVariableRecord] = field(default_factory=list)
     parameters: list[ParameterRecord] = field(default_factory=list)
     power: list[PowerRecord] = field(default_factory=list)
+    fuel: list[FuelUsageRecord] = field(default_factory=list)
 
     def is_empty(self) -> bool:
         """Return True if nothing has been registered on this block."""
-        return not (self.io_variables or self.parameters or self.power)
+        return not (self.io_variables or self.parameters or self.power or self.fuel)
 
 
 def iter_io_registry(model) -> Iterator[tuple[Any, IORegistry]]:

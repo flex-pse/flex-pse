@@ -1,7 +1,7 @@
 """Unit tests for :func:`flexcore.solvers.classify.classify`.
 
 Six synthetic 2-3 variable models, one test each, asserting the returned
-:class:`ProblemClass` (milestone M05 Tests section).
+:class:`ProblemClass`.
 """
 
 import pyomo.environ as pyo

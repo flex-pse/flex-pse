@@ -1,4 +1,4 @@
-"""Load, dump, migrate, and export the flex-pse config (R3).
+"""Load, dump, migrate, and export the flex-pse config.
 
 JSON is the canonical on-disk format (pydantic stays the schema authority); an
 already-parsed dict is accepted directly. Loading validates the version first

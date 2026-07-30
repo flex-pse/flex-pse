@@ -8,8 +8,8 @@ flow between flex-pse units via standard IDAES/Pyomo ``Arc``s.
 Volumetric flow is *extensive* (conserved across an arc); density and, when
 enabled, pressure and temperature are *intensive* (equal across an arc / at a
 node). The topology base classes build ports honoring that distinction
-(``Port.Extensive`` for flow, ``Port.Equality`` for the intensive states) in
-M09. Pressure and temperature are **opt-in** (default off); density is fixed at
+(``Port.Extensive`` for flow, ``Port.Equality`` for the intensive states).
+Pressure and temperature are **opt-in** (default off); density is fixed at
 the configured value by default (``fixed_density=True``) so the v0 default
 stays flow-only in its degrees of freedom.
 """

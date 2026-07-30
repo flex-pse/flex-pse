@@ -1,4 +1,4 @@
-"""SISOBlock: the single-inlet/single-outlet IO-topology base (architecture §3.4, R6).
+"""SISOBlock: the single-inlet/single-outlet IO-topology base (architecture §3.4).
 
 The first of the IO-topology base classes: owns port construction (via the
 inherited :meth:`~flexops.core.ops_block.OpsBlockData.add_stream_ports`) and

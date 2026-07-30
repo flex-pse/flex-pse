@@ -1,8 +1,8 @@
 """The ``get_solver`` facade and the thin :class:`SolverFacade` wrapper.
 
 ``get_solver`` picks the best available solver for a problem class and errors
-loudly when none qualifies — it **never** transforms the model (decision R5,
-``plan/01_architecture.md`` §2.2): no integrality relaxation, no decomposition,
+loudly when none qualifies — it **never** transforms the model
+(``plan/01_architecture.md`` §2.2): no integrality relaxation, no decomposition,
 no trust regions. MINLP routes to SCIP (the default open-source MINLP solver)
 when installed; with no MINLP-capable solver available it is a hard error
 pointing at SCIP or ``flexschedule.SolveSequence``, not silent model surgery.
@@ -133,7 +133,7 @@ def get_solver(
     routes to SCIP when installed (benchmark-preferred); pure LP still routes to
     HiGHS since SCIP is not LP-capable. In particular MINLP routes to SCIP (the
     default open-source MINLP solver) when it is installed; only when no
-    MINLP-capable solver is available does MINLP raise (decision R5).
+    MINLP-capable solver is available does MINLP raise.
 
     Args:
         model: A Pyomo model to classify; mutually exclusive with
@@ -148,8 +148,8 @@ def get_solver(
     Raises:
         ValueError: If both ``model`` and ``problem_class`` are given.
         FlexSolverError: If no available solver supports the problem class. For
-            ``MINLP`` the message points at ``flexschedule.SolveSequence``
-            (decision R5); the facade never relaxes integrality itself.
+            ``MINLP`` the message points at ``flexschedule.SolveSequence``;
+            the facade never relaxes integrality itself.
 
     Example:
         >>> from flexcore.solvers import get_solver, ProblemClass

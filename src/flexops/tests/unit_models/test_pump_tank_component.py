@@ -1,4 +1,4 @@
-"""Component-tier integration test: Pump -> Arc -> Tank LP system (M04)."""
+"""Component-tier integration test: Pump -> Arc -> Tank LP system."""
 
 import pyomo.environ as pyo
 import pytest
@@ -19,9 +19,7 @@ def test_pump_fills_tank_lp():
         from flexcore.exceptions import FlexSolverError
         from flexcore.solvers import get_solver
     except ImportError:
-        pytest.skip(
-            "flexcore.solvers.get_solver not available (M05 may land in parallel)"
-        )
+        pytest.skip("flexcore.solvers.get_solver not available")
 
     m = pyo.ConcreteModel()
     m.time_block = TimeBlock(
@@ -48,10 +46,7 @@ def test_pump_fills_tank_lp():
     try:
         solver = get_solver(model=m)
     except FlexSolverError as exc:
-        pytest.skip(
-            "flexcore.solvers.get_solver not available (M05 may land in "
-            f"parallel): {exc}"
-        )
+        pytest.skip(f"flexcore.solvers.get_solver not available: {exc}")
     results = solver.solve(m)
     assert_optimal_termination(results)
 

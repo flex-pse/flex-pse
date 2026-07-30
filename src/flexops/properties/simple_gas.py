@@ -11,7 +11,7 @@ they need as their own constraints.
 Volumetric flow is *extensive* (conserved across an arc); density, pressure,
 and temperature are *intensive* (equal across an arc / at a node). The topology
 base classes build ports honoring that distinction (``Port.Extensive`` for
-flow, ``Port.Equality`` for the intensive states) in M09.
+flow, ``Port.Equality`` for the intensive states).
 """
 
 from idaes.core import (

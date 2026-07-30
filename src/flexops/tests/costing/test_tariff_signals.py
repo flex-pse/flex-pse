@@ -1,4 +1,4 @@
-"""Tests for the tariff loaders and pandas signal helpers (M06).
+"""Tests for the tariff loaders and pandas signal helpers.
 
 Most tests here are ``unit`` tier: the loaders and signal helpers touch only
 pandas + EECO's charge-array builder, never a solver.

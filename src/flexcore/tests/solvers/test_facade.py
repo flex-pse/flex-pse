@@ -58,7 +58,7 @@ def test_prefer_respected_and_fallback(monkeypatch, caplog):
 
 @pytest.mark.unit
 def test_minlp_routes_to_scip_when_available(monkeypatch):
-    """SCIP is the default MINLP solver when installed (R5: a capable solver)."""
+    """SCIP is the default MINLP solver when installed (a capable solver)."""
     available = {"scip": {ProblemClass.MILP, ProblemClass.MINLP}}
     monkeypatch.setattr(facade, "available_solvers", lambda: available)
     chosen = get_solver(problem_class=ProblemClass.MINLP)

@@ -24,8 +24,20 @@
     },
     "CostingConfig": {
       "additionalProperties": false,
-      "description": "Tariff, demand-response, and solve/objective options for a run.",
+      "description": "Tariff, price, demand-response, and solve/objective options for a run.",
       "properties": {
+        "currency": {
+          "default": "USD",
+          "description": "Currency basis to use when no tariff is given; a tariff's own currency basis always wins.",
+          "title": "Currency",
+          "type": "string"
+        },
+        "discount_rate": {
+          "default": 0.08,
+          "description": "Annual discount rate (fraction, e.g. 0.08 = 8%). Used alone as the effective rate when interest_rate is unset; otherwise it deflates interest_rate into a real effective rate. An effective rate of 0 falls back to straight-line 1/lifetime.",
+          "title": "Discount Rate",
+          "type": "number"
+        },
         "dr": {
           "anyOf": [
             {
@@ -38,10 +50,45 @@
           "default": null,
           "description": "Optional demand-response container (containers-only in v0)."
         },
+        "energy_prices": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/PriceSpec"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional native prices keyed by carrier or fuel name ('electrical', or a fuel such as 'natural_gas'). A carrier priced here is billed at that price instead of through the tariff, so a run with every carrier priced needs no tariff at all. Each price is flat over the horizon or given per time point.",
+          "title": "Energy Prices"
+        },
         "fixed_operating_cost": {
           "default": 0.0,
           "description": "Fixed operating cost in dollars over the horizon: non-tariff costs such as maintenance, labor, and chemicals. Distinct from the tariff's own fixed charge (which EECO includes in the electricity cost).",
           "title": "Fixed Operating Cost",
+          "type": "number"
+        },
+        "interest_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional annual cost of capital (fraction, e.g. 0.06). When given, the capital recovery factor uses the effective rate (1 + interest_rate) / (1 + discount_rate) - 1. Omit to use discount_rate alone.",
+          "title": "Interest Rate"
+        },
+        "lifetime_years": {
+          "default": 20.0,
+          "description": "Plant lifetime in years (> 0), used with the effective rate to form the capital recovery factor that annualizes capital cost.",
+          "title": "Lifetime Years",
           "type": "number"
         },
         "objective": {
@@ -50,6 +97,12 @@
           "description": "Objective to minimize (only tariff cost in v0).",
           "title": "Objective",
           "type": "string"
+        },
+        "prorate_monthly_charges": {
+          "default": true,
+          "description": "Prorate a tariff's monthly-assessed demand charge and fixed (customer) charge to the horizon length when the horizon is shorter than the calendar month it starts in. False bills the full monthly charges.",
+          "title": "Prorate Monthly Charges",
+          "type": "boolean"
         },
         "solver": {
           "anyOf": [
@@ -65,14 +118,31 @@
           "title": "Solver"
         },
         "tariff_source": {
-          "description": "File or tag pointing at the EECO tariff definition.",
-          "title": "Tariff Source",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where the EECO tariff comes from: one file or tag, a list of them to merge, or a mapping of EECO utility ('electric'/'gas') to file to merge and also assign each file to a utility. Omit to price every carrier from energy_prices instead.",
+          "title": "Tariff Source"
         }
       },
-      "required": [
-        "tariff_source"
-      ],
       "title": "CostingConfig",
       "type": "object"
     },
@@ -242,6 +312,38 @@
       "title": "PlantConfig",
       "type": "object"
     },
+    "PriceSpec": {
+      "additionalProperties": false,
+      "description": "A native price for one energy carrier or fuel: a number and its units.",
+      "properties": {
+        "units": {
+          "description": "Units of the price as a string, e.g. 'USD/kWh' for electricity or 'USD/m^3' for a fuel.",
+          "title": "Units",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "The numeric price, in the units below. One number is a flat price over the whole horizon; a list is one price per time point and must have exactly as many entries as the horizon has time points, which is checked when the model is built.",
+          "title": "Value"
+        }
+      },
+      "required": [
+        "value",
+        "units"
+      ],
+      "title": "PriceSpec",
+      "type": "object"
+    },
     "SurrogateSpec": {
       "additionalProperties": false,
       "description": "A fitted (or default) energy/IO relationship for a unit.",
@@ -325,7 +427,7 @@
     },
     "UnitCommitmentConfig": {
       "additionalProperties": false,
-      "description": "Per-unit unit-commitment configuration, a validated container only in M03; the constraint-building logic layer that consumes it is built in M08. Every piece is optional except status.",
+      "description": "Per-unit unit-commitment configuration, a validated container. Every piece is optional except status.",
       "properties": {
         "conditional": {
           "anyOf": [
@@ -338,7 +440,7 @@
             }
           ],
           "default": null,
-          "description": "Conditional status implications between units (M08).",
+          "description": "Conditional status implications between units.",
           "title": "Conditional"
         },
         "delays": {
@@ -352,7 +454,7 @@
             }
           ],
           "default": null,
-          "description": "Upstream-linked startup-delay specification (M08).",
+          "description": "Upstream-linked startup-delay specification.",
           "title": "Delays"
         },
         "dwell": {

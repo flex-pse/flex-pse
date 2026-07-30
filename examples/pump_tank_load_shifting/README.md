@@ -27,8 +27,8 @@ Requires the `dev` extra (installed automatically by `environment.yml`, or via
 `pip install -e ".[dev]"`), which includes `marimo` and `matplotlib`.
 
 ```bash
-marimo edit examples/pump_tank_load_shifting/load_shifting.py   # interactive
-marimo run examples/pump_tank_load_shifting/load_shifting.py    # read-only app
+marimo edit examples/pump_tank_load_shifting/load_shifting.py   # developer mode
+marimo run examples/pump_tank_load_shifting/load_shifting.py    # interactive app
 python examples/pump_tank_load_shifting/load_shifting.py        # plain script, default slider values
 ```
 

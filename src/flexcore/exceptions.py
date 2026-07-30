@@ -6,8 +6,8 @@ concrete subclass to handle one category. Raised messages must state both what
 was wrong and what the user should do about it (see ``plan/00_conventions.md``
 §3).
 
-There is no compatibility/isolation layer here (decision R12,
-``plan/01_architecture.md`` §2.1): ``idaes.*`` and ``pyomo.*`` are imported
+There is no compatibility/isolation layer here (``plan/01_architecture.md``
+§2.1): ``idaes.*`` and ``pyomo.*`` are imported
 directly at point of use throughout the codebase, and their own exceptions are
 allowed to propagate unwrapped.
 """

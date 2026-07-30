@@ -1,4 +1,4 @@
-"""Component-tier end-to-end test: pump+tank LP shifts load off-peak (M07).
+"""Component-tier end-to-end test: pump+tank LP shifts load off-peak.
 
 The headline economic result. A pump feeds a storage tank against the demo
 tariff; minimizing the FlexCosting operating cost pushes all pumping out of the
@@ -26,9 +26,15 @@ _TARIFF_JSON = _FIXTURES / "tariff_tou_demo.json"
 _PEAK_HOURS = (16, 17, 18, 19, 20)
 
 # Regression baseline: the optimal operating cost ($) of the headline LP under
-# the demo tariff, recorded from the first verified HiGHS run (2026-07-23).
+# the demo tariff, recorded from a verified HiGHS run (2026-07-28).
 # Changing this is a deliberate diff.
-_EXPECTED_OBJECTIVE = 1467.388888888889
+#
+# Re-recorded on 2026-07-28 (was 1467.388888888889, recorded 2026-07-23) when
+# monthly-charge prorating became the default: this horizon is 24 h of a 31-day
+# month, so the $150/month customer charge and the $21.50 + $19.00 per kW monthly
+# demand charges are now billed at 24/744 of their monthly amount instead of in
+# full. The energy charge is unaffected.
+_EXPECTED_OBJECTIVE = 147.4964157706093
 
 
 def _build_headline(tariff=None) -> pyo.ConcreteModel:
@@ -122,9 +128,9 @@ def test_report_cost_post_hoc():
     assert report.operating.total == pytest.approx(report.operating.electricity)
     assert report.total == pytest.approx(report.operating.total)
     # On this short horizon the convex relaxation is tight, so the reported bill
-    # coincides with the relaxed objective; the reporting rule (R9) is encoded by
+    # coincides with the relaxed objective; the reporting rule is encoded by
     # the independent recomputation above, not by trusting the objective. The two
-    # diverge once the tiered surcharge is reached (M06 relaxed<=true test).
+    # diverge once the tiered surcharge is reached.
     assert report.operating.total == pytest.approx(pyo.value(m.objective), rel=1e-6)
 
 

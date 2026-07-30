@@ -73,6 +73,7 @@ schema authority; :data:`CURRENT_SCHEMA_VERSION` tags what this build writes.
    ArcSpec
    TimeConfig
    CostingConfig
+   PriceSpec
    DRConfig
 
 .. autodata:: CURRENT_SCHEMA_VERSION
@@ -99,6 +100,8 @@ The canonical energy-variable names (see
 .. autodata:: POWER_ELECTRICAL
 
 .. autodata:: POWER_THERMAL
+
+.. autodata:: FUEL_USAGE
 
 .. autoclass:: PowerKind
    :members:

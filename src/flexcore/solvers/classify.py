@@ -3,7 +3,7 @@
 The classifier walks a model's *active* constraints and objective, inspects
 each expression's polynomial degree, and inspects which variables are discrete,
 to decide the smallest problem class that describes the model. It never
-transforms the model (decision R5, ``plan/01_architecture.md`` §2.2) — it only
+transforms the model (``plan/01_architecture.md`` §2.2) — it only
 reports.
 """
 
@@ -24,7 +24,7 @@ class ProblemClass(enum.Enum):
     ``LP``/``QP``/``MILP``/``NLP``/``MINLP`` are the classes :func:`classify`
     can return. ``MINLP_OA`` (outer approximation) and ``MINLP_TR`` (trust
     region) are reserved strategy slots — deliberately unimplemented in v0
-    (decision R5) and **never** returned by :func:`classify`.
+    and **never** returned by :func:`classify`.
     """
 
     LP = "LP"
@@ -32,7 +32,7 @@ class ProblemClass(enum.Enum):
     MILP = "MILP"
     NLP = "NLP"
     MINLP = "MINLP"
-    # Reserved strategy slots — documented, deliberately unimplemented (R5):
+    # Reserved strategy slots — documented, deliberately unimplemented:
     MINLP_OA = "MINLP_OA"  # outer approximation, post-v0
     MINLP_TR = "MINLP_TR"  # trust region, post-v0
 
@@ -63,17 +63,16 @@ def classify(model: pyo.ConcreteModel) -> ProblemClass:
     Only **active** constraints and the active objective are considered;
     inactive constraints, objectives, and blocks are ignored. A variable counts
     as discrete only if it is binary or integer **and not fixed** — so an LP
-    with fixed binaries classifies ``LP`` (the relax-fix workflow of M12
-    depends on this). Note that a quadratic *constraint* classifies ``NLP``,
-    not ``QP``: only a quadratic *objective* over all-linear constraints is
-    ``QP`` (smallest choice consistent with the QP capability matrix).
+    with fixed binaries classifies ``LP``. Note that a quadratic *constraint*
+    classifies ``NLP``, not ``QP``: only a quadratic *objective* over
+    all-linear constraints is ``QP`` (smallest choice consistent with
+    the QP capability matrix).
 
     Args:
         model: A constructed Pyomo model to classify.
 
     Returns:
-        The problem class. Never returns ``MINLP_OA``/``MINLP_TR`` (reserved,
-        decision R5).
+        The problem class. Never returns ``MINLP_OA``/``MINLP_TR`` (reserved).
 
     Example:
         >>> import pyomo.environ as pyo

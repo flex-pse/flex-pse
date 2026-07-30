@@ -18,6 +18,7 @@ from flexcore.config.schema import (
     IOVariableSpec,
     ModelConfig,
     PlantConfig,
+    PriceSpec,
     SurrogateSpec,
     TimeConfig,
     UnitCommitmentConfig,
@@ -182,6 +183,25 @@ def test_network_or_plant_exactly_one():
         )
     # Exactly one passes.
     assert base.plant is not None
+
+
+@pytest.mark.unit
+def test_price_spec_accepts_scalar_or_per_period_list():
+    """A price is one number, or one number per period of the horizon."""
+    scalar = PriceSpec(value=0.12, units="USD/kWh")
+    series = PriceSpec(value=[0.10, 0.20, 0.15], units="USD/kWh")
+    assert scalar.value == 0.12
+    assert series.value == [0.10, 0.20, 0.15]
+
+    cfg = CostingConfig(energy_prices={"electrical": series})
+    assert cfg.energy_prices["electrical"].value == [0.10, 0.20, 0.15]
+
+
+@pytest.mark.unit
+def test_price_spec_rejects_empty_series():
+    """An empty price list is rejected: it can never align with the horizon."""
+    with pytest.raises(ValidationError):
+        PriceSpec(value=[], units="USD/kWh")
 
 
 @pytest.mark.unit

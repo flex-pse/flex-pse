@@ -1,23 +1,24 @@
-"""OpsBlock: the base class of every flex-pse unit model (§3.2, decision R1).
+"""OpsBlock: the base class of every flex-pse unit model (§3.2).
 
 ``OpsBlockData`` inherits IDAES ``UnitModelBlockData`` for its ConfigBlock, Port,
-and costing-registration machinery, but uses **no ControlVolumes** (R1):
+and costing-registration machinery, but uses **no ControlVolumes**:
 subclasses hand-write their 1-3 balance constraints. It provides the
 registration API that FlexParameterize and the docs generator consume
 (:meth:`OpsBlockData.register_io_variable`,
 :meth:`~OpsBlockData.register_process_parameter`,
-:meth:`~OpsBlockData.register_power`), the base power Vars
+:meth:`~OpsBlockData.register_power`,
+:meth:`~OpsBlockData.register_fuel_usage`), the base power Vars
 (:meth:`~OpsBlockData.declare_power`), the external-dispatch hook
 (:meth:`~OpsBlockData.set_external_dispatch`), and the config slots
-(``unit_commitment``, ``relaxation``, ``allow_pass_through``, ``external_dispatch``)
-that the M08 logic layer will consume.
+(``unit_commitment``, ``relaxation``, ``allow_bypass``, ``external_dispatch``)
+that the logic layer will consume.
 
 flex-pse **never deletes** model components (blocks, Vars, Params,
 constraints): anything else on the model that referenced a deleted component —
 an aggregated power constraint, an expanded arc — would silently keep the stale
 reference. A built model is updated only by mutating parameter values in place
 (:meth:`~OpsBlockData.update_parameters`) or by adding/deactivating
-constraints; FlexParameterize drives this in M10.
+constraints; FlexParameterize drives this.
 """
 
 import enum
@@ -38,6 +39,7 @@ from flexcore.config.schema import (
 )
 from flexcore.exceptions import FlexConfigError
 from flexops.core.registration import (
+    FuelUsageRecord,
     IORegistry,
     IOVariableRecord,
     ParameterRecord,
@@ -52,11 +54,7 @@ _POWER_VARS = {
 
 
 class RelaxationPolicy(enum.StrEnum):
-    """How a unit's discrete structure is relaxed (config slot only in M03).
-
-    The switching logic that consumes this is the M08 logic layer; M03 only
-    validates and stores the choice.
-    """
+    """How a unit's discrete structure is relaxed."""
 
     EXACT = "exact"
     RELAXED = "relaxed"
@@ -104,8 +102,8 @@ def _external_dispatch_domain(value):
 def _costing_package_domain(value):
     """ConfigValue domain: accept ``None`` or a costing package (duck-typed).
 
-    A costing package is any object exposing ``register_unit_power`` (the
-    M07 ``FlexCosting`` block). Duck-typed rather than isinstance-checked so
+    A costing package is any object exposing ``register_unit_power``
+    (``FlexCosting`` block). Duck-typed rather than isinstance-checked so
     ``flexops.core`` need not import ``flexops.costing`` (which imports core).
     """
     if value is None or hasattr(value, "register_unit_power"):
@@ -137,7 +135,7 @@ class OpsBlockData(UnitModelBlockData):
 
     CONFIG = UnitModelBlockData.CONFIG()
     # A unit lives on a bare ConcreteModel or a dynamic=False flowsheet, never a
-    # DAE flowsheet (R2). Fix the inherited defaults to False so build() does not
+    # DAE flowsheet. Fix the inherited defaults to False so build() does not
     # try to resolve them from a parent flowsheet (pitfall 1).
     CONFIG.get("dynamic").set_default_value(False)
     CONFIG.get("has_holdup").set_default_value(False)
@@ -163,8 +161,7 @@ class OpsBlockData(UnitModelBlockData):
         ConfigValue(
             default=UnitCommitmentConfig(),
             domain=_unit_commitment_domain,
-            description="Per-unit unit-commitment sub-config (§3.5). Validated "
-            "and stored in M03; its constraints are built in M08.",
+            description="Per-unit unit-commitment sub-config.",
         ),
     )
     CONFIG.declare(
@@ -181,8 +178,7 @@ class OpsBlockData(UnitModelBlockData):
         ConfigValue(
             default=RelaxationPolicy.EXACT,
             domain=_relaxation_domain,
-            description="Discrete-structure relaxation policy (config slot only "
-            "in M03; the switching logic is built in M08).",
+            description="Discrete-structure relaxation policy.",
         ),
     )
     CONFIG.declare(
@@ -190,9 +186,9 @@ class OpsBlockData(UnitModelBlockData):
         ConfigValue(
             default=False,
             domain=bool,
-            description="Whether add_pass_through_constraints() builds inlet-to-"
-            "outlet pass-through equalities for this unit's non-excluded state "
-            "variables (M04). SISOBlock (and its subclasses Pump/Tank) "
+            description="Whether add_bypass_constraints() builds inlet-to-outlet "
+            "pass-through equalities for this unit's non-excluded state "
+            "variables. SISOBlock (and its subclasses Pump/Tank) "
             "override the base default to True so the flow-topology units are "
             "well-posed out of the box; the base OpsBlock default stays False.",
         ),
@@ -202,9 +198,9 @@ class OpsBlockData(UnitModelBlockData):
         ConfigValue(
             default=None,
             domain=_costing_package_domain,
-            description="Optional FlexCosting block (M07) this unit associates "
+            description="Optional FlexCosting block this unit associates "
             "with: register_power forwards the unit's power draw to it. None for "
-            "standalone units (M04); the forwarding is strictly conditional.",
+            "standalone units; the forwarding is strictly conditional.",
         ),
     )
 
@@ -222,10 +218,10 @@ class OpsBlockData(UnitModelBlockData):
     def _find_time_block(self) -> TimeBlockData:
         """Return the unique TimeBlock on this unit's model.
 
-        Interim time access until the ``flowsheet()`` chain arrives with
-        PlantBlock in M09: search the model for exactly one TimeBlock. The
-        result is not cached on the block — assigning a Pyomo component to an
-        attribute would trip ``Block.__setattr__`` (pitfall 2).
+        Interim time access until the ``flowsheet()``: search the model for
+        exactly one TimeBlock. The result is not cached on the block —
+        assigning a Pyomo component to an attribute would trip
+        ``Block.__setattr__`` (pitfall 2).
 
         Returns:
             The model's ``TimeBlockData``.
@@ -321,43 +317,95 @@ class OpsBlockData(UnitModelBlockData):
                 value=kind,
             )
 
-    def register_power(self, var, kind: nm.PowerKind = nm.PowerKind.ELECTRICAL) -> None:
+    @staticmethod
+    def _check_power_metadata(kind, temperature) -> None:
+        """Validate ``temperature`` against ``kind``.
+
+        A thermal draw must carry a temperature (heat duties at different
+        temperatures are never aggregated together); an electrical draw must not.
+
+        Args:
+            kind: The :class:`~flexcore.nomenclature.PowerKind` of the draw.
+            temperature: The heat-duty temperature (unit-carrying), or ``None``.
+
+        Raises:
+            FlexConfigError: If the metadata does not match ``kind``.
+        """
+        if kind is nm.PowerKind.THERMAL:
+            if temperature is None:
+                raise FlexConfigError(
+                    "A PowerKind.THERMAL draw requires a temperature (a "
+                    "unit-carrying value, e.g. 350 * pyunits.K).",
+                    field="temperature",
+                    value=temperature,
+                )
+        elif temperature is not None:
+            raise FlexConfigError(
+                f"A PowerKind.{kind.name} draw takes no temperature.",
+                field="temperature",
+                value=temperature,
+            )
+
+    def register_power(
+        self,
+        var,
+        kind: nm.PowerKind = nm.PowerKind.ELECTRICAL,
+        *,
+        temperature=None,
+    ) -> None:
         """Register a power-draw variable for plant/costing aggregation.
 
         Args:
             var: The Pyomo ``Var`` (kW) to register.
             kind: The :class:`~flexcore.nomenclature.PowerKind` of the draw.
+            temperature: The heat-duty temperature, a unit-carrying value
+                (required only for ``PowerKind.THERMAL``).
 
         Raises:
-            FlexConfigError: If ``kind`` is not a ``PowerKind`` member.
+            FlexConfigError: If ``kind`` is not a ``PowerKind`` member, or the
+                ``temperature`` metadata does not match ``kind``.
         """
         self._check_power_kind(kind)
+        self._check_power_metadata(kind, temperature)
         self._io_registry.power.append(
-            PowerRecord(var=var, name=var.local_name, kind=kind)
+            PowerRecord(
+                var=var,
+                name=var.local_name,
+                kind=kind,
+                temperature=temperature,
+            )
         )
         # Forward the association to a FlexCosting block when one was given
-        # (strictly conditional -- costing-less units, M04, are unaffected).
         costing_package = self.config.costing_package
         if costing_package is not None:
             costing_package.register_unit_power(self, var, kind)
 
-    def declare_power(self, kind: nm.PowerKind = nm.PowerKind.ELECTRICAL):
+    def declare_power(
+        self,
+        kind: nm.PowerKind = nm.PowerKind.ELECTRICAL,
+        *,
+        temperature=None,
+    ):
         """Create, register, and return this unit's power-draw Var (kW).
 
         Creates ``power_electrical[t]`` (resp. ``power_thermal[t]``) indexed over
-        the time set, attaches it under the nomenclature constant name, registers
-        it, and returns it.
+        the time set, attaches it under its nomenclature name, registers it (with
+        its temperature metadata), and returns it.
 
         Args:
             kind: The :class:`~flexcore.nomenclature.PowerKind` of the draw.
+            temperature: The heat-duty temperature, a unit-carrying value
+                (required only for ``PowerKind.THERMAL``).
 
         Returns:
             The created, time-indexed ``Var`` in kW.
 
         Raises:
-            FlexConfigError: If ``kind`` is not a ``PowerKind`` member.
+            FlexConfigError: If ``kind`` is not a ``PowerKind`` member, or the
+                ``temperature`` metadata does not match ``kind``.
         """
         self._check_power_kind(kind)
+        self._check_power_metadata(kind, temperature)
         name, doc = _POWER_VARS[kind]
         tb = self._find_time_block()
         self.add_component(
@@ -365,8 +413,46 @@ class OpsBlockData(UnitModelBlockData):
             pyo.Var(tb.time_index, initialize=0.0, units=pyunits.kW, doc=doc),
         )
         var = self.find_component(name)
-        self.register_power(var, kind=kind)
+        self.register_power(var, kind=kind, temperature=temperature)
         return var
+
+    def register_fuel_usage(self, var, fuel_name: str) -> None:
+        """Register a fuel-usage variable — a volumetric flow — for costing.
+
+        Fuel is metered and billed on **volume**, not as a kW power draw, so a
+        unit that burns fuel registers its usage flow here rather than through
+        :meth:`register_power`. ``var`` is typically an existing process
+        variable: for a stream built from
+        :class:`~flexops.properties.simple_gas.SimpleGasFlow` (whose
+        ``flow_vol_phase`` is already m³/hr), that is
+        ``pyo.Reference(self.inlet_state.flow_vol_phase[:, "Vap"])``.
+
+        FlexCosting pulls every registered flow from the model and sums it into
+        ``aggregate_fuel_usage[t, fuel_name]`` in EECO's m³/hr, converting with
+        ``pyunits.convert`` — so a ``var`` that is not a volumetric rate fails
+        loudly there, the same contract a power draw has. flex-pse applies no
+        heating value; energy-basis tariff conversion is EECO's job.
+
+        Args:
+            var: The time-indexed Pyomo ``Var``/``Reference`` carrying the fuel's
+                volumetric flow (convertible to m³/hr).
+            fuel_name: The fuel's name (e.g. ``"natural_gas"``), the key its flow
+                aggregates and bills under.
+
+        Raises:
+            FlexConfigError: If ``fuel_name`` is empty.
+        """
+        if not fuel_name:
+            raise FlexConfigError(
+                "register_fuel_usage requires a non-empty fuel_name (e.g. "
+                "'natural_gas'); it is the key the flow aggregates and bills "
+                "under.",
+                field="fuel_name",
+                value=fuel_name,
+            )
+        self._io_registry.fuel.append(
+            FuelUsageRecord(var=var, name=var.local_name, fuel_name=fuel_name)
+        )
 
     # -- stream state blocks + ports (property package, §3.7) --------------
 
@@ -388,7 +474,7 @@ class OpsBlockData(UnitModelBlockData):
         registered IO variable is the live state-block ``Var`` itself (e.g.
         ``inlet_state.flow_vol_phase``), never a ``Reference`` or slice. The
         extensive/intensive split of the states a port carries is applied when
-        the topology layer wires the ports onto arcs in M09.
+        the topology layer wires the ports onto arcs.
 
         Args:
             inlet_ports: Names of the inlet ports to build (default one
@@ -616,7 +702,7 @@ class OpsBlockData(UnitModelBlockData):
         For each time point ``t``, sets ``var[t]`` to ``series[t]`` and, when
         ``fix`` is True, fixes it — removing the dispatch degree of freedom while
         leaving sizing free (the DERMS/aggregator case, §3.2). Available on all
-        units; first-classed on ``BatteryModel`` in M08.
+        units; first-classed on ``BatteryModel``.
 
         Args:
             var: A time-indexed ``Var`` on this unit.
@@ -651,17 +737,25 @@ class OpsBlockData(UnitModelBlockData):
             if fix:
                 var[t].fix()
 
-    # -- config-driven construction (M09) ---------------------------------
+    # -- config-driven construction ---------------------------------
 
     @classmethod
     def build_from_config(cls, cfg: UnitConfig, **kwargs):
-        """Construct a unit from a validated ``UnitConfig`` (deferred to M09).
+        """Construct a unit from a validated ``UnitConfig``.
 
         Raises:
             NotImplementedError: Always; config-driven construction and the
-                whole-model ``flexops.build_model`` land in M09.
+                whole-model ``flexops.build_model``.
         """
+        # TODO: whoever implements this JSON-to-model bridge must first parse the
+        # units that persisted configs carry as plain text into Pyomo units --
+        # CostingConfig.energy_prices entries ({"value": 0.12, "units": "USD/kWh"})
+        # and TimeConfig.time_step ("15 min"). No such parser exists anywhere yet;
+        # the runtime APIs take units-carrying Pyomo expressions directly, so
+        # nothing has needed one. Building the model straight from those strings
+        # without converting them would silently mis-scale prices and timesteps.
+        # See architecture §2.3 (the config artifact) and conventions §4 (the two
+        # config layers, which "never mix").
         raise NotImplementedError(
-            "Config-driven construction lands in M09. Build units directly for "
-            "now; whole-model construction is flexops.build_model in M09."
+            "build_from_config is not implemented; build units directly."
         )

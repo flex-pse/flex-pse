@@ -1,4 +1,4 @@
-"""Tank(SISOBlock): holdup dynamics with logic disabled (architecture §3.4, R6).
+"""Tank(SISOBlock): holdup dynamics with logic disabled.
 
 A tank has no on/off status, so it forces ``unit_commitment.status`` to
 ``False`` regardless of what a caller passes -- the canonical example of a
@@ -15,7 +15,7 @@ from flexops.unit_models.base.siso import SISOBlockData
 
 @declare_process_block_class("Tank")
 class StorageTankData(SISOBlockData):
-    r"""A storage tank: holdup difference equation, no on/off status (R6).
+    r"""A storage tank: holdup difference equation, no on/off status.
 
     Inherits inlet/outlet ports from
     :class:`~flexops.unit_models.base.siso.SISOBlockData` but *replaces* the
@@ -42,7 +42,7 @@ class StorageTankData(SISOBlockData):
     constant and the upper bound on ``capacity``. ``capacity`` is the
     *chosen* tank volume (a design ``Var``), which may be ``<= max_volume``;
     it is fixed at ``max_volume`` by default (operations mode) and unfixed,
-    subject to that same upper bound, in the M07 design mode.
+    subject to that same upper bound, in the design mode.
 
     **``level``: bounded fractional fill.** ``level[t] = volume[t] /
     capacity`` is the tank's fill fraction relative to its *chosen* size,
@@ -53,7 +53,7 @@ class StorageTankData(SISOBlockData):
     mode), but bilinear (NLP) when ``capacity`` is free (design mode / M16
     multi-period sizing) -- a deliberate, documented tradeoff. Design-mode
     solves of a model containing a tank therefore need IPOPT or an explicit
-    ``flexschedule.SolveSequence`` (R5), not HiGHS.
+    ``flexschedule.SolveSequence``, not HiGHS.
 
     Config:
         Inherits the SISO/OpsBlock config; adds ``min_volume`` (default
@@ -118,12 +118,12 @@ class StorageTankData(SISOBlockData):
     )
 
     def build(self) -> None:
-        """Build the SISO ports/holdup, then capacity, level, registration fixups,
-        R6."""
+        """Build the SISO ports/holdup, then capacity, level, and registration
+        fixups."""
         super().build()
         tb = self._find_time_block()
 
-        # R6: a tank has no on/off status; force it off even if a caller asked.
+        # A tank has no on/off status; force it off even if a caller asked.
         self.config.unit_commitment.status = False
 
         min_volume = pyo.value(pyunits.convert(self.config.min_volume, pyunits.m**3))
@@ -133,7 +133,7 @@ class StorageTankData(SISOBlockData):
             bounds=(min_volume, max_volume),
             units=pyunits.m**3,
             doc="Chosen tank volume (<= max_volume). Fixed at max_volume by "
-            "default; the M07 design mode unfixes it, subject to this bound.",
+            "default; the design mode unfixes it, subject to this bound.",
         )
         self.capacity.fix(max_volume)
 

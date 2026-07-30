@@ -1,4 +1,4 @@
-"""Harness-driven and hand tests for Tank(SISOBlock) (M04, R6)."""
+"""Harness-driven and hand tests for Tank(SISOBlock)."""
 
 import pyomo.environ as pyo
 import pytest

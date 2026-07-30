@@ -162,18 +162,12 @@ class UnitModelTestHarness:
             from flexcore.exceptions import FlexSolverError
             from flexcore.solvers import get_solver
         except ImportError:
-            pytest.skip(
-                "flexcore.solvers.get_solver not available (M05 may land in "
-                "parallel)"
-            )
+            pytest.skip("flexcore.solvers.get_solver not available")
         _fix_registered_inputs(unit)
         try:
             solver = get_solver(model=model)
         except FlexSolverError as exc:
-            pytest.skip(
-                "flexcore.solvers.get_solver not available (M05 may land in "
-                f"parallel): {exc}"
-            )
+            pytest.skip(f"flexcore.solvers.get_solver not available: {exc}")
         results = solver.solve(model)
         assert_optimal_termination(results)
 
@@ -188,18 +182,12 @@ class UnitModelTestHarness:
             from flexcore.exceptions import FlexSolverError
             from flexcore.solvers import get_solver
         except ImportError:
-            pytest.skip(
-                "flexcore.solvers.get_solver not available (M05 may land in "
-                "parallel)"
-            )
+            pytest.skip("flexcore.solvers.get_solver not available")
         _fix_registered_inputs(unit)
         try:
             solver = get_solver(model=model)
         except FlexSolverError as exc:
-            pytest.skip(
-                "flexcore.solvers.get_solver not available (M05 may land in "
-                f"parallel): {exc}"
-            )
+            pytest.skip(f"flexcore.solvers.get_solver not available: {exc}")
         results = solver.solve(model)
         assert_optimal_termination(results)
         for name, expected in self.expected_solution.items():

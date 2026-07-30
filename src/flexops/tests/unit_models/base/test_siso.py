@@ -1,4 +1,4 @@
-"""Unit tests for the SISOBlock IO-topology base (M04, architecture §3.4)."""
+"""Unit tests for the SISOBlock IO-topology base."""
 
 import pandas as pd
 import pyomo.environ as pyo

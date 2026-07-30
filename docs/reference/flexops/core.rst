@@ -44,5 +44,6 @@ The registry records FlexParameterize and the docs generator consume.
    IOVariableRecord
    ParameterRecord
    PowerRecord
+   FuelUsageRecord
 
 .. autofunction:: iter_io_registry

@@ -1,4 +1,4 @@
-"""Self-checks for the public UnitModelTestHarness (M04, plan §2)."""
+"""Self-checks for the public UnitModelTestHarness."""
 
 import pytest
 from pyomo.environ import units as pyunits

@@ -1,4 +1,4 @@
-"""Harness-driven tests for Pump(SISOBlock) (M04)."""
+"""Harness-driven tests for Pump(SISOBlock)."""
 
 import pyomo.environ as pyo
 import pytest

@@ -17,6 +17,7 @@ from flexcore.config.schema import UnitConfig
 from flexcore.exceptions import FlexConfigError
 from flexops.core.ops_block import OpsBlockData, RelaxationPolicy
 from flexops.core.registration import (
+    FuelUsageRecord,
     IOVariableRecord,
     ParameterRecord,
     PowerRecord,
@@ -175,9 +176,9 @@ def test_no_time_block_raises():
 
 @pytest.mark.unit
 def test_build_from_config_not_implemented():
-    """Config-driven construction is deferred to M09."""
+    """Config-driven construction is deferred"""
     cfg = UnitConfig(unit_model_class="DummyOps")
-    with pytest.raises(NotImplementedError, match="M09"):
+    with pytest.raises(NotImplementedError, match="build_from_config"):
         OpsBlockData.build_from_config(cfg)
 
 
@@ -284,11 +285,63 @@ def test_register_power_rejects_string(dummy_model):
 
 @pytest.mark.unit
 def test_declare_power_thermal(dummy_model):
-    """declare_power(PowerKind.THERMAL) builds and registers power_thermal in kW."""
-    var = dummy_model.unit.declare_power(nm.PowerKind.THERMAL)
+    """declare_power(PowerKind.THERMAL, temperature=...) builds power_thermal in kW."""
+    var = dummy_model.unit.declare_power(
+        nm.PowerKind.THERMAL, temperature=350 * pyunits.K
+    )
     assert var is getattr(dummy_model.unit, nm.POWER_THERMAL)
     assert pyunits.get_units(var[0]) == pyunits.kW
-    assert dummy_model.unit._io_registry.power[-1].kind == "thermal"
+    record = dummy_model.unit._io_registry.power[-1]
+    assert record.kind == "thermal"
+    assert pyunits.get_units(record.temperature) == pyunits.K
+
+
+@pytest.mark.unit
+def test_declare_power_thermal_requires_temperature(dummy_model):
+    """A thermal draw without a temperature is a config error."""
+    with pytest.raises(FlexConfigError, match="temperature"):
+        dummy_model.unit.declare_power(nm.PowerKind.THERMAL)
+
+
+@pytest.mark.unit
+def test_declare_power_takes_no_fuel_name(dummy_model):
+    """Fuel is a volumetric flow, not a PowerKind: declare_power has no fuel_name."""
+    with pytest.raises(TypeError):
+        dummy_model.unit.declare_power(nm.PowerKind.ELECTRICAL, fuel_name="natural_gas")
+    assert not hasattr(nm.PowerKind, "FUEL")
+
+
+@pytest.mark.unit
+def test_register_fuel_usage(dummy_model):
+    """register_fuel_usage records a volumetric fuel flow under its fuel name."""
+    unit = dummy_model.unit
+    usage = pyo.Var(
+        dummy_model.time_block.time_index,
+        initialize=0.0,
+        units=pyunits.m**3 / pyunits.hr,
+    )
+    unit.add_component(f"{nm.FUEL_USAGE}_natural_gas", usage)
+    unit.register_fuel_usage(usage, fuel_name="natural_gas")
+
+    record = unit._io_registry.fuel[-1]
+    assert isinstance(record, FuelUsageRecord)
+    assert record.var is usage
+    assert record.name == f"{nm.FUEL_USAGE}_natural_gas"
+    assert record.fuel_name == "natural_gas"
+
+
+@pytest.mark.unit
+def test_register_fuel_usage_requires_fuel_name(dummy_model):
+    """A fuel usage flow with no fuel name is a config error."""
+    unit = dummy_model.unit
+    usage = pyo.Var(
+        dummy_model.time_block.time_index,
+        initialize=0.0,
+        units=pyunits.m**3 / pyunits.hr,
+    )
+    unit.add_component("gas_flow", usage)
+    with pytest.raises(FlexConfigError, match="fuel_name"):
+        unit.register_fuel_usage(usage, fuel_name="")
 
 
 @pytest.mark.unit
