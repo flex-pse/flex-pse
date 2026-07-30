@@ -25,6 +25,9 @@ dependencies = [
 
 [project.optional-dependencies]
 parameterize = ["pandas>=2.0"]
+# HiGHS ships as a self-contained wheel; IPOPT does not (see
+# .github/actions/setup-ipopt and docs installation notes).
+solvers = ["highspy"]
 dev = ["pytest", "pytest-cov", "import-linter", "ruff", "black", "pre-commit", "diff-cover", "marimo", "matplotlib"]
 docs = ["sphinx", "myst-nb", "furo"]
 
