@@ -20,8 +20,7 @@ jobs:
         pip install ".[dev,docs]"
     - name: Generate Docs
       run: |
-        cd ./docs
-        make html
+        make -C docs html
         touch docs/_build/html/.nojekyll
     - name: Publish Docs
       uses: JamesIves/github-pages-deploy-action@releases/v4
