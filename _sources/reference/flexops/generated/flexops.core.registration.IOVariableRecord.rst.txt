@@ -1,0 +1,7 @@
+﻿IOVariableRecord
+================
+
+.. currentmodule:: flexops.core.registration
+
+.. autoclass:: IOVariableRecord
+   :members:

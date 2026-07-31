@@ -1,0 +1,6 @@
+﻿flexops.costing.add\_electricity\_cost
+======================================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: add_electricity_cost

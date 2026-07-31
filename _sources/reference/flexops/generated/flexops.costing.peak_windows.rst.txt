@@ -1,0 +1,6 @@
+﻿flexops.costing.peak\_windows
+=============================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: peak_windows

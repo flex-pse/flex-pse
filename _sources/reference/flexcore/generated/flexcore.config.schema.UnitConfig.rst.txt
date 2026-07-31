@@ -1,0 +1,7 @@
+﻿UnitConfig
+==========
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: UnitConfig
+   :members:

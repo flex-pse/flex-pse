@@ -1,0 +1,7 @@
+﻿PlantConfig
+===========
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: PlantConfig
+   :members:

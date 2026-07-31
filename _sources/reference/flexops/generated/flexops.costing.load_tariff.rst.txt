@@ -1,0 +1,6 @@
+﻿flexops.costing.load\_tariff
+============================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: load_tariff

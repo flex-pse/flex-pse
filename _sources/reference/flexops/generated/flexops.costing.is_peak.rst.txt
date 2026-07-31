@@ -1,0 +1,6 @@
+﻿flexops.costing.is\_peak
+========================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: is_peak

@@ -1,0 +1,7 @@
+﻿SurrogateSpec
+=============
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: SurrogateSpec
+   :members:

@@ -1,0 +1,7 @@
+﻿ExternalDispatchSpec
+====================
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: ExternalDispatchSpec
+   :members:

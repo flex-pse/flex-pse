@@ -1,0 +1,7 @@
+﻿TimeWindow
+==========
+
+.. currentmodule:: flexops.core.time_block
+
+.. autoclass:: TimeWindow
+   :members:

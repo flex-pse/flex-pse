@@ -1,0 +1,6 @@
+﻿flexops.costing.tariff\_csv\_to\_dict
+=====================================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: tariff_csv_to_dict

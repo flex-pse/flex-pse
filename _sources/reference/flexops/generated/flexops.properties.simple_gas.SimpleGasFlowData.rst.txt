@@ -1,0 +1,7 @@
+﻿SimpleGasFlowData
+=================
+
+.. currentmodule:: flexops.properties.simple_gas
+
+.. autoclass:: SimpleGasFlowData
+   :members:

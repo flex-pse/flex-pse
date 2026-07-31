@@ -1,0 +1,7 @@
+﻿ArcSpec
+=======
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: ArcSpec
+   :members:

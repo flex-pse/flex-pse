@@ -1,0 +1,6 @@
+﻿flexops.costing.monthly\_scale\_factor
+======================================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: monthly_scale_factor

@@ -1,0 +1,6 @@
+﻿flexops.costing.tariff\_currency\_units
+=======================================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: tariff_currency_units

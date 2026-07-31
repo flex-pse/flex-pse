@@ -1,0 +1,7 @@
+﻿DRConfig
+========
+
+.. currentmodule:: flexops.costing
+
+.. autoclass:: DRConfig
+   :members:

@@ -1,0 +1,7 @@
+﻿FlexCosting
+===========
+
+.. currentmodule:: flexops.costing.flex_costing
+
+.. autoclass:: FlexCosting
+   :members:

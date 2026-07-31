@@ -1,0 +1,846 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="flexops.costing.load_tariff" href="generated/flexops.costing.load_tariff.html"><link rel="prev" title="SimpleGasStateBlockData" href="generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>flexops.costing - flex-pse documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">flex-pse  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  <span class="sidebar-brand-text">flex-pse  documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/relaxation_policies.html">Relaxation policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/config_schema.html">The config schema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/energy_nomenclature.html">Energy nomenclature</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/pass_through_and_bypass.html">Pass-through, bypass, and the arc layer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How-to</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to/build_a_plant.html">Build a plant</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexcore/index.html">flexcore</a><input aria-label="Toggle navigation of flexcore" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ModelConfig.html">ModelConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.NetworkConfig.html">NetworkConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.PlantConfig.html">PlantConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.UnitConfig.html">UnitConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.IOVariableSpec.html">IOVariableSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateSpec.html">SurrogateSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ExternalDispatchSpec.html">ExternalDispatchSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.UnitCommitmentConfig.html">UnitCommitmentConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ArcSpec.html">ArcSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.TimeConfig.html">TimeConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.CostingConfig.html">CostingConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.PriceSpec.html">PriceSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.DRConfig.html">DRConfig</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="core.html">flexops.core</a><input aria-label="Toggle navigation of flexops.core" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.time_block.TimeBlock.html">TimeBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.time_block.TimeBlockData.html">TimeBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.time_block.TimeWindow.html">TimeWindow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html">SimpleAqueousFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousFlowData.html">SimpleAqueousFlowData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html">SimpleAqueousStateBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasFlow.html">SimpleGasFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasFlowData.html">SimpleGasFlowData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">SimpleGasStateBlockData</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.load_tariff.html">flexops.costing.load_tariff</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.merge_tariffs.html">flexops.costing.merge_tariffs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.load_dr_program.html">flexops.costing.load_dr_program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.tariff_csv_to_dict.html">flexops.costing.tariff_csv_to_dict</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.tariff_currency_units.html">flexops.costing.tariff_currency_units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.currency_units.html">flexops.costing.currency_units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.monthly_scale_factor.html">flexops.costing.monthly_scale_factor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.price_series.html">flexops.costing.price_series</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.is_peak.html">flexops.costing.is_peak</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.peak_windows.html">flexops.costing.peak_windows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.price_gradient.html">flexops.costing.price_gradient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.add_operating_cost.html">flexops.costing.add_operating_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.add_electricity_cost.html">flexops.costing.add_electricity_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.add_fuel_cost.html">flexops.costing.add_fuel_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.OperatingCostHandles.html">OperatingCostHandles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.evaluate_cost.html">flexops.costing.evaluate_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.evaluate_fuel_cost.html">flexops.costing.evaluate_fuel_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.DRConfig.html">DRConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCosting.html">FlexCosting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html">FlexCostingData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.CostReport.html">CostReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.OperatingCostBreakdown.html">OperatingCostBreakdown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.CapitalCostBreakdown.html">CapitalCostBreakdown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.ScalarCostSpec.html">ScalarCostSpec</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.testing.UnitModelTestHarness.html">UnitModelTestHarness</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../_sources/reference/flexops/costing.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="flexops-costing">
+<h1>flexops.costing<a class="headerlink" href="#flexops-costing" title="Link to this heading">¶</a></h1>
+<section id="eeco-integration">
+<h2>EECO integration<a class="headerlink" href="#eeco-integration" title="Link to this heading">¶</a></h2>
+<p>flex-pse does <strong>not</strong> build its own tariff/cost engine. Tariffs, demand
+charges, tiered/fixed charges, and both the optimization-time and
+post-optimization cost computations come from the external <strong>EECO</strong> package
+(<code class="docutils literal notranslate"><span class="pre">eeco</span></code> on PyPI), a core runtime dependency (architecture §2.4, decisions
+R4/R9). <code class="docutils literal notranslate"><span class="pre">flexops.costing.opex</span></code> is the thin flex-pse interface around it —
+and, by convention (decision R12), the <strong>only</strong> module in the codebase that
+imports <code class="docutils literal notranslate"><span class="pre">eeco</span></code>, so there is one file to fix when EECO’s API moves.</p>
+<p>EECO owns all cost math; these wrappers are glue: they marshal inputs, rename
+EECO’s outputs to stable flex-pse names, and translate EECO/pandas errors into
+the flex-pse exception hierarchy. A flex-pse tariff object is simply an EECO
+<code class="docutils literal notranslate"><span class="pre">rate_data</span></code> <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> (EECO 0.2.1 has no tariff loader of its own; its
+cost functions consume that frame directly).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>EECO is only needed for tariffs.</strong> The <code class="docutils literal notranslate"><span class="pre">eeco</span></code> import is soft, so
+every carrier given a native <a class="reference internal" href="#native-energy-prices"><span class="std std-ref">energy price</span></a>
+builds, solves, and reports without EECO installed — including
+<code class="docutils literal notranslate"><span class="pre">report_cost</span></code>. Reaching a tariff path without <code class="docutils literal notranslate"><span class="pre">eeco</span></code> raises
+<a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><code class="xref py py-class docutils literal notranslate"><span class="pre">FlexConfigError</span></code></a> naming both remedies (install
+it, or price the carrier natively).</p>
+</div>
+</section>
+<section id="loaders-and-csv-conversion">
+<h2>Loaders and CSV conversion<a class="headerlink" href="#loaders-and-csv-conversion" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.load_tariff.html#flexops.costing.load_tariff" title="flexops.costing.load_tariff"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_tariff</span></code></a></p></td>
+<td><p>Return an EECO tariff object (a <code class="docutils literal notranslate"><span class="pre">rate_data</span></code> DataFrame) from <code class="docutils literal notranslate"><span class="pre">source</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.merge_tariffs.html#flexops.costing.merge_tariffs" title="flexops.costing.merge_tariffs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">merge_tariffs</span></code></a></p></td>
+<td><p>Load several tariff sources and merge them into one rate_data frame.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.load_dr_program.html#flexops.costing.load_dr_program" title="flexops.costing.load_dr_program"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_dr_program</span></code></a></p></td>
+<td><p>Load a demand-response program (v0: containers-only; None-safe).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.tariff_csv_to_dict.html#flexops.costing.tariff_csv_to_dict" title="flexops.costing.tariff_csv_to_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tariff_csv_to_dict</span></code></a></p></td>
+<td><p>Convert an EECO rate_data CSV (or DataFrame) into the dict load_tariff takes.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.tariff_currency_units.html#flexops.costing.tariff_currency_units" title="flexops.costing.tariff_currency_units"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tariff_currency_units</span></code></a></p></td>
+<td><p>Return the Pyomo currency unit for a tariff's currency basis.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.currency_units.html#flexops.costing.currency_units" title="flexops.costing.currency_units"><code class="xref py py-obj docutils literal notranslate"><span class="pre">currency_units</span></code></a></p></td>
+<td><p>Return the Pyomo currency unit named <code class="docutils literal notranslate"><span class="pre">symbol</span></code>, registering it on first use.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.monthly_scale_factor.html#flexops.costing.monthly_scale_factor" title="flexops.costing.monthly_scale_factor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">monthly_scale_factor</span></code></a></p></td>
+<td><p>Fraction of its starting calendar month that a horizon covers (<code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">1</span></code>).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Several tariff files</strong> merge into one frame with <a class="reference internal" href="generated/flexops.costing.merge_tariffs.html#flexops.costing.merge_tariffs" title="flexops.costing.merge_tariffs"><code class="xref py py-func docutils literal notranslate"><span class="pre">merge_tariffs()</span></code></a>, which
+is what <code class="docutils literal notranslate"><span class="pre">FlexCosting(tariff_file=...)</span></code> uses when given a list or a mapping.
+Passing a list merges every source as-is; passing a mapping of EECO utility to
+source <em>assigns</em> each file to a utility and keeps only that utility’s rows, so a
+sheet carrying stray rows for another utility cannot leak into the bill:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">costing</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">FlexCosting</span><span class="p">(</span>
+    <span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">,</span>
+    <span class="n">tariff_file</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;electric&quot;</span><span class="p">:</span> <span class="s2">&quot;pge_b20.json&quot;</span><span class="p">,</span> <span class="s2">&quot;gas&quot;</span><span class="p">:</span> <span class="s2">&quot;socal_gn10.json&quot;</span><span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Both forms end at a single <code class="docutils literal notranslate"><span class="pre">rate_data</span></code> frame — there is no separate tariff
+object per utility, because the frame’s <code class="docutils literal notranslate"><span class="pre">utility</span></code> column is what selects rows
+for each cost leg. Two sources defining the same charge raise rather than
+silently doubling that line item (EECO sums colliding charge keys).</p>
+<p>A tariff may be authored as a JSON records structure or imported from an EECO
+<code class="docutils literal notranslate"><span class="pre">rate_data</span></code> CSV. The JSON form is a <code class="docutils literal notranslate"><span class="pre">tariff_data</span></code> records list, e.g. (an
+excerpt of the demo <code class="docutils literal notranslate"><span class="pre">flexdemo-b20</span></code> time-of-use tariff):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="s2">&quot;tariff_data&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;utility&quot;</span><span class="p">:</span> <span class="s2">&quot;electric&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;energy&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;peak&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;month_start&quot;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s2">&quot;month_end&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s2">&quot;weekday_start&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;weekday_end&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+     <span class="s2">&quot;hour_start&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">&quot;hour_end&quot;</span><span class="p">:</span> <span class="mi">21</span><span class="p">,</span> <span class="s2">&quot;basic_charge_limit (metric)&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s2">&quot;charge (metric)&quot;</span><span class="p">:</span> <span class="mf">0.18</span><span class="p">,</span> <span class="s2">&quot;units&quot;</span><span class="p">:</span> <span class="s2">&quot;$/kWh&quot;</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;utility&quot;</span><span class="p">:</span> <span class="s2">&quot;electric&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;demand&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;peak-demand&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;month_start&quot;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s2">&quot;month_end&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span> <span class="s2">&quot;weekday_start&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;weekday_end&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+     <span class="s2">&quot;hour_start&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">&quot;hour_end&quot;</span><span class="p">:</span> <span class="mi">21</span><span class="p">,</span> <span class="s2">&quot;basic_charge_limit (metric)&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+     <span class="s2">&quot;charge (metric)&quot;</span><span class="p">:</span> <span class="mf">21.5</span><span class="p">,</span> <span class="s2">&quot;units&quot;</span><span class="p">:</span> <span class="s2">&quot;$/kW&quot;</span><span class="p">}</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Charge windows are half-open on the hour: <code class="docutils literal notranslate"><span class="pre">hour_start=16,</span> <span class="pre">hour_end=21</span></code> bills
+hours 16:00–20:59 inclusive (21:00 is off-peak).</p>
+<p>An optional <code class="docutils literal notranslate"><span class="pre">assessed</span></code> column controls the billing period of a <code class="docutils literal notranslate"><span class="pre">demand</span></code>
+charge row: EECO defaults to <code class="docutils literal notranslate"><span class="pre">&quot;monthly&quot;</span></code> when the column is absent or the
+row omits it, applying one demand-charge epigraph over the whole
+<code class="docutils literal notranslate"><span class="pre">month_start</span></code>–<code class="docutils literal notranslate"><span class="pre">month_end</span></code> window. Set <code class="docutils literal notranslate"><span class="pre">&quot;assessed&quot;:</span> <span class="pre">&quot;daily&quot;</span></code> on a demand
+row to instead apply a separate epigraph per calendar day within that
+window — the pattern behind daily demand charges on tariffs such as those
+increasingly common in California.</p>
+</section>
+<section id="tariff-signal-helpers">
+<h2>Tariff signal helpers<a class="headerlink" href="#tariff-signal-helpers" title="Link to this heading">¶</a></h2>
+<p>Plain-pandas signals over a tariff, for writing logic/heuristic constraints.
+Each is a flex-pse helper built on EECO’s <code class="docutils literal notranslate"><span class="pre">get_charge_dict</span></code> charge arrays
+(the source of the price data); EECO 0.2.1 exposes no per-stamp price accessor.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.price_series.html#flexops.costing.price_series" title="flexops.costing.price_series"><code class="xref py py-obj docutils literal notranslate"><span class="pre">price_series</span></code></a></p></td>
+<td><p>Base energy price ($/kWh) at each stamp (flex-pse helper over EECO).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.is_peak.html#flexops.costing.is_peak" title="flexops.costing.is_peak"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peak</span></code></a></p></td>
+<td><p>Boolean mask: True at the highest-price stamps (flex-pse helper over EECO).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.peak_windows.html#flexops.costing.peak_windows" title="flexops.costing.peak_windows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">peak_windows</span></code></a></p></td>
+<td><p>Sub-index of the peak (highest-price) stamps (flex-pse helper over EECO).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.price_gradient.html#flexops.costing.price_gradient" title="flexops.costing.price_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">price_gradient</span></code></a></p></td>
+<td><p>Δ base energy price between successive stamps (flex-pse helper over EECO).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="in-objective-cost-bridge">
+<h2>In-objective cost bridge<a class="headerlink" href="#in-objective-cost-bridge" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.add_operating_cost.html#flexops.costing.add_operating_cost" title="flexops.costing.add_operating_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_operating_cost</span></code></a></p></td>
+<td><p>Build the facility's whole in-objective operating cost — electric <strong>and</strong> fuel.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.add_electricity_cost.html#flexops.costing.add_electricity_cost" title="flexops.costing.add_electricity_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_electricity_cost</span></code></a></p></td>
+<td><p>Build EECO's convex-relaxed in-objective <strong>electricity</strong> cost on <code class="docutils literal notranslate"><span class="pre">block</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.add_fuel_cost.html#flexops.costing.add_fuel_cost" title="flexops.costing.add_fuel_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_fuel_cost</span></code></a></p></td>
+<td><p>Build EECO's convex-relaxed in-objective fuel cost on <code class="docutils literal notranslate"><span class="pre">block</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.OperatingCostHandles.html#flexops.costing.OperatingCostHandles" title="flexops.costing.OperatingCostHandles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OperatingCostHandles</span></code></a></p></td>
+<td><p>Stable flex-pse handles for EECO's in-objective cost expressions.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><a class="reference internal" href="generated/flexops.costing.add_operating_cost.html#flexops.costing.add_operating_cost" title="flexops.costing.add_operating_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_operating_cost()</span></code></a> is the facility-level umbrella: it builds <strong>both</strong>
+the electricity and fuel costs onto one opex block (EECO namespaces its Pyomo
+components by utility, so <code class="docutils literal notranslate"><span class="pre">electric_*</span></code> and <code class="docutils literal notranslate"><span class="pre">gas_*</span></code> never collide) and returns
+a single <a class="reference internal" href="generated/flexops.costing.OperatingCostHandles.html#flexops.costing.OperatingCostHandles" title="flexops.costing.OperatingCostHandles"><code class="xref py py-class docutils literal notranslate"><span class="pre">OperatingCostHandles</span></code></a> whose <code class="docutils literal notranslate"><span class="pre">total_operating_cost</span></code> is the sum
+across utilities. The facility consumption defaults to the standard series on the
+block — <code class="docutils literal notranslate"><span class="pre">block.power_electrical</span></code> and <code class="docutils literal notranslate"><span class="pre">block.fuel_usage</span></code> — so a caller need not
+re-declare them each use; pass <code class="docutils literal notranslate"><span class="pre">electrical_power</span></code>/<code class="docutils literal notranslate"><span class="pre">fuel_power</span></code> to override.
+Every series handed to these builders must carry <strong>no units</strong>: a bare magnitude in
+kW (electric) or m³/hr (fuel volumetric flow), because EECO applies its unit
+conversion as a plain float factor and constrains its own dimensionless Vars to
+the series it is given. The
+single-utility builders <a class="reference internal" href="generated/flexops.costing.add_electricity_cost.html#flexops.costing.add_electricity_cost" title="flexops.costing.add_electricity_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_electricity_cost()</span></code></a> and <a class="reference internal" href="generated/flexops.costing.add_fuel_cost.html#flexops.costing.add_fuel_cost" title="flexops.costing.add_fuel_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_fuel_cost()</span></code></a>
+remain available for building one leg alone. <a class="reference internal" href="generated/flexops.costing.add_fuel_cost.html#flexops.costing.add_fuel_cost" title="flexops.costing.add_fuel_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_fuel_cost()</span></code></a> takes a
+<code class="docutils literal notranslate"><span class="pre">fuel_type</span></code> (default <code class="docutils literal notranslate"><span class="pre">&quot;gas&quot;</span></code>, the only value EECO 0.2.1 supports); a
+hydrogen utility is expected upstream and will add a second value.</p>
+</section>
+<section id="post-optimization-evaluators">
+<h2>Post-optimization evaluators<a class="headerlink" href="#post-optimization-evaluators" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.evaluate_cost.html#flexops.costing.evaluate_cost" title="flexops.costing.evaluate_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_cost</span></code></a></p></td>
+<td><p>Compute the TRUE (de-relaxed) electricity cost on a fixed realized load.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.evaluate_fuel_cost.html#flexops.costing.evaluate_fuel_cost" title="flexops.costing.evaluate_fuel_cost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evaluate_fuel_cost</span></code></a></p></td>
+<td><p>Compute the TRUE (de-relaxed) fuel cost on a fixed realized usage array.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="demand-response-containers-only-in-v0">
+<h2>Demand response (containers-only in v0)<a class="headerlink" href="#demand-response-containers-only-in-v0" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.DRConfig.html#flexops.costing.DRConfig" title="flexops.costing.DRConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DRConfig</span></code></a></p></td>
+<td><p>A container/config slot for a demand-response program (v0 no-op).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Demand response is <strong>containers-only</strong> in v0 (architecture §2.4). A
+<a class="reference internal" href="generated/flexops.costing.DRConfig.html#flexops.costing.DRConfig" title="flexops.costing.DRConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">DRConfig</span></code></a> holds a loaded DR program so the wiring exists, and the
+internal DR hook is a no-op: supplying a DR file never changes the
+objective. Building DR event/curtailment/incentive/capacity constraints is
+post-v0. EECO 0.2.1 exposes no DR API, so the DR file format is a flex-pse
+placeholder loaded into the container only.</p>
+</div>
+</section>
+<section id="in-objective-vs-reported-cost">
+<h2>In-objective vs. reported cost<a class="headerlink" href="#in-objective-vs-reported-cost" title="Link to this heading">¶</a></h2>
+<p>EECO is used two ways. <a class="reference internal" href="generated/flexops.costing.add_operating_cost.html#flexops.costing.add_operating_cost" title="flexops.costing.add_operating_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_operating_cost()</span></code></a> asks EECO to build the
+<strong>convex-relaxed</strong> operating-cost <code class="docutils literal notranslate"><span class="pre">Expression</span></code> on a Pyomo block — the
+tractable proxy the scheduler minimizes. <a class="reference internal" href="generated/flexops.costing.evaluate_cost.html#flexops.costing.evaluate_cost" title="flexops.costing.evaluate_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">evaluate_cost()</span></code></a> evaluates EECO on
+a <strong>fixed, realized</strong> aggregate-power numpy array to compute the TRUE
+(de-relaxed) cost — the user-facing bill (§6 reporting rule, R4/R9).</p>
+<p>Because the relaxation drops the tiered energy surcharge when no consumption
+estimate is supplied, the in-objective total is a proxy that is <strong>≤ or ≈</strong> the
+post-hoc true bill. The raw solver objective is never reported as the
+user-facing cost.</p>
+<div class="admonition-timezones-dst admonition">
+<p class="admonition-title">Timezones / DST</p>
+<p>EECO reasons in naive <strong>local wall-clock time</strong>: its charge windows are keyed
+on <code class="docutils literal notranslate"><span class="pre">datetime.month</span></code>/<code class="docutils literal notranslate"><span class="pre">weekday</span></code>/<code class="docutils literal notranslate"><span class="pre">hour</span></code> with no timezone conversion.
+flex-pse v0 is consistently naive-local (matching
+<a class="reference internal" href="generated/flexops.core.time_block.TimeBlock.html#flexops.core.time_block.TimeBlock" title="flexops.core.time_block.TimeBlock"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeBlock</span></code></a>). Timezone-aware datetime indices
+are rejected at the wrapper boundary with
+<a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexDataError" title="flexcore.exceptions.FlexDataError"><code class="xref py py-class docutils literal notranslate"><span class="pre">FlexDataError</span></code></a>; strip the timezone
+(<code class="docutils literal notranslate"><span class="pre">index.tz_localize(None)</span></code>) before passing an index in.</p>
+</div>
+</section>
+<section id="flexcosting-block">
+<h2>FlexCosting block<a class="headerlink" href="#flexcosting-block" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCosting.html#flexops.costing.flex_costing.FlexCosting" title="flexops.costing.flex_costing.FlexCosting"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FlexCosting</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData" title="flexops.costing.flex_costing.FlexCostingData"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FlexCostingData</span></code></a></p></td>
+<td><p>EECO-backed costing block with <code class="docutils literal notranslate"><span class="pre">opex</span></code>/<code class="docutils literal notranslate"><span class="pre">capex</span></code> sub-blocks (module docstring).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.flex_costing.CostReport.html#flexops.costing.flex_costing.CostReport" title="flexops.costing.flex_costing.CostReport"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CostReport</span></code></a></p></td>
+<td><p>The reported, categorized cost from <a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost" title="flexops.costing.flex_costing.FlexCostingData.report_cost"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FlexCostingData.report_cost()</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.flex_costing.OperatingCostBreakdown.html#flexops.costing.flex_costing.OperatingCostBreakdown" title="flexops.costing.flex_costing.OperatingCostBreakdown"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OperatingCostBreakdown</span></code></a></p></td>
+<td><p>Categorized operating cost from <a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost" title="flexops.costing.flex_costing.FlexCostingData.report_cost"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FlexCostingData.report_cost()</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.costing.flex_costing.CapitalCostBreakdown.html#flexops.costing.flex_costing.CapitalCostBreakdown" title="flexops.costing.flex_costing.CapitalCostBreakdown"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CapitalCostBreakdown</span></code></a></p></td>
+<td><p>Categorized capital cost from <a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost" title="flexops.costing.flex_costing.FlexCostingData.report_cost"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FlexCostingData.report_cost()</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec" title="flexops.costing.flex_costing.ScalarCostSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScalarCostSpec</span></code></a></p></td>
+<td><p>A non-energy scalar cost registered on FlexCosting (never billed via EECO).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">FlexCosting</span></code> subclasses IDAES <code class="docutils literal notranslate"><span class="pre">FlowsheetCostingBlockData</span></code> and <strong>delegates
+all tariff/energy operating cost to EECO</strong> (decision R4), in two ways: it hands
+EECO the aggregate electrical power (as a bare kW magnitude, via a dimensionless
+<code class="docutils literal notranslate"><span class="pre">opex.eeco_aggregate_electrical_power</span></code> normalization Var) + tariff to build the
+convex-relaxed in-objective cost
+(<a class="reference internal" href="generated/flexops.costing.add_electricity_cost.html#flexops.costing.add_electricity_cost" title="flexops.costing.add_electricity_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_electricity_cost()</span></code></a>), and post-solve
+calls EECO’s evaluator (<a class="reference internal" href="generated/flexops.costing.evaluate_cost.html#flexops.costing.evaluate_cost" title="flexops.costing.evaluate_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">evaluate_cost()</span></code></a>) for the reported
+bill. Its own jobs are aggregation, the <code class="docutils literal notranslate"><span class="pre">opex</span></code>/<code class="docutils literal notranslate"><span class="pre">capex</span></code> block structure and
+naming, CapEx + modes, and <code class="docutils literal notranslate"><span class="pre">report_cost</span></code>; it writes no tariff cost math.</p>
+<p>Every quantity FlexCosting exposes is a <strong>decision-visible</strong> <code class="docutils literal notranslate"><span class="pre">Var</span></code> defined by an
+<code class="docutils literal notranslate"><span class="pre">eq_&lt;name&gt;</span></code> equality <code class="docutils literal notranslate"><span class="pre">Constraint</span></code> — aggregate power, each cost line item, the
+annualized cost, and the totals are first-class model variables (not bare
+Expressions).</p>
+<p>Every cost lives in one of two sub-blocks built by
+<a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.cost_process" title="flexops.costing.flex_costing.FlexCostingData.cost_process"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cost_process()</span></code></a>:</p>
+<ul class="simple">
+<li><p><strong>``opex``</strong> holds all operating cost — <code class="docutils literal notranslate"><span class="pre">electricity_cost</span></code> and <code class="docutils literal notranslate"><span class="pre">fuel_cost</span></code>
+(both from EECO), <code class="docutils literal notranslate"><span class="pre">fixed_operating_cost</span></code> (a non-tariff facility cost:
+maintenance/labor/chemicals, from <code class="docutils literal notranslate"><span class="pre">CostingConfig.fixed_operating_cost</span></code>), and
+<code class="docutils literal notranslate"><span class="pre">scalar_cost</span></code> (non-energy flows/supplies/products, below). Their sum,
+<code class="docutils literal notranslate"><span class="pre">total_operating_cost</span></code>, is re-exposed as <code class="docutils literal notranslate"><span class="pre">aggregate_operating_cost</span></code> — the
+operations-mode objective. The fixed operating cost is <strong>distinct</strong> from the
+tariff’s own <code class="docutils literal notranslate"><span class="pre">fixed_charge</span></code>, which EECO already folds into <code class="docutils literal notranslate"><span class="pre">electricity_cost</span></code>.</p></li>
+<li><p><strong>``capex``</strong> is an <strong>empty placeholder</strong> in v0 (<code class="docutils literal notranslate"><span class="pre">total_capital_cost</span> <span class="pre">==</span> <span class="pre">0</span></code>,
+re-exposed as <code class="docutils literal notranslate"><span class="pre">aggregate_capital_cost</span></code>); later milestones aggregate per-unit
+capital costs into it.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Indexed per-carrier power aggregation.</strong></p>
+<p><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.cost_process" title="flexops.costing.flex_costing.FlexCostingData.cost_process"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cost_process()</span></code></a> pulls every registered power draw from
+the model and defines <code class="docutils literal notranslate"><span class="pre">aggregate_power[t,</span> <span class="pre">carrier]</span></code> in kW, where <code class="docutils literal notranslate"><span class="pre">carrier</span></code>
+is <code class="docutils literal notranslate"><span class="pre">&quot;electrical&quot;</span></code> or a per-temperature thermal label <code class="docutils literal notranslate"><span class="pre">&quot;thermal&#64;&lt;T&gt;K&quot;</span></code>.
+Every draw is normalized to kW with <code class="docutils literal notranslate"><span class="pre">pyunits.convert</span></code> at aggregation, so a
+non-power (or non-kW-convertible) draw fails <strong>loudly</strong>. Thermal duties at
+<strong>different temperatures are never summed</strong> together — each temperature is its
+own carrier; <code class="docutils literal notranslate"><span class="pre">aggregate_thermal_power</span></code> is a temperature-blind total kept for
+backward compatibility.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Fuel is a volume, not a power.</strong></p>
+<p>A combustible fuel is metered and billed on <strong>volume</strong>, so it is aggregated
+separately from power: <code class="docutils literal notranslate"><span class="pre">cost_process</span></code> pulls every fuel-usage flow a unit
+registered with
+<a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.register_fuel_usage" title="flexops.core.ops_block.OpsBlockData.register_fuel_usage"><code class="xref py py-meth docutils literal notranslate"><span class="pre">register_fuel_usage()</span></code></a> and defines
+<code class="docutils literal notranslate"><span class="pre">aggregate_fuel_usage[t,</span> <span class="pre">fuel]</span></code> directly in EECO’s <strong>m³/hr</strong> (a flow that is
+not a volumetric rate fails <strong>loudly</strong> there). Each fuel is billed through
+<a class="reference internal" href="generated/flexops.costing.add_fuel_cost.html#flexops.costing.add_fuel_cost" title="flexops.costing.add_fuel_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_fuel_cost()</span></code></a> against the <strong>same tariff</strong> loaded at
+construction, on its own <code class="docutils literal notranslate"><span class="pre">opex.fuel_&lt;name&gt;</span></code> sub-block so EECO’s <code class="docutils literal notranslate"><span class="pre">gas_*</span></code>
+components never collide — via that sub-block’s dimensionless
+<code class="docutils literal notranslate"><span class="pre">eeco_aggregate_fuel_usage</span></code> Var, the m³/hr aggregate as a bare magnitude.</p>
+<p>Fuels are <strong>discovered from the model</strong>, so there is nothing to declare on the
+costing block; a model with no fuel flow builds no gas leg and
+<code class="docutils literal notranslate"><span class="pre">opex.fuel_cost</span></code> is <code class="docutils literal notranslate"><span class="pre">0</span></code>. flex-pse applies <strong>no heating value</strong> and does
+<strong>no</strong> fuel-type recognition: a fuel priced in the tariff sheet’s
+<code class="docutils literal notranslate"><span class="pre">gas</span></code>-utility rows just works, a tariff missing those rows surfaces EECO’s
+own validation error, and if a tariff prices gas on an energy basis, converting
+it is EECO’s job (it applies its own fuel heating-value assumption).</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Non-energy scalar costs — native, never via EECO.</strong></p>
+<p><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.register_scalar_cost" title="flexops.costing.flex_costing.FlexCostingData.register_scalar_cost"><code class="xref py py-meth docutils literal notranslate"><span class="pre">register_scalar_cost()</span></code></a> costs an arbitrary time-indexed
+rate (a flow/supply/product) as <code class="docutils literal notranslate"><span class="pre">price</span> <span class="pre">×</span> <span class="pre">Σ_t</span> <span class="pre">quantity[t]</span> <span class="pre">×</span> <span class="pre">dt</span></code> — e.g. water
+withdrawal ($/m³), chemical dosing ($/kg), or a product-revenue credit (a
+negative <code class="docutils literal notranslate"><span class="pre">price</span></code>). Built entirely in flex-pse; EECO is not involved. A
+<code class="docutils literal notranslate"><span class="pre">quantity</span></code> that does not convert to the declared <code class="docutils literal notranslate"><span class="pre">quantity_units</span></code> raises,
+forcing unit consistency.</p>
+</div>
+<div class="admonition note" id="native-energy-prices">
+<p class="admonition-title">Note</p>
+<p><strong>Native energy prices — no tariff, no EECO.</strong></p>
+<p>A carrier does not need a tariff at all: give <code class="docutils literal notranslate"><span class="pre">energy_prices</span></code> a price per
+carrier or fuel and that carrier is billed natively as
+<code class="docutils literal notranslate"><span class="pre">Σ_t</span> <span class="pre">price[t]</span> <span class="pre">×</span> <span class="pre">quantity[t]</span> <span class="pre">×</span> <span class="pre">dt</span></code>, exactly like a scalar cost:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">costing</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">FlexCosting</span><span class="p">(</span>
+    <span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">,</span>
+    <span class="n">energy_prices</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;electrical&quot;</span><span class="p">:</span>  <span class="mf">0.12</span> <span class="o">*</span> <span class="n">currency_units</span><span class="p">(</span><span class="s2">&quot;USD&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">kWh</span><span class="p">,</span>
+        <span class="s2">&quot;natural_gas&quot;</span><span class="p">:</span> <span class="mf">0.50</span> <span class="o">*</span> <span class="n">currency_units</span><span class="p">(</span><span class="s2">&quot;USD&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">3</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Keys are <code class="docutils literal notranslate"><span class="pre">&quot;electrical&quot;</span></code> or a registered fuel name. A native price <strong>wins
+over a tariff</strong> that also covers that carrier, so the two can be mixed freely
+— tariff-priced electricity alongside a natively priced fuel, say.</p>
+<p><strong>A price may vary over the horizon.</strong> Each entry is one of three things: a
+single value (flat over the horizon), an array-like with one value per time
+point, or a Pyomo component indexed over the horizon — so the price can be a
+<code class="docutils literal notranslate"><span class="pre">Param</span></code> you update between solves, or even a <code class="docutils literal notranslate"><span class="pre">Var</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">day_ahead</span> <span class="o">=</span> <span class="n">pyo</span><span class="o">.</span><span class="n">Param</span><span class="p">(</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="o">.</span><span class="n">time_index</span><span class="p">,</span> <span class="n">initialize</span><span class="o">=</span><span class="n">hourly_prices</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">units</span><span class="o">=</span><span class="n">currency_units</span><span class="p">(</span><span class="s2">&quot;USD&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">kWh</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">costing</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">FlexCosting</span><span class="p">(</span>
+    <span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">,</span>
+    <span class="n">energy_prices</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;electrical&quot;</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">day_ahead</span><span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>An array-like is read in order against the time index; an indexed component is
+read in its own index-set order, so it does not have to live on the
+TimeBlock’s <code class="docutils literal notranslate"><span class="pre">time_index</span></code> — only to have exactly one value per time point.
+Anything with the wrong number of values raises
+<a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><code class="xref py py-class docutils literal notranslate"><span class="pre">FlexConfigError</span></code></a> at construction, naming both
+counts. A mapping is rejected outright, because iterating it would cost its
+keys.</p>
+<p><strong>Units are explicit or inferred.</strong> A price may carry Pyomo units
+(<code class="docutils literal notranslate"><span class="pre">0.12</span> <span class="pre">*</span> <span class="pre">currency_units(&quot;USD&quot;)</span> <span class="pre">/</span> <span class="pre">pyunits.kWh</span></code>), which must reconcile with the
+base currency or the unit-consistency check raises. A bare number is read in
+the currency over the carrier’s metered quantity: <code class="docutils literal notranslate"><span class="pre">kWh</span></code> for a power carrier,
+<code class="docutils literal notranslate"><span class="pre">m³</span></code> for a fuel — so <code class="docutils literal notranslate"><span class="pre">{&quot;electrical&quot;:</span> <span class="pre">0.12}</span></code> means $0.12/kWh and
+<code class="docutils literal notranslate"><span class="pre">{&quot;natural_gas&quot;:</span> <span class="pre">0.50}</span></code> means $0.50/m³.</p>
+<p>A carrier that has registered draws but is priced by <em>neither</em> a native price
+nor a tariff covering its utility raises
+<a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><code class="xref py py-class docutils literal notranslate"><span class="pre">FlexConfigError</span></code></a> naming the carrier, rather than
+contributing a silent <code class="docutils literal notranslate"><span class="pre">$0</span></code> to the bill.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Sub-monthly horizons prorate the monthly-assessed charges.</strong></p>
+<p>A demand charge and a tariff’s fixed (customer) charge are billed per calendar
+month, so a horizon shorter than a month owes only its share. With
+<code class="docutils literal notranslate"><span class="pre">prorate_monthly_charges</span></code> (the default), both are scaled by
+<a class="reference internal" href="generated/flexops.costing.monthly_scale_factor.html#flexops.costing.monthly_scale_factor" title="flexops.costing.monthly_scale_factor"><code class="xref py py-func docutils literal notranslate"><span class="pre">monthly_scale_factor()</span></code></a> — the horizon’s length over the
+real length of the calendar month it starts in. Energy charges are never
+scaled, and a demand charge the tariff marks <code class="docutils literal notranslate"><span class="pre">&quot;assessed&quot;:</span> <span class="pre">&quot;daily&quot;</span></code> is
+already at horizon granularity so it is left alone. Set the option to
+<code class="docutils literal notranslate"><span class="pre">False</span></code> to bill full monthly charges regardless of horizon length.</p>
+<p>Prorating is applied to the charge <em>rates</em> before EECO sees them, which leaves
+EECO’s tiered-surcharge arithmetic untouched. flex-pse does this itself because
+EECO’s <code class="docutils literal notranslate"><span class="pre">get_charge_dict</span></code> path exposes no equivalent option: its
+<code class="docutils literal notranslate"><span class="pre">calculate_cost</span></code> adds the customer charge whole, and its
+<code class="docutils literal notranslate"><span class="pre">demand_scale_factor</span></code> is suppressed for charges spanning <code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">1</span></code> day —
+which, because EECO clips charge-key dates to the horizon, would silently
+include <em>every</em> monthly charge on a one-day horizon.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Annualization.</strong></p>
+<p><code class="docutils literal notranslate"><span class="pre">cost_process</span></code> builds a <code class="docutils literal notranslate"><span class="pre">capital_recovery_factor</span></code> and an
+<code class="docutils literal notranslate"><span class="pre">annualized_cost</span></code> Var ($/year): operating cost scaled from the horizon to a
+year plus capital cost times the CRF. With the empty v0 capex block, the
+annualized cost is just the operating cost on an annual basis.</p>
+<p>The CRF is built on a single <code class="docutils literal notranslate"><span class="pre">effective_rate</span></code>. Supplying only
+<code class="docutils literal notranslate"><span class="pre">discount_rate</span></code> uses it directly; supplying <code class="docutils literal notranslate"><span class="pre">interest_rate</span></code> as well (the
+nominal cost of capital) deflates it into a real rate,
+<code class="docutils literal notranslate"><span class="pre">(1</span> <span class="pre">+</span> <span class="pre">interest_rate)</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">discount_rate)</span> <span class="pre">-</span> <span class="pre">1</span></code>. An effective rate of <code class="docutils literal notranslate"><span class="pre">0</span></code>
+falls back to straight-line <code class="docutils literal notranslate"><span class="pre">1/lifetime_years</span></code>, and an effective rate
+<code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">-1</span></code> or a non-positive lifetime raises.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Currency basis.</strong></p>
+<p>The costing block’s <code class="docutils literal notranslate"><span class="pre">base_currency</span></code> — and the units on every operating- and
+capital-cost expression it builds — is the tariff sheet’s currency basis, read
+from the charge <code class="docutils literal notranslate"><span class="pre">units</span></code> column by
+<a class="reference internal" href="generated/flexops.costing.tariff_currency_units.html#flexops.costing.tariff_currency_units" title="flexops.costing.tariff_currency_units"><code class="xref py py-func docutils literal notranslate"><span class="pre">tariff_currency_units()</span></code></a> (EECO tariffs
+are dollar-based: <code class="docutils literal notranslate"><span class="pre">&quot;$&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">USD</span></code>). With no tariff it is the configured
+<code class="docutils literal notranslate"><span class="pre">currency</span></code> (default <code class="docutils literal notranslate"><span class="pre">USD</span></code>), available as
+<a class="reference internal" href="generated/flexops.costing.currency_units.html#flexops.costing.currency_units" title="flexops.costing.currency_units"><code class="xref py py-func docutils literal notranslate"><span class="pre">currency_units()</span></code></a> for writing flat prices. EECO’s own
+cost expressions are dimensionless dollars, so FlexCosting casts them to this
+currency; the <code class="docutils literal notranslate"><span class="pre">report_cost</span></code> numbers are magnitudes in that currency.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Capital cost enters the objective only in design mode.</strong></p>
+<p>The operations-mode objective is <code class="docutils literal notranslate"><span class="pre">aggregate_operating_cost</span></code> alone; the
+design-mode objective is <code class="docutils literal notranslate"><span class="pre">total_cost</span></code> (operating <strong>+</strong> capital).
+<a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.set_operations_mode" title="flexops.costing.flex_costing.FlexCostingData.set_operations_mode"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_operations_mode()</span></code></a> fixes the registered sizing Vars
+and deactivates their capex constraints;
+<a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.set_design_mode" title="flexops.costing.flex_costing.FlexCostingData.set_design_mode"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_design_mode()</span></code></a> unfixes and activates them. Both are
+idempotent single-model toggles; in v0 the sizing registry is empty so they are
+no-ops (wiring for M08/M16). Merging representative months and linking sizing
+Vars across them is the M16 design wrapper, not this mode.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Reporting rule (R9, §6).</strong></p>
+<p><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost" title="flexops.costing.flex_costing.FlexCostingData.report_cost"><code class="xref py py-meth docutils literal notranslate"><span class="pre">report_cost()</span></code></a> returns a categorized <a class="reference internal" href="generated/flexops.costing.flex_costing.CostReport.html#flexops.costing.flex_costing.CostReport" title="flexops.costing.flex_costing.CostReport"><code class="xref py py-class docutils literal notranslate"><span class="pre">CostReport</span></code></a>
+— capital vs. operating, each itemized — recomputed <strong>post-solve</strong>, never read
+off the solver objective (a relaxed/scalarized proxy). Operating electricity
+and fuel are EECO post-hoc evaluations on the realized dispatch (fuel on the
+realized <code class="docutils literal notranslate"><span class="pre">aggregate_fuel_usage</span></code>, <code class="docutils literal notranslate"><span class="pre">0</span></code> when the model burns none); fixed is
+the config constant. In v0 <code class="docutils literal notranslate"><span class="pre">dr_revenue</span></code> and the whole <code class="docutils literal notranslate"><span class="pre">capital</span></code> breakdown
+are zero placeholders, so the structure is stable as those features land.</p>
+</div>
+</section>
+<section id="construction-order-invariant">
+<h2>Construction-order invariant<a class="headerlink" href="#construction-order-invariant" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">FlexCosting</span></code> may be constructed <strong>before any units exist</strong> — the API-freeze
+script builds <code class="docutils literal notranslate"><span class="pre">m.costing</span></code> before <code class="docutils literal notranslate"><span class="pre">m.svcw.tank</span></code> — because all aggregation and
+the EECO call are deferred to <code class="docutils literal notranslate"><span class="pre">cost_process()</span></code>, which pulls every unit’s
+registered power and fuel usage from the model. Building costing first, last, or
+between units gives the identical result.</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="generated/flexops.costing.load_tariff.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">flexops.costing.load_tariff</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">SimpleGasStateBlockData</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, flex-pse contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">flexops.costing</a><ul>
+<li><a class="reference internal" href="#eeco-integration">EECO integration</a></li>
+<li><a class="reference internal" href="#loaders-and-csv-conversion">Loaders and CSV conversion</a></li>
+<li><a class="reference internal" href="#tariff-signal-helpers">Tariff signal helpers</a></li>
+<li><a class="reference internal" href="#in-objective-cost-bridge">In-objective cost bridge</a></li>
+<li><a class="reference internal" href="#post-optimization-evaluators">Post-optimization evaluators</a></li>
+<li><a class="reference internal" href="#demand-response-containers-only-in-v0">Demand response (containers-only in v0)</a></li>
+<li><a class="reference internal" href="#in-objective-vs-reported-cost">In-objective vs. reported cost</a></li>
+<li><a class="reference internal" href="#flexcosting-block">FlexCosting block</a></li>
+<li><a class="reference internal" href="#construction-order-invariant">Construction-order invariant</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

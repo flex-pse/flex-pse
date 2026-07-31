@@ -1,0 +1,7 @@
+﻿IOVariableSpec
+==============
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: IOVariableSpec
+   :members:

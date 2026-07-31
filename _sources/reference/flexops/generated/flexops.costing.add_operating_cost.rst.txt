@@ -1,0 +1,6 @@
+﻿flexops.costing.add\_operating\_cost
+====================================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: add_operating_cost

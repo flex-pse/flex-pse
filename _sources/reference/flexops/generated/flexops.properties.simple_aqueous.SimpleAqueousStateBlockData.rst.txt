@@ -1,0 +1,7 @@
+﻿SimpleAqueousStateBlockData
+===========================
+
+.. currentmodule:: flexops.properties.simple_aqueous
+
+.. autoclass:: SimpleAqueousStateBlockData
+   :members:

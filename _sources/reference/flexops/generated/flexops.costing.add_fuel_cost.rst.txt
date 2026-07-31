@@ -1,0 +1,6 @@
+﻿flexops.costing.add\_fuel\_cost
+===============================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: add_fuel_cost

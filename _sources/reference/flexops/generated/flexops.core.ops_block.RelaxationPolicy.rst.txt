@@ -1,0 +1,7 @@
+﻿RelaxationPolicy
+================
+
+.. currentmodule:: flexops.core.ops_block
+
+.. autoclass:: RelaxationPolicy
+   :members:

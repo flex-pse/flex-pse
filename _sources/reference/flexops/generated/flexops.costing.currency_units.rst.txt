@@ -1,0 +1,6 @@
+﻿flexops.costing.currency\_units
+===============================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: currency_units

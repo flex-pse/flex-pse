@@ -1,0 +1,7 @@
+﻿CostReport
+==========
+
+.. currentmodule:: flexops.costing.flex_costing
+
+.. autoclass:: CostReport
+   :members:

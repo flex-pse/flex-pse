@@ -1,0 +1,7 @@
+﻿PriceSpec
+=========
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: PriceSpec
+   :members:

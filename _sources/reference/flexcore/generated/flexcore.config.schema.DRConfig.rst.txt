@@ -1,0 +1,7 @@
+﻿DRConfig
+========
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: DRConfig
+   :members:

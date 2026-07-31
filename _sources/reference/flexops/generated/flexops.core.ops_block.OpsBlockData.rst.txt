@@ -1,0 +1,7 @@
+﻿OpsBlockData
+============
+
+.. currentmodule:: flexops.core.ops_block
+
+.. autoclass:: OpsBlockData
+   :members:

@@ -1,0 +1,6 @@
+﻿flexops.costing.evaluate\_cost
+==============================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: evaluate_cost

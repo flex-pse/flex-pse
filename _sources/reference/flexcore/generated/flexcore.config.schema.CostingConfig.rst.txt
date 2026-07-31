@@ -1,0 +1,7 @@
+﻿CostingConfig
+=============
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: CostingConfig
+   :members:

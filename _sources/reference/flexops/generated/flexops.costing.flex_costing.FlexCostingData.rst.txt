@@ -1,0 +1,7 @@
+﻿FlexCostingData
+===============
+
+.. currentmodule:: flexops.costing.flex_costing
+
+.. autoclass:: FlexCostingData
+   :members:

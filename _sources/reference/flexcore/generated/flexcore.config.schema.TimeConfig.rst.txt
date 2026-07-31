@@ -1,0 +1,7 @@
+﻿TimeConfig
+==========
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: TimeConfig
+   :members:

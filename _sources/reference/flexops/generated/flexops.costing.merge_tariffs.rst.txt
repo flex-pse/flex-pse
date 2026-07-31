@@ -1,0 +1,6 @@
+﻿flexops.costing.merge\_tariffs
+==============================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: merge_tariffs

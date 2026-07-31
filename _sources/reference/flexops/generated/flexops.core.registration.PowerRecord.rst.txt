@@ -1,0 +1,7 @@
+﻿PowerRecord
+===========
+
+.. currentmodule:: flexops.core.registration
+
+.. autoclass:: PowerRecord
+   :members:

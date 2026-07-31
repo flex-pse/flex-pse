@@ -1,0 +1,6 @@
+﻿flexops.costing.price\_series
+=============================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: price_series

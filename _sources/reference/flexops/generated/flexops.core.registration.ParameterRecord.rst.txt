@@ -1,0 +1,7 @@
+﻿ParameterRecord
+===============
+
+.. currentmodule:: flexops.core.registration
+
+.. autoclass:: ParameterRecord
+   :members:

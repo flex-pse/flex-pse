@@ -1,0 +1,7 @@
+﻿FuelUsageRecord
+===============
+
+.. currentmodule:: flexops.core.registration
+
+.. autoclass:: FuelUsageRecord
+   :members:

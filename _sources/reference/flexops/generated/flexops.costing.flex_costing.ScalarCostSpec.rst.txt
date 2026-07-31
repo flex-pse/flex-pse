@@ -1,0 +1,7 @@
+﻿ScalarCostSpec
+==============
+
+.. currentmodule:: flexops.costing.flex_costing
+
+.. autoclass:: ScalarCostSpec
+   :members:

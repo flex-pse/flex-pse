@@ -1,0 +1,7 @@
+﻿TimeBlockData
+=============
+
+.. currentmodule:: flexops.core.time_block
+
+.. autoclass:: TimeBlockData
+   :members:

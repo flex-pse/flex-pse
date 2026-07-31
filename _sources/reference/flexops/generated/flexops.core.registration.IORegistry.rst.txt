@@ -1,0 +1,7 @@
+﻿IORegistry
+==========
+
+.. currentmodule:: flexops.core.registration
+
+.. autoclass:: IORegistry
+   :members:

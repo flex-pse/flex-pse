@@ -1,0 +1,6 @@
+﻿flexops.costing.evaluate\_fuel\_cost
+====================================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: evaluate_fuel_cost

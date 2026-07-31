@@ -1,0 +1,7 @@
+﻿CapitalCostBreakdown
+====================
+
+.. currentmodule:: flexops.costing.flex_costing
+
+.. autoclass:: CapitalCostBreakdown
+   :members:

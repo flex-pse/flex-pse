@@ -1,0 +1,6 @@
+﻿flexops.costing.price\_gradient
+===============================
+
+.. currentmodule:: flexops.costing
+
+.. autofunction:: price_gradient
