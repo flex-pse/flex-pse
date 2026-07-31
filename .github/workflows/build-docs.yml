@@ -1,9 +1,9 @@
 name: Documentation
 
 on:
+  pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   docs:
