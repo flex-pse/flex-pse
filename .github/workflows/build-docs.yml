@@ -8,6 +8,8 @@ on:
 jobs:
   docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v1
     - name: Set up Python
@@ -23,6 +25,7 @@ jobs:
         make -C docs html
         touch docs/_build/html/.nojekyll
     - name: Publish Docs
+      if: github.event_name == 'push'
       uses: JamesIves/github-pages-deploy-action@releases/v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
