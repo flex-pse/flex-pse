@@ -8,6 +8,9 @@ unit-model milestone -- and any user writing a custom unit model -- subclasses
 :class:`UnitModelTestHarness` instead of hand-writing the
 build/units-consistency/registration/DoF/solve checks.
 
+This module imports ``pytest``, so it requires the ``testing`` extra:
+``pip install "flex-pse[testing]"`` (already covered by the ``dev`` extra).
+
 .. autosummary::
    :toctree: generated
    :nosignatures:
