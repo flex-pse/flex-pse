@@ -1,4 +1,4 @@
-"""Golden-bill and in-objective tests for the EECO cost bridge.
+"""Golden-bill and in-objective tests for the EECO cost bridge (M06).
 
 ``test_golden_monthly_bill`` is the ``unit``-tier truth check: it evaluates a
 hand-computed PG&E-B-20-flavored bill on a fixed realized load, no solve. The
@@ -23,7 +23,7 @@ from flexops.costing import (
     add_electricity_cost,
     add_operating_cost,
     evaluate_cost,
-    evaluate_fuel_cost,
+    evaluate_gas_cost,
     load_dr_program,
     load_tariff,
     opex,
@@ -37,10 +37,8 @@ _DR_JSON = _FIXTURES / "dr_events_demo.json"
 _N = 744  # hours in July 2025
 
 
-def _july_index():
+def _july_index() -> pd.DatetimeIndex:
     """Hourly July-2025 datetime index (744 stamps)."""
-    import pandas as pd
-
     return pd.date_range("2025-07-01", periods=_N, freq="h")
 
 
@@ -48,7 +46,7 @@ def _reference_load() -> np.ndarray:
     """Realized aggregate power: 100 kW everywhere, 200 kW at 2025-07-10 03:00."""
     index = _july_index()
     load = np.full(_N, 100.0)
-    load[index.get_loc(__import__("pandas").Timestamp("2025-07-10 03:00"))] = 200.0
+    load[index.get_loc(pd.Timestamp("2025-07-10 03:00"))] = 200.0
     return load
 
 
