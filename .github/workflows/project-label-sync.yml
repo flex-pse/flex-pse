@@ -1,0 +1,21 @@
+name: Update Project Board on Label
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  update-project-board-column:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move Issue to Project Column
+        uses: alex-page/github-project-automation-plus@v0.8.3
+        with:
+          # A personal access token (PAT) with 'repo' and 'project' scopes
+          project-token: ${{ secrets.MY_GITHUB_PROJECT_PAT }}
+          # The URL of your project board
+          project-url: https://github.com/orgs/flex-pse/projects/3
+          # Name of the column you want to move the issue to
+          column-name: 'Backlog'
+          # Only run if a specific label is added
+          label-name: 'backlog'
