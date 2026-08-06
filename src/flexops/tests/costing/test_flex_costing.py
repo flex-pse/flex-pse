@@ -725,6 +725,8 @@ def test_report_cost_breakdown_shape():
     assert isinstance(report, CostReport)
     assert isinstance(report.operating, OperatingCostBreakdown)
     assert isinstance(report.capital, CapitalCostBreakdown)
+    # Every number in the report is a magnitude in this one currency.
+    assert report.currency == "USD"  # from the tariff sheet's "$"
 
     assert report.operating.fuel == pytest.approx(0.0)
     assert report.operating.fixed == pytest.approx(500.0)
@@ -929,6 +931,23 @@ def test_report_cost_flat_priced_is_native():
     assert report.operating.electricity == pytest.approx(288.0)
     assert report.operating.fuel == 0.0
     assert report.total == pytest.approx(report.operating.total)
+
+
+@pytest.mark.unit
+def test_report_cost_currency_follows_configured_basis():
+    """With no tariff the report is labeled with the configured currency, not USD."""
+    eur = currency_units("EUR")
+    m = _pump_tank_costing(
+        no_tariff=True,
+        currency="EUR",
+        energy_prices={"electrical": 0.12 * eur / pyunits.kWh},
+    )
+    _set_power(m, {t: 100.0 for t in range(24)})
+    _propagate(m.costing)
+
+    report = m.costing.report_cost(m)
+    assert report.currency == "EUR"
+    assert report.currency == str(m.costing.base_currency)
 
 
 @pytest.mark.unit

@@ -248,17 +248,19 @@ def _optional_rate_domain(value):
 class OperatingCostBreakdown:
     """Categorized operating cost from :meth:`FlexCostingData.report_cost`.
 
+    Every value is a magnitude in the report's currency (:attr:`CostReport.currency`).
+
     Attributes:
         electricity: EECO post-hoc electricity bill on the realized aggregate
-            power ($).
+            power.
         fuel: EECO post-hoc fuel bill on the realized volumetric usage, summed
-            over every fuel found in the model ($); ``0`` when none burns fuel.
-        fixed: The configured fixed operating cost ($, a constant).
+            over every fuel found in the model; ``0`` when none burns fuel.
+        fixed: The configured fixed operating cost (a constant).
         scalar: Non-energy scalar operating cost summed over registered
-            scalar-cost entries ($); ``0`` when none registered.
-        dr_revenue: Demand-response incentive credit ($, subtracted); ``0`` in v0
+            scalar-cost entries; ``0`` when none registered.
+        dr_revenue: Demand-response incentive credit (subtracted); ``0`` in v0
             (DR is containers-only).
-        total: ``electricity + fuel + fixed + scalar - dr_revenue`` ($).
+        total: ``electricity + fuel + fixed + scalar - dr_revenue``.
     """
 
     electricity: float
@@ -273,10 +275,12 @@ class OperatingCostBreakdown:
 class CapitalCostBreakdown:
     """Categorized capital cost from :meth:`FlexCostingData.report_cost`.
 
+    Every value is a magnitude in the report's currency (:attr:`CostReport.currency`).
+
     Attributes:
         by_component: Per-unit capital cost keyed by unit block name; ``{}`` in
             v0 (the capex block is an empty placeholder).
-        total: Sum over ``by_component`` ($); ``0`` in v0.
+        total: Sum over ``by_component``; ``0`` in v0.
     """
 
     by_component: dict[str, float]
@@ -290,12 +294,17 @@ class CostReport:
     Attributes:
         operating: The :class:`OperatingCostBreakdown`.
         capital: The :class:`CapitalCostBreakdown`.
-        total: ``operating.total + capital.total`` ($).
+        total: ``operating.total + capital.total``.
+        currency: The currency every value in this report is a magnitude in —
+            the costing block's ``base_currency`` as a string (e.g. ``"USD"``),
+            which is the tariff sheet's basis when a tariff is given and the
+            configured ``currency`` otherwise.
     """
 
     operating: OperatingCostBreakdown
     capital: CapitalCostBreakdown
     total: float
+    currency: str
 
 
 @dataclasses.dataclass
@@ -628,15 +637,15 @@ class FlexCostingData(FlowsheetCostingBlockData):
         """Register a non-energy scalar operating cost (never billed via EECO).
 
         Costs an arbitrary time-indexed rate as ``price × Σ_t quantity[t] × dt`` —
-        e.g. water withdrawal ($/m³), chemical dosing ($/kg), or a product-revenue
+        e.g. water withdrawal per m³, chemical dosing per kg, or a product-revenue
         credit (a negative ``price``). Built entirely in flex-pse; EECO is not
         involved.
 
         Args:
             name: The cost's name.
             quantity: A time-indexed ``Var``/``Expression`` (a rate).
-            price: The signed price per unit quantity (positive = cost, negative
-                = revenue/credit).
+            price: The signed price per unit quantity, in the base currency
+                (positive = cost, negative = revenue/credit).
             quantity_units: The Pyomo units ``quantity`` is converted to before
                 costing (a rate, e.g. ``m**3/hr``).
             unit: The unit block this cost is attributed to, or ``None`` for a
@@ -863,7 +872,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
     def _require_priced(self, carrier: str, utility: str) -> None:
         """Fail if nothing prices ``carrier`` — neither a flat price nor a tariff.
 
-        Without this an unpriced carrier would silently contribute ``$0`` to the
+        Without this an unpriced carrier would silently contribute ``0`` to the
         bill, which looks like a working model rather than a missing tariff.
 
         Args:
@@ -908,7 +917,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
         # --- electricity: a native price, or EECO against the tariff --------
         self._require_priced("electrical", "electric")
         opex.electricity_cost = pyo.Var(
-            initialize=0.0, units=cur, doc="Electricity cost ($)."
+            initialize=0.0, units=cur, doc="Electricity cost (base currency)."
         )
         price = self._price_for("electrical", cur / pyunits.kWh)
         if price is not None:
@@ -963,7 +972,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
             self._build_fuel_leg(tb, cur, dt_hours, name)
 
         opex.fuel_cost = pyo.Var(
-            initialize=0.0, units=cur, doc="Total EECO fuel cost ($)."
+            initialize=0.0, units=cur, doc="Total EECO fuel cost (base currency)."
         )
         opex.eq_fuel_cost = pyo.Constraint(
             expr=opex.fuel_cost
@@ -975,7 +984,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
             initialize=self.config.fixed_operating_cost,
             mutable=True,
             units=cur,
-            doc="Non-tariff fixed operating cost ($ over the horizon).",
+            doc="Non-tariff fixed operating cost over the horizon (base currency).",
         )
 
         # --- non-energy scalar costs (native; never via EECO) -------------
@@ -984,7 +993,9 @@ class FlexCostingData(FlowsheetCostingBlockData):
             self._build_scalar_leg(tb, cur, dt_hours, name)
 
         opex.scalar_cost = pyo.Var(
-            initialize=0.0, units=cur, doc="Total non-energy scalar cost ($)."
+            initialize=0.0,
+            units=cur,
+            doc="Total non-energy scalar cost (base currency).",
         )
         opex.eq_scalar_cost = pyo.Constraint(
             expr=opex.scalar_cost
@@ -1002,7 +1013,9 @@ class FlexCostingData(FlowsheetCostingBlockData):
             "scalar_cost",
         ]
         opex.total_operating_cost = pyo.Var(
-            initialize=0.0, units=cur, doc="electricity + fuel + fixed + scalar ($)."
+            initialize=0.0,
+            units=cur,
+            doc="electricity + fuel + fixed + scalar (base currency).",
         )
         opex.eq_total_operating_cost = pyo.Constraint(
             expr=opex.total_operating_cost
@@ -1079,7 +1092,9 @@ class FlexCostingData(FlowsheetCostingBlockData):
         opex = self.opex
         self._require_priced(name, "gas")
         usage = pyo.Reference(self.aggregate_fuel_usage[:, name])
-        cost = pyo.Var(initialize=0.0, units=cur, doc=f"Cost of fuel {name} ($).")
+        cost = pyo.Var(
+            initialize=0.0, units=cur, doc=f"Cost of fuel {name} (base currency)."
+        )
         opex.add_component(f"fuel_cost_{name}", cost)
 
         price = self._price_for(name, cur / pyunits.m**3)
@@ -1132,10 +1147,13 @@ class FlexCostingData(FlowsheetCostingBlockData):
         """Build one native scalar-cost line item (price × Σ quantity × dt)."""
         opex = self.opex
         spec = self._registered_scalar_costs[name]
-        # spec.price is a bare $/quantity number; attach cur/(quantity_units*hr) to
+        # spec.price is a bare currency/quantity number; attach
+        # cur/(quantity_units*hr) to
         # make it a units-carrying price, so a mis-unit quantity raises.
         price = spec.price * cur / (spec.quantity_units * pyunits.hr)
-        cost = pyo.Var(initialize=0.0, units=cur, doc=f"Scalar cost {name} ($).")
+        cost = pyo.Var(
+            initialize=0.0, units=cur, doc=f"Scalar cost {name} (base currency)."
+        )
         opex.add_component(f"scalar_cost_{name}", cost)
         opex.add_component(
             f"eq_scalar_cost_{name}",
@@ -1254,7 +1272,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
         self.total_cost = pyo.Var(
             initialize=0.0,
             units=cur,
-            doc="Design-mode objective: operating + capital cost ($).",
+            doc="Design-mode objective: operating + capital cost (base currency).",
         )
         self.eq_total_cost = pyo.Constraint(
             expr=self.total_cost
@@ -1294,7 +1312,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
         self.annualized_cost = pyo.Var(
             initialize=0.0,
             units=cur / pyunits.year,
-            doc="Total cost on an annual basis ($/year).",
+            doc="Total cost on an annual basis (base currency per year).",
         )
         self.eq_annualized_cost = pyo.Constraint(
             expr=self.annualized_cost
@@ -1380,7 +1398,8 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 block reads its own components).
 
         Returns:
-            The :class:`CostReport` breakdown.
+            The :class:`CostReport` breakdown, whose ``currency`` names the basis
+            every value in it is a magnitude in.
         """
         tb = self.config.time_block
         dt_hours = pyo.value(pyunits.convert(tb.dt, pyunits.hr))
@@ -1459,4 +1478,5 @@ class FlexCostingData(FlowsheetCostingBlockData):
             operating=operating,
             capital=capital,
             total=operating.total + capital.total,
+            currency=str(self.base_currency),
         )

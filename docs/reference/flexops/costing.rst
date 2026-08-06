@@ -263,7 +263,7 @@ Every cost lives in one of two sub-blocks built by
 
    :meth:`~FlexCostingData.register_scalar_cost` costs an arbitrary time-indexed
    rate (a flow/supply/product) as ``price × Σ_t quantity[t] × dt`` — e.g. water
-   withdrawal ($/m³), chemical dosing ($/kg), or a product-revenue credit (a
+   withdrawal per m³, chemical dosing per kg, or a product-revenue credit (a
    negative ``price``). Built entirely in flex-pse; EECO is not involved. A
    ``quantity`` that does not convert to the declared ``quantity_units`` raises,
    forcing unit consistency.
@@ -314,13 +314,13 @@ Every cost lives in one of two sub-blocks built by
    (``0.12 * currency_units("USD") / pyunits.kWh``), which must reconcile with the
    base currency or the unit-consistency check raises. A bare number is read in
    the currency over the carrier's metered quantity: ``kWh`` for a power carrier,
-   ``m³`` for a fuel — so ``{"electrical": 0.12}`` means $0.12/kWh and
-   ``{"natural_gas": 0.50}`` means $0.50/m³.
+   ``m³`` for a fuel — so ``{"electrical": 0.12}`` means 0.12 per kWh and
+   ``{"natural_gas": 0.50}`` means 0.50 per m³, both in the base currency.
 
    A carrier that has registered draws but is priced by *neither* a native price
    nor a tariff covering its utility raises
    :class:`~flexcore.exceptions.FlexConfigError` naming the carrier, rather than
-   contributing a silent ``$0`` to the bill.
+   contributing a silent ``0`` to the bill.
 
 .. note:: **Sub-monthly horizons prorate the monthly-assessed charges.**
 
@@ -344,9 +344,9 @@ Every cost lives in one of two sub-blocks built by
 .. note:: **Annualization.**
 
    ``cost_process`` builds a ``capital_recovery_factor`` and an
-   ``annualized_cost`` Var ($/year): operating cost scaled from the horizon to a
-   year plus capital cost times the CRF. With the empty v0 capex block, the
-   annualized cost is just the operating cost on an annual basis.
+   ``annualized_cost`` Var (base currency per year): operating cost scaled from
+   the horizon to a year plus capital cost times the CRF. With the empty v0 capex
+   block, the annualized cost is just the operating cost on an annual basis.
 
    The CRF is built on a single ``effective_rate``. Supplying only
    ``discount_rate`` uses it directly; supplying ``interest_rate`` as well (the
@@ -365,7 +365,9 @@ Every cost lives in one of two sub-blocks built by
    ``currency`` (default ``USD``), available as
    :func:`~flexops.costing.currency_units` for writing flat prices. EECO's own
    cost expressions are dimensionless dollars, so FlexCosting casts them to this
-   currency; the ``report_cost`` numbers are magnitudes in that currency.
+   currency; the ``report_cost`` numbers are magnitudes in that currency, and
+   :attr:`CostReport.currency` names it (``str(base_currency)``, e.g. ``"USD"``)
+   so a report is self-describing away from the block that produced it.
 
 .. note:: **Capital cost enters the objective only in design mode.**
 

@@ -34,6 +34,10 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
+## Documentation
+Repository documentation is hosted on [GitHub pages](https://flex-pse.github.io/flex-pse/).
+
+
 ## Development
 
 This project is built milestone-by-milestone. See [`PLAN.md`](PLAN.md) for the

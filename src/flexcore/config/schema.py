@@ -267,8 +267,9 @@ class CostingConfig(_StrictModel):
     )
     fixed_operating_cost: float = Field(
         default=0.0,
-        description="Fixed operating cost in dollars over the horizon: non-tariff "
-        "costs such as maintenance, labor, and chemicals. Distinct from the "
+        description="Fixed operating cost over the horizon, in the currency basis "
+        "in force (a tariff's own, else 'currency'): non-tariff costs such as "
+        "maintenance, labor, and chemicals. Distinct from the "
         "tariff's own fixed charge (which EECO includes in the electricity cost).",
     )
     prorate_monthly_charges: bool = Field(
