@@ -37,10 +37,8 @@ _DR_JSON = _FIXTURES / "dr_events_demo.json"
 _N = 744  # hours in July 2025
 
 
-def _july_index():
+def _july_index() -> pd.DatetimeIndex:
     """Hourly July-2025 datetime index (744 stamps)."""
-    import pandas as pd
-
     return pd.date_range("2025-07-01", periods=_N, freq="h")
 
 
@@ -48,7 +46,7 @@ def _reference_load() -> np.ndarray:
     """Realized aggregate power: 100 kW everywhere, 200 kW at 2025-07-10 03:00."""
     index = _july_index()
     load = np.full(_N, 100.0)
-    load[index.get_loc(__import__("pandas").Timestamp("2025-07-10 03:00"))] = 200.0
+    load[index.get_loc(pd.Timestamp("2025-07-10 03:00"))] = 200.0
     return load
 
 

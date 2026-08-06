@@ -10,8 +10,6 @@ share state across stages -- every test method builds and tears down its own
 ``(model, unit)`` pair.
 """
 
-from typing import Any
-
 import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
@@ -20,6 +18,8 @@ from pyomo.opt import assert_optimal_termination
 from pyomo.util.check_units import assert_units_consistent
 
 from flexcore import nomenclature as nm
+from flexcore.exceptions import FlexSolverError
+from flexcore.solvers import get_solver
 from flexops.core.time_block import TimeBlock
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.properties.simple_gas import SimpleGasFlow
@@ -87,19 +87,6 @@ def dummy_gas_time_block(n: int = 3) -> pyo.ConcreteModel:
     return m
 
 
-def _component_by_name(unit, name: str) -> Any:
-    """Resolve a dotted/indexed component name (e.g. ``"power_electrical[0]"``).
-
-    Args:
-        unit: The unit block to resolve ``name`` against.
-        name: The component name, as it would appear in ``expected_solution``.
-
-    Returns:
-        The resolved Pyomo component data object.
-    """
-    return unit.find_component(name)
-
-
 def _fix_registered_inputs(unit) -> None:
     """Fix every registered ``role="input"`` IO variable at its current value.
 
@@ -115,6 +102,29 @@ def _fix_registered_inputs(unit) -> None:
                 data.fix()
         else:
             var.fix()
+
+
+def _solve_with_inputs_fixed(model, unit) -> None:
+    """Fix every registered input, solve ``model``, and assert optimality.
+
+    The solver is selected from the built model, so each subclass gets whatever
+    its own problem class needs -- HiGHS for an LP ``Pump``, IPOPT for a ``Tank``
+    whose ``capacity`` is left free (making ``level_definition`` bilinear). When
+    no installed solver covers that class, ``get_solver`` raises
+    :class:`~flexcore.exceptions.FlexSolverError` and the test skips carrying
+    that message, which names the class and how to install a capable solver. A
+    solver that is installed but *fails* still fails the test.
+
+    Args:
+        model: The model to solve.
+        unit: The unit whose registered ``role="input"`` IO variables to fix.
+    """
+    _fix_registered_inputs(unit)
+    try:
+        solver = get_solver(model=model)
+    except FlexSolverError as exc:
+        pytest.skip(str(exc))
+    assert_optimal_termination(solver.solve(model))
 
 
 class UnitModelTestHarness:
@@ -191,44 +201,20 @@ class UnitModelTestHarness:
         assert degrees_of_freedom(model) == self.expected_dof
 
     @pytest.mark.component
-    @pytest.mark.needs_highs
     def test_solve(self):
         """Solving with every registered input fixed terminates optimally."""
         model, unit = self.configure()
-        try:
-            from flexcore.exceptions import FlexSolverError
-            from flexcore.solvers import get_solver
-        except ImportError:
-            pytest.skip("flexcore.solvers.get_solver not available")
-        _fix_registered_inputs(unit)
-        try:
-            solver = get_solver(model=model)
-        except FlexSolverError as exc:
-            pytest.skip(f"flexcore.solvers.get_solver not available: {exc}")
-        results = solver.solve(model)
-        assert_optimal_termination(results)
+        _solve_with_inputs_fixed(model, unit)
 
     @pytest.mark.component
-    @pytest.mark.needs_highs
     def test_solution(self):
         """Solved values match ``expected_solution`` within ``solution_rtol``."""
         if not self.expected_solution:
             pytest.skip("expected_solution is empty")
         model, unit = self.configure()
-        try:
-            from flexcore.exceptions import FlexSolverError
-            from flexcore.solvers import get_solver
-        except ImportError:
-            pytest.skip("flexcore.solvers.get_solver not available")
-        _fix_registered_inputs(unit)
-        try:
-            solver = get_solver(model=model)
-        except FlexSolverError as exc:
-            pytest.skip(f"flexcore.solvers.get_solver not available: {exc}")
-        results = solver.solve(model)
-        assert_optimal_termination(results)
+        _solve_with_inputs_fixed(model, unit)
         for name, expected in self.expected_solution.items():
-            component = _component_by_name(unit, name)
+            component = unit.find_component(name)
             assert component is not None, f"no component named {name!r} on unit"
             assert pyo.value(component) == pytest.approx(
                 expected, rel=self.solution_rtol
