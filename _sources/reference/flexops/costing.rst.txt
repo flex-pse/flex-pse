@@ -392,7 +392,7 @@ Construction-order invariant
 ----------------------------
 
 ``FlexCosting`` may be constructed **before any units exist** — the API-freeze
-script builds ``m.costing`` before ``m.svcw.tank`` — because all aggregation and
+script builds ``m.costing`` before ``m.waterfacility.tank`` — because all aggregation and
 the EECO call are deferred to ``cost_process()``, which pulls every unit's
 registered power and fuel usage from the model. Building costing first, last, or
 between units gives the identical result.

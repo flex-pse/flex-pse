@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.constant\_intensity.ConstantEnergyIntensityModel
+=====================================================================
+
+.. currentmodule:: flexops.unit_models.constant_intensity
+
+.. autoclass:: ConstantEnergyIntensityModel

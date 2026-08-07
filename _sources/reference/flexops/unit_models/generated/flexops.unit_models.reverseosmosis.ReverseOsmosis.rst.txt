@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.reverseosmosis.ReverseOsmosis
+==================================================
+
+.. currentmodule:: flexops.unit_models.reverseosmosis
+
+.. autoclass:: ReverseOsmosis

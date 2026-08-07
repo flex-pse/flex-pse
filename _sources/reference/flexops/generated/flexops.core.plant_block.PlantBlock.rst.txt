@@ -1,0 +1,7 @@
+﻿PlantBlock
+==========
+
+.. currentmodule:: flexops.core.plant_block
+
+.. autoclass:: PlantBlock
+   :members:

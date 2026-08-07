@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -328,14 +342,47 @@
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.core.ops_block.</span></span><span class="sig-name descname"><span class="pre">OpsBlockData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData" title="Link to this definition">¶</a></dt>
 <dd><p>Base class of every flex-pse unit model (see module docstring).</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.add_constant_intensity_relation">
+<span class="sig-name descname"><span class="pre">add_constant_intensity_relation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flow</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../flexcore/index.html#flexcore.nomenclature.PowerKind" title="flexcore.nomenclature.PowerKind"><span class="pre">PowerKind</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PowerKind.ELECTRICAL</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.add_constant_intensity_relation" title="Link to this definition">¶</a></dt>
+<dd><p>Declare a power draw and tie it to <code class="docutils literal notranslate"><span class="pre">flow</span></code> by a constant intensity.</p>
+<p>Every flex-pse unit’s flow-to-energy relationship is built here (there
+is no separate regression unit class): it declares <code class="docutils literal notranslate"><span class="pre">power_&lt;kind&gt;[t]</span></code>,
+an intensity Var (<code class="docutils literal notranslate"><span class="pre">energy_intensity</span></code> for an electrical draw,
+<code class="docutils literal notranslate"><span class="pre">thermal_intensity</span></code> for a heat duty) fixed at <code class="docutils literal notranslate"><span class="pre">intensity</span></code> and
+registered as a regressable process parameter, and the equality</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[P_{kind}[t] = \text{intensity} \cdot \dot{V}[t]\]</div>
+</div>
+<p>as a Constraint named <code class="docutils literal notranslate"><span class="pre">power_&lt;kind&gt;_relation</span></code>. <strong>That name is the
+swap contract</strong>: FlexParameterize deactivates exactly it and attaches a
+fitted replacement (see <a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.swap_energy_relation" title="flexops.core.ops_block.OpsBlockData.swap_energy_relation"><code class="xref py py-meth docutils literal notranslate"><span class="pre">swap_energy_relation()</span></code></a>). When this unit
+was built from a config whose <code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code> asks for a richer
+functional form, the swap is applied here, at construction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>flow</strong> – A time-indexed flow Var/Reference (<code class="docutils literal notranslate"><span class="pre">flow[t]</span></code>) the draw
+scales with.</p></li>
+<li><p><strong>kind</strong> – The <a class="reference internal" href="../../flexcore/index.html#flexcore.nomenclature.PowerKind" title="flexcore.nomenclature.PowerKind"><code class="xref py py-class docutils literal notranslate"><span class="pre">PowerKind</span></code></a> of the draw.</p></li>
+<li><p><strong>intensity</strong> – Energy per unit volume (e.g. <code class="docutils literal notranslate"><span class="pre">0.5</span> <span class="pre">*</span> <span class="pre">pyunits.kWh</span> <span class="pre">/</span>
+<span class="pre">pyunits.m**3</span></code>), converted to kWh/m³.</p></li>
+<li><p><strong>temperature</strong> – The heat-duty temperature (required for
+<code class="docutils literal notranslate"><span class="pre">PowerKind.THERMAL</span></code>).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.add_pass_through_constraints">
-<span class="sig-name descname"><span class="pre">add_pass_through_constraints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inlet</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.network.port.Port.html#pyomo.network.port.Port" title="(in Pyomo v6.10.1)"><span class="pre">Port</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">outlet</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.network.port.Port.html#pyomo.network.port.Port" title="(in Pyomo v6.10.1)"><span class="pre">Port</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_vars</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.add_pass_through_constraints" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">add_pass_through_constraints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inlet</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.network.port.Port.html#pyomo.network.port.Port" title="(in Pyomo v6.10.1)"><span class="pre">Port</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">outlet</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.network.port.Port.html#pyomo.network.port.Port" title="(in Pyomo v6.10.1)"><span class="pre">Port</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_vars</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'pass_through'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.add_pass_through_constraints" title="Link to this definition">¶</a></dt>
 <dd><p>Pass non-excluded, non-fixed inlet state variables straight to the outlet.</p>
 <p>For each state-variable name exposed by <code class="docutils literal notranslate"><span class="pre">inlet</span></code> and not in
 <code class="docutils literal notranslate"><span class="pre">exclude_vars</span></code>, adds an equality Constraint <code class="docutils literal notranslate"><span class="pre">outlet_var[idx]</span> <span class="pre">==</span>
 <span class="pre">inlet_var[idx]</span></code> over every index the variable carries – unless every
-entry of that variable is already <code class="docutils literal notranslate"><span class="pre">fixed</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code> under
-<code class="docutils literal notranslate"><span class="pre">fixed_density=True</span></code>), in which case building a redundant constraint
+entry of that variable is already <code class="docutils literal notranslate"><span class="pre">fixed</span></code> (e.g. an inlet held at a
+known pressure), in which case building a redundant constraint
 is skipped. This is the generic “everything not otherwise governed
 flows straight through” wiring: <code class="docutils literal notranslate"><span class="pre">SISOBlock</span></code> calls it with no
 exclusions (the flow pass-through is itself a pass-through equality);
@@ -355,6 +402,10 @@ unlinked state variables); when <code class="docutils literal notranslate"><span
 <li><p><strong>exclude_vars</strong> – State-variable names to leave unlinked (e.g. a
 topology’s flow-basis variable when the unit governs flow
 itself).</p></li>
+<li><p><strong>name_prefix</strong> – Prefix of the Constraint names this builds
+(<code class="docutils literal notranslate"><span class="pre">&quot;{name_prefix}_{state_var}_eq&quot;</span></code>). A multi-outlet topology
+calls this once per outlet and must vary the prefix, since two
+calls would otherwise collide on one component name.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
@@ -423,10 +474,55 @@ so the caller chooses them.</p></li>
 <dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.build_from_config">
 <span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">build_from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../flexcore/generated/flexcore.config.schema.UnitConfig.html#flexcore.config.schema.UnitConfig" title="flexcore.config.schema.UnitConfig"><span class="pre">UnitConfig</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.build_from_config" title="Link to this definition">¶</a></dt>
 <dd><p>Construct a unit from a validated <code class="docutils literal notranslate"><span class="pre">UnitConfig</span></code>.</p>
+<p>The per-unit primitive behind
+<a class="reference internal" href="../core.html#flexops.core.build.build_model" title="flexops.core.build.build_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">build_model()</span></code></a>. A path or mapping is
+round-tripped through the pydantic schema first, so a raw dict is never
+passed onward (conventions §4) and an invalid one raises
+<code class="docutils literal notranslate"><span class="pre">pydantic.ValidationError</span></code> naming the offending field path (the error
+is deliberately <strong>not</strong> wrapped — the field path is the contract).</p>
+<p>The unit-model class always comes from <code class="docutils literal notranslate"><span class="pre">cfg.unit_model_class</span></code>,
+resolved against <code class="docutils literal notranslate"><span class="pre">flexops.unit_models</span></code>. Persisted construction
+options carry their units as data: a value written
+<code class="docutils literal notranslate"><span class="pre">{&quot;value&quot;:</span> <span class="pre">0.5,</span> <span class="pre">&quot;units&quot;:</span> <span class="pre">&quot;kWh/m^3&quot;}</span></code> becomes a units-carrying Pyomo
+expression, anything else passes through unchanged – including a plain
+string naming an enum member (<code class="docutils literal notranslate"><span class="pre">&quot;detail&quot;:</span> <span class="pre">&quot;polarization&quot;</span></code>), which the
+receiving <code class="docutils literal notranslate"><span class="pre">ConfigValue</span></code>’s own domain then validates. Runtime-only
+options that cannot be serialized (<code class="docutils literal notranslate"><span class="pre">property_package</span></code>,
+<code class="docutils literal notranslate"><span class="pre">costing_package</span></code>) are supplied by the caller through <code class="docutils literal notranslate"><span class="pre">kwargs</span></code>,
+which wins over the config on a key collision.</p>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cfg</strong> – A <code class="docutils literal notranslate"><span class="pre">UnitConfig</span></code>, or a mapping/path to validate into one.</p></li>
+<li><p><strong>**kwargs</strong> – Extra runtime construction options.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The constructible unit block, to be assigned onto a model
+(<code class="docutils literal notranslate"><span class="pre">m.u</span> <span class="pre">=</span> <span class="pre">OpsBlockData.build_from_config(cfg,</span> <span class="pre">...)</span></code>).</p>
+</dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – Always; config-driven construction and the
-    whole-model <code class="docutils literal notranslate"><span class="pre">flexops.build_model</span></code>.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pydantic.ValidationError</strong> – If <code class="docutils literal notranslate"><span class="pre">cfg</span></code> fails schema validation.</p></li>
+<li><p><a class="reference internal" href="../../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">cfg.unit_model_class</span></code> is not a flexops
+    unit-model class.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.create_stream_naming_convention">
+<span class="sig-name descname"><span class="pre">create_stream_naming_convention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">naming_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.create_stream_naming_convention" title="Link to this definition">¶</a></dt>
+<dd><p>Register this unit’s role -&gt; Pyomo component name mapping.</p>
+<p>Called once from an IO-topology base’s <code class="docutils literal notranslate"><span class="pre">build()</span></code>, before any named
+component is built, with either that topology’s default vocabulary or
+the <code class="docutils literal notranslate"><span class="pre">naming_dict</span></code> a physical subclass passed up. Only the components
+are renamed; ports never are.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>naming_dict</strong> – The complete role -&gt; component name mapping this unit
+builds and looks names up through.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -452,6 +548,39 @@ its temperature metadata), and returns it.</p>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="../../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">kind</span></code> is not a <code class="docutils literal notranslate"><span class="pre">PowerKind</span></code> member, or the
     <code class="docutils literal notranslate"><span class="pre">temperature</span></code> metadata does not match <code class="docutils literal notranslate"><span class="pre">kind</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.declare_process_parameter">
+<span class="sig-name descname"><span class="pre">declare_process_parameter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regressable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.declare_process_parameter" title="Link to this definition">¶</a></dt>
+<dd><p>Create, fix, register, and return a scalar process-parameter Var.</p>
+<p>The parameter twin of <a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.declare_power" title="flexops.core.ops_block.OpsBlockData.declare_power"><code class="xref py py-meth docutils literal notranslate"><span class="pre">declare_power()</span></code></a>, and the one way flex-pse
+declares a design or fitted coefficient: a <strong>scalar Var fixed at its
+configured value</strong> rather than a <code class="docutils literal notranslate"><span class="pre">Param</span></code>, so a design mode or a
+regression can unfix it in place without any component being replaced
+(conventions §9). Because it is registered, the value is reachable
+afterwards through <a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.update_parameters" title="flexops.core.ops_block.OpsBlockData.update_parameters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_parameters()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – The component name to attach the Var under.</p></li>
+<li><p><strong>value</strong> – The initial value, either a units-carrying Pyomo expression
+(converted into <code class="docutils literal notranslate"><span class="pre">units</span></code>) or a bare number, taken to be in
+<code class="docutils literal notranslate"><span class="pre">units</span></code> already.</p></li>
+<li><p><strong>units</strong> – The Var’s Pyomo units.</p></li>
+<li><p><strong>doc</strong> – The Var’s <code class="docutils literal notranslate"><span class="pre">doc=</span></code> string; required, since the generated docs
+render it.</p></li>
+<li><p><strong>bounds</strong> – Optional <code class="docutils literal notranslate"><span class="pre">(lower,</span> <span class="pre">upper)</span></code> bounds, in <code class="docutils literal notranslate"><span class="pre">units</span></code>. Give them
+whenever unfixing the parameter would otherwise admit a
+physically meaningless value (an efficiency above one, say);
+<code class="docutils literal notranslate"><span class="pre">None</span></code> leaves it unbounded.</p></li>
+<li><p><strong>regressable</strong> – Whether FlexParameterize may fit this parameter.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The created, fixed scalar <code class="docutils literal notranslate"><span class="pre">Var</span></code>.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -564,6 +693,36 @@ integer index or timestamp.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.swap_energy_relation">
+<span class="sig-name descname"><span class="pre">swap_energy_relation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">surrogate</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../flexcore/index.html#flexcore.nomenclature.PowerKind" title="flexcore.nomenclature.PowerKind"><span class="pre">PowerKind</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PowerKind.ELECTRICAL</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.swap_energy_relation" title="Link to this definition">¶</a></dt>
+<dd><p>Replace this unit’s energy relationship in place, from a fitted spec.</p>
+<p>Deactivates <code class="docutils literal notranslate"><span class="pre">power_&lt;kind&gt;_relation</span></code> (never deletes it — conventions
+§9) and adds <code class="docutils literal notranslate"><span class="pre">power_&lt;kind&gt;_relation_fitted</span></code> built from <code class="docutils literal notranslate"><span class="pre">surrogate</span></code>,
+reusing the unit’s existing registered variables, so ports and arcs are
+untouched. One implementation, two callers: construction-time
+(<a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.add_constant_intensity_relation" title="flexops.core.ops_block.OpsBlockData.add_constant_intensity_relation"><code class="xref py py-meth docutils literal notranslate"><span class="pre">add_constant_intensity_relation()</span></code></a>, via a config’s
+<code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code>) and runtime (<code class="docutils literal notranslate"><span class="pre">flexparameterize.apply_to_model</span></code>).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code> form is <code class="docutils literal notranslate"><span class="pre">power[t]</span> <span class="pre">==</span> <span class="pre">intercept</span> <span class="pre">+</span> <span class="pre">Σ_i</span> <span class="pre">c_i</span> <span class="pre">*</span>
+<span class="pre">input_i[t]</span></code>, where each input is named in
+<code class="docutils literal notranslate"><span class="pre">surrogate.input_variables</span></code>, resolved on this unit, and normalized by
+its own units — so every coefficient is read in kW.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>surrogate</strong> – The fitted
+<a class="reference internal" href="../../flexcore/generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">SurrogateSpec</span></code></a>.</p></li>
+<li><p><strong>kind</strong> – Which power draw’s relationship to replace.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If the unit has no such relationship to swap, an
+    input variable is not found on the unit, or the functional form
+    is one of the reserved post-v0 values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.update_parameters">
 <span class="sig-name descname"><span class="pre">update_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.update_parameters" title="Link to this definition">¶</a></dt>
 <dd><p>Update registered process parameters in place, by name.</p>
@@ -646,16 +805,20 @@ declared units.</p>
             <ul>
 <li><a class="reference internal" href="#">OpsBlockData</a><ul>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData"><code class="docutils literal notranslate"><span class="pre">OpsBlockData</span></code></a><ul>
+<li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.add_constant_intensity_relation"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.add_constant_intensity_relation()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.add_pass_through_constraints"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.add_pass_through_constraints()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.add_stream_ports"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.add_stream_ports()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.build"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.build()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.build_from_config"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.build_from_config()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.create_stream_naming_convention"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.create_stream_naming_convention()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.declare_power"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.declare_power()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.declare_process_parameter"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.declare_process_parameter()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.register_fuel_usage"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.register_fuel_usage()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.register_io_variable"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.register_io_variable()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.register_power"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.register_power()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.register_process_parameter"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.register_process_parameter()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.set_external_dispatch"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.set_external_dispatch()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.swap_energy_relation"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.swap_energy_relation()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.update_parameters"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.update_parameters()</span></code></a></li>
 </ul>
 </li>
@@ -674,5 +837,6 @@ declared units.</p>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     </body>
 </html>

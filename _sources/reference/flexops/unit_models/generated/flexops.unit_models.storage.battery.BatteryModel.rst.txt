@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.storage.battery.BatteryModel
+=================================================
+
+.. currentmodule:: flexops.unit_models.storage.battery
+
+.. autoclass:: BatteryModel

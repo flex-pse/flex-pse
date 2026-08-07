@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -359,6 +373,121 @@ flex-pse never deletes model components; a built model is updated in place via
 </tbody>
 </table>
 </div>
+</section>
+<section id="composition-plantblock-and-networkblock">
+<h2>Composition: PlantBlock and NetworkBlock<a class="headerlink" href="#composition-plantblock-and-networkblock" title="Link to this heading">¶</a></h2>
+<p>Two levels of composition (architecture §3.3, R7): a <code class="docutils literal notranslate"><span class="pre">PlantBlock</span></code> is a
+collection of <strong>unit</strong> blocks — one facility, holding the arcs between its
+units — and a <code class="docutils literal notranslate"><span class="pre">NetworkBlock</span></code> is a composition of <strong>plant</strong> blocks. Both are
+thin <code class="docutils literal notranslate"><span class="pre">dynamic=False</span></code> flowsheets whose time domain is the <code class="docutils literal notranslate"><span class="pre">TimeBlock</span></code>’s
+ordered integer set (see <a class="reference internal" href="../../explanation/time_and_dynamics.html"><span class="doc">Time and dynamics (decision R2)</span></a>). Their
+aggregation <code class="docutils literal notranslate"><span class="pre">Expression</span></code>s (<code class="docutils literal notranslate"><span class="pre">total_electrical_power</span></code>,
+<code class="docutils literal notranslate"><span class="pre">total_thermal_power</span></code>, <code class="docutils literal notranslate"><span class="pre">total_product</span></code>, <code class="docutils literal notranslate"><span class="pre">total_fuel_usage</span></code>) are
+deferred, because units are normally added after the plant exists;
+<code class="docutils literal notranslate"><span class="pre">FlexCosting.cost_process()</span></code> builds them for every plant and network on the
+model.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlock.html#flexops.core.plant_block.PlantBlock" title="flexops.core.plant_block.PlantBlock"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PlantBlock</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlockData.html#flexops.core.plant_block.PlantBlockData" title="flexops.core.plant_block.PlantBlockData"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PlantBlockData</span></code></a></p></td>
+<td><p>A facility: a collection of unit blocks (module docstring).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlock.html#flexops.core.network_block.NetworkBlock" title="flexops.core.network_block.NetworkBlock"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NetworkBlock</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlockData.html#flexops.core.network_block.NetworkBlockData" title="flexops.core.network_block.NetworkBlockData"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NetworkBlockData</span></code></a></p></td>
+<td><p>A network: a composition of plant blocks (module docstring).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="config-driven-build">
+<h2>Config-driven build<a class="headerlink" href="#config-driven-build" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">build_model</span></code> is the single config-driven entry point: one validated
+<a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ModelConfig.html#flexcore.config.schema.ModelConfig" title="flexcore.config.schema.ModelConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelConfig</span></code></a> yields the whole Pyomo model
+(architecture §2.3, R3). See <a class="reference internal" href="../../how_to/build_a_plant.html"><span class="doc">Build a plant</span></a> for the
+imperative and config-driven paths side by side.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.core.build.build_model">
+<span class="sig-prename descclassname"><span class="pre">flexops.core.build.</span></span><span class="sig-name descname"><span class="pre">build_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.PyomoModel.ConcreteModel.html#pyomo.core.base.PyomoModel.ConcreteModel" title="(in Pyomo v6.10.1)"><span class="pre">ConcreteModel</span></a></span></span><a class="headerlink" href="#flexops.core.build.build_model" title="Link to this definition">¶</a></dt>
+<dd><p>Build the whole Pyomo model described by a config.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config</strong> – A <a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ModelConfig.html#flexcore.config.schema.ModelConfig" title="flexcore.config.schema.ModelConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelConfig</span></code></a>, or a path or
+mapping round-tripped through
+<a class="reference internal" href="../flexcore/index.html#flexcore.config.io.load_model_config" title="flexcore.config.io.load_model_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_model_config()</span></code></a> first (never used
+raw — conventions §4).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The constructed <code class="docutils literal notranslate"><span class="pre">ConcreteModel</span></code>, carrying <code class="docutils literal notranslate"><span class="pre">time_block</span></code>,
+<code class="docutils literal notranslate"><span class="pre">properties</span></code>, <code class="docutils literal notranslate"><span class="pre">costing</span></code>, the plant or network tree, and
+<code class="docutils literal notranslate"><span class="pre">objective</span></code>. Arcs are declared but not expanded.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If the config fails validation (the message names the
+    offending field path, and <code class="docutils literal notranslate"><span class="pre">__cause__</span></code> is the underlying pydantic
+    <code class="docutils literal notranslate"><span class="pre">ValidationError</span></code>), or names an unknown unit-model class.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.core.build.parse_quantity">
+<span class="sig-prename descclassname"><span class="pre">flexops.core.build.</span></span><span class="sig-name descname"><span class="pre">parse_quantity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.core.build.parse_quantity" title="Link to this definition">¶</a></dt>
+<dd><p>Turn a persisted units-carrying value into a Pyomo expression.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> – Either a <code class="docutils literal notranslate"><span class="pre">{&quot;value&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;units&quot;:</span> <span class="pre">...}</span></code> mapping, a
+<code class="docutils literal notranslate"><span class="pre">&quot;&lt;number&gt;</span> <span class="pre">&lt;units&gt;&quot;</span></code> string (the form <code class="docutils literal notranslate"><span class="pre">TimeConfig.time_step</span></code>
+uses), or any other value, which is returned unchanged.</p></li>
+<li><p><strong>strict</strong> – Whether a string with no numeric magnitude is an error. Pass
+<code class="docutils literal notranslate"><span class="pre">False</span></code> where a plain string is itself a legal value — a
+construction option naming an enum member (<code class="docutils literal notranslate"><span class="pre">&quot;polarization&quot;</span></code>) is
+not a botched quantity — and it is returned unchanged instead.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A units-carrying Pyomo expression, or <code class="docutils literal notranslate"><span class="pre">value</span></code> itself.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">strict</span></code> and a quantity string has no numeric
+    magnitude.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.core.build.parse_units">
+<span class="sig-prename descclassname"><span class="pre">flexops.core.build.</span></span><span class="sig-name descname"><span class="pre">parse_units</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.core.build.parse_units" title="Link to this definition">¶</a></dt>
+<dd><p>Parse a units string into a Pyomo units expression.</p>
+<p>Handles the compact forms persisted configs use: <code class="docutils literal notranslate"><span class="pre">&quot;min&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;m^3/hr&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;kWh/m^3&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;USD/kWh&quot;</span></code> — <code class="docutils literal notranslate"><span class="pre">*</span></code>-separated factors, at most one <code class="docutils literal notranslate"><span class="pre">/</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">^</span></code>/<code class="docutils literal notranslate"><span class="pre">**</span></code> exponents. A token Pyomo does not know is registered as a
+currency (so <code class="docutils literal notranslate"><span class="pre">&quot;USD&quot;</span></code> works without the costing block existing yet).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> – The units string.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The corresponding Pyomo units expression.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If a token is not a parsable unit name and exponent.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 <section id="registration">
 <h2>Registration<a class="headerlink" href="#registration" title="Link to this heading">¶</a></h2>
@@ -461,6 +590,15 @@ FlexParameterize and the docs generator model-wide discoverability.</p>
             <ul>
 <li><a class="reference internal" href="#">flexops.core</a><ul>
 <li><a class="reference internal" href="#opsblock">OpsBlock</a></li>
+<li><a class="reference internal" href="#composition-plantblock-and-networkblock">Composition: PlantBlock and NetworkBlock</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#config-driven-build">Config-driven build</a><ul>
+<li><a class="reference internal" href="#flexops.core.build.build_model"><code class="docutils literal notranslate"><span class="pre">build_model()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.core.build.parse_quantity"><code class="docutils literal notranslate"><span class="pre">parse_quantity()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.core.build.parse_units"><code class="docutils literal notranslate"><span class="pre">parse_units()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#registration">Registration</a><ul>
 <li><a class="reference internal" href="#flexops.core.registration.iter_io_registry"><code class="docutils literal notranslate"><span class="pre">iter_io_registry()</span></code></a></li>
 </ul>

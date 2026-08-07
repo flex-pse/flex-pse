@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../reference/flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -328,8 +342,8 @@ blocks and how variables on those blocks are indexed. Two questions recur when
 reading or writing a unit model, and they have different answers:</p>
 <ul class="simple">
 <li><p><strong>Time indexing</strong> — which variables vary over the horizon, and against what set.</p></li>
-<li><p><strong>Property (state) indexing</strong> — where a stream’s <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code>, <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code>,
-<code class="docutils literal notranslate"><span class="pre">pressure</span></code>, and <code class="docutils literal notranslate"><span class="pre">temperature</span></code> live, and how they carry a time dimension.</p></li>
+<li><p><strong>Property (state) indexing</strong> — where a stream’s <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">temperature</span></code> live, and how they carry a time dimension.</p></li>
 </ul>
 <section id="the-block-hierarchy">
 <h2>The block hierarchy<a class="headerlink" href="#the-block-hierarchy" title="Link to this heading">¶</a></h2>
@@ -395,14 +409,15 @@ phases, components, supported-property metadata, default units) paired with a
 ships two, both structurally modeled on WaterTAP’s zero-order package:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="../reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html#flexops.properties.simple_aqueous.SimpleAqueousFlow" title="flexops.properties.simple_aqueous.SimpleAqueousFlow"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleAqueousFlow</span></code></a> — flow-only by
-default: <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code> (indexed by the single <code class="docutils literal notranslate"><span class="pre">Liq</span></code> phase and time) and
-<code class="docutils literal notranslate"><span class="pre">dens_mass</span></code> (density fixed at the configured value unless
-<code class="docutils literal notranslate"><span class="pre">fixed_density=False</span></code>), with <strong>opt-in</strong> <code class="docutils literal notranslate"><span class="pre">pressure</span></code>/<code class="docutils literal notranslate"><span class="pre">temperature</span></code>.</p></li>
+default: <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code> (indexed by the single <code class="docutils literal notranslate"><span class="pre">Liq</span></code> phase and time), with
+<strong>opt-in</strong> <code class="docutils literal notranslate"><span class="pre">pressure</span></code>/<code class="docutils literal notranslate"><span class="pre">temperature</span></code>.</p></li>
 <li><p><a class="reference internal" href="../reference/flexops/generated/flexops.properties.simple_gas.SimpleGasFlow.html#flexops.properties.simple_gas.SimpleGasFlow" title="flexops.properties.simple_gas.SimpleGasFlow"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleGasFlow</span></code></a> — the gas counterpart,
-which <strong>always</strong> carries all four state variables (<code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code> over the
-single <code class="docutils literal notranslate"><span class="pre">Vap</span></code> phase and time, plus <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code>/<code class="docutils literal notranslate"><span class="pre">pressure</span></code>/<code class="docutils literal notranslate"><span class="pre">temperature</span></code>) because
-gas density varies with pressure and temperature (no equation of state is
-imposed; a unit adds any relation it needs as its own constraint).</p></li>
+which <strong>always</strong> carries all three state variables (<code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code> over the
+single <code class="docutils literal notranslate"><span class="pre">Vap</span></code> phase and time, plus <code class="docutils literal notranslate"><span class="pre">pressure</span></code>/<code class="docutils literal notranslate"><span class="pre">temperature</span></code>) because a gas
+stream’s conditions always matter (no equation of state is
+imposed; a unit adds any relation it needs as its own constraint). Its first
+consumer is <a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor" title="flexops.unit_models.powergeneration.combustor.Combustor"><code class="xref py py-class docutils literal notranslate"><span class="pre">Combustor</span></code></a>, so the
+extensive/intensive table below is live rather than hypothetical.</p></li>
 </ul>
 <p>Ports built from state blocks carry a stream between units via standard
 IDAES/Pyomo <code class="docutils literal notranslate"><span class="pre">Arc</span></code>s, honoring the extensive/intensive split described below.</p>
@@ -436,11 +451,11 @@ with ordinary index arithmetic — <code class="docutils literal notranslate"><s
 </section>
 <section id="property-state-variables-carry-the-time-index-themselves">
 <h3>Property state variables carry the time index themselves<a class="headerlink" href="#property-state-variables-carry-the-time-index-themselves" title="Link to this heading">¶</a></h3>
-<p>The state variables <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code>, <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, and <code class="docutils literal notranslate"><span class="pre">temperature</span></code>
+<p>The state variables <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, and <code class="docutils literal notranslate"><span class="pre">temperature</span></code>
 are declared inside <code class="docutils literal notranslate"><span class="pre">StateBlockData.build</span></code>, <strong>indexed over the time set
 directly</strong>: the extensive, per-phase <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code> is <code class="docutils literal notranslate"><span class="pre">Var(time,</span> <span class="pre">phase_list)</span></code>
-(time first, phase second), while the intensive stream properties <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code>,
-<code class="docutils literal notranslate"><span class="pre">pressure</span></code>, and <code class="docutils literal notranslate"><span class="pre">temperature</span></code> drop the phase index and are <code class="docutils literal notranslate"><span class="pre">Var(time)</span></code> (assumed
+(time first, phase second), while the intensive stream properties
+<code class="docutils literal notranslate"><span class="pre">pressure</span></code> and <code class="docutils literal notranslate"><span class="pre">temperature</span></code> drop the phase index and are <code class="docutils literal notranslate"><span class="pre">Var(time)</span></code> (assumed
 equal across phases in a stream). A single state block therefore describes a
 stream over the whole horizon.</p>
 <p>The time set is delivered to the state block through its <code class="docutils literal notranslate"><span class="pre">time_index</span></code> config
@@ -452,7 +467,7 @@ for its inlet/outlet streams, then wires the flows and ports:</p>
 <span class="bp">self</span><span class="o">.</span><span class="n">add_stream_ports</span><span class="p">()</span>             <span class="c1"># builds scalar inlet_state, outlet_state + ports</span>
 <span class="c1"># then, per time point t:</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">inlet_state</span><span class="o">.</span><span class="n">flow_vol_phase</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="s2">&quot;Liq&quot;</span><span class="p">]</span>   <span class="c1"># volumetric flow at time t</span>
-<span class="bp">self</span><span class="o">.</span><span class="n">inlet_state</span><span class="o">.</span><span class="n">dens_mass</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>               <span class="c1"># density at time t</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">inlet_state</span><span class="o">.</span><span class="n">pressure</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>                <span class="c1"># pressure at time t (when enabled)</span>
 </pre></div>
 </div>
 <p>So indexing is <strong>single-layer</strong>: there is one state block per stream, and time
@@ -480,7 +495,7 @@ connection (relevant when ports/arcs are built in a later milestone):</p>
 <td><p>conserved (sum of flows balances at a node)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Port.Extensive</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dens_mass</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">temperature</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">temperature</span></code></p></td>
 <td><p><strong>intensive</strong></p></td>
 <td><p>equal on both sides</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Port.Equality</span></code></p></td>
@@ -489,7 +504,7 @@ connection (relevant when ports/arcs are built in a later milestone):</p>
 </table>
 </div>
 <p>This is why volumetric flow is the quantity a mixer sums and a splitter divides,
-while density/pressure/temperature are simply equated across a connection.</p>
+while pressure/temperature are simply equated across a connection.</p>
 </section>
 </section>
 <section id="where-each-thing-is-declared-a-summary">
@@ -524,7 +539,7 @@ while density/pressure/temperature are simply equated across a connection.</p>
 <td><p>usually scalar</p></td>
 <td><p>the unit’s <code class="docutils literal notranslate"><span class="pre">build</span></code>, then <code class="docutils literal notranslate"><span class="pre">register_process_parameter</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code>, <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">temperature</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">temperature</span></code></p></td>
 <td><p>a scalar state block (one per stream)</p></td>
 <td><p>time (on the variable); <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code> also phase-indexed</p></td>
 <td><p>the property package’s <code class="docutils literal notranslate"><span class="pre">StateBlockData.build</span></code></p></td>

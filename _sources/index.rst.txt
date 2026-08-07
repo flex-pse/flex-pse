@@ -6,6 +6,12 @@ design and operations optimization.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Getting started
+
+   getting_started/ten_minutes
+
+.. toctree::
+   :maxdepth: 2
    :caption: Explanation
 
    explanation/time_and_dynamics

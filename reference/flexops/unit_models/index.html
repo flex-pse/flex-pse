@@ -173,7 +173,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -316,7 +330,7 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
@@ -324,10 +338,42 @@
           <section id="flexops-unit-models">
 <h1>flexops.unit_models<a class="headerlink" href="#flexops-unit-models" title="Link to this heading">¶</a></h1>
 <p>Unit models are organized by inlet/outlet topology first (the <code class="docutils literal notranslate"><span class="pre">base</span></code>
-sub-package), then specialized physically. <code class="docutils literal notranslate"><span class="pre">Pump</span></code> and <code class="docutils literal notranslate"><span class="pre">Tank</span></code> both
-subclass the single-inlet/single-outlet <code class="docutils literal notranslate"><span class="pre">SISOBlock</span></code> topology base
-(architecture §3.4); a <code class="docutils literal notranslate"><span class="pre">Tank</span></code> additionally disables the on/off logic
-layer, since a tank has no unit-commitment status (R6).</p>
+sub-package), then specialized physically (architecture §3.4, R6). The topology
+base owns port construction and the per-stream mass balance; a physical subclass
+adds the flow-to-energy relationship and any bounds. <code class="docutils literal notranslate"><span class="pre">Pump</span></code> and <code class="docutils literal notranslate"><span class="pre">Tank</span></code>
+subclass the single-inlet/single-outlet <code class="docutils literal notranslate"><span class="pre">SISOBlock</span></code>; a <code class="docutils literal notranslate"><span class="pre">Tank</span></code> additionally
+disables the on/off logic layer, since a tank has no unit-commitment status.</p>
+<p>Every unit defaults to a <strong>constant energy intensity</strong> and builds it as the
+Constraint <code class="docutils literal notranslate"><span class="pre">power_electrical_relation</span></code> (<code class="docutils literal notranslate"><span class="pre">power_thermal_relation</span></code> for a heat
+duty). That name is the swap contract: FlexParameterize upgrades a unit’s
+relationship by deactivating exactly that Constraint and attaching a fitted
+replacement, reusing the same registered IO variables — so there is no separate
+regression unit class (R11).</p>
+<p><strong>Picking a base when adding a new unit model</strong> (architecture §3.4): ask
+whether every port shares one <code class="docutils literal notranslate"><span class="pre">property_package</span></code>.</p>
+<ul class="simple">
+<li><p>If so, subclass the topology base matching the port count
+(<code class="docutils literal notranslate"><span class="pre">SISOBlock</span></code>/<code class="docutils literal notranslate"><span class="pre">SIDOBlock</span></code>/<code class="docutils literal notranslate"><span class="pre">DIDOBlock</span></code>). It already owns port
+construction and the per-stream mass balance; the new class only renames the
+topology’s generic roles into its own nomenclature and adds the
+flow-to-energy relationship in <code class="docutils literal notranslate"><span class="pre">build()</span></code>. To rename, pass a complete
+<code class="docutils literal notranslate"><span class="pre">naming_dict</span></code> up to the base <code class="docutils literal notranslate"><span class="pre">build()</span></code> — spread the base’s
+<code class="docutils literal notranslate"><span class="pre">_component_names</span></code> and override the subset being renamed, as
+<a class="reference internal" href="generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html#flexops.unit_models.reverseosmosis.ReverseOsmosis" title="flexops.unit_models.reverseosmosis.ReverseOsmosis"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReverseOsmosis</span></code></a> does — and the
+base registers it before building anything named. Ports are never renamed.</p></li>
+<li><p>If the unit needs more than one property package (e.g. a fuel stream and an
+air stream on different flow bases), subclass
+<a class="reference internal" href="../generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData" title="flexops.core.ops_block.OpsBlockData"><code class="xref py py-class docutils literal notranslate"><span class="pre">OpsBlockData</span></code></a> directly instead — declare one
+named property-package config slot per stream family and hand-write the
+ports and balance across them, rather than half-fitting a topology base
+built around a single shared package.</p></li>
+<li><p>If the unit’s <strong>port count is itself a config option</strong> (e.g. an arbitrary
+number of gas inlets), no fixed-arity topology base fits either — subclass
+<a class="reference internal" href="../generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData" title="flexops.core.ops_block.OpsBlockData"><code class="xref py py-class docutils literal notranslate"><span class="pre">OpsBlockData</span></code></a> directly and hand-write the
+ports and balance, as <a class="reference internal" href="generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor" title="flexops.unit_models.powergeneration.combustor.Combustor"><code class="xref py py-class docutils literal notranslate"><span class="pre">Combustor</span></code></a> does.</p></li>
+</ul>
+<section id="topology-bases">
+<h2>Topology bases<a class="headerlink" href="#topology-bases" title="Link to this heading">¶</a></h2>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -340,6 +386,27 @@ layer, since a tank has no unit-commitment status (R6).</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.base.sido.SIDOBlock.html#flexops.unit_models.base.sido.SIDOBlock" title="flexops.unit_models.base.sido.SIDOBlock"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SIDOBlock</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.base.dido.DIDOBlock.html#flexops.unit_models.base.dido.DIDOBlock" title="flexops.unit_models.base.dido.DIDOBlock"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DIDOBlock</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="physical-units">
+<h2>Physical units<a class="headerlink" href="#physical-units" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.pump.Pump.html#flexops.unit_models.pump.Pump" title="flexops.unit_models.pump.Pump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Pump</span></code></a></p></td>
 <td><p></p></td>
 </tr>
@@ -349,7 +416,7 @@ layer, since a tank has no unit-commitment status (R6).</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.storage_tank.Tank.html#flexops.unit_models.storage_tank.Tank" title="flexops.unit_models.storage_tank.Tank"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Tank</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.storage.tank.Tank.html#flexops.unit_models.storage.tank.Tank" title="flexops.unit_models.storage.tank.Tank"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Tank</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -358,12 +425,59 @@ layer, since a tank has no unit-commitment status (R6).</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.battery.BatteryModel.html#flexops.unit_models.battery.BatteryModel" title="flexops.unit_models.battery.BatteryModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BatteryModel</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.storage.battery.BatteryModel.html#flexops.unit_models.storage.battery.BatteryModel" title="flexops.unit_models.storage.battery.BatteryModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BatteryModel</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.exchanger.Exchanger.html#flexops.unit_models.exchanger.Exchanger" title="flexops.unit_models.exchanger.Exchanger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Exchanger</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html#flexops.unit_models.reverseosmosis.ReverseOsmosis" title="flexops.unit_models.reverseosmosis.ReverseOsmosis"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReverseOsmosis</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>An arbitrary number of gas inlets mixed into one flue-gas outlet, exporting
+electrical power (<code class="docutils literal notranslate"><span class="pre">power_electrical</span></code> upper-bounded at 0, the
+battery-discharge sign convention) under a heating-value or a
+constant-intensity relation, resolved automatically from whether every inlet
+was given a heating value.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor" title="flexops.unit_models.powergeneration.combustor.Combustor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Combustor</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="generic-surrogate">
+<h2>Generic surrogate<a class="headerlink" href="#generic-surrogate" title="Link to this heading">¶</a></h2>
+<p>The default building block for anything without a bespoke physical topology —
+a whole plant modeled as one surrogate, as in the frozen API script.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html#flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel" title="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstantEnergyIntensityModel</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 </section>
 
         </article>
@@ -409,8 +523,33 @@ layer, since a tank has no unit-commitment status (R6).</p>
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">flexops.unit_models</a><ul>
+<li><a class="reference internal" href="#topology-bases">Topology bases</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#physical-units">Physical units</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#generic-surrogate">Generic surrogate</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.base.dido.DIDOBlock
+========================================
+
+.. currentmodule:: flexops.unit_models.base.dido
+
+.. autoclass:: DIDOBlock

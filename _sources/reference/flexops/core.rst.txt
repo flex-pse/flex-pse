@@ -29,6 +29,54 @@ flex-pse never deletes model components; a built model is updated in place via
    OpsBlockData
    RelaxationPolicy
 
+Composition: PlantBlock and NetworkBlock
+----------------------------------------
+
+Two levels of composition (architecture §3.3, R7): a ``PlantBlock`` is a
+collection of **unit** blocks — one facility, holding the arcs between its
+units — and a ``NetworkBlock`` is a composition of **plant** blocks. Both are
+thin ``dynamic=False`` flowsheets whose time domain is the ``TimeBlock``'s
+ordered integer set (see :doc:`../../explanation/time_and_dynamics`). Their
+aggregation ``Expression``\ s (``total_electrical_power``,
+``total_thermal_power``, ``total_product``, ``total_fuel_usage``) are
+deferred, because units are normally added after the plant exists;
+``FlexCosting.cost_process()`` builds them for every plant and network on the
+model.
+
+.. currentmodule:: flexops.core.plant_block
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   PlantBlock
+   PlantBlockData
+
+.. currentmodule:: flexops.core.network_block
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   NetworkBlock
+   NetworkBlockData
+
+Config-driven build
+-------------------
+
+.. currentmodule:: flexops.core.build
+
+``build_model`` is the single config-driven entry point: one validated
+:class:`~flexcore.config.schema.ModelConfig` yields the whole Pyomo model
+(architecture §2.3, R3). See :doc:`../../how_to/build_a_plant` for the
+imperative and config-driven paths side by side.
+
+.. autofunction:: build_model
+
+.. autofunction:: parse_quantity
+
+.. autofunction:: parse_units
+
 Registration
 ------------
 

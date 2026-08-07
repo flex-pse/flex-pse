@@ -19,6 +19,8 @@ This module imports ``pytest``, so it requires the ``testing`` extra:
 
 .. autofunction:: dummy_time_block
 
+.. autofunction:: dummy_gas_time_block
+
 Testing your own unit model
 ----------------------------
 

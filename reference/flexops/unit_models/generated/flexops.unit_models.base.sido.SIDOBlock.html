@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="prev" title="flexops.unit_models.storage_tank.Tank" href="flexops.unit_models.storage_tank.Tank.html">
+<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="next" title="flexops.unit_models.base.dido.DIDOBlock" href="flexops.unit_models.base.dido.DIDOBlock.html"><link rel="prev" title="flexops.unit_models.base.siso.SISOBlock" href="flexops.unit_models.base.siso.SISOBlock.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>flexops.unit_models.battery.BatteryModel - flex-pse documentation</title>
+        <title>flexops.unit_models.base.sido.SIDOBlock - flex-pse documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -303,7 +317,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../../../../_sources/reference/flexops/unit_models/generated/flexops.unit_models.battery.BatteryModel.rst.txt" title="View this page">
+  <a class="muted-link" href="../../../../_sources/reference/flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.rst.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -321,11 +335,11 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="flexops-unit-models-battery-batterymodel">
-<h1>flexops.unit_models.battery.BatteryModel<a class="headerlink" href="#flexops-unit-models-battery-batterymodel" title="Link to this heading">¶</a></h1>
+          <section id="flexops-unit-models-base-sido-sidoblock">
+<h1>flexops.unit_models.base.sido.SIDOBlock<a class="headerlink" href="#flexops-unit-models-base-sido-sidoblock" title="Link to this heading">¶</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="flexops.unit_models.battery.BatteryModel">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.unit_models.battery.</span></span><span class="sig-name descname"><span class="pre">BatteryModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.unit_models.battery.BatteryModel" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="flexops.unit_models.base.sido.SIDOBlock">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.unit_models.base.sido.</span></span><span class="sig-name descname"><span class="pre">SIDOBlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.unit_models.base.sido.SIDOBlock" title="Link to this definition">¶</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -372,36 +386,9 @@ register_power forwards the unit’s power draw to it. None
 for standalone units; the forwarding is strictly
 conditional.</p>
 </dd>
-<dt>capacity</dt><dd><p>Initial battery energy capacity, kWh – the fixed design
-Var value at construction. Required.</p>
-</dd>
-<dt>power_charge_max</dt><dd><p>Maximum charging power, kW. None (default) leaves
-power_charge unbounded above; required (along with
-power_discharge_max) when unit_commitment.status is
-enabled, since the semicontinuous link needs a finite
-bound.</p>
-</dd>
-<dt>power_discharge_max</dt><dd><p>Maximum discharging power, kW. Same requirement as
-power_charge_max.</p>
-</dd>
-<dt>eta_charge</dt><dd><p>Charging efficiency, a fraction in (0, 1].</p>
-</dd>
-<dt>eta_discharge</dt><dd><p>Discharging efficiency, a fraction in (0, 1].</p>
-</dd>
-<dt>soc_min</dt><dd><p>Minimum state of charge, a fraction of capacity in [0, 1].</p>
-</dd>
-<dt>soc_max</dt><dd><p>Maximum state of charge, a fraction of capacity in [0, 1].</p>
-</dd>
-<dt>initial_soc</dt><dd><p>Initial state of charge, a fraction of capacity in [0, 1];
-fixes charge[0] via charge_init (rolling-horizon state).</p>
-</dd>
-<dt>soh</dt><dd><p>State of health, a fraction of nameplate capacity still
-available due to degradation; fixes soh at construction.
-Default 0.85 represents a mid-life battery.</p>
-</dd>
-<dt>charge_leakage_rate</dt><dd><p>Self-discharge (charge leakage) rate: fraction of stored
-charge lost per day, fixing charge_leakage_rate at
-construction. Default 0.0005/day (0.05%/day).</p>
+<dt>split_fraction</dt><dd><p>Fraction of the inlet flow leaving through outlet_a (a
+fixed, regressable Var once built); the remainder leaves
+through outlet_b.</p>
 </dd>
 </dl>
 </div></blockquote>
@@ -416,7 +403,7 @@ BlockData index exactly to the index in initialize.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>(BatteryModel) New instance</p>
+<dd class="field-even"><p>(SIDOBlock) New instance</p>
 </dd>
 </dl>
 </dd></dl>
@@ -428,15 +415,23 @@ BlockData index exactly to the index in initialize.</p></li>
       <footer>
         
         <div class="related-pages">
-          
-          <a class="prev-page" href="flexops.unit_models.storage_tank.Tank.html">
+          <a class="next-page" href="flexops.unit_models.base.dido.DIDOBlock.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">flexops.unit_models.base.dido.DIDOBlock</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="flexops.unit_models.base.siso.SISOBlock.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">flexops.unit_models.storage_tank.Tank</div>
+                <div class="title">flexops.unit_models.base.siso.SISOBlock</div>
                 
               </div>
             </a>
@@ -470,8 +465,8 @@ BlockData index exactly to the index in initialize.</p></li>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">flexops.unit_models.battery.BatteryModel</a><ul>
-<li><a class="reference internal" href="#flexops.unit_models.battery.BatteryModel"><code class="docutils literal notranslate"><span class="pre">BatteryModel</span></code></a></li>
+<li><a class="reference internal" href="#">flexops.unit_models.base.sido.SIDOBlock</a><ul>
+<li><a class="reference internal" href="#flexops.unit_models.base.sido.SIDOBlock"><code class="docutils literal notranslate"><span class="pre">SIDOBlock</span></code></a></li>
 </ul>
 </li>
 </ul>

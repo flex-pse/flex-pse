@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -351,7 +365,29 @@ its Variables/Constraints/Degrees-of-Freedom tables.</p>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">pyo.ConcreteModel</span></code> with <code class="docutils literal notranslate"><span class="pre">m.time_block</span></code> (an <code class="docutils literal notranslate"><span class="pre">n</span></code>-point,
 15-minute-resolution <code class="docutils literal notranslate"><span class="pre">TimeBlock</span></code> starting 2025-01-01) and
-<code class="docutils literal notranslate"><span class="pre">m.properties</span></code> (a <code class="docutils literal notranslate"><span class="pre">SimpleAqueousFlow(fixed_density=True)</span></code>).</p>
+<code class="docutils literal notranslate"><span class="pre">m.properties</span></code> (a <code class="docutils literal notranslate"><span class="pre">SimpleAqueousFlow()</span></code>).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.testing.dummy_gas_time_block">
+<span class="sig-prename descclassname"><span class="pre">flexops.testing.</span></span><span class="sig-name descname"><span class="pre">dummy_gas_time_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.PyomoModel.ConcreteModel.html#pyomo.core.base.PyomoModel.ConcreteModel" title="(in Pyomo v6.10.1)"><span class="pre">ConcreteModel</span></a></span></span><a class="headerlink" href="#flexops.testing.dummy_gas_time_block" title="Link to this definition">¶</a></dt>
+<dd><p>Build a throwaway model with an <code class="docutils literal notranslate"><span class="pre">n</span></code>-point TimeBlock + gas properties.</p>
+<p>The gas twin of <a class="reference internal" href="#flexops.testing.dummy_time_block" title="flexops.testing.dummy_time_block"><code class="xref py py-func docutils literal notranslate"><span class="pre">dummy_time_block()</span></code></a>, for unit models built on
+<a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasFlow.html#flexops.properties.simple_gas.SimpleGasFlow" title="flexops.properties.simple_gas.SimpleGasFlow"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleGasFlow</span></code></a>. Its state blocks
+always carry three state variables (flow, pressure, temperature),
+where the aqueous package’s default carries one, so a gas unit’s
+degree-of-freedom accounting differs and needs this fixture rather than
+the aqueous one.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>n</strong> – Number of 15-minute time points to span.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">pyo.ConcreteModel</span></code> with <code class="docutils literal notranslate"><span class="pre">m.time_block</span></code> (an <code class="docutils literal notranslate"><span class="pre">n</span></code>-point,
+15-minute-resolution <code class="docutils literal notranslate"><span class="pre">TimeBlock</span></code> starting 2025-01-01) and
+<code class="docutils literal notranslate"><span class="pre">m.properties</span></code> (a <code class="docutils literal notranslate"><span class="pre">SimpleGasFlow()</span></code>).</p>
 </dd>
 </dl>
 </dd></dl>
@@ -442,6 +478,7 @@ expected-value dicts.</p>
             <ul>
 <li><a class="reference internal" href="#">flexops.testing</a><ul>
 <li><a class="reference internal" href="#flexops.testing.dummy_time_block"><code class="docutils literal notranslate"><span class="pre">dummy_time_block()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.testing.dummy_gas_time_block"><code class="docutils literal notranslate"><span class="pre">dummy_gas_time_block()</span></code></a></li>
 <li><a class="reference internal" href="#testing-your-own-unit-model">Testing your own unit model</a></li>
 </ul>
 </li>

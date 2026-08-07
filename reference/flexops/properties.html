@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -325,9 +339,8 @@
 <h1>flexops.properties<a class="headerlink" href="#flexops-properties" title="Link to this heading">¶</a></h1>
 <p>The minimal flow-carrying property packages (§3.7). Ports built from their
 state blocks carry volumetric flow between units via standard IDAES/Pyomo arcs.</p>
-<p><code class="docutils literal notranslate"><span class="pre">SimpleAqueousFlow</span></code> state blocks carry <code class="docutils literal notranslate"><span class="pre">flow_vol</span></code> and <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code> (fixed
-at the configured density by default), with opt-in pressure/temperature state
-variables.</p>
+<p><code class="docutils literal notranslate"><span class="pre">SimpleAqueousFlow</span></code> state blocks carry <code class="docutils literal notranslate"><span class="pre">flow_vol</span></code>, with opt-in
+pressure/temperature state variables.</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -338,14 +351,14 @@ variables.</p>
 <td><p>Parameter block for a simple aqueous stream.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html#flexops.properties.simple_aqueous.SimpleAqueousStateBlockData" title="flexops.properties.simple_aqueous.SimpleAqueousStateBlockData"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SimpleAqueousStateBlockData</span></code></a></p></td>
-<td><p>State block carrying volumetric flow, density, and optional extras.</p></td>
+<td><p>State block carrying volumetric flow and optional extras.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">SimpleGasFlow</span></code> is the gas-phase counterpart: because gas density varies with
-pressure and temperature, its state blocks always carry all four state
-variables (<code class="docutils literal notranslate"><span class="pre">flow_vol</span></code>, <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">temperature</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">SimpleGasFlow</span></code> is the gas-phase counterpart: because a gas stream’s
+conditions always matter, its state blocks always carry all three state
+variables (<code class="docutils literal notranslate"><span class="pre">flow_vol</span></code>, <code class="docutils literal notranslate"><span class="pre">pressure</span></code>, <code class="docutils literal notranslate"><span class="pre">temperature</span></code>).</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -356,7 +369,7 @@ variables (<code class="docutils literal notranslate"><span class="pre">flow_vol
 <td><p>Parameter block for a simple gas stream.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html#flexops.properties.simple_gas.SimpleGasStateBlockData" title="flexops.properties.simple_gas.SimpleGasStateBlockData"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SimpleGasStateBlockData</span></code></a></p></td>
-<td><p>State block carrying flow, density, pressure, and temperature.</p></td>
+<td><p>State block carrying flow, pressure, and temperature.</p></td>
 </tr>
 </tbody>
 </table>

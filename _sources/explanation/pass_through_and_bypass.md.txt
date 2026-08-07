@@ -12,7 +12,7 @@ state variable a unit does *not* otherwise govern, the outlet simply equals the
 inlet. `OpsBlockData.add_pass_through_constraints(inlet, outlet, *,
 exclude_vars=())` builds exactly those equalities — `outlet_var[idx] ==
 inlet_var[idx]` over each variable's full index set — skipping any variable that
-is already fully fixed (e.g. `dens_mass` under `fixed_density=True`, where the
+is already fully fixed (e.g. an inlet held at a known pressure, where the
 constraint would be redundant).
 
 It is gated by the `allow_pass_through` config slot. `SISOBlock` (and its

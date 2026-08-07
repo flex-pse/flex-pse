@@ -189,7 +189,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -227,6 +231,10 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -276,9 +284,15 @@
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -322,14 +336,18 @@
   <h2>A</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.add_constant_intensity_relation">add_constant_intensity_relation() (flexops.core.ops_block.OpsBlockData method)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.add_electricity_cost.html#flexops.costing.add_electricity_cost">add_electricity_cost() (in module flexops.costing)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.add_fuel_cost.html#flexops.costing.add_fuel_cost">add_fuel_cost() (in module flexops.costing)</a>
 </li>
-        <li><a href="reference/flexops/generated/flexops.costing.add_operating_cost.html#flexops.costing.add_operating_cost">add_operating_cost() (in module flexops.costing)</a>
+        <li><a href="reference/flexops/generated/flexops.core.network_block.NetworkBlockData.html#flexops.core.network_block.NetworkBlockData.add_link">add_link() (flexops.core.network_block.NetworkBlockData method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.costing.add_operating_cost.html#flexops.costing.add_operating_cost">add_operating_cost() (in module flexops.costing)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.add_pass_through_constraints">add_pass_through_constraints() (flexops.core.ops_block.OpsBlockData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.add_stream_ports">add_stream_ports() (flexops.core.ops_block.OpsBlockData method)</a>
@@ -346,7 +364,7 @@
   <h2>B</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.battery.BatteryModel.html#flexops.unit_models.battery.BatteryModel">BatteryModel (class in flexops.unit_models.battery)</a>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html#flexops.unit_models.storage.battery.BatteryModel">BatteryModel (class in flexops.unit_models.storage.battery)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.build">build() (flexops.core.ops_block.OpsBlockData method)</a>
 
@@ -370,6 +388,8 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.build_global_params">build_global_params() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
+        <li><a href="reference/flexops/core.html#flexops.core.build.build_model">build_model() (in module flexops.core.build)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.build_process_costs">build_process_costs() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.CapitalCostBreakdown.html#flexops.costing.flex_costing.CapitalCostBreakdown.by_component">by_component (flexops.costing.flex_costing.CapitalCostBreakdown attribute)</a>
@@ -388,15 +408,21 @@
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.classify">classify() (in module flexcore.solvers)</a>
 </li>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor">Combustor (class in flexops.unit_models.powergeneration.combustor)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.configure">configure() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
-        <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.cost_process">cost_process() (flexops.costing.flex_costing.FlexCostingData method)</a>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html#flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel">ConstantEnergyIntensityModel (class in flexops.unit_models.constant_intensity)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.cost_process">cost_process() (flexops.costing.flex_costing.FlexCostingData method)</a>
+</li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.CostingConfig.html#flexcore.config.schema.CostingConfig">CostingConfig (class in flexcore.config.schema)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.CostReport.html#flexops.costing.flex_costing.CostReport">CostReport (class in flexops.costing.flex_costing)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.create_stream_naming_convention">create_stream_naming_convention() (flexops.core.ops_block.OpsBlockData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.currency_units.html#flexops.costing.currency_units">currency_units() (in module flexops.costing)</a>
 </li>
@@ -415,6 +441,8 @@
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.datetime_index">datetime_index (flexops.core.time_block.TimeBlockData property)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.declare_power">declare_power() (flexops.core.ops_block.OpsBlockData method)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.declare_process_parameter">declare_process_parameter() (flexops.core.ops_block.OpsBlockData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html#flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.define_display_vars">define_display_vars() (flexops.properties.simple_aqueous.SimpleAqueousStateBlockData method)</a>
 
@@ -438,6 +466,8 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.OperatingCostHandles.html#flexops.costing.OperatingCostHandles.demand_charge">demand_charge (flexops.costing.OperatingCostHandles attribute)</a>
 </li>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html#flexops.unit_models.base.dido.DIDOBlock">DIDOBlock (class in flexops.unit_models.base.dido)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.OperatingCostBreakdown.html#flexops.costing.flex_costing.OperatingCostBreakdown.dr_revenue">dr_revenue (flexops.costing.flex_costing.OperatingCostBreakdown attribute)</a>
 </li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.DRConfig.html#flexcore.config.schema.DRConfig">DRConfig (class in flexcore.config.schema)</a>
@@ -446,6 +476,8 @@
           <li><a href="reference/flexops/generated/flexops.costing.DRConfig.html#flexops.costing.DRConfig">(class in flexops.costing)</a>
 </li>
         </ul></li>
+        <li><a href="reference/flexops/testing.html#flexops.testing.dummy_gas_time_block">dummy_gas_time_block() (in module flexops.testing)</a>
+</li>
         <li><a href="reference/flexops/testing.html#flexops.testing.dummy_time_block">dummy_time_block() (in module flexops.testing)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.config.io.dump_model_config">dump_model_config() (in module flexcore.config.io)</a>
@@ -471,6 +503,8 @@
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.evaluate_fuel_cost.html#flexops.costing.evaluate_fuel_cost">evaluate_fuel_cost() (in module flexops.costing)</a>
+</li>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.exchanger.Exchanger.html#flexops.unit_models.exchanger.Exchanger">Exchanger (class in flexops.unit_models.exchanger)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.expected_dof">expected_dof (flexops.testing.UnitModelTestHarness attribute)</a>
 </li>
@@ -678,6 +712,10 @@
         </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.core.network_block.NetworkBlock.html#flexops.core.network_block.NetworkBlock">NetworkBlock (class in flexops.core.network_block)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.network_block.NetworkBlockData.html#flexops.core.network_block.NetworkBlockData">NetworkBlockData (class in flexops.core.network_block)</a>
+</li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.NetworkConfig.html#flexcore.config.schema.NetworkConfig">NetworkConfig (class in flexcore.config.schema)</a>
 </li>
     </ul></td>
@@ -714,20 +752,30 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry.parameters">parameters (flexops.core.registration.IORegistry attribute)</a>
 </li>
+        <li><a href="reference/flexops/core.html#flexops.core.build.parse_quantity">parse_quantity() (in module flexops.core.build)</a>
+</li>
+        <li><a href="reference/flexops/core.html#flexops.core.build.parse_units">parse_units() (in module flexops.core.build)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.peak_windows.html#flexops.costing.peak_windows">peak_windows() (in module flexops.costing)</a>
 </li>
+        <li><a href="reference/flexops/generated/flexops.core.plant_block.PlantBlock.html#flexops.core.plant_block.PlantBlock">PlantBlock (class in flexops.core.plant_block)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.plant_block.PlantBlockData.html#flexops.core.plant_block.PlantBlockData">PlantBlockData (class in flexops.core.plant_block)</a>
+</li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.PlantConfig.html#flexcore.config.schema.PlantConfig">PlantConfig (class in flexcore.config.schema)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.network_block.NetworkBlockData.html#flexops.core.network_block.NetworkBlockData.plants">plants (flexops.core.network_block.NetworkBlockData property)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry.power">power (flexops.core.registration.IORegistry attribute)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.nomenclature.POWER_ELECTRICAL">POWER_ELECTRICAL (in module flexcore.nomenclature)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexcore/index.html#flexcore.nomenclature.POWER_THERMAL">POWER_THERMAL (in module flexcore.nomenclature)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.nomenclature.PowerKind">PowerKind (class in flexcore.nomenclature)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.registration.PowerRecord.html#flexops.core.registration.PowerRecord">PowerRecord (class in flexops.core.registration)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec.price">price (flexops.costing.flex_costing.ScalarCostSpec attribute)</a>
@@ -796,6 +844,8 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost">report_cost() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html#flexops.unit_models.reverseosmosis.ReverseOsmosis">ReverseOsmosis (class in flexops.unit_models.reverseosmosis)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord.role">role (flexops.core.registration.IOVariableRecord attribute)</a>
 </li>
     </ul></td>
@@ -817,6 +867,8 @@
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.set_external_dispatch">set_external_dispatch() (flexops.core.ops_block.OpsBlockData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.set_operations_mode">set_operations_mode() (flexops.costing.flex_costing.FlexCostingData method)</a>
+</li>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html#flexops.unit_models.base.sido.SIDOBlock">SIDOBlock (class in flexops.unit_models.base.sido)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html#flexops.properties.simple_aqueous.SimpleAqueousFlow">SimpleAqueousFlow (class in flexops.properties.simple_aqueous)</a>
 </li>
@@ -848,6 +900,8 @@
 </li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec">SurrogateSpec (class in flexcore.config.schema)</a>
 </li>
+        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.swap_energy_relation">swap_energy_relation() (flexops.core.ops_block.OpsBlockData method)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -858,7 +912,7 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord.tag_hint">tag_hint (flexops.core.registration.IOVariableRecord attribute)</a>
 </li>
-        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.storage_tank.Tank.html#flexops.unit_models.storage_tank.Tank">Tank (class in flexops.unit_models.storage_tank)</a>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.storage.tank.Tank.html#flexops.unit_models.storage.tank.Tank">Tank (class in flexops.unit_models.storage.tank)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.tariff_csv_to_dict.html#flexops.costing.tariff_csv_to_dict">tariff_csv_to_dict() (in module flexops.costing)</a>
 </li>

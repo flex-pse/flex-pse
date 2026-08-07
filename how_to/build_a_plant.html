@@ -173,7 +173,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../reference/flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -316,66 +330,129 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
         <article role="main" id="furo-main-content">
           <section id="build-a-plant">
 <h1>Build a plant<a class="headerlink" href="#build-a-plant" title="Link to this heading">¶</a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Skeleton (M07). This walks the minimal pump → tank → costing model — the same
-system as the headline load-shifting test. The full, executed guide becomes a
-notebook in M14.</p>
-</div>
-<p>A minimal flex-pse model has a <code class="docutils literal notranslate"><span class="pre">TimeBlock</span></code> (the discrete horizon), a property
-package, a <code class="docutils literal notranslate"><span class="pre">FlexCosting</span></code> block (the EECO-backed cost), and one or more unit
-models wired with <code class="docutils literal notranslate"><span class="pre">Arc</span></code>s. <code class="docutils literal notranslate"><span class="pre">FlexCosting</span></code> may be constructed before any units
-exist — all aggregation is deferred to <code class="docutils literal notranslate"><span class="pre">cost_process()</span></code>.</p>
+<p>A flex-pse model is built in one order: <strong>TimeBlock → property package →
+costing → plant → units → arcs → <code class="docutils literal notranslate"><span class="pre">cost_process()</span></code> → objective</strong>. Costing comes
+<em>before</em> the units on purpose — <code class="docutils literal notranslate"><span class="pre">FlexCosting</span></code> aggregates power at
+<code class="docutils literal notranslate"><span class="pre">cost_process()</span></code> time, so it may be constructed while the plant is still empty.
+Plant totals are deferred for the same reason.</p>
+<p>The frozen <a class="reference external" href="https://github.com/arao53/flexPSE/blob/main/examples/api_freeze.py"><code class="docutils literal notranslate"><span class="pre">examples/api_freeze.py</span></code></a>
+is exactly this sequence and is guarded by a component test: from M09 on, a
+change that breaks it is a breaking change.</p>
+<section id="the-imperative-path">
+<h2>The imperative path<a class="headerlink" href="#the-imperative-path" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pyomo.environ</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pyo</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyomo.environ</span><span class="w"> </span><span class="kn">import</span> <span class="n">units</span> <span class="k">as</span> <span class="n">pyunits</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyomo.network</span><span class="w"> </span><span class="kn">import</span> <span class="n">Arc</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">flexops</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fo</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">flexops.unit_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pump</span><span class="p">,</span> <span class="n">Tank</span>
 
 <span class="n">m</span> <span class="o">=</span> <span class="n">pyo</span><span class="o">.</span><span class="n">ConcreteModel</span><span class="p">()</span>
 <span class="n">m</span><span class="o">.</span><span class="n">time_block</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">TimeBlock</span><span class="p">(</span>
-    <span class="n">start_date</span><span class="o">=</span><span class="s2">&quot;2025-07-08&quot;</span><span class="p">,</span> <span class="n">end_date</span><span class="o">=</span><span class="s2">&quot;2025-07-09&quot;</span><span class="p">,</span> <span class="n">time_step</span><span class="o">=</span><span class="mi">1</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">hr</span>
+    <span class="n">start_date</span><span class="o">=</span><span class="s2">&quot;2025-01-01&quot;</span><span class="p">,</span> <span class="n">end_date</span><span class="o">=</span><span class="s2">&quot;2025-01-30&quot;</span><span class="p">,</span> <span class="n">time_step</span><span class="o">=</span><span class="mi">15</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">min</span>
 <span class="p">)</span>
-<span class="n">m</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">SimpleAqueousFlow</span><span class="p">(</span><span class="n">fixed_density</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">SimpleAqueousFlow</span><span class="p">()</span>
+<span class="n">m</span><span class="o">.</span><span class="n">costing</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">FlexCosting</span><span class="p">(</span>
+    <span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">,</span>
+    <span class="n">tariff_file</span><span class="o">=</span><span class="s2">&quot;tariff.json&quot;</span><span class="p">,</span>
+    <span class="n">dr_event_file</span><span class="o">=</span><span class="s2">&quot;dr_events.json&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 
-<span class="c1"># Costing first — it aggregates the units&#39; power at cost_process() time.</span>
-<span class="n">m</span><span class="o">.</span><span class="n">costing</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">FlexCosting</span><span class="p">(</span><span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">,</span> <span class="n">tariff_file</span><span class="o">=</span><span class="s2">&quot;tariff.json&quot;</span><span class="p">)</span>
-
-<span class="c1"># A pump feeds a storage tank; the pump registers its power with the costing.</span>
-<span class="n">m</span><span class="o">.</span><span class="n">pump</span> <span class="o">=</span> <span class="n">Pump</span><span class="p">(</span>
+<span class="c1"># A PlantBlock is a collection of UNITS. It takes the TimeBlock explicitly;</span>
+<span class="c1"># omit it only when the model carries exactly one.</span>
+<span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">PlantBlock</span><span class="p">(</span><span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">tank</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">Tank</span><span class="p">(</span><span class="n">property_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">plant</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">ConstantEnergyIntensityModel</span><span class="p">(</span>
     <span class="n">property_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span>
     <span class="n">energy_intensity</span><span class="o">=</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">kWh</span> <span class="o">/</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">3</span><span class="p">,</span>
     <span class="n">costing_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">costing</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">m</span><span class="o">.</span><span class="n">tank</span> <span class="o">=</span> <span class="n">Tank</span><span class="p">(</span>
-    <span class="n">property_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span>
-    <span class="n">max_volume</span><span class="o">=</span><span class="mi">1000</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">3</span><span class="p">,</span>
-    <span class="n">initial_volume</span><span class="o">=</span><span class="mi">200</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">3</span><span class="p">,</span>
+<span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">tank_to_plant</span> <span class="o">=</span> <span class="n">Arc</span><span class="p">(</span>
+    <span class="n">source</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">tank</span><span class="o">.</span><span class="n">outlet</span><span class="p">,</span> <span class="n">destination</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">inlet</span>
 <span class="p">)</span>
-<span class="n">m</span><span class="o">.</span><span class="n">arc</span> <span class="o">=</span> <span class="n">Arc</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">pump</span><span class="o">.</span><span class="n">outlet</span><span class="p">,</span> <span class="n">destination</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">tank</span><span class="o">.</span><span class="n">inlet</span><span class="p">)</span>
-<span class="n">pyo</span><span class="o">.</span><span class="n">TransformationFactory</span><span class="p">(</span><span class="s2">&quot;network.expand_arcs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">apply_to</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">battery</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">BatteryModel</span><span class="p">(</span>
+    <span class="n">capacity</span><span class="o">=</span><span class="mi">1</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">kWh</span><span class="p">,</span> <span class="n">costing_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">costing</span>
+<span class="p">)</span>
 
-<span class="c1"># Fix the demand the tank must serve; leave the pump flow free to be scheduled.</span>
-<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="o">.</span><span class="n">time_index</span><span class="p">:</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">tank</span><span class="o">.</span><span class="n">outlet_state</span><span class="o">.</span><span class="n">flow_vol_phase</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="s2">&quot;Liq&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="mf">100.0</span><span class="p">)</span>
-    <span class="n">m</span><span class="o">.</span><span class="n">pump</span><span class="o">.</span><span class="n">inlet_state</span><span class="o">.</span><span class="n">flow_vol_phase</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="s2">&quot;Liq&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">setub</span><span class="p">(</span><span class="mf">300.0</span><span class="p">)</span>
-
-<span class="c1"># Build the opex/capex blocks and minimize the operating cost.</span>
 <span class="n">m</span><span class="o">.</span><span class="n">costing</span><span class="o">.</span><span class="n">cost_process</span><span class="p">()</span>
 <span class="n">m</span><span class="o">.</span><span class="n">objective</span> <span class="o">=</span> <span class="n">pyo</span><span class="o">.</span><span class="n">Objective</span><span class="p">(</span><span class="n">expr</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">costing</span><span class="o">.</span><span class="n">aggregate_operating_cost</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Solved against a time-of-use tariff, the LP shifts pumping into off-peak hours.
-After solving, read the <strong>reported</strong> cost — never the raw objective — from
+<p>Arc expansion and the solve stay explicit — no library code applies the
+transformation implicitly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">flexcore.solvers</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_solver</span>
+
+<span class="n">pyo</span><span class="o">.</span><span class="n">TransformationFactory</span><span class="p">(</span><span class="s2">&quot;network.expand_arcs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">apply_to</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">get_solver</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After solving, read the <strong>reported</strong> cost — never the raw objective — from
 <code class="docutils literal notranslate"><span class="pre">m.costing.report_cost(m)</span></code>, which returns a categorized breakdown (operating vs.
 capital, each itemized).</p>
+</section>
+<section id="the-config-driven-twin">
+<h2>The config-driven twin<a class="headerlink" href="#the-config-driven-twin" title="Link to this heading">¶</a></h2>
+<p>Nothing essential lives only in imperative code: the same model is built from
+one version-controlled JSON file (architecture §2.3, R3). The config twin of the
+script above is
+<a class="reference external" href="https://github.com/arao53/flexPSE/blob/main/examples/api_freeze_config.json"><code class="docutils literal notranslate"><span class="pre">examples/api_freeze_config.json</span></code></a>,
+and a component test holds the two to the same solved objective.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">flexcore.config.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_model_config</span>
+
+<span class="n">m</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">build_model</span><span class="p">(</span><span class="n">load_model_config</span><span class="p">(</span><span class="s2">&quot;api_freeze_config.json&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">build_model</span></code> constructs the TimeBlock, the property package, the <code class="docutils literal notranslate"><span class="pre">FlexCosting</span></code>
+block, the plant/unit tree, its arcs, any declared external (DERMS) dispatch,
+and the objective. Two conventions matter when writing one of these files:</p>
+<ul class="simple">
+<li><p><strong>Units are data.</strong> A config cannot carry a Pyomo expression, so a
+units-carrying quantity is written <code class="docutils literal notranslate"><span class="pre">{&quot;value&quot;:</span> <span class="pre">0.5,</span> <span class="pre">&quot;units&quot;:</span> <span class="pre">&quot;kWh/m^3&quot;}</span></code> —
+or, for <code class="docutils literal notranslate"><span class="pre">time.time_step</span></code>, the string <code class="docutils literal notranslate"><span class="pre">&quot;15</span> <span class="pre">min&quot;</span></code>. Anything else in
+<code class="docutils literal notranslate"><span class="pre">construction_options</span></code> is passed to the unit’s constructor unchanged.</p></li>
+<li><p><strong>Runtime-only options are supplied by the builder.</strong> <code class="docutils literal notranslate"><span class="pre">property_package</span></code> and
+<code class="docutils literal notranslate"><span class="pre">costing_package</span></code> are live Pyomo objects, not serializable, so <code class="docutils literal notranslate"><span class="pre">build_model</span></code>
+wires them into every unit; do not list them in <code class="docutils literal notranslate"><span class="pre">construction_options</span></code>.</p></li>
+</ul>
+<p>A malformed config raises <code class="docutils literal notranslate"><span class="pre">FlexConfigError</span></code> naming the exact field path (e.g.
+<code class="docutils literal notranslate"><span class="pre">plant.units.surrogate.unit_model_class</span></code>), with the underlying pydantic
+<code class="docutils literal notranslate"><span class="pre">ValidationError</span></code> as its cause.</p>
+</section>
+<section id="more-than-one-plant-networkblock">
+<h2>More than one plant: NetworkBlock<a class="headerlink" href="#more-than-one-plant-networkblock" title="Link to this heading">¶</a></h2>
+<p>A plant containing plants is a <code class="docutils literal notranslate"><span class="pre">NetworkBlock</span></code>, not a nested <code class="docutils literal notranslate"><span class="pre">PlantBlock</span></code> (R7):
+<code class="docutils literal notranslate"><span class="pre">PlantBlock</span></code> composes units, <code class="docutils literal notranslate"><span class="pre">NetworkBlock</span></code> composes plants. Its totals are the
+sums of its child plants’ totals, so every unit is counted exactly once.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">campus</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">NetworkBlock</span><span class="p">(</span><span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">north</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">PlantBlock</span><span class="p">(</span><span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">south</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">PlantBlock</span><span class="p">(</span><span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">)</span>
+<span class="c1"># ... units on each plant ...</span>
+
+<span class="c1"># Plants are related at the quantity level, not by copying stream state:</span>
+<span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">add_link</span><span class="p">(</span>
+    <span class="s2">&quot;north_product_to_south_feed&quot;</span><span class="p">,</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">north</span><span class="o">.</span><span class="n">ro</span><span class="o">.</span><span class="n">flow_out_a</span><span class="p">,</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">south</span><span class="o">.</span><span class="n">ro</span><span class="o">.</span><span class="n">flow_in</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>A plant can also register a <strong>product</strong> — a flow, optionally with a quality
+indicator — and the network sums it across plants:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">north</span><span class="o">.</span><span class="n">register_product</span><span class="p">(</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">north</span><span class="o">.</span><span class="n">ro</span><span class="o">.</span><span class="n">flow_out_a</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;permeate&quot;</span><span class="p">,</span> <span class="n">quality</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">north</span><span class="o">.</span><span class="n">tds</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Registering a quality declares that the resource is only interchangeable at
+equal quality, so the network permits mixing only between like-quality streams
+(<code class="docutils literal notranslate"><span class="pre">eq_product_quality</span></code>). <code class="docutils literal notranslate"><span class="pre">total_product[&quot;permeate&quot;,</span> <span class="pre">t]</span></code> is the network’s summed
+flow.</p>
+</section>
 </section>
 
         </article>
@@ -421,8 +498,29 @@ capital, each itemized).</p>
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Build a plant</a><ul>
+<li><a class="reference internal" href="#the-imperative-path">The imperative path</a></li>
+<li><a class="reference internal" href="#the-config-driven-twin">The config-driven twin</a></li>
+<li><a class="reference internal" href="#more-than-one-plant-networkblock">More than one plant: NetworkBlock</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

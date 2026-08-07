@@ -1,6 +1,0 @@
-﻿flexops.unit\_models.battery.BatteryModel
-=========================================
-
-.. currentmodule:: flexops.unit_models.battery
-
-.. autoclass:: BatteryModel

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="next" title="flexops.unit_models.battery.BatteryModel" href="flexops.unit_models.battery.BatteryModel.html"><link rel="prev" title="flexops.unit_models.pump.Pump" href="flexops.unit_models.pump.Pump.html">
+<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="next" title="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel" href="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html"><link rel="prev" title="flexops.unit_models.reverseosmosis.ReverseOsmosis" href="flexops.unit_models.reverseosmosis.ReverseOsmosis.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>flexops.unit_models.storage_tank.Tank - flex-pse documentation</title>
+        <title>flexops.unit_models.powergeneration.combustor.Combustor - flex-pse documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -303,7 +317,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../../../../_sources/reference/flexops/unit_models/generated/flexops.unit_models.storage_tank.Tank.rst.txt" title="View this page">
+  <a class="muted-link" href="../../../../_sources/reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.rst.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -321,11 +335,11 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="flexops-unit-models-storage-tank-tank">
-<h1>flexops.unit_models.storage_tank.Tank<a class="headerlink" href="#flexops-unit-models-storage-tank-tank" title="Link to this heading">¶</a></h1>
+          <section id="flexops-unit-models-powergeneration-combustor-combustor">
+<h1>flexops.unit_models.powergeneration.combustor.Combustor<a class="headerlink" href="#flexops-unit-models-powergeneration-combustor-combustor" title="Link to this heading">¶</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="flexops.unit_models.storage_tank.Tank">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.unit_models.storage_tank.</span></span><span class="sig-name descname"><span class="pre">Tank</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.unit_models.storage_tank.Tank" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="flexops.unit_models.powergeneration.combustor.Combustor">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.unit_models.powergeneration.combustor.</span></span><span class="sig-name descname"><span class="pre">Combustor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.unit_models.powergeneration.combustor.Combustor" title="Link to this definition">¶</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -372,23 +386,34 @@ register_power forwards the unit’s power draw to it. None
 for standalone units; the forwarding is strictly
 conditional.</p>
 </dd>
-<dt>min_volume</dt><dd><p>Minimum tank volume, a lower bound on volume[t] (and on
-capacity).</p>
+<dt>inlet_names</dt><dd><p>Role names of the combustor’s gas inlets; inlet i is built
+as port f’inlet_{name}’. Must be unique and non-empty.</p>
 </dd>
-<dt>max_volume</dt><dd><p>Maximum POSSIBLE tank volume – fixed by prior investment
-in an existing tank or by space constraints on a potential
-build. The upper bound on capacity (the chosen volume) and
-the default value of the fixable capacity design variable.
-Required.</p>
+<dt>heating_values</dt><dd><p>Mapping of inlet name to its lower heating value per unit
+volume (a fixed, regressable Var per inlet once built,
+kWh/m^3). A value for every inlet in inlet_names selects
+the heating-value power relation; None or empty selects
+the constant-intensity relation; a partial mapping is
+rejected.</p>
 </dd>
-<dt>initial_volume</dt><dd><p>Initial tank volume, volume[0]: a mutable Param and a
-rolling-horizon initial-state hook. Required.</p>
+<dt>efficiency</dt><dd><p>Electrical conversion efficiency, a dimensionless fraction
+in (0, 1] (a fixed, regressable Var once built). Used only
+under the heating-value power relation.</p>
 </dd>
-<dt>level_min</dt><dd><p>Minimum fractional fill (level = volume/capacity), in [0,
-1]. Prevents the tank from draining all the way down.</p>
+<dt>energy_intensity</dt><dd><p>Electrical output per unit total inlet volume (a fixed,
+regressable Var once built), kWh/m^3. Used only under the
+constant-intensity power relation.</p>
 </dd>
-<dt>level_max</dt><dd><p>Maximum fractional fill (level = volume/capacity), in [0,
-1]. Prevents the tank from overfilling.</p>
+<dt>air_to_fuel_ratio</dt><dd><p>Volumes of combustion air entrained per unit volume of
+fuel gas (a fixed, regressable Var once built),
+dimensionless. Sets the flue-gas volume, since combustion
+air is not a modeled inlet. An IC-design property:
+estimate it or model it externally rather than deriving it
+here. The default ~9.5 is roughly stoichiometric for
+natural gas.</p>
+</dd>
+<dt>flue_gas_temperature</dt><dd><p>Flue-gas outlet temperature (a fixed, regressable Var once
+built), K.</p>
 </dd>
 </dl>
 </div></blockquote>
@@ -403,7 +428,7 @@ BlockData index exactly to the index in initialize.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>(Tank) New instance</p>
+<dd class="field-even"><p>(Combustor) New instance</p>
 </dd>
 </dl>
 </dd></dl>
@@ -415,23 +440,23 @@ BlockData index exactly to the index in initialize.</p></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="flexops.unit_models.battery.BatteryModel.html">
+          <a class="next-page" href="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">flexops.unit_models.battery.BatteryModel</div>
+                <div class="title">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="flexops.unit_models.pump.Pump.html">
+          <a class="prev-page" href="flexops.unit_models.reverseosmosis.ReverseOsmosis.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">flexops.unit_models.pump.Pump</div>
+                <div class="title">flexops.unit_models.reverseosmosis.ReverseOsmosis</div>
                 
               </div>
             </a>
@@ -465,8 +490,8 @@ BlockData index exactly to the index in initialize.</p></li>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">flexops.unit_models.storage_tank.Tank</a><ul>
-<li><a class="reference internal" href="#flexops.unit_models.storage_tank.Tank"><code class="docutils literal notranslate"><span class="pre">Tank</span></code></a></li>
+<li><a class="reference internal" href="#">flexops.unit_models.powergeneration.combustor.Combustor</a><ul>
+<li><a class="reference internal" href="#flexops.unit_models.powergeneration.combustor.Combustor"><code class="docutils literal notranslate"><span class="pre">Combustor</span></code></a></li>
 </ul>
 </li>
 </ul>

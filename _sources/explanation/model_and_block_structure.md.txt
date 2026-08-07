@@ -5,8 +5,8 @@ blocks and how variables on those blocks are indexed. Two questions recur when
 reading or writing a unit model, and they have different answers:
 
 - **Time indexing** — which variables vary over the horizon, and against what set.
-- **Property (state) indexing** — where a stream's `flow_vol_phase`, `dens_mass`,
-  `pressure`, and `temperature` live, and how they carry a time dimension.
+- **Property (state) indexing** — where a stream's `flow_vol_phase`, `pressure`,
+  and `temperature` live, and how they carry a time dimension.
 
 ## The block hierarchy
 
@@ -73,14 +73,15 @@ phases, components, supported-property metadata, default units) paired with a
 ships two, both structurally modeled on WaterTAP's zero-order package:
 
 - {py:class}`~flexops.properties.simple_aqueous.SimpleAqueousFlow` — flow-only by
-  default: `flow_vol_phase` (indexed by the single `Liq` phase and time) and
-  `dens_mass` (density fixed at the configured value unless
-  `fixed_density=False`), with **opt-in** `pressure`/`temperature`.
+  default: `flow_vol_phase` (indexed by the single `Liq` phase and time), with
+  **opt-in** `pressure`/`temperature`.
 - {py:class}`~flexops.properties.simple_gas.SimpleGasFlow` — the gas counterpart,
-  which **always** carries all four state variables (`flow_vol_phase` over the
-  single `Vap` phase and time, plus `dens_mass`/`pressure`/`temperature`) because
-  gas density varies with pressure and temperature (no equation of state is
-  imposed; a unit adds any relation it needs as its own constraint).
+  which **always** carries all three state variables (`flow_vol_phase` over the
+  single `Vap` phase and time, plus `pressure`/`temperature`) because a gas
+  stream's conditions always matter (no equation of state is
+  imposed; a unit adds any relation it needs as its own constraint). Its first
+  consumer is {py:class}`~flexops.unit_models.powergeneration.combustor.Combustor`, so the
+  extensive/intensive table below is live rather than hypothetical.
 
 Ports built from state blocks carry a stream between units via standard
 IDAES/Pyomo `Arc`s, honoring the extensive/intensive split described below.
@@ -114,11 +115,11 @@ with ordinary index arithmetic — `V[t+1] == V[t] + dt*(inflow[t] - outflow[t])
 
 ### Property state variables carry the time index themselves
 
-The state variables `flow_vol_phase`, `dens_mass`, `pressure`, and `temperature`
+The state variables `flow_vol_phase`, `pressure`, and `temperature`
 are declared inside `StateBlockData.build`, **indexed over the time set
 directly**: the extensive, per-phase `flow_vol_phase` is `Var(time, phase_list)`
-(time first, phase second), while the intensive stream properties `dens_mass`,
-`pressure`, and `temperature` drop the phase index and are `Var(time)` (assumed
+(time first, phase second), while the intensive stream properties
+`pressure` and `temperature` drop the phase index and are `Var(time)` (assumed
 equal across phases in a stream). A single state block therefore describes a
 stream over the whole horizon.
 
@@ -133,7 +134,7 @@ for its inlet/outlet streams, then wires the flows and ports:
 self.add_stream_ports()             # builds scalar inlet_state, outlet_state + ports
 # then, per time point t:
 self.inlet_state.flow_vol_phase[t, "Liq"]   # volumetric flow at time t
-self.inlet_state.dens_mass[t]               # density at time t
+self.inlet_state.pressure[t]                # pressure at time t (when enabled)
 ```
 
 So indexing is **single-layer**: there is one state block per stream, and time
@@ -150,10 +151,10 @@ connection (relevant when ports/arcs are built in a later milestone):
 | State variable | Kind | Across an arc | Port rule |
 |---|---|---|---|
 | `flow_vol_phase` | **extensive** | conserved (sum of flows balances at a node) | `Port.Extensive` |
-| `dens_mass`, `pressure`, `temperature` | **intensive** | equal on both sides | `Port.Equality` |
+| `pressure`, `temperature` | **intensive** | equal on both sides | `Port.Equality` |
 
 This is why volumetric flow is the quantity a mixer sums and a splitter divides,
-while density/pressure/temperature are simply equated across a connection.
+while pressure/temperature are simply equated across a connection.
 
 ## Where each thing is declared — a summary
 
@@ -163,7 +164,7 @@ while density/pressure/temperature are simply equated across a connection.
 | `power_electrical[t]`, `power_thermal[t]` | the unit (`OpsBlock`) | `time_index` | {meth}`~flexops.core.ops_block.OpsBlockData.declare_power` |
 | process IO variables | the unit (`OpsBlock`) | `time_index` (usually) or scalar | the unit's `build`, then `register_io_variable` |
 | design/regression parameters | the unit (`OpsBlock`) | usually scalar | the unit's `build`, then `register_process_parameter` |
-| `flow_vol_phase`, `dens_mass`, `pressure`, `temperature` | a scalar state block (one per stream) | time (on the variable); `flow_vol_phase` also phase-indexed | the property package's `StateBlockData.build` |
+| `flow_vol_phase`, `pressure`, `temperature` | a scalar state block (one per stream) | time (on the variable); `flow_vol_phase` also phase-indexed | the property package's `StateBlockData.build` |
 
 Discovery ties it together: every unit exposes what it declared through its
 {py:class}`~flexops.core.registration.IORegistry`, and

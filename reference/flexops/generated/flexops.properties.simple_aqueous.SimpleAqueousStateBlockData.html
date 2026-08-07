@@ -191,7 +191,11 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
@@ -229,6 +233,10 @@
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.IORegistry.html">IORegistry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
@@ -278,9 +286,15 @@
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.storage_tank.Tank.html">flexops.unit_models.storage_tank.Tank</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.battery.BatteryModel.html">flexops.unit_models.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
 </ul>
@@ -326,17 +340,17 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="flexops.properties.simple_aqueous.SimpleAqueousStateBlockData">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.properties.simple_aqueous.</span></span><span class="sig-name descname"><span class="pre">SimpleAqueousStateBlockData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.properties.simple_aqueous.SimpleAqueousStateBlockData" title="Link to this definition">¶</a></dt>
-<dd><p>State block carrying volumetric flow, density, and optional extras.</p>
+<dd><p>State block carrying volumetric flow and optional extras.</p>
 <p>State variables are indexed over time directly: the owning unit passes the
 <code class="docutils literal notranslate"><span class="pre">time_index</span></code> Set via <code class="docutils literal notranslate"><span class="pre">build_state_block(time_index=...)</span></code> and gets a
 single scalar state block whose variables span the horizon. Extensive,
 per-phase quantities lead with time then phase (<code class="docutils literal notranslate"><span class="pre">flow_vol_phase[t,</span> <span class="pre">phase]</span></code>);
-intensive stream properties drop the phase index (<code class="docutils literal notranslate"><span class="pre">dens_mass[t]</span></code>, and the
-opt-in <code class="docutils literal notranslate"><span class="pre">pressure[t]</span></code>/<code class="docutils literal notranslate"><span class="pre">temperature[t]</span></code>, assumed equal across phases).</p>
+intensive stream properties drop the phase index (the opt-in
+<code class="docutils literal notranslate"><span class="pre">pressure[t]</span></code>/<code class="docutils literal notranslate"><span class="pre">temperature[t]</span></code>, assumed equal across phases).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.build">
 <span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.build" title="Link to this definition">¶</a></dt>
-<dd><p>Create time-indexed <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code>, <code class="docutils literal notranslate"><span class="pre">dens_mass</span></code>, and extras.</p>
+<dd><p>Create the time-indexed <code class="docutils literal notranslate"><span class="pre">flow_vol_phase</span></code> and any enabled extras.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -348,7 +362,7 @@ opt-in <code class="docutils literal notranslate"><span class="pre">pressure[t]<
 <dl class="py method">
 <dt class="sig sig-object py" id="flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.define_state_vars">
 <span class="sig-name descname"><span class="pre">define_state_vars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="headerlink" href="#flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.define_state_vars" title="Link to this definition">¶</a></dt>
-<dd><p>Return the state-variable dict (flow and density plus enabled ones).</p>
+<dd><p>Return the state-variable dict (flow plus any enabled extras).</p>
 </dd></dl>
 
 </dd></dl>
