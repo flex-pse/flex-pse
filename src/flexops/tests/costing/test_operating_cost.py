@@ -1,4 +1,4 @@
-"""Golden-bill and in-objective tests for the EECO cost bridge (M06).
+"""Golden-bill and in-objective tests for the EECO cost bridge.
 
 ``test_golden_monthly_bill`` is the ``unit``-tier truth check: it evaluates a
 hand-computed PG&E-B-20-flavored bill on a fixed realized load, no solve. The
@@ -23,7 +23,7 @@ from flexops.costing import (
     add_electricity_cost,
     add_operating_cost,
     evaluate_cost,
-    evaluate_gas_cost,
+    evaluate_fuel_cost,
     load_dr_program,
     load_tariff,
     opex,
