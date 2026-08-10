@@ -6,6 +6,7 @@ from pyomo.environ import units as pyunits
 from pyomo.network import Arc
 from pyomo.opt import assert_optimal_termination
 
+from flexcore.solvers import get_solver
 from flexops.core.time_block import TimeBlock
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.unit_models import Pump, Tank
@@ -15,12 +16,6 @@ from flexops.unit_models import Pump, Tank
 @pytest.mark.needs_highs
 def test_pump_fills_tank_lp():
     """Minimizing pumped power over a 24-hour horizon respects the tank mass balance."""
-    try:
-        from flexcore.exceptions import FlexSolverError
-        from flexcore.solvers import get_solver
-    except ImportError:
-        pytest.skip("flexcore.solvers.get_solver not available")
-
     m = pyo.ConcreteModel()
     m.time_block = TimeBlock(
         start_date="2025-01-01", end_date="2025-01-02", time_step=1 * pyunits.hr
@@ -43,10 +38,7 @@ def test_pump_fills_tank_lp():
     def total_power(b):
         return sum(b.pump.power_electrical[t] for t in b.time_block.time_index)
 
-    try:
-        solver = get_solver(model=m)
-    except FlexSolverError as exc:
-        pytest.skip(f"flexcore.solvers.get_solver not available: {exc}")
+    solver = get_solver(model=m)
     results = solver.solve(m)
     assert_optimal_termination(results)
 
