@@ -1,5 +1,7 @@
 """NetworkBlock: plant composition, no double-counting, product aggregation (§3.3)."""
 
+import logging
+
 import pyomo.environ as pyo
 import pytest
 from idaes.core import declare_process_block_class
@@ -7,6 +9,7 @@ from pyomo.common.config import ConfigValue
 from pyomo.environ import units as pyunits
 from pyomo.network import Arc
 from pyomo.repn import generate_standard_repn
+from pyomo.util.calc_var_value import calculate_variable_from_constraint
 
 from flexcore import nomenclature as nm
 from flexops import NetworkBlock, PlantBlock
@@ -212,3 +215,100 @@ def test_add_link_constrains_two_plant_quantities():
     assert pyo.value(m.network.product_to_feed[0].body) == pytest.approx(
         4.0 - 5.0, rel=1e-6
     )
+
+
+def _propagate_aggregate(network, name: str) -> None:
+    """Compute ``network.<name>`` from its ``eq_<name>`` constraint (no solve)."""
+    var = network.find_component(name)
+    constraint = network.find_component(f"eq_{name}")
+    for t in var:
+        calculate_variable_from_constraint(var[t], constraint[t])
+
+
+@pytest.mark.unit
+def test_add_subset_aggregate_sums_only_named_plants():
+    """The aggregate sums the given plants' quantity, not every plant in the network."""
+    m = _network()
+    m.network.add_subset_aggregate([m.network.plant_a], "total_electrical_power")
+    _propagate_aggregate(m.network, "aggregate_total_electrical_power")
+
+    assert m.network.find_component("eq_aggregate_total_electrical_power") is not None
+    for t in m.time_block.time_index:
+        assert pyo.value(
+            m.network.aggregate_total_electrical_power[t]
+        ) == pytest.approx(_POWER_KW["plant_a"], rel=1e-6)
+
+
+@pytest.mark.unit
+def test_add_subset_aggregate_custom_name():
+    """A caller-supplied name= is used for the Var/Constraint instead of the default."""
+    m = _network()
+    m.network.add_subset_aggregate(
+        [m.network.plant_a], "total_electrical_power", name="plant_a_power"
+    )
+
+    assert m.network.find_component("plant_a_power") is not None
+    assert m.network.find_component("eq_plant_a_power") is not None
+    assert m.network.find_component("aggregate_total_electrical_power") is None
+
+
+@pytest.mark.unit
+def test_add_subset_aggregate_warns_on_missing_component(caplog):
+    """A plant missing the named component is skipped, with a logged warning."""
+    m = _network()
+    del m.network.plant_b.total_electrical_power
+
+    with caplog.at_level(logging.WARNING, logger="flexops.core.network_block"):
+        m.network.add_subset_aggregate(
+            [m.network.plant_a, m.network.plant_b], "total_electrical_power"
+        )
+
+    assert "plant_b" in caplog.text
+    _propagate_aggregate(m.network, "aggregate_total_electrical_power")
+    for t in m.time_block.time_index:
+        assert pyo.value(
+            m.network.aggregate_total_electrical_power[t]
+        ) == pytest.approx(_POWER_KW["plant_a"], rel=1e-6)
+
+
+@pytest.mark.unit
+def test_add_subset_aggregate_replaces_in_place_by_default():
+    """Reusing a name updates the existing Constraint's body rather than deleting it."""
+    m = _network()
+    m.network.add_subset_aggregate([m.network.plant_a], "total_electrical_power")
+    var = m.network.find_component("aggregate_total_electrical_power")
+    constraint = m.network.find_component("eq_aggregate_total_electrical_power")
+
+    m.network.add_subset_aggregate(
+        [m.network.plant_a, m.network.plant_b], "total_electrical_power"
+    )
+
+    assert m.network.find_component("aggregate_total_electrical_power") is var
+    assert m.network.find_component("eq_aggregate_total_electrical_power") is constraint
+    _propagate_aggregate(m.network, "aggregate_total_electrical_power")
+    total = sum(_POWER_KW.values())
+    for t in m.time_block.time_index:
+        assert pyo.value(
+            m.network.aggregate_total_electrical_power[t]
+        ) == pytest.approx(total, rel=1e-6)
+
+
+@pytest.mark.unit
+def test_add_subset_aggregate_replace_false_warns_and_keeps_existing(caplog):
+    """replace=False leaves the existing aggregate untouched and logs a warning."""
+    m = _network()
+    m.network.add_subset_aggregate([m.network.plant_a], "total_electrical_power")
+    _propagate_aggregate(m.network, "aggregate_total_electrical_power")
+
+    with caplog.at_level(logging.WARNING, logger="flexops.core.network_block"):
+        m.network.add_subset_aggregate(
+            [m.network.plant_a, m.network.plant_b],
+            "total_electrical_power",
+            replace=False,
+        )
+
+    assert "aggregate_total_electrical_power" in caplog.text
+    for t in m.time_block.time_index:
+        assert pyo.value(
+            m.network.aggregate_total_electrical_power[t]
+        ) == pytest.approx(_POWER_KW["plant_a"], rel=1e-6)

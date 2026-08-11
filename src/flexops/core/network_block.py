@@ -15,14 +15,19 @@ heating load, product out vs. feed in), and product aggregation decides whether
 two plants' streams may be mixed at all.
 """
 
+import logging
+
 import pyomo.environ as pyo
 from idaes.core import declare_process_block_class
+from pyomo.environ import units as pyunits
 
 from flexcore import nomenclature as nm
 from flexops.core.plant_block import PlantBlockData, _AggregatingFlowsheet
 
 EQ_PRODUCT_QUALITY = "eq_product_quality"
 """str: name of the like-quality mixing Constraint, indexed (product, plant, t)."""
+
+_log = logging.getLogger(__name__)
 
 
 @declare_process_block_class("NetworkBlock")
@@ -74,6 +79,92 @@ class NetworkBlockData(_AggregatingFlowsheet):
                 doc=f"Network link {name}: destination[t] == source[t].",
             ),
         )
+
+    def add_subset_aggregate(
+        self,
+        plants: list[PlantBlockData],
+        var_name: str,
+        *,
+        name: str | None = None,
+        replace: bool = True,
+    ) -> None:
+        """Sum a time-indexed quantity across a chosen subset of this network's plants.
+
+        Unlike the network's own totals (always every plant, to avoid
+        double-counting per architecture §3.3/R7), this aggregates whatever
+        plants the caller names — e.g. one building's power draw within a
+        larger campus. A plant missing ``var_name`` is skipped with a logged
+        warning; the aggregate is built from whichever plants have it.
+
+        Args:
+            plants: The child plants to aggregate over.
+            var_name: Local name of the time-indexed quantity to look up on
+                each plant via ``find_component``.
+            name: Local name for the aggregate on this network. Defaults to
+                ``f"aggregate_{var_name}"``.
+            replace: If an aggregate named ``name`` already exists, update its
+                defining Constraint in place to the new ``plants``/``var_name``
+                (never deleting the Var or Constraint, conventions §9). If
+                ``False``, leave the existing aggregate untouched and log a
+                warning instead.
+        """
+        name = name or f"aggregate_{var_name}"
+        eq_name = f"eq_{name}"
+
+        terms = []
+        for plant in plants:
+            component = plant.find_component(var_name)
+            if component is None:
+                _log.warning(
+                    "Plant %r has no component %r; excluding it from aggregate %r.",
+                    plant.name,
+                    var_name,
+                    name,
+                )
+                continue
+            terms.append(component)
+
+        time_index = self.time_block.time_index
+        units = (
+            pyunits.get_units(terms[0][time_index.first()])
+            if terms
+            else pyunits.dimensionless
+        )
+
+        def _rule(_b, t):
+            return sum(term[t] for term in terms) + 0 * units
+
+        if self.component(eq_name) is None:
+            self.add_component(
+                name,
+                pyo.Var(
+                    time_index,
+                    initialize=0.0,
+                    units=units,
+                    doc=f"Aggregate of {var_name!r} over a plant subset.",
+                ),
+            )
+            var = self.component(name)
+            self.add_component(
+                eq_name,
+                pyo.Constraint(
+                    time_index,
+                    rule=lambda b, t: var[t] == _rule(b, t),
+                    doc=f"{name}[t] == sum of {var_name!r} over its plant subset.",
+                ),
+            )
+        else:
+            if replace:
+                var = self.component(name)
+                constraint = self.component(eq_name)
+                for t in time_index:
+                    constraint[t].set_value(var[t] == _rule(self, t))
+            else:
+                _log.warning(
+                    "Aggregate %r already exists on %r; not replacing it.",
+                    name,
+                    self.name,
+                )
 
     def _power_terms(self, kind: nm.PowerKind) -> list:
         """Return each child plant's power total of ``kind`` (never its units).
