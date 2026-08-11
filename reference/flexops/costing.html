@@ -641,7 +641,7 @@ it is EECO’s job (it applies its own fuel heating-value assumption).</p>
 <p><strong>Non-energy scalar costs — native, never via EECO.</strong></p>
 <p><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.register_scalar_cost" title="flexops.costing.flex_costing.FlexCostingData.register_scalar_cost"><code class="xref py py-meth docutils literal notranslate"><span class="pre">register_scalar_cost()</span></code></a> costs an arbitrary time-indexed
 rate (a flow/supply/product) as <code class="docutils literal notranslate"><span class="pre">price</span> <span class="pre">×</span> <span class="pre">Σ_t</span> <span class="pre">quantity[t]</span> <span class="pre">×</span> <span class="pre">dt</span></code> — e.g. water
-withdrawal ($/m³), chemical dosing ($/kg), or a product-revenue credit (a
+withdrawal per m³, chemical dosing per kg, or a product-revenue credit (a
 negative <code class="docutils literal notranslate"><span class="pre">price</span></code>). Built entirely in flex-pse; EECO is not involved. A
 <code class="docutils literal notranslate"><span class="pre">quantity</span></code> that does not convert to the declared <code class="docutils literal notranslate"><span class="pre">quantity_units</span></code> raises,
 forcing unit consistency.</p>
@@ -689,12 +689,12 @@ keys.</p>
 (<code class="docutils literal notranslate"><span class="pre">0.12</span> <span class="pre">*</span> <span class="pre">currency_units(&quot;USD&quot;)</span> <span class="pre">/</span> <span class="pre">pyunits.kWh</span></code>), which must reconcile with the
 base currency or the unit-consistency check raises. A bare number is read in
 the currency over the carrier’s metered quantity: <code class="docutils literal notranslate"><span class="pre">kWh</span></code> for a power carrier,
-<code class="docutils literal notranslate"><span class="pre">m³</span></code> for a fuel — so <code class="docutils literal notranslate"><span class="pre">{&quot;electrical&quot;:</span> <span class="pre">0.12}</span></code> means $0.12/kWh and
-<code class="docutils literal notranslate"><span class="pre">{&quot;natural_gas&quot;:</span> <span class="pre">0.50}</span></code> means $0.50/m³.</p>
+<code class="docutils literal notranslate"><span class="pre">m³</span></code> for a fuel — so <code class="docutils literal notranslate"><span class="pre">{&quot;electrical&quot;:</span> <span class="pre">0.12}</span></code> means 0.12 per kWh and
+<code class="docutils literal notranslate"><span class="pre">{&quot;natural_gas&quot;:</span> <span class="pre">0.50}</span></code> means 0.50 per m³, both in the base currency.</p>
 <p>A carrier that has registered draws but is priced by <em>neither</em> a native price
 nor a tariff covering its utility raises
 <a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><code class="xref py py-class docutils literal notranslate"><span class="pre">FlexConfigError</span></code></a> naming the carrier, rather than
-contributing a silent <code class="docutils literal notranslate"><span class="pre">$0</span></code> to the bill.</p>
+contributing a silent <code class="docutils literal notranslate"><span class="pre">0</span></code> to the bill.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -719,9 +719,9 @@ include <em>every</em> monthly charge on a one-day horizon.</p>
 <p class="admonition-title">Note</p>
 <p><strong>Annualization.</strong></p>
 <p><code class="docutils literal notranslate"><span class="pre">cost_process</span></code> builds a <code class="docutils literal notranslate"><span class="pre">capital_recovery_factor</span></code> and an
-<code class="docutils literal notranslate"><span class="pre">annualized_cost</span></code> Var ($/year): operating cost scaled from the horizon to a
-year plus capital cost times the CRF. With the empty v0 capex block, the
-annualized cost is just the operating cost on an annual basis.</p>
+<code class="docutils literal notranslate"><span class="pre">annualized_cost</span></code> Var (base currency per year): operating cost scaled from
+the horizon to a year plus capital cost times the CRF. With the empty v0 capex
+block, the annualized cost is just the operating cost on an annual basis.</p>
 <p>The CRF is built on a single <code class="docutils literal notranslate"><span class="pre">effective_rate</span></code>. Supplying only
 <code class="docutils literal notranslate"><span class="pre">discount_rate</span></code> uses it directly; supplying <code class="docutils literal notranslate"><span class="pre">interest_rate</span></code> as well (the
 nominal cost of capital) deflates it into a real rate,
@@ -740,7 +740,9 @@ are dollar-based: <code class="docutils literal notranslate"><span class="pre">&
 <code class="docutils literal notranslate"><span class="pre">currency</span></code> (default <code class="docutils literal notranslate"><span class="pre">USD</span></code>), available as
 <a class="reference internal" href="generated/flexops.costing.currency_units.html#flexops.costing.currency_units" title="flexops.costing.currency_units"><code class="xref py py-func docutils literal notranslate"><span class="pre">currency_units()</span></code></a> for writing flat prices. EECO’s own
 cost expressions are dimensionless dollars, so FlexCosting casts them to this
-currency; the <code class="docutils literal notranslate"><span class="pre">report_cost</span></code> numbers are magnitudes in that currency.</p>
+currency; the <code class="docutils literal notranslate"><span class="pre">report_cost</span></code> numbers are magnitudes in that currency, and
+<a class="reference internal" href="generated/flexops.costing.flex_costing.CostReport.html#flexops.costing.flex_costing.CostReport.currency" title="flexops.costing.flex_costing.CostReport.currency"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CostReport.currency</span></code></a> names it (<code class="docutils literal notranslate"><span class="pre">str(base_currency)</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;USD&quot;</span></code>)
+so a report is self-describing away from the block that produced it.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>

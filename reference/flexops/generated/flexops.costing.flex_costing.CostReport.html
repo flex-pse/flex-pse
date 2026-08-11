@@ -339,7 +339,7 @@
 <h1>CostReport<a class="headerlink" href="#costreport" title="Link to this heading">¶</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.CostReport">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.costing.flex_costing.</span></span><span class="sig-name descname"><span class="pre">CostReport</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operating</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="flexops.costing.flex_costing.OperatingCostBreakdown.html#flexops.costing.flex_costing.OperatingCostBreakdown" title="flexops.costing.flex_costing.OperatingCostBreakdown"><span class="pre">OperatingCostBreakdown</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">capital</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="flexops.costing.flex_costing.CapitalCostBreakdown.html#flexops.costing.flex_costing.CapitalCostBreakdown" title="flexops.costing.flex_costing.CapitalCostBreakdown"><span class="pre">CapitalCostBreakdown</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.costing.flex_costing.CostReport" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.costing.flex_costing.</span></span><span class="sig-name descname"><span class="pre">CostReport</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operating</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="flexops.costing.flex_costing.OperatingCostBreakdown.html#flexops.costing.flex_costing.OperatingCostBreakdown" title="flexops.costing.flex_costing.OperatingCostBreakdown"><span class="pre">OperatingCostBreakdown</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">capital</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="flexops.costing.flex_costing.CapitalCostBreakdown.html#flexops.costing.flex_costing.CapitalCostBreakdown" title="flexops.costing.flex_costing.CapitalCostBreakdown"><span class="pre">CapitalCostBreakdown</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">currency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.costing.flex_costing.CostReport" title="Link to this definition">¶</a></dt>
 <dd><p>The reported, categorized cost from <a class="reference internal" href="flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost" title="flexops.costing.flex_costing.FlexCostingData.report_cost"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FlexCostingData.report_cost()</span></code></a>.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.CostReport.operating">
@@ -366,10 +366,24 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.CostReport.total">
 <span class="sig-name descname"><span class="pre">total</span></span><a class="headerlink" href="#flexops.costing.flex_costing.CostReport.total" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">operating.total</span> <span class="pre">+</span> <span class="pre">capital.total</span></code> ($).</p>
+<dd><p><code class="docutils literal notranslate"><span class="pre">operating.total</span> <span class="pre">+</span> <span class="pre">capital.total</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="flexops.costing.flex_costing.CostReport.currency">
+<span class="sig-name descname"><span class="pre">currency</span></span><a class="headerlink" href="#flexops.costing.flex_costing.CostReport.currency" title="Link to this definition">¶</a></dt>
+<dd><p>The currency every value in this report is a magnitude in —
+the costing block’s <code class="docutils literal notranslate"><span class="pre">base_currency</span></code> as a string (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;USD&quot;</span></code>),
+which is the tariff sheet’s basis when a tariff is given and the
+configured <code class="docutils literal notranslate"><span class="pre">currency</span></code> otherwise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -438,6 +452,7 @@
 <li><a class="reference internal" href="#flexops.costing.flex_costing.CostReport.operating"><code class="docutils literal notranslate"><span class="pre">CostReport.operating</span></code></a></li>
 <li><a class="reference internal" href="#flexops.costing.flex_costing.CostReport.capital"><code class="docutils literal notranslate"><span class="pre">CostReport.capital</span></code></a></li>
 <li><a class="reference internal" href="#flexops.costing.flex_costing.CostReport.total"><code class="docutils literal notranslate"><span class="pre">CostReport.total</span></code></a></li>
+<li><a class="reference internal" href="#flexops.costing.flex_costing.CostReport.currency"><code class="docutils literal notranslate"><span class="pre">CostReport.currency</span></code></a></li>
 </ul>
 </li>
 </ul>

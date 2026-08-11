@@ -341,11 +341,12 @@
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.OperatingCostBreakdown">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.costing.flex_costing.</span></span><span class="sig-name descname"><span class="pre">OperatingCostBreakdown</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">electricity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fuel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalar</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dr_revenue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.costing.flex_costing.OperatingCostBreakdown" title="Link to this definition">¶</a></dt>
 <dd><p>Categorized operating cost from <a class="reference internal" href="flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost" title="flexops.costing.flex_costing.FlexCostingData.report_cost"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FlexCostingData.report_cost()</span></code></a>.</p>
+<p>Every value is a magnitude in the report’s currency (<a class="reference internal" href="flexops.costing.flex_costing.CostReport.html#flexops.costing.flex_costing.CostReport.currency" title="flexops.costing.flex_costing.CostReport.currency"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CostReport.currency</span></code></a>).</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.OperatingCostBreakdown.electricity">
 <span class="sig-name descname"><span class="pre">electricity</span></span><a class="headerlink" href="#flexops.costing.flex_costing.OperatingCostBreakdown.electricity" title="Link to this definition">¶</a></dt>
 <dd><p>EECO post-hoc electricity bill on the realized aggregate
-power ($).</p>
+power.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
@@ -357,7 +358,7 @@ power ($).</p>
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.OperatingCostBreakdown.fuel">
 <span class="sig-name descname"><span class="pre">fuel</span></span><a class="headerlink" href="#flexops.costing.flex_costing.OperatingCostBreakdown.fuel" title="Link to this definition">¶</a></dt>
 <dd><p>EECO post-hoc fuel bill on the realized volumetric usage, summed
-over every fuel found in the model ($); <code class="docutils literal notranslate"><span class="pre">0</span></code> when none burns fuel.</p>
+over every fuel found in the model; <code class="docutils literal notranslate"><span class="pre">0</span></code> when none burns fuel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
@@ -368,7 +369,7 @@ over every fuel found in the model ($); <code class="docutils literal notranslat
 <dl class="py attribute">
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.OperatingCostBreakdown.fixed">
 <span class="sig-name descname"><span class="pre">fixed</span></span><a class="headerlink" href="#flexops.costing.flex_costing.OperatingCostBreakdown.fixed" title="Link to this definition">¶</a></dt>
-<dd><p>The configured fixed operating cost ($, a constant).</p>
+<dd><p>The configured fixed operating cost (a constant).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
@@ -380,7 +381,7 @@ over every fuel found in the model ($); <code class="docutils literal notranslat
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.OperatingCostBreakdown.scalar">
 <span class="sig-name descname"><span class="pre">scalar</span></span><a class="headerlink" href="#flexops.costing.flex_costing.OperatingCostBreakdown.scalar" title="Link to this definition">¶</a></dt>
 <dd><p>Non-energy scalar operating cost summed over registered
-scalar-cost entries ($); <code class="docutils literal notranslate"><span class="pre">0</span></code> when none registered.</p>
+scalar-cost entries; <code class="docutils literal notranslate"><span class="pre">0</span></code> when none registered.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
@@ -391,7 +392,7 @@ scalar-cost entries ($); <code class="docutils literal notranslate"><span class=
 <dl class="py attribute">
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.OperatingCostBreakdown.dr_revenue">
 <span class="sig-name descname"><span class="pre">dr_revenue</span></span><a class="headerlink" href="#flexops.costing.flex_costing.OperatingCostBreakdown.dr_revenue" title="Link to this definition">¶</a></dt>
-<dd><p>Demand-response incentive credit ($, subtracted); <code class="docutils literal notranslate"><span class="pre">0</span></code> in v0
+<dd><p>Demand-response incentive credit (subtracted); <code class="docutils literal notranslate"><span class="pre">0</span></code> in v0
 (DR is containers-only).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
@@ -403,7 +404,7 @@ scalar-cost entries ($); <code class="docutils literal notranslate"><span class=
 <dl class="py attribute">
 <dt class="sig sig-object py" id="flexops.costing.flex_costing.OperatingCostBreakdown.total">
 <span class="sig-name descname"><span class="pre">total</span></span><a class="headerlink" href="#flexops.costing.flex_costing.OperatingCostBreakdown.total" title="Link to this definition">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">electricity</span> <span class="pre">+</span> <span class="pre">fuel</span> <span class="pre">+</span> <span class="pre">fixed</span> <span class="pre">+</span> <span class="pre">scalar</span> <span class="pre">-</span> <span class="pre">dr_revenue</span></code> ($).</p>
+<dd><p><code class="docutils literal notranslate"><span class="pre">electricity</span> <span class="pre">+</span> <span class="pre">fuel</span> <span class="pre">+</span> <span class="pre">fixed</span> <span class="pre">+</span> <span class="pre">scalar</span> <span class="pre">-</span> <span class="pre">dr_revenue</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>

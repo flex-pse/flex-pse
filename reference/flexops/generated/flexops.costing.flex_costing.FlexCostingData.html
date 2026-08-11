@@ -417,7 +417,7 @@ Required override from IDAES <cite>FlowsheetCostingBlockData</cite>.</p>
 <span class="sig-name descname"><span class="pre">register_scalar_cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_units</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec" title="flexops.costing.flex_costing.ScalarCostSpec"><span class="pre">ScalarCostSpec</span></a></span></span><a class="headerlink" href="#flexops.costing.flex_costing.FlexCostingData.register_scalar_cost" title="Link to this definition">¶</a></dt>
 <dd><p>Register a non-energy scalar operating cost (never billed via EECO).</p>
 <p>Costs an arbitrary time-indexed rate as <code class="docutils literal notranslate"><span class="pre">price</span> <span class="pre">×</span> <span class="pre">Σ_t</span> <span class="pre">quantity[t]</span> <span class="pre">×</span> <span class="pre">dt</span></code> —
-e.g. water withdrawal ($/m³), chemical dosing ($/kg), or a product-revenue
+e.g. water withdrawal per m³, chemical dosing per kg, or a product-revenue
 credit (a negative <code class="docutils literal notranslate"><span class="pre">price</span></code>). Built entirely in flex-pse; EECO is not
 involved.</p>
 <dl class="field-list simple">
@@ -425,8 +425,8 @@ involved.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>name</strong> – The cost’s name.</p></li>
 <li><p><strong>quantity</strong> – A time-indexed <code class="docutils literal notranslate"><span class="pre">Var</span></code>/<code class="docutils literal notranslate"><span class="pre">Expression</span></code> (a rate).</p></li>
-<li><p><strong>price</strong> – The signed price per unit quantity (positive = cost, negative
-= revenue/credit).</p></li>
+<li><p><strong>price</strong> – The signed price per unit quantity, in the currency basis
+(positive = cost, negative = revenue/credit).</p></li>
 <li><p><strong>quantity_units</strong> – The Pyomo units <code class="docutils literal notranslate"><span class="pre">quantity</span></code> is converted to before
 costing (a rate, e.g. <code class="docutils literal notranslate"><span class="pre">m**3/hr</span></code>).</p></li>
 <li><p><strong>unit</strong> – The unit block this cost is attributed to, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for a
@@ -494,7 +494,8 @@ never <code class="docutils literal notranslate"><span class="pre">value(model.o
 block reads its own components).</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The <a class="reference internal" href="flexops.costing.flex_costing.CostReport.html#flexops.costing.flex_costing.CostReport" title="flexops.costing.flex_costing.CostReport"><code class="xref py py-class docutils literal notranslate"><span class="pre">CostReport</span></code></a> breakdown.</p>
+<dd class="field-even"><p>The <a class="reference internal" href="flexops.costing.flex_costing.CostReport.html#flexops.costing.flex_costing.CostReport" title="flexops.costing.flex_costing.CostReport"><code class="xref py py-class docutils literal notranslate"><span class="pre">CostReport</span></code></a> breakdown, whose <code class="docutils literal notranslate"><span class="pre">currency</span></code> names the basis
+every value in it is a magnitude in.</p>
 </dd>
 </dl>
 </dd></dl>
