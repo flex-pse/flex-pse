@@ -817,31 +817,6 @@ class OperatingCostHandles:
     eeco_block: Any
 
 
-def _prorate_customer_charge(charge_dict: dict, scale: float) -> dict:
-    """Scale the fixed (customer) charge rate to a sub-month horizon's fraction.
-
-    The customer charge is a flat ``$/month``, so scaling its rate scales that
-    line item exactly. Demand proration is EECO's (``get_charge_dict``'s
-    ``demand_scale_factor``, which is assessed-aware) and the energy/tiered
-    arithmetic is untouched; this only touches the customer keys, and only when
-    the horizon is shorter than its month. Used for the whole-lump customer
-    charge; ``get_charge_dict(scale_fixed_charges=True)`` spreads it instead.
-
-    Args:
-        charge_dict: EECO's charge-array dictionary, modified in place.
-        scale: The prorating factor from :func:`monthly_scale_factor`.
-
-    Returns:
-        ``charge_dict``, with the customer charge scaled.
-    """
-    if scale >= 1.0:
-        return charge_dict
-    for key, array in charge_dict.items():
-        if key.split("_")[1] == _CUSTOMER:
-            charge_dict[key] = array * scale
-    return charge_dict
-
-
 def _charge_dict(
     tariff: pd.DataFrame,
     time_index: pd.DatetimeIndex,
@@ -857,13 +832,10 @@ def _charge_dict(
         time_index: The horizon's naive datetime index.
         dt_hours: Timestep length in hours.
         prorate: Scale monthly-assessed demand and fixed charges to the horizon
-            length. Demand is scaled by EECO (``demand_scale_factor``, which skips
-            daily-assessed demand); the customer charge is scaled by
-            :func:`_prorate_customer_charge`, or spread by ``scale_fixed_charges``.
+            horizon length; implies spreading the fixed charge.
         scale_fixed_charges: Spread each fixed (customer) charge evenly across the
-            horizon's timesteps via EECO's ``get_charge_dict`` instead of billing
-            it whole, so the charge is additive per timestep for a rolling horizon
-            that commits a prefix.
+            horizon's timesteps even when not prorating, so it is additive per
+            timestep for a rolling horizon that commits a prefix.
 
     Returns:
         EECO's charge-array dictionary.
@@ -875,17 +847,14 @@ def _charge_dict(
         time_index[0] + len(time_index) * pd.Timedelta(hours=dt_hours)
     ).to_pydatetime()
     scale = monthly_scale_factor(time_index, dt_hours) if prorate else 1.0
-    charge_dict = _eeco_costs.get_charge_dict(
+    return _eeco_costs.get_charge_dict(
         start,
         end,
         tariff,
         resolution=_resolution_str(dt_hours),
-        scale_fixed_charges=scale_fixed_charges,
+        scale_fixed_charges=scale_fixed_charges or prorate,
         demand_scale_factor=scale,
     )
-    if prorate and not scale_fixed_charges:
-        charge_dict = _prorate_customer_charge(charge_dict, scale)
-    return charge_dict
 
 
 def _add_utility_cost(
