@@ -12,6 +12,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **`FlexCosting.report_cost` and the `evaluate_cost`/`evaluate_fuel_cost` bridges gained two optional sub-billing-period arguments** for billing a horizon as one slice of a longer billing period (the rolling-horizon case M12 will use), both defaulting off so standalone-horizon behavior is unchanged: `prev_demand_dict`, a prior-demand carry forwarded to EECO so it bills only the demand *incremental* above the running peak (rather than recounting the charge's full-period peak in every window); and `scale_fixed_charges`, which spreads the fixed (customer) charge across the horizon's timesteps so it stays additive across windows instead of being billed whole each window.
+- **Sub-month proration of the monthly-assessed demand and fixed charges is now delegated to EECO's `get_charge_dict`** — demand via an assessed-aware `demand_scale_factor` (which leaves daily-assessed demand, billed per day, unscaled) and the fixed charge via the `scale_fixed_charges` spread — replacing flex-pse's own rate-level proration helpers (`_prorate_charge_dict`, `_daily_assessed_demand_names`, and the fixed-charge splicer). Reported totals are unchanged; the only representational shift is that a prorated customer charge is now spread across the horizon's timesteps rather than kept as a single lump.
 - **Renamed the example plant block `svcw` to `waterfacility`** throughout the API-freeze script, its config twin, the docs, and the plan. A placeholder name only; no API or behavior change.
 
 ### Removed
