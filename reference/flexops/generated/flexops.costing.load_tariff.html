@@ -344,7 +344,7 @@
 <p><code class="docutils literal notranslate"><span class="pre">source</span></code> is what a <code class="docutils literal notranslate"><span class="pre">CostingConfig.tariff_source</span></code> string resolves to: a
 JSON or CSV file path, an in-memory dict/records structure, or an already
 built rate_data <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> (passed through after validation). A <code class="docutils literal notranslate"><span class="pre">.csv</span></code>
-path is routed through <a class="reference internal" href="flexops.costing.tariff_csv_to_dict.html#flexops.costing.tariff_csv_to_dict" title="flexops.costing.tariff_csv_to_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">tariff_csv_to_dict()</span></code></a> first. EECO 0.2.1 has no
+path is routed through <a class="reference internal" href="flexops.costing.tariff_csv_to_dict.html#flexops.costing.tariff_csv_to_dict" title="flexops.costing.tariff_csv_to_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">tariff_csv_to_dict()</span></code></a> first. EECO 0.3.0 has no
 tariff loader of its own — its cost functions consume a <code class="docutils literal notranslate"><span class="pre">rate_data</span></code>
 DataFrame directly — so that DataFrame <em>is</em> the EECO tariff object here.</p>
 <dl class="field-list simple">

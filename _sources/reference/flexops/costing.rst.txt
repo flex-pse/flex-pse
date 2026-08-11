@@ -17,7 +17,7 @@ imports ``eeco``, so there is one file to fix when EECO's API moves.
 EECO owns all cost math; these wrappers are glue: they marshal inputs, rename
 EECO's outputs to stable flex-pse names, and translate EECO/pandas errors into
 the flex-pse exception hierarchy. A flex-pse tariff object is simply an EECO
-``rate_data`` ``DataFrame`` (EECO 0.2.1 has no tariff loader of its own; its
+``rate_data`` ``DataFrame`` (EECO 0.3.0 has no tariff loader of its own; its
 cost functions consume that frame directly).
 
 .. note:: **EECO is only needed for tariffs.** The ``eeco`` import is soft, so
