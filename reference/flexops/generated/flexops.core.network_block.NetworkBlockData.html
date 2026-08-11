@@ -373,6 +373,33 @@ live on different plants and carry different components.</p>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="flexops.core.network_block.NetworkBlockData.add_subset_aggregate">
+<span class="sig-name descname"><span class="pre">add_subset_aggregate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plants</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="flexops.core.plant_block.PlantBlockData.html#flexops.core.plant_block.PlantBlockData" title="flexops.core.plant_block.PlantBlockData"><span class="pre">PlantBlockData</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">var_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.network_block.NetworkBlockData.add_subset_aggregate" title="Link to this definition">¶</a></dt>
+<dd><p>Sum a time-indexed quantity across a chosen subset of this network’s plants.</p>
+<p>Unlike the network’s own totals (always every plant, to avoid
+double-counting per architecture §3.3/R7), this aggregates whatever
+plants the caller names — e.g. one building’s power draw within a
+larger campus. A plant missing <code class="docutils literal notranslate"><span class="pre">var_name</span></code> is skipped with a logged
+warning; the aggregate is built from whichever plants have it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plants</strong> – The child plants to aggregate over.</p></li>
+<li><p><strong>var_name</strong> – Local name of the time-indexed quantity to look up on
+each plant via <code class="docutils literal notranslate"><span class="pre">find_component</span></code>.</p></li>
+<li><p><strong>name</strong> – Local name for the aggregate on this network. Defaults to
+<code class="docutils literal notranslate"><span class="pre">f&quot;aggregate_{var_name}&quot;</span></code>.</p></li>
+<li><p><strong>replace</strong> – If an aggregate named <code class="docutils literal notranslate"><span class="pre">name</span></code> already exists, update its
+defining Constraint in place to the new <code class="docutils literal notranslate"><span class="pre">plants</span></code>/<code class="docutils literal notranslate"><span class="pre">var_name</span></code>
+(never deleting the Var or Constraint, conventions §9). If
+<code class="docutils literal notranslate"><span class="pre">False</span></code>, leave the existing aggregate untouched and log a
+warning instead.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="flexops.core.network_block.NetworkBlockData.plants">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">plants</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="flexops.core.plant_block.PlantBlockData.html#flexops.core.plant_block.PlantBlockData" title="flexops.core.plant_block.PlantBlockData"><span class="pre">PlantBlockData</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#flexops.core.network_block.NetworkBlockData.plants" title="Link to this definition">¶</a></dt>
@@ -446,6 +473,7 @@ live on different plants and carry different components.</p>
 <li><a class="reference internal" href="#">NetworkBlockData</a><ul>
 <li><a class="reference internal" href="#flexops.core.network_block.NetworkBlockData"><code class="docutils literal notranslate"><span class="pre">NetworkBlockData</span></code></a><ul>
 <li><a class="reference internal" href="#flexops.core.network_block.NetworkBlockData.add_link"><code class="docutils literal notranslate"><span class="pre">NetworkBlockData.add_link()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.core.network_block.NetworkBlockData.add_subset_aggregate"><code class="docutils literal notranslate"><span class="pre">NetworkBlockData.add_subset_aggregate()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.network_block.NetworkBlockData.plants"><code class="docutils literal notranslate"><span class="pre">NetworkBlockData.plants</span></code></a></li>
 </ul>
 </li>
