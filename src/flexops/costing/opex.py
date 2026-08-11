@@ -817,71 +817,27 @@ class OperatingCostHandles:
     eeco_block: Any
 
 
-def _daily_assessed_demand_names(tariff: pd.DataFrame) -> set[str]:
-    """Names of demand charges the tariff assesses per day rather than per month.
+def _prorate_customer_charge(charge_dict: dict, scale: float) -> dict:
+    """Scale the fixed (customer) charge rate to a sub-month horizon's fraction.
 
-    A daily-assessed demand charge is already billed at the horizon's own
-    granularity, so it must never be prorated. EECO treats a missing/absent
-    ``assessed`` value as ``"monthly"``.
-
-    Args:
-        tariff: An EECO rate_data DataFrame.
-
-    Returns:
-        The charge names, in the dashed form EECO builds its keys from.
-    """
-    if _ASSESSED not in tariff.columns or "type" not in tariff.columns:
-        return set()
-    rows = tariff[
-        (tariff["type"] == _DEMAND)
-        & (tariff[_ASSESSED].astype(str).str.lower() == "daily")
-    ]
-    return {str(name).replace("_", "-") for name in rows["name"]}
-
-
-def _prorate_charge_dict(
-    charge_dict: dict,
-    tariff: pd.DataFrame,
-    scale: float,
-    *,
-    scale_customer: bool = True,
-) -> dict:
-    """Scale monthly-assessed demand and fixed charge *rates* to the horizon.
-
-    Prorating is applied to the charge rates rather than to the computed cost.
-    Both are billed linearly in their rate (``$/kW × kW``, and a flat ``$/month``),
-    so scaling the rate scales that line item exactly — and doing it here leaves
-    the energy charges, and therefore EECO's tiered-surcharge arithmetic,
-    completely untouched.
-
-    ``calculate_cost`` adds the customer charge whole, and its
-    ``demand_scale_factor`` is suppressed for charges spanning ``<= 1`` day, which
-    — because EECO clips charge-key dates to the horizon — silently includes
-    *every* monthly charge on a one-day horizon, the very case prorating exists
-    for. Deciding demand proration from the tariff's ``assessed`` column instead
-    is correct at any horizon length.
+    The customer charge is a flat ``$/month``, so scaling its rate scales that
+    line item exactly. Demand proration is EECO's (``get_charge_dict``'s
+    ``demand_scale_factor``, which is assessed-aware) and the energy/tiered
+    arithmetic is untouched; this only touches the customer keys, and only when
+    the horizon is shorter than its month. Used for the whole-lump customer
+    charge; ``get_charge_dict(scale_fixed_charges=True)`` spreads it instead.
 
     Args:
         charge_dict: EECO's charge-array dictionary, modified in place.
-        tariff: The rate_data frame the dictionary came from.
         scale: The prorating factor from :func:`monthly_scale_factor`.
-        scale_customer: Whether to prorate the customer (fixed) charge. Pass
-            ``False`` when it is already spread by
-            ``get_charge_dict(scale_fixed_charges=True)`` to avoid double-scaling.
 
     Returns:
-        ``charge_dict``, with monthly-assessed arrays scaled.
+        ``charge_dict``, with the customer charge scaled.
     """
     if scale >= 1.0:
         return charge_dict
-    daily = _daily_assessed_demand_names(tariff)
     for key, array in charge_dict.items():
-        # Keys are "<utility>_<type>_<name>_<start>_<end>_<limit>"; the name never
-        # contains an underscore (EECO dashes them) so this split is unambiguous.
-        _utility, charge_type, name = key.split("_")[:3]
-        is_customer = charge_type == _CUSTOMER and scale_customer
-        is_monthly_demand = charge_type == _DEMAND and name not in daily
-        if is_customer or is_monthly_demand:
+        if key.split("_")[1] == _CUSTOMER:
             charge_dict[key] = array * scale
     return charge_dict
 
@@ -901,12 +857,13 @@ def _charge_dict(
         time_index: The horizon's naive datetime index.
         dt_hours: Timestep length in hours.
         prorate: Scale monthly-assessed demand and fixed charges to the horizon
-            length (see :func:`_prorate_charge_dict`).
+            length. Demand is scaled by EECO (``demand_scale_factor``, which skips
+            daily-assessed demand); the customer charge is scaled by
+            :func:`_prorate_customer_charge`, or spread by ``scale_fixed_charges``.
         scale_fixed_charges: Spread each fixed (customer) charge evenly across the
             horizon's timesteps via EECO's ``get_charge_dict`` instead of billing
             it whole, so the charge is additive per timestep for a rolling horizon
-            that commits a prefix. Already horizon-fractioned, so it is excluded
-            from :func:`_prorate_charge_dict` below.
+            that commits a prefix.
 
     Returns:
         EECO's charge-array dictionary.
@@ -917,18 +874,17 @@ def _charge_dict(
     end = (
         time_index[0] + len(time_index) * pd.Timedelta(hours=dt_hours)
     ).to_pydatetime()
+    scale = monthly_scale_factor(time_index, dt_hours) if prorate else 1.0
     charge_dict = _eeco_costs.get_charge_dict(
         start,
         end,
         tariff,
         resolution=_resolution_str(dt_hours),
         scale_fixed_charges=scale_fixed_charges,
+        demand_scale_factor=scale,
     )
-    if prorate:
-        scale = monthly_scale_factor(time_index, dt_hours)
-        charge_dict = _prorate_charge_dict(
-            charge_dict, tariff, scale, scale_customer=not scale_fixed_charges
-        )
+    if prorate and not scale_fixed_charges:
+        charge_dict = _prorate_customer_charge(charge_dict, scale)
     return charge_dict
 
 
