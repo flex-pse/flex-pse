@@ -1365,7 +1365,9 @@ class FlexCostingData(FlowsheetCostingBlockData):
         total = priced * quantity_units * dt_hours * pyunits.hr
         return float(pyo.value(pyunits.convert(total, self._currency)))
 
-    def report_cost(self, model) -> CostReport:
+    def report_cost(
+        self, model, *, prev_demand_dict=None, scale_fixed_charges=False
+    ) -> CostReport:
         """Return the reported, categorized cost, evaluated **post-solve**.
 
         The user-facing cost (§6 reporting rule; M13 surfaces it). Operating
@@ -1378,6 +1380,13 @@ class FlexCostingData(FlowsheetCostingBlockData):
         Args:
             model: The solved model (accepted for the documented API; the costing
                 block reads its own components).
+            prev_demand_dict: Optional prior-demand carry-over so EECO bills only the
+                demand incremental above the running peak. ``None`` (default) bills
+                the horizon standalone.
+            scale_fixed_charges: Spread the fixed (customer) charge evenly across
+                the horizon's timesteps instead of billing it whole, so windows
+                sum to one charge over a billing period. ``False`` (default) bills
+                it whole; leaves a standalone-horizon total unchanged.
 
         Returns:
             The :class:`CostReport` breakdown.
@@ -1401,6 +1410,8 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 dr_config=self.dr,
                 time_index=tb.datetime_index,
                 prorate=self.config.prorate_monthly_charges,
+                prev_demand_dict=prev_demand_dict,
+                scale_fixed_charges=scale_fixed_charges,
             )
 
         fuel = 0.0
@@ -1425,6 +1436,8 @@ class FlexCostingData(FlowsheetCostingBlockData):
                     dr_config=self.dr,
                     time_index=tb.datetime_index,
                     prorate=self.config.prorate_monthly_charges,
+                    prev_demand_dict=prev_demand_dict,
+                    scale_fixed_charges=scale_fixed_charges,
                 )
 
         fixed = float(pyo.value(self.opex.fixed_operating_cost))

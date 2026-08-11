@@ -13,6 +13,7 @@ EECO.
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pyomo.environ as pyo
 import pytest
 from pyomo.core.base.units_container import InconsistentUnitsError, UnitsError
@@ -38,6 +39,7 @@ from flexops.costing import (
     merge_tariffs,
     monthly_scale_factor,
 )
+from flexops.costing import opex as opex_mod
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.unit_models import Pump, Tank
 
@@ -934,7 +936,6 @@ def test_report_cost_flat_priced_is_native():
 @pytest.mark.unit
 def test_flat_priced_model_needs_no_eeco(monkeypatch):
     """With every carrier flat-priced, build/cost/report never touch eeco."""
-    from flexops.costing import opex as opex_mod
 
     monkeypatch.setattr(opex_mod, "_HAS_EECO", False)
     m = _pump_tank_costing(
@@ -948,7 +949,6 @@ def test_flat_priced_model_needs_no_eeco(monkeypatch):
 @pytest.mark.unit
 def test_tariff_path_without_eeco_raises_install_hint(monkeypatch):
     """A tariff path with eeco unavailable errors naming both remedies."""
-    from flexops.costing import opex as opex_mod
 
     monkeypatch.setattr(opex_mod, "_HAS_EECO", False)
     with pytest.raises(FlexConfigError, match="eeco"):
@@ -1299,7 +1299,6 @@ def test_crf_rejects_degenerate_rates():
 @pytest.mark.unit
 def test_monthly_scale_factor_partial_and_full_month():
     """The scale factor is horizon / calendar-month length, clamped at 1.0."""
-    import pandas as pd
 
     july_day = pd.date_range("2025-07-08", periods=24, freq="h")
     assert monthly_scale_factor(july_day, 1.0) == pytest.approx(24.0 / 744.0)
@@ -1315,7 +1314,6 @@ def test_monthly_scale_factor_partial_and_full_month():
 @pytest.mark.unit
 def test_monthly_scale_factor_handles_december():
     """December works (a naive month+1 rollover would raise)."""
-    import pandas as pd
 
     dec_day = pd.date_range("2025-12-10", periods=24, freq="h")
     assert monthly_scale_factor(dec_day, 1.0) == pytest.approx(24.0 / 744.0)
