@@ -54,9 +54,9 @@ def build_model(config: ExampleConfig) -> pyo.ConcreteModel:
         # Constant-intensity relation (power = energy_intensity * flow): a
         # flow bound converts directly to a power bound. min_on_power covers
         # the fixed facility draw so "always on" stays feasible.
-        # energy_intensity is already a mutable Param on the built Pump, in
-        # kWh/m^3 (Pump._build_constant_intensity_relation) -- read it back
-        # rather than re-parsing config.
+        # energy_intensity is already a fixed Var on the built Pump, in
+        # kWh/m^3 (OpsBlockData.add_constant_intensity_relation) -- read it
+        # back rather than re-parsing config.
         energy_intensity = pyo.value(plant.pump.energy_intensity)
         status = add_status(
             plant.pump,

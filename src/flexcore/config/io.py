@@ -17,12 +17,29 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from flexcore.config.schema import CURRENT_SCHEMA_VERSION, ModelConfig
+from flexcore.config.schema import CURRENT_SCHEMA_VERSION, ModelConfig, SurrogateSpec
 from flexcore.exceptions import FlexConfigError
 
-MIGRATIONS: dict[str, Callable[[dict], dict]] = {}
+
+def _to_0_0_2(data: dict) -> dict:
+    """Upgrade a 0.0.1 config to 0.0.2 by re-stamping its version.
+
+    0.0.2 only widened ``SurrogateSpec``: ``functional_form`` became an open
+    string and the optional ``source`` was added. Every 0.0.1 document is a
+    valid 0.0.2 document, so there is no data to rewrite.
+
+    Args:
+        data: The parsed 0.0.1 config.
+
+    Returns:
+        The same mapping, stamped 0.0.2.
+    """
+    return {**data, "schema_version": "0.0.2"}
+
+
+MIGRATIONS: dict[str, Callable[[dict], dict]] = {"0.0.1": _to_0_0_2}
 """Source version -> upgrade hook, applied in sequence on load. Each hook must
-set the new ``schema_version`` on the dict it returns. Empty at 0.0.1."""
+set the new ``schema_version`` on the dict it returns."""
 
 _SCHEMA_FILENAME = "model_config.schema.json"
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
@@ -94,8 +111,108 @@ def _read(path: Path) -> dict:
     return data
 
 
+_SURROGATE_SOURCE_FIELDS = ("coefficients", "input_variables", "output_variables")
+
+
+def load_surrogate_source(spec: SurrogateSpec, base_dir=None) -> SurrogateSpec:
+    """Fill a surrogate in from the sidecar file its ``source`` names.
+
+    Lets a relationship live beside the config rather than inside it — a fitted
+    curve with hundreds of terms, or one a tool wrote separately. The file is a
+    JSON object holding any of ``coefficients``, ``input_variables`` and
+    ``output_variables``; whatever it supplies replaces what the spec wrote
+    inline. ``source`` is kept on the result, so the config still points at
+    where the relationship came from.
+
+    Args:
+        spec: The :class:`~flexcore.config.schema.SurrogateSpec` to fill in;
+            returned unchanged when it names no ``source``. Never mutated.
+        base_dir: Directory a relative ``source`` resolves against (the
+            directory of the config file that named it). None resolves against
+            the current working directory.
+
+    Returns:
+        A filled-in copy of ``spec``.
+
+    Raises:
+        FlexConfigError: If the source is not a readable ``.json`` file, is not
+            a JSON object, carries a key that is not a surrogate field, or
+            supplies a value that fails validation.
+    """
+    if spec.source is None:
+        return spec
+    path = Path(spec.source)
+    if base_dir is not None and not path.is_absolute():
+        path = Path(base_dir) / path
+    if path.suffix.lower() != ".json":
+        raise FlexConfigError(
+            f"Unsupported surrogate source format {path.suffix!r} for "
+            f"{spec.source}. Use a .json file.",
+            field="source",
+            value=spec.source,
+        )
+    try:
+        data = json.loads(path.read_text())
+    except OSError as exc:
+        raise FlexConfigError(
+            f"Could not read the surrogate source {path}: {exc.strerror}.",
+            field="source",
+            value=spec.source,
+        ) from exc
+    if not isinstance(data, dict):
+        raise FlexConfigError(
+            f"Surrogate source {path} must contain a JSON object with any of "
+            f"{', '.join(_SURROGATE_SOURCE_FIELDS)}, got "
+            f"{type(data).__name__}.",
+            field="source",
+            value=spec.source,
+        )
+    unknown = sorted(set(data) - set(_SURROGATE_SOURCE_FIELDS))
+    if unknown:
+        raise FlexConfigError(
+            f"Surrogate source {path} carries unknown key(s) {unknown}; it may "
+            f"only supply {', '.join(_SURROGATE_SOURCE_FIELDS)}.",
+            field="source",
+            value=unknown,
+        )
+    try:
+        return SurrogateSpec.model_validate({**spec.model_dump(), **data})
+    except ValidationError as exc:
+        raise FlexConfigError(
+            f"Invalid surrogate source {path}:\n{_format_validation_error(exc)}",
+            field="source",
+            value=spec.source,
+        ) from exc
+
+
+def _resolve_surrogate_sources(cfg: ModelConfig, base_dir) -> ModelConfig:
+    """Fill in every unit surrogate that names a sidecar file.
+
+    Called once at the config boundary so nothing downstream ever sees a spec
+    whose coefficients are still on disk (conventions §4).
+
+    Args:
+        cfg: The validated config, mutated in place.
+        base_dir: Directory a relative source resolves against.
+
+    Returns:
+        ``cfg``.
+    """
+    plants = cfg.network.plants.values() if cfg.network is not None else [cfg.plant]
+    for plant in plants:
+        for unit in plant.units.values():
+            if unit.surrogate is not None and unit.surrogate.source is not None:
+                unit.surrogate = load_surrogate_source(unit.surrogate, base_dir)
+    return cfg
+
+
 def load_model_config(source) -> ModelConfig:
     """Load and validate a config file or dict into a model config.
+
+    Any unit surrogate naming a ``source`` sidecar is filled in here, at the
+    config boundary, so nothing downstream sees a half-loaded relationship. A
+    relative source resolves against the config file's own directory, or the
+    working directory when the config came in as a dict.
 
     Args:
         source: Path to a ``.json`` config file, or an already-parsed config
@@ -107,14 +224,14 @@ def load_model_config(source) -> ModelConfig:
     Raises:
         FlexConfigError: If the format is unsupported, ``schema_version`` is
             missing, malformed, or newer than this build, a migration step is
-            missing, or the config fails validation (the message names the bad
-            field path).
+            missing, the config fails validation (the message names the bad
+            field path), or a surrogate ``source`` cannot be loaded.
     """
     if isinstance(source, Mapping):
-        data, name = dict(source), "the config dict"
+        data, name, base_dir = dict(source), "the config dict", None
     else:
         path = Path(source)
-        data, name = _read(path), str(path)
+        data, name, base_dir = _read(path), str(path), path.parent
 
     version = data.get("schema_version")
     if version is None:
@@ -156,9 +273,10 @@ def load_model_config(source) -> ModelConfig:
         version, parsed = new_version, new_parsed
 
     try:
-        return ModelConfig.model_validate(data)
+        cfg = ModelConfig.model_validate(data)
     except ValidationError as exc:
         raise FlexConfigError(_format_validation_error(exc)) from exc
+    return _resolve_surrogate_sources(cfg, base_dir)
 
 
 def dump_model_config(cfg: ModelConfig, path) -> None:

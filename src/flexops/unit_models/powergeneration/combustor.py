@@ -540,6 +540,7 @@ class CombustorData(OpsBlockData):
                     pyunits.kW,
                 )
 
+        self.register_relation(self.power_electrical_relation, target=power)
         surrogate = getattr(self.config.flexops_config, "surrogate", None)
         if surrogate is not None and surrogate.functional_form != "constant_intensity":
-            self.swap_energy_relation(surrogate, kind=nm.PowerKind.ELECTRICAL)
+            self.swap_relation("power_electrical_relation", surrogate)

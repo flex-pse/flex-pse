@@ -54,15 +54,23 @@ class PumpData(SISOBlockData):
 
     ``config.power_relation`` selects one of:
 
-    * ``"constant_intensity"`` (default):
+    * ``"constant_intensity"`` (default), built by the shared
+      :meth:`~flexops.core.ops_block.OpsBlockData.add_constant_intensity_relation`
+      (the same helper every other constant-intensity unit uses):
 
       .. math::
 
-          P_{elec}[t] = \text{energy\_intensity} \cdot \dot{V}_{in}[t]
+          P_{elec}[t] = \text{energy\_intensity} \cdot \dot{V}_{out}[t]
 
-      ``energy_intensity`` is in kWh/m^3 and the inlet ``flow_vol_phase`` in
+      The draw is metered on the flow the pump *delivers*, so the intensity
+      reads as energy per unit of product; the SISO pass-through ties that to
+      the inlet flow, so a fixed inlet still determines the draw.
+      ``energy_intensity`` is in kWh/m^3 and the outlet ``flow_vol_phase`` in
       m^3/hr, so kWh/m^3 * m^3/hr = kWh/hr = kW -- dimensionally exact with no
-      fudge factor.
+      fudge factor. The Constraint is named ``power_electrical_relation`` (the
+      swap contract, R11) and ``energy_intensity`` is a fixed, regressable Var,
+      so FlexParameterize can unfix and fit it, or swap the relation for a
+      richer one, exactly as on any other constant-intensity unit.
 
     * ``"hydraulic"``:
 
@@ -119,9 +127,9 @@ class PumpData(SISOBlockData):
         "energy_intensity",
         ConfigValue(
             default=0.5 * pyunits.kWh / pyunits.m**3,
-            description="Electrical energy per unit volume pumped (a mutable "
-            "Param once built), kWh/m^3. Used only when "
-            "power_relation='constant_intensity'.",
+            description="Electrical energy per unit volume delivered at the "
+            "outlet (a fixed, regressable Var once built), kWh/m^3. Used only "
+            "when power_relation='constant_intensity'.",
         ),
     )
     CONFIG.declare(
@@ -136,17 +144,30 @@ class PumpData(SISOBlockData):
     )
 
     def build(self) -> None:
-        """Build the SISO base, then the configured relation's Param(s)/power draw."""
+        """Build the SISO base, then the configured relation's Var(s)/power draw.
+
+        The ``hydraulic`` branch declares its own power draw before building
+        its physical power law (not an energy intensity, so it does not go
+        through :meth:`~flexops.core.ops_block.OpsBlockData
+        .add_constant_intensity_relation`, and is not swap-registered). The
+        default branch declares nothing itself:
+        ``add_constant_intensity_relation`` declares the power draw, the
+        intensity Var, and the swap-registered Constraint together, exactly as
+        every other constant-intensity unit does.
+        """
         super().build()
         tb = self._find_time_block()
 
-        power = self.declare_power(nm.PowerKind.ELECTRICAL)
-        self.register_io_variable(power, role="output")
-
         if self.config.power_relation == PumpPowerRelation.HYDRAULIC:
+            power = self.declare_power(nm.PowerKind.ELECTRICAL)
+            self.register_io_variable(power, role="output")
             self._build_hydraulic_relation(tb, power)
         else:
-            self._build_constant_intensity_relation(tb, power)
+            self.add_constant_intensity_relation(
+                self.flow_out,
+                kind=nm.PowerKind.ELECTRICAL,
+                intensity=self.config.energy_intensity,
+            )
 
     def _build_mass_balance(self) -> None:
         """Pass through every state var, except pressure under the hydraulic relation.
@@ -161,31 +182,6 @@ class PumpData(SISOBlockData):
             )
         else:
             super()._build_mass_balance()
-
-    def _build_constant_intensity_relation(self, tb, power) -> None:
-        """Build ``energy_intensity`` and the constant-intensity ``power_eq``."""
-        self.energy_intensity = pyo.Param(
-            initialize=pyo.value(
-                pyunits.convert(
-                    self.config.energy_intensity, pyunits.kWh / pyunits.m**3
-                )
-            ),
-            mutable=True,
-            units=pyunits.kWh / pyunits.m**3,
-            doc="Electrical energy per unit volume pumped.",
-        )
-        self.register_process_parameter(self.energy_intensity, regressable=True)
-
-        @self.Constraint(
-            tb.time_index,
-            doc="power_electrical = energy_intensity * inlet flow; "
-            "kWh/m^3 * m^3/hr = kW exactly, no fudge factor.",
-        )
-        def power_eq(b, t):
-            return power[t] == pyunits.convert(
-                b.energy_intensity * b.inlet_state.flow_vol_phase[t, "Liq"],
-                pyunits.kW,
-            )
 
     def _build_hydraulic_relation(self, tb, power) -> None:
         """Register inlet/outlet pressure as IO, then build efficiency/power_eq.

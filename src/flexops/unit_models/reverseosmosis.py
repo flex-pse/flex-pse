@@ -27,7 +27,12 @@ class ReverseOsmosisData(SIDOBlockData):
     .. math::
 
         \dot{V}_{perm}[t] &= \text{recovery} \cdot \dot{V}_{feed}[t] \\
-        P_{elec}[t] &= \text{energy\_intensity} \cdot \dot{V}_{feed}[t]
+        P_{elec}[t] &= \text{energy\_intensity} \cdot \dot{V}_{perm}[t]
+
+    The draw is metered on **permeate**, not feed: ``energy_intensity`` is the
+    skid's specific energy consumption, the kWh per m^3 of product the
+    desalination industry quotes. At a recovery below one the same number
+    therefore means a smaller absolute draw than a feed-based reading would.
 
     ``recovery_min``/``recovery_max`` are the recovery Var's bounds, defaulted
     to the seawater-RO window. They bind once the Var is unfixed — by a design
@@ -45,7 +50,7 @@ class ReverseOsmosisData(SIDOBlockData):
         Inherits the SIDO/OpsBlock config with ``split_fraction`` renamed to
         ``recovery`` (default 0.45); adds ``recovery_min`` (0.3),
         ``recovery_max`` (0.6), and ``energy_intensity`` (default
-        3.0 kWh/m^3 of feed).
+        3.0 kWh/m^3 of permeate).
 
     Example:
         >>> from flexops.testing import dummy_time_block
@@ -88,8 +93,10 @@ class ReverseOsmosisData(SIDOBlockData):
         "energy_intensity",
         ConfigValue(
             default=3.0 * pyunits.kWh / pyunits.m**3,
-            description="Electrical energy per unit volume of feed processed "
-            "(a fixed, regressable Var once built), kWh/m^3.",
+            description="Electrical energy per unit volume of permeate "
+            "produced -- the skid's specific energy consumption, the basis the "
+            "desalination industry quotes (a fixed, regressable Var once "
+            "built), kWh/m^3.",
         ),
     )
 
@@ -105,7 +112,7 @@ class ReverseOsmosisData(SIDOBlockData):
             }
         )
         self.add_constant_intensity_relation(
-            self.find_component(self._named("flow_in")),
+            self.find_component(self._named("flow_out_a")),
             kind=nm.PowerKind.ELECTRICAL,
             intensity=self.config.energy_intensity,
         )

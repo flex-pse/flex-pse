@@ -2,8 +2,11 @@
 
 import pyomo.environ as pyo
 import pytest
+from pyomo.environ import units as pyunits
 
+from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError
+from flexops import SimpleAqueousFlow, TimeBlock
 from flexops.testing import UnitModelTestHarness, dummy_time_block
 from flexops.unit_models import ReverseOsmosis
 
@@ -34,6 +37,63 @@ def test_reverseosmosis_outlet_semantics():
         assert pyo.value(m.unit.split_mass_balance[t].body) == pytest.approx(
             0.0, abs=1e-9
         )
+
+
+@pytest.mark.unit
+def test_reverseosmosis_energy_intensity_is_per_permeate():
+    """RO's specific energy consumption is quoted per m^3 of permeate produced.
+
+    The skid's draw follows the product it makes, not the feed it takes, so at
+    recovery below one the same intensity means a smaller absolute draw than a
+    feed-based reading would.
+    """
+    m = dummy_time_block(3)
+    m.unit = ReverseOsmosis(property_package=m.properties)
+    m.unit.feed[0].set_value(10.0)
+    m.unit.permeate[0].set_value(4.5)
+    m.unit.power_electrical[0].set_value(0.0)
+
+    # power - 3.0 kWh/m^3 * 4.5 m^3/hr == -13.5 kW
+    assert pyo.value(m.unit.power_electrical_relation[0].body) == pytest.approx(-13.5)
+
+
+@pytest.mark.component
+def test_recovery_relation_is_swappable():
+    """A richer recovery model replaces the split definition in place.
+
+    ``split_definition`` (determining ``permeate``, RO's name for
+    ``flow_out_a``) is registered as a swappable relation (M10, extended
+    beyond energy relationships). Conservation (``split_mass_balance``) is
+    never registered and so is untouched by the swap.
+    """
+    m = pyo.ConcreteModel()
+    m.time_block = TimeBlock(
+        start_date="2025-01-01", end_date="2025-01-01T00:45", time_step=15 * pyunits.min
+    )
+    m.properties = SimpleAqueousFlow(has_pressure=True)
+    m.unit = ReverseOsmosis(property_package=m.properties)
+
+    m.unit.swap_relation(
+        "split_definition",
+        SurrogateSpec(
+            functional_form="quadratic",
+            input_variables=["inlet_state.pressure"],
+            coefficients={
+                "intercept": 0.3,
+                "inlet_state.pressure": 1e-6,
+                "inlet_state.pressure^2": 1e-12,
+            },
+        ),
+    )
+
+    m.unit.inlet_state.pressure[0].set_value(3.0e5)
+    m.unit.feed[0].set_value(10.0)
+    m.unit.permeate[0].set_value(0.0)
+
+    assert m.unit.split_definition[0].active is False
+    assert m.unit.split_mass_balance[0].active is True
+    # permeate - (0.3 + 1e-6*3e5 + 1e-12*(3e5)^2) == -(0.3 + 0.3 + 0.09) == -0.69
+    assert pyo.value(m.unit.split_definition_fitted[0].body) == pytest.approx(-0.69)
 
 
 @pytest.mark.unit

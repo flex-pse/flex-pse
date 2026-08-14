@@ -29,6 +29,19 @@ flex-pse never deletes model components; a built model is updated in place via
    OpsBlockData
    RelaxationPolicy
 
+A unit's own relationships are swapped in place from a
+:class:`~flexcore.config.schema.SurrogateSpec` via
+:meth:`OpsBlockData.swap_relation` — not only its energy draw: any relationship
+the unit declared swappable with :meth:`OpsBlockData.register_relation` (an RO
+skid's recovery, a tank's level-to-volume geometry). Conservation constraints
+are never registered, so they can never be swapped. Every polynomial form
+shares one builder and differs only in the term degree it admits, but the
+builder registry is not limited to polynomials — see
+:doc:`../../explanation/config_schema` for the coefficient-term grammar and the
+builder contract.
+
+.. autodata:: POLYNOMIAL_FORMS
+
 Composition: PlantBlock and NetworkBlock
 ----------------------------------------
 
@@ -93,5 +106,8 @@ The registry records FlexParameterize and the docs generator consume.
    ParameterRecord
    PowerRecord
    FuelUsageRecord
+   RelationRecord
 
 .. autofunction:: iter_io_registry
+
+.. autofunction:: iter_swapped_relations

@@ -21,7 +21,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CURRENT_SCHEMA_VERSION = "0.0.1"
+CURRENT_SCHEMA_VERSION = "0.0.2"
 """str: the semantic schema version this build writes and validates against."""
 
 
@@ -52,20 +52,36 @@ class IOVariableSpec(_StrictModel):
 class SurrogateSpec(_StrictModel):
     """A fitted (or default) energy/IO relationship for a unit."""
 
-    functional_form: Literal[
-        "constant_intensity", "linear", "nn", "arima", "multiconvex"
-    ] = Field(
-        description="Functional form of the relationship. 'nn', 'arima', and "
-        "'multiconvex' are reserved: the schema accepts them but construction "
-        "rejects them until post-v0."
+    functional_form: str = Field(
+        description="Name of the relationship builder to use, e.g. "
+        "'constant_intensity', 'linear', 'quadratic', 'bilinear'. Deliberately "
+        "an open string rather than a fixed list: builders are registered in "
+        "code, so a new functional form never needs a schema revision. A name "
+        "no builder is registered for is rejected when the model is built, not "
+        "when the config is validated."
     )
     coefficients: dict[str, float] = Field(
         default_factory=dict,
-        description="Named numeric coefficients of the fitted relationship.",
+        description="Coefficients of the relationship, keyed by the term each "
+        "multiplies. A term is a '*'-separated product of input variable names, "
+        "each optionally raised to an integer power with '^': 'flow_out', "
+        "'flow_out^2', 'flow_out*outlet_state.pressure'. The reserved key "
+        "'intercept' is the constant term. Each coefficient is read in kW over "
+        "the product of its factors' own units.",
+    )
+    source: str | None = Field(
+        default=None,
+        description="Optional path to a JSON file supplying this "
+        "relationship's coefficients, input_variables, and output_variables, "
+        "for a relationship too large to inline or not expressible as "
+        "coefficients at all. A relative path resolves against the directory of "
+        "the config file that names it. Anything the file supplies replaces "
+        "what is written inline here.",
     )
     input_variables: list[str] = Field(
         default_factory=list,
-        description="Names of the relationship's input variables.",
+        description="Names of the relationship's input variables, each "
+        "resolvable on the unit; the coefficient terms name these.",
     )
     output_variables: list[str] = Field(
         default_factory=list,

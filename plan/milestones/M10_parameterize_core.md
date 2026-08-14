@@ -25,6 +25,20 @@ The invariant tying them together (architecture §5, R10): the in-place
 `apply_to_model` result matches the emitted-config rebuild — the two directions
 produce the same behavior.
 
+Fitting from data is one way to get a `SurrogateSpec`, not the only way: when
+the unit's energy relationship is already known in closed algebraic form (a
+vendor curve, a datasheet coefficient, a physics-derived expression), both
+`emit_model_config` and `apply_to_model` must accept that `SurrogateSpec`
+directly and attach it exactly as they would a fitted one — no data, no
+`check_sufficiency`, no regressor involved for that unit.
+
+FlexParameterize is data-source agnostic: the input DataFrame may come from a
+historian, a spreadsheet export, a one-off CSV, or any other tabular source.
+Nothing downstream of `TagMap` — `check_sufficiency`, the regressors, `emit.py`,
+`apply.py` — is historian-specific or requires historian integration; the only
+requirement is that `TagMap` maps the data's columns to the correct model
+aliases.
+
 ## Read first
 - `plan/01_architecture.md` §5 (the whole flexparameterize section — pipeline,
   TagMap, SufficiencyReport, zero-degree-of-freedom regression, `apply.py` the
@@ -45,7 +59,9 @@ produce the same behavior.
 - `plan/02_testing_and_ci.md` §1, §5 (tier markers; deterministic tests)
 
 ## Files to create or modify
-- `src/flexparameterize/tags.py` — `TagMap`: historian-tag ↔ model-alias mapping + fuzzy unmapped report.
+- `src/flexparameterize/tags.py` — `TagMap`: source-column ↔ model-alias mapping
+  (any tabular data source — historian export, spreadsheet, CSV — not
+  historian-specific) + fuzzy unmapped report.
 - `src/flexparameterize/validate.py` — `check_sufficiency` + `SufficiencyReport`.
 - `src/flexparameterize/regression/__init__.py` — package init (registry arrives in M11; keep empty-ish).
 - `src/flexparameterize/regression/constant.py` — `ConstantIntensityRegressor`.
@@ -65,8 +81,12 @@ class TagMap:
     def apply(self, df: pd.DataFrame) -> pd.DataFrame: ...    # returns a RENAMED COPY
     def report_unmapped(self, df: pd.DataFrame) -> "TagReport": ...
 ```
-- Aliases are dotted `plant.unit.variable` strings (architecture §5). Keys are raw
-  historian tags (arbitrary strings like `"PIT-101.PV"`).
+- Aliases are dotted `plant.unit.variable` strings (architecture §5). Keys are
+  the raw column/tag names from whatever tabular source supplied the
+  DataFrame — historian tag, spreadsheet header, CSV column, or anything else
+  (arbitrary strings like `"PIT-101.PV"` or `"Flow (gpm)"`). `TagMap` does not
+  assume or require a historian connection; a hand-edited spreadsheet mapped
+  the same way works identically.
 - `apply` renames matching columns and leaves the rest untouched (extra columns
   are legal — sufficiency decides what matters). It never mutates the input.
 - `report_unmapped(df)` returns a small dataclass `TagReport` (implementer's
@@ -175,6 +195,31 @@ config file is written. Per unit:
   so it must not proceed on inadequate data (this is the caller-side raise the
   emit path leaves optional).
 
+### Supplying a known surrogate directly (no fit required)
+Not every unit's energy relationship needs to be learned from data. When it is
+already known in closed algebraic form — a vendor curve, a datasheet
+coefficient, a physics-derived expression — both directions must accept a
+hand-built `SurrogateSpec` in place of a fitted one and attach it exactly the
+same way:
+- `emit_model_config(unit_or_class, fit_result, provenance)` — the
+  `fit_result` argument accepts either a fitted regressor's result (as
+  above) or a hand-built `SurrogateSpec` (implementer's choice: `isinstance`
+  dispatch on the same parameter, or an explicit `surrogate=` keyword —
+  document whichever is chosen). No data and no `check_sufficiency` call are
+  needed on this path.
+- `apply_to_model(model, data, tagmap, surrogates=None)` gains an optional
+  mapping from unit name to a pre-built `SurrogateSpec`. For any unit present
+  in `surrogates`, `apply_to_model` skips fitting and `check_sufficiency` for
+  that unit entirely and swaps `power_electrical_relation` directly for the
+  supplied spec (same swap contract as the fitted path, R11, same unit/ports/
+  arcs). Units not in `surrogates` are still fit from `data`/`tagmap` as
+  above — the two paths mix freely across units in one call.
+- Provenance for a directly-supplied surrogate documents its source instead of
+  fit metrics (e.g. `{"source": "vendor_datasheet"}` — no `n_samples`, `r2`,
+  or `rmse`; those don't exist for a hand-supplied algebraic form). This is
+  still part of the `SurrogateSpec`/`ModelConfig` schema (R3), not a free-form
+  sidecar — document the provenance shape for this path alongside the fitted one.
+
 ### The headline round-trip and the two-directions-agree invariant (component tests)
 1. Build a `Pump` on a 100-step TimeBlock with a known `energy_intensity`.
 2. Produce 100 steps of data by **direct evaluation** (fix a varying flow profile,
@@ -223,9 +268,10 @@ required, well under 30 s.
    (R3), not a free-form sidecar.
 6. **Layer violation.** `flexparameterize` may import `flexops`/`flexcore` only;
    import-linter will fail the build otherwise (conventions §6).
-7. **Datetime index assumptions.** Historian exports often have a plain column,
-   not an index; v0 requires a `DatetimeIndex` and the sufficiency report must say
-   exactly that when it is missing, not crash in pandas internals.
+7. **Datetime index assumptions.** Data exports (historian, spreadsheet, CSV)
+   often have a plain column, not an index; v0 requires a `DatetimeIndex` and
+   the sufficiency report must say exactly that when it is missing, not crash
+   in pandas internals.
 8. **Rebuilding ports/arcs during the swap.** The constraint swap touches only
    the named `power_electrical_relation` Constraint and the unit's existing
    registered IO Vars (architecture §5, R11) — `apply.py` must not delete/rebuild
@@ -239,6 +285,14 @@ required, well under 30 s.
 10. **`apply_to_model` proceeding on insufficient data.** Unlike
     `check_sufficiency` (which only reports), `apply_to_model` mutates a real
     model and must raise `FlexDataError` up front when data is insufficient.
+11. **Requiring data for a directly-supplied surrogate.** A unit passed via
+    `surrogates=` has no data to check sufficiency against and none is
+    required — do not call `check_sufficiency`/regress for that unit, and do
+    not demand `data`/`tagmap` cover it.
+12. **Assuming `TagMap`/`check_sufficiency` need a historian.** Neither module
+    may special-case or depend on a historian connection; any tabular
+    DataFrame (spreadsheet export, ad hoc CSV, database query result) must
+    work identically once its columns are mapped to the right aliases.
 
 ## Tests
 `src/flexparameterize/tests/test_tags.py` (all `unit`)
@@ -269,6 +323,10 @@ required, well under 30 s.
   (implementer's choice; skipif otherwise).
 - `test_provenance_fields_present` — metrics, data window, package versions all
   populated and JSON-serializable.
+- `test_emit_from_hand_built_surrogate` (`unit`) — `emit_model_config` given a
+  hand-built `SurrogateSpec` (no regressor, no data) produces a `ModelConfig`
+  that `load_model_config` accepts, with provenance documenting the source
+  instead of fit metrics.
 
 `src/flexparameterize/tests/test_apply.py`
 - `test_apply_fixes_params_in_place` (`component`) — `apply_to_model` on a live
@@ -280,6 +338,12 @@ required, well under 30 s.
   `SurrogateSpec`, on the same unit object; the unit's ports/arcs are unchanged.
 - `test_apply_insufficient_data_raises` (`unit`) — insufficient data →
   `FlexDataError` with an actionable message; the model is left unmutated.
+- `test_apply_with_supplied_surrogate_skips_fit` (`component`) — `apply_to_model`
+  called with `surrogates={unit_name: spec}` for a unit and no corresponding
+  data columns for it: no `FlexDataError`, no regression runs for that unit,
+  and `power_electrical_relation` is swapped for the supplied `spec` exactly
+  as in the fitted case; a second unit in the same call still fits from
+  `data`/`tagmap` normally.
 
 `src/flexparameterize/tests/test_roundtrip.py`
 - `test_constant_intensity_round_trip` (`component`) — the headline round-trip
@@ -295,7 +359,10 @@ required, well under 30 s.
 - `docs/how_to/parameterize_from_data.md` — skeleton: the pipeline stages with a
   short code block each (TagMap → sufficiency → fit → **{emit → rebuild | apply
   in place}**); show both terminal directions and note they agree (arch §5, R10);
-  mark the regressor-selection section "completed in M11".
+  mark the regressor-selection section "completed in M11"; include a short
+  section showing the no-fit path (supplying a hand-built `SurrogateSpec`
+  directly) alongside the fit-from-data path, and note that the data source for
+  the fit path is not required to be a historian — any mapped tabular data works.
 - `docs/reference/flexparameterize/index.rst` — autosummary for `tags`,
   `validate`, `emit`, `apply`, `regression.constant`.
 - Glossary entry for **zero-degree-of-freedom regression** using the exact
@@ -318,6 +385,13 @@ required, well under 30 s.
       unit, same ports/arcs); raises `FlexDataError` on insufficient data.
 - [ ] apply and emit share one fit / one `SurrogateSpec` construction (no forked
       regression logic).
+- [ ] `emit_model_config` and `apply_to_model` both accept a hand-built
+      `SurrogateSpec` directly (no data, no fit, no `check_sufficiency`) and
+      attach it exactly as the fitted path would; `apply_to_model`'s
+      `surrogates=` and `data`/`tagmap` paths can be mixed per-unit in one call.
+- [ ] `TagMap`/`check_sufficiency`/regressors/`emit`/`apply` are demonstrably
+      historian-agnostic — no code path assumes or requires a historian
+      connection; any tabular data source works once mapped.
 - [ ] Headline round-trip test passes at rel=1e-6, component tier.
 - [ ] Two-directions-agree invariant test passes: `apply_to_model` result matches
       the emitted-config rebuild (arch §5, R10).

@@ -87,6 +87,10 @@ Config I/O
 
 .. autofunction:: dump_model_config
 
+.. autofunction:: load_surrogate_source
+
+.. autodata:: MIGRATIONS
+
 .. autofunction:: export_json_schemas
 
 Nomenclature

@@ -9,6 +9,7 @@ from flexcore.config.io import (
     dump_model_config,
     export_json_schemas,
     load_model_config,
+    load_surrogate_source,
 )
 from flexcore.config.schema import (
     CURRENT_SCHEMA_VERSION,
@@ -37,7 +38,7 @@ def _model_config() -> ModelConfig:
         ],
         surrogate=SurrogateSpec(
             functional_form="linear",
-            coefficients={"slope": 0.5, "intercept": 0.1},
+            coefficients={"flow_in": 0.5, "intercept": 0.1},
             input_variables=["flow_in"],
             output_variables=["power_electrical"],
         ),
@@ -159,6 +160,78 @@ def test_malformed_schema_version_raises(bad_version):
     data["schema_version"] = bad_version
     with pytest.raises(FlexConfigError):
         load_model_config(data)
+
+
+@pytest.mark.unit
+def test_older_schema_version_migrates_forward():
+    """A document at an older schema version loads and comes back re-stamped."""
+    data = _model_config().model_dump(mode="json")
+    data["schema_version"] = "0.0.1"
+
+    loaded = load_model_config(data)
+
+    assert loaded.schema_version == CURRENT_SCHEMA_VERSION
+
+
+@pytest.mark.unit
+def test_functional_form_is_an_open_string():
+    """A form this build cannot build still validates.
+
+    Relationship builders are registered in code, not enumerated in the schema,
+    so a new functional form never needs a schema revision.
+    """
+    spec = SurrogateSpec(functional_form="vendor_curve_v3")
+    assert spec.functional_form == "vendor_curve_v3"
+
+
+@pytest.mark.unit
+def test_load_surrogate_source_fills_in_the_spec(tmp_path):
+    """A sidecar file supplies the coefficients the spec did not inline."""
+    (tmp_path / "curve.json").write_text(
+        json.dumps(
+            {
+                "coefficients": {"intercept": 1.0, "flow_out": 0.5},
+                "input_variables": ["flow_out"],
+                "output_variables": ["power_electrical"],
+            }
+        )
+    )
+    spec = SurrogateSpec(functional_form="linear", source="curve.json")
+
+    filled = load_surrogate_source(spec, tmp_path)
+
+    assert filled.coefficients == {"intercept": 1.0, "flow_out": 0.5}
+    assert filled.input_variables == ["flow_out"]
+    assert filled.output_variables == ["power_electrical"]
+    assert filled.source == "curve.json"
+    assert spec.coefficients == {}
+
+
+@pytest.mark.unit
+def test_load_surrogate_source_rejects_a_non_json_sidecar(tmp_path):
+    """JSON is the only on-disk format for a surrogate sidecar too."""
+    spec = SurrogateSpec(functional_form="linear", source="curve.yaml")
+    with pytest.raises(FlexConfigError, match="curve.yaml"):
+        load_surrogate_source(spec, tmp_path)
+
+
+@pytest.mark.unit
+def test_load_model_config_resolves_a_surrogate_source(tmp_path):
+    """A config's surrogate source resolves against the config's own directory."""
+    cfg = _model_config()
+    data = cfg.model_dump(mode="json")
+    data["plant"]["units"]["tank"]["surrogate"] = {
+        "functional_form": "quadratic",
+        "source": "curve.json",
+    }
+    (tmp_path / "model.json").write_text(json.dumps(data))
+    (tmp_path / "curve.json").write_text(
+        json.dumps({"coefficients": {"flow_out^2": 0.25}})
+    )
+
+    loaded = load_model_config(tmp_path / "model.json")
+
+    assert loaded.plant.units["tank"].surrogate.coefficients == {"flow_out^2": 0.25}
 
 
 @pytest.mark.unit

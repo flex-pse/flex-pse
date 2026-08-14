@@ -87,6 +87,42 @@ class FuelUsageRecord:
 
 
 @dataclass
+class RelationRecord:
+    """A non-conservation relationship a unit has declared swappable.
+
+    Registered via
+    :meth:`~flexops.core.ops_block.OpsBlockData.register_relation` — an
+    unregistered constraint (a mass balance, a conservation law) can never be
+    swapped, so this list is what
+    :meth:`~flexops.core.ops_block.OpsBlockData.swap_relation` may act on and
+    what :func:`iter_swapped_relations` reports over.
+
+    Attributes:
+        constraint: The live, originally-built Constraint.
+        name: Its local name — the string ``swap_relation`` is called with.
+        target: The live Var/Reference the relationship determines.
+        target_name: ``target``'s local name.
+        fitted: The Constraint a swap attached, replacing ``constraint``;
+            ``None`` until a swap has happened.
+        components: Any Vars/Constraints a builder attached while fitting
+            ``fitted`` (e.g. an auxiliary variable a state-space or big-M form
+            needs); deactivated on the next swap, alongside ``fitted`` itself.
+        swap_count: How many times this relation has been swapped; used to
+            keep each successive ``fitted`` Constraint's name unique (flex-pse
+            never deletes a component, so a second swap cannot reuse the first
+            fitted Constraint's name).
+    """
+
+    constraint: Any
+    name: str
+    target: Any
+    target_name: str
+    fitted: Any = None
+    components: list = field(default_factory=list)
+    swap_count: int = 0
+
+
+@dataclass
 class IORegistry:
     """Container for everything a unit block registers.
 
@@ -95,16 +131,31 @@ class IORegistry:
         parameters: Registered design/regression parameters.
         power: Registered power-draw variables (kW).
         fuel: Registered fuel-usage variables (volumetric).
+        intensity_basis: Per :class:`~flexcore.nomenclature.PowerKind`, the
+            local name of the product flow the unit's constant-intensity
+            relation meters against. FlexParameterize reads it to regress the
+            intensity against the same stream the model divides by; without it
+            a unit with several flows would have to be guessed at.
+        relations: Registered swappable relationships (see
+            :class:`RelationRecord`).
     """
 
     io_variables: list[IOVariableRecord] = field(default_factory=list)
     parameters: list[ParameterRecord] = field(default_factory=list)
     power: list[PowerRecord] = field(default_factory=list)
     fuel: list[FuelUsageRecord] = field(default_factory=list)
+    intensity_basis: dict[PowerKind, str] = field(default_factory=dict)
+    relations: list[RelationRecord] = field(default_factory=list)
 
     def is_empty(self) -> bool:
         """Return True if nothing has been registered on this block."""
-        return not (self.io_variables or self.parameters or self.power or self.fuel)
+        return not (
+            self.io_variables
+            or self.parameters
+            or self.power
+            or self.fuel
+            or self.relations
+        )
 
 
 def iter_io_registry(model) -> Iterator[tuple[Any, IORegistry]]:
@@ -129,3 +180,32 @@ def iter_io_registry(model) -> Iterator[tuple[Any, IORegistry]]:
         registry = getattr(block, "_io_registry", None)
         if isinstance(registry, IORegistry) and not registry.is_empty():
             yield block, registry
+
+
+def iter_swapped_relations(model) -> Iterator[tuple[Any, RelationRecord]]:
+    """Yield every relation on ``model`` that has actually been swapped.
+
+    A debugging and reporting aid, not a required step on any build or apply
+    path: it answers "what in this model differs from its defaults?" for a
+    model built any way — from config, by hand, or by
+    ``flexparameterize.apply_to_model`` — not only for the call that changed
+    it. Cheap by construction: it reads the ``fitted`` field
+    :meth:`~flexops.core.ops_block.OpsBlockData.swap_relation` already set on
+    each :class:`RelationRecord`, rather than re-deriving anything from
+    constraint bodies.
+
+    Deliberately out of scope: detecting a relationship altered some other
+    way (hand-editing a constraint's rule, rebuilding a component outside
+    ``swap_relation``) would mean constructing a shadow default unit and
+    diffing constraint bodies — a "deep audit" left to a future milestone.
+
+    Args:
+        model: The Pyomo model (or block) to walk.
+
+    Yields:
+        ``(block, RelationRecord)`` pairs for every swapped relation.
+    """
+    for block, registry in iter_io_registry(model):
+        for record in registry.relations:
+            if record.fitted is not None:
+                yield block, record

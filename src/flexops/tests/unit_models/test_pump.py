@@ -4,6 +4,7 @@ import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
 
+from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError
 from flexops import SimpleAqueousFlow, TimeBlock
 from flexops.testing import UnitModelTestHarness, dummy_time_block
@@ -11,7 +12,11 @@ from flexops.unit_models import Pump
 
 
 class TestPump(UnitModelTestHarness):
-    """Fixed inlet flow determines power_electrical via energy_intensity."""
+    """Fixed inlet flow determines power_electrical via energy_intensity.
+
+    The relation is metered on the outlet flow, which the SISO pass-through
+    ties to the fixed inlet flow, so the solved draw is the same either way.
+    """
 
     expected_dof = 0
     expected_solution = {
@@ -73,3 +78,40 @@ def test_hydraulic_pump_requires_has_pressure():
     m = dummy_time_block(3)
     with pytest.raises(FlexConfigError):
         m.unit = Pump(property_package=m.properties, power_relation="hydraulic")
+
+
+@pytest.mark.unit
+def test_energy_intensity_is_metered_on_the_outlet_flow():
+    """The constant-intensity draw follows the flow the pump delivers."""
+    m = dummy_time_block(3)
+    m.unit = Pump(property_package=m.properties)
+    m.unit.inlet_state.flow_vol_phase[0, "Liq"].set_value(100.0)
+    m.unit.outlet_state.flow_vol_phase[0, "Liq"].set_value(40.0)
+    m.unit.power_electrical[0].set_value(0.0)
+
+    # power - 0.5 kWh/m^3 * 40 m^3/hr == -20.0 kW
+    assert pyo.value(m.unit.power_electrical_relation[0].body) == pytest.approx(-20.0)
+
+
+@pytest.mark.unit
+def test_pump_energy_relation_is_swappable():
+    """Folding onto add_constant_intensity_relation makes the relation swappable.
+
+    Unlike the hydraulic power law (a physical relationship, not an energy
+    intensity, and never registered), the default relation now goes through
+    the same registration/swap path as every other constant-intensity unit.
+    """
+    m = dummy_time_block(3)
+    m.unit = Pump(property_package=m.properties)
+
+    m.unit.swap_relation(
+        "power_electrical_relation",
+        SurrogateSpec(
+            functional_form="linear",
+            input_variables=["flow_out"],
+            coefficients={"flow_out": 2.0, "intercept": 1.0},
+        ),
+    )
+
+    assert m.unit.power_electrical_relation[0].active is False
+    assert m.unit.find_component("power_electrical_relation_fitted") is not None

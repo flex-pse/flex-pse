@@ -45,8 +45,8 @@ class ExchangerData(DIDOBlockData):
         "energy_intensity",
         ConfigValue(
             default=0.1 * pyunits.kWh / pyunits.m**3,
-            description="Electrical energy per unit volume of stream a (a fixed, "
-            "regressable Var once built), kWh/m^3.",
+            description="Electrical energy per unit volume delivered at outlet "
+            "a (a fixed, regressable Var once built), kWh/m^3.",
         ),
     )
 
@@ -54,7 +54,7 @@ class ExchangerData(DIDOBlockData):
         """Build the DIDO base, then the constant-intensity electrical relation."""
         super().build()
         self.add_constant_intensity_relation(
-            self.flow_in_a,
+            self.flow_out_a,
             kind=nm.PowerKind.ELECTRICAL,
             intensity=self.config.energy_intensity,
         )

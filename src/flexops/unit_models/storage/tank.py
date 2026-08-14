@@ -55,6 +55,13 @@ class TankData(SISOBlockData):
     solves of a model containing a tank therefore need IPOPT or an explicit
     ``flexschedule.SolveSequence``, not HiGHS.
 
+    ``level_definition`` is registered as a swappable relation (see
+    :meth:`~flexops.core.ops_block.OpsBlockData.register_relation`) — a
+    non-prismatic tank geometry can replace it in place via
+    :meth:`~flexops.core.ops_block.OpsBlockData.swap_relation`. The holdup
+    difference equation is deliberately **not** registered and so can never be
+    swapped.
+
     Config:
         Inherits the SISO/OpsBlock config; adds ``min_volume`` (default
         0 m^3), ``max_volume`` (default 1000 m^3), ``initial_volume``
@@ -167,6 +174,8 @@ class TankData(SISOBlockData):
         )
         def level_definition(b, t):
             return b.volume[t] == b.level[t] * b.capacity
+
+        self.register_relation(self.level_definition, target=self.level)
 
         # Both flows are dispatch inputs for a tank; the inherited
         # add_stream_ports() registered the outlet as an output, so correct it.

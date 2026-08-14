@@ -14,6 +14,15 @@ the topology stays LP-representable — and makes the split the natural regressi
 target for FlexParameterize. Everything a stream carries other than flow (e.g.
 pressure/temperature, when the property package has them) passes straight from
 the inlet to **both** outlets.
+
+``split_definition`` (determining ``flow_out_a``) is registered as a swappable
+relation (see
+:meth:`~flexops.core.ops_block.OpsBlockData.register_relation`) — a richer
+recovery/flux model (a function of feed pressure, temperature, fouling) can
+replace it in place via
+:meth:`~flexops.core.ops_block.OpsBlockData.swap_relation`. Conservation
+(``split_mass_balance``) is deliberately **not** registered and so can never be
+swapped.
 """
 
 import pyomo.environ as pyo
@@ -138,6 +147,8 @@ class SIDOBlockData(OpsBlockData):
         )
         def split_definition(b, t):
             return flow_out_a[t] == split * flow_in[t]
+
+        self.register_relation(self.split_definition, target=flow_out_a)
 
         @self.Constraint(
             tb.time_index,

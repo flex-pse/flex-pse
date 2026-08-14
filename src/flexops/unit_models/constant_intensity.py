@@ -25,14 +25,15 @@ class ConstantEnergyIntensityModelData(SISOBlockData):
 
     .. math::
 
-        P_{elec}[t] = \text{energy\_intensity} \cdot \dot{V}_{in}[t]
+        P_{elec}[t] = \text{energy\_intensity} \cdot \dot{V}_{out}[t]
 
     as the Constraint ``power_electrical_relation`` — the **swap contract**
     FlexParameterize deactivates and replaces when it fits a richer
     relationship (see
-    :meth:`~flexops.core.ops_block.OpsBlockData.swap_energy_relation`).
-    ``energy_intensity`` is in kWh/m^3 and the inlet ``flow_vol_phase`` in
-    m^3/hr, so kWh/m^3 * m^3/hr = kW exactly.
+    :meth:`~flexops.core.ops_block.OpsBlockData.swap_relation`). The draw is
+    metered on what the unit **delivers**, so the intensity reads as energy per
+    unit of product. ``energy_intensity`` is in kWh/m^3 and the outlet
+    ``flow_vol_phase`` in m^3/hr, so kWh/m^3 * m^3/hr = kW exactly.
 
     ``Pump`` stays an independent class rather than a subclass of this one:
     the two diverge as soon as ``Pump`` grows pressure terms, and its
@@ -56,8 +57,8 @@ class ConstantEnergyIntensityModelData(SISOBlockData):
         "energy_intensity",
         ConfigValue(
             default=0.5 * pyunits.kWh / pyunits.m**3,
-            description="Electrical energy per unit volume processed (a fixed, "
-            "regressable Var once built), kWh/m^3.",
+            description="Electrical energy per unit volume delivered at the "
+            "outlet (a fixed, regressable Var once built), kWh/m^3.",
         ),
     )
 
@@ -65,7 +66,7 @@ class ConstantEnergyIntensityModelData(SISOBlockData):
         """Build the SISO base, then the constant-intensity energy relation."""
         super().build()
         self.add_constant_intensity_relation(
-            self.flow_in,
+            self.flow_out,
             kind=nm.PowerKind.ELECTRICAL,
             intensity=self.config.energy_intensity,
         )
