@@ -15,12 +15,15 @@ from flexops.unit_models import (
     DIDOBlock,
     Exchanger,
     GenericRenewables,
+    Mixer,
     Pump,
     ReverseOsmosis,
     SIDOBlock,
     SISOBlock,
+    Splitter,
     Tank,
 )
+from flexops.unit_models.mixer import MixerTemperatureRule
 from flexops.unit_models.powergeneration.combustor import CombustorPowerRelation
 
 __all__ = [
@@ -32,6 +35,8 @@ __all__ = [
     "Exchanger",
     "FlexCosting",
     "GenericRenewables",
+    "Mixer",
+    "MixerTemperatureRule",
     "NetworkBlock",
     "PlantBlock",
     "PowerKind",
@@ -41,6 +46,7 @@ __all__ = [
     "SISOBlock",
     "SimpleAqueousFlow",
     "SimpleGasFlow",
+    "Splitter",
     "Tank",
     "TimeBlock",
     "build_model",
