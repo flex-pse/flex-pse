@@ -154,7 +154,13 @@ connection (relevant when ports/arcs are built in a later milestone):
 | `pressure`, `temperature` | **intensive** | equal on both sides | `Port.Equality` |
 
 This is why volumetric flow is the quantity a mixer sums and a splitter divides,
-while pressure/temperature are simply equated across a connection.
+while pressure/temperature are simply equated across a connection — exactly the
+split {py:class}`~flexops.unit_models.mixer.Mixer` and
+{py:class}`~flexops.unit_models.splitter.Splitter` are built around. Note the
+`Port rule` column is the modeling *intent*: the state blocks build every port
+member as `Port.Equality`, so one port carries one arc. A junction therefore
+gives each stream its own port rather than apportioning one port across several
+arcs.
 
 ## Where each thing is declared — a summary
 
