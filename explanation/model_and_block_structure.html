@@ -294,6 +294,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -463,10 +465,10 @@ option: a property package’s <code class="docutils literal notranslate"><span 
 single <strong>scalar</strong> block whose variables span that set. A unit’s
 <a class="reference internal" href="../reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.add_stream_ports" title="flexops.core.ops_block.OpsBlockData.add_stream_ports"><code class="xref py py-meth docutils literal notranslate"><span class="pre">add_stream_ports()</span></code></a> does exactly this
 for its inlet/outlet streams, then wires the flows and ports:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># inside a unit&#39;s build():</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># inside a unit's build():</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">add_stream_ports</span><span class="p">()</span>             <span class="c1"># builds scalar inlet_state, outlet_state + ports</span>
 <span class="c1"># then, per time point t:</span>
-<span class="bp">self</span><span class="o">.</span><span class="n">inlet_state</span><span class="o">.</span><span class="n">flow_vol_phase</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="s2">&quot;Liq&quot;</span><span class="p">]</span>   <span class="c1"># volumetric flow at time t</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">inlet_state</span><span class="o">.</span><span class="n">flow_vol_phase</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="s2">"Liq"</span><span class="p">]</span>   <span class="c1"># volumetric flow at time t</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">inlet_state</span><span class="o">.</span><span class="n">pressure</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>                <span class="c1"># pressure at time t (when enabled)</span>
 </pre></div>
 </div>
@@ -504,7 +506,13 @@ connection (relevant when ports/arcs are built in a later milestone):</p>
 </table>
 </div>
 <p>This is why volumetric flow is the quantity a mixer sums and a splitter divides,
-while pressure/temperature are simply equated across a connection.</p>
+while pressure/temperature are simply equated across a connection — exactly the
+split <a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.mixer.Mixer.html#flexops.unit_models.mixer.Mixer" title="flexops.unit_models.mixer.Mixer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mixer</span></code></a> and
+<a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.splitter.Splitter.html#flexops.unit_models.splitter.Splitter" title="flexops.unit_models.splitter.Splitter"><code class="xref py py-class docutils literal notranslate"><span class="pre">Splitter</span></code></a> are built around. Note the
+<code class="docutils literal notranslate"><span class="pre">Port</span> <span class="pre">rule</span></code> column is the modeling <em>intent</em>: the state blocks build every port
+member as <code class="docutils literal notranslate"><span class="pre">Port.Equality</span></code>, so one port carries one arc. A junction therefore
+gives each stream its own port rather than apportioning one port across several
+arcs.</p>
 </section>
 </section>
 <section id="where-each-thing-is-declared-a-summary">

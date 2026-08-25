@@ -36,7 +36,11 @@ whether every port shares one ``property_package``.
 - If the unit's **port count is itself a config option** (e.g. an arbitrary
   number of gas inlets), no fixed-arity topology base fits either — subclass
   :class:`~flexops.core.ops_block.OpsBlockData` directly and hand-write the
-  ports and balance, as :class:`~flexops.unit_models.powergeneration.combustor.Combustor` does.
+  ports and balance, as :class:`~flexops.unit_models.powergeneration.combustor.Combustor`,
+  :class:`~flexops.unit_models.mixer.Mixer`, and
+  :class:`~flexops.unit_models.splitter.Splitter` do. Give each stream its own
+  port: port members are equalities, so one port carries one arc — N streams
+  means N ports, never one port fed by N arcs.
 
 Topology bases
 --------------
@@ -130,6 +134,36 @@ was given a heating value.
    :nosignatures:
 
    Combustor
+
+.. currentmodule:: flexops.unit_models.mixer
+
+An arbitrary number of named inlet streams joined into one outlet at constant
+density, so volume is conserved directly and no energy is involved. Pressure
+is held equal across the inlets and passed through to the outlet; the outlet
+temperature is either equal to the inlets' (the linear default) or their
+volume-weighted blend, per ``temperature_mixing``.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   Mixer
+
+.. currentmodule:: flexops.unit_models.splitter
+
+One inlet stream divided among an arbitrary number of named outlets at
+constant density. Conservation is its only flow constraint, so the routing
+stays a decision variable — :math:`(N-1)` degrees of freedom per time point
+that the enclosing model's objective resolves. Use ``SIDOBlock`` instead when
+the split is meant to be prescribed rather than optimized.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   Splitter
 
 Generic surrogate
 -----------------

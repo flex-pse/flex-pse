@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="next" title="flexops.unit_models.pump.Pump" href="flexops.unit_models.pump.Pump.html"><link rel="prev" title="flexops.unit_models.base.sido.SIDOBlock" href="flexops.unit_models.base.sido.SIDOBlock.html">
+<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="next" title="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel" href="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html"><link rel="prev" title="flexops.unit_models.mixer.Mixer" href="flexops.unit_models.mixer.Mixer.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>flexops.unit_models.base.dido.DIDOBlock - flex-pse documentation</title>
+        <title>flexops.unit_models.splitter.Splitter - flex-pse documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -287,7 +287,7 @@
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">flexops.unit_models.base.dido.DIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
@@ -295,7 +295,7 @@
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">flexops.unit_models.splitter.Splitter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -319,7 +319,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../../../../_sources/reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.rst.txt" title="View this page">
+  <a class="muted-link" href="../../../../_sources/reference/flexops/unit_models/generated/flexops.unit_models.splitter.Splitter.rst.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -337,11 +337,11 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="flexops-unit-models-base-dido-didoblock">
-<h1>flexops.unit_models.base.dido.DIDOBlock<a class="headerlink" href="#flexops-unit-models-base-dido-didoblock" title="Link to this heading">¶</a></h1>
+          <section id="flexops-unit-models-splitter-splitter">
+<h1>flexops.unit_models.splitter.Splitter<a class="headerlink" href="#flexops-unit-models-splitter-splitter" title="Link to this heading">¶</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="flexops.unit_models.base.dido.DIDOBlock">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.unit_models.base.dido.</span></span><span class="sig-name descname"><span class="pre">DIDOBlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.unit_models.base.dido.DIDOBlock" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="flexops.unit_models.splitter.Splitter">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.unit_models.splitter.</span></span><span class="sig-name descname"><span class="pre">Splitter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.unit_models.splitter.Splitter" title="Link to this definition">¶</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -388,9 +388,10 @@ register_power forwards the unit’s power draw to it. None
 for standalone units; the forwarding is strictly
 conditional.</p>
 </dd>
-<dt>transfer_fraction</dt><dd><p>Fraction of stream a’s inlet flow that crosses into stream
-b (a fixed, regressable Var once built). 0.0 leaves the
-two streams independent.</p>
+<dt>outlet_names</dt><dd><p>Role names of the splitter’s outlets; outlet i is built as
+port f’outlet_{name}’. Must be unique and non-empty. No
+split fraction accompanies them: conservation is the only
+flow constraint, so the routing stays a decision variable.</p>
 </dd>
 </dl>
 </div></blockquote>
@@ -405,7 +406,7 @@ BlockData index exactly to the index in initialize.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>(DIDOBlock) New instance</p>
+<dd class="field-even"><p>(Splitter) New instance</p>
 </dd>
 </dl>
 </dd></dl>
@@ -417,23 +418,23 @@ BlockData index exactly to the index in initialize.</p></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="flexops.unit_models.pump.Pump.html">
+          <a class="next-page" href="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">flexops.unit_models.pump.Pump</div>
+                <div class="title">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="flexops.unit_models.base.sido.SIDOBlock.html">
+          <a class="prev-page" href="flexops.unit_models.mixer.Mixer.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">flexops.unit_models.base.sido.SIDOBlock</div>
+                <div class="title">flexops.unit_models.mixer.Mixer</div>
                 
               </div>
             </a>
@@ -467,8 +468,8 @@ BlockData index exactly to the index in initialize.</p></li>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">flexops.unit_models.base.dido.DIDOBlock</a><ul>
-<li><a class="reference internal" href="#flexops.unit_models.base.dido.DIDOBlock"><code class="docutils literal notranslate"><span class="pre">DIDOBlock</span></code></a></li>
+<li><a class="reference internal" href="#">flexops.unit_models.splitter.Splitter</a><ul>
+<li><a class="reference internal" href="#flexops.unit_models.splitter.Splitter"><code class="docutils literal notranslate"><span class="pre">Splitter</span></code></a></li>
 </ul>
 </li>
 </ul>

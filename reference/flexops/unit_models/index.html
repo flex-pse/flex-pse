@@ -294,6 +294,8 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -370,7 +372,11 @@ built around a single shared package.</p></li>
 <li><p>If the unit’s <strong>port count is itself a config option</strong> (e.g. an arbitrary
 number of gas inlets), no fixed-arity topology base fits either — subclass
 <a class="reference internal" href="../generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData" title="flexops.core.ops_block.OpsBlockData"><code class="xref py py-class docutils literal notranslate"><span class="pre">OpsBlockData</span></code></a> directly and hand-write the
-ports and balance, as <a class="reference internal" href="generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor" title="flexops.unit_models.powergeneration.combustor.Combustor"><code class="xref py py-class docutils literal notranslate"><span class="pre">Combustor</span></code></a> does.</p></li>
+ports and balance, as <a class="reference internal" href="generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor" title="flexops.unit_models.powergeneration.combustor.Combustor"><code class="xref py py-class docutils literal notranslate"><span class="pre">Combustor</span></code></a>,
+<a class="reference internal" href="generated/flexops.unit_models.mixer.Mixer.html#flexops.unit_models.mixer.Mixer" title="flexops.unit_models.mixer.Mixer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mixer</span></code></a>, and
+<a class="reference internal" href="generated/flexops.unit_models.splitter.Splitter.html#flexops.unit_models.splitter.Splitter" title="flexops.unit_models.splitter.Splitter"><code class="xref py py-class docutils literal notranslate"><span class="pre">Splitter</span></code></a> do. Give each stream its own
+port: port members are equalities, so one port carries one arc — N streams
+means N ports, never one port fed by N arcs.</p></li>
 </ul>
 <section id="topology-bases">
 <h2>Topology bases<a class="headerlink" href="#topology-bases" title="Link to this heading">¶</a></h2>
@@ -458,6 +464,34 @@ was given a heating value.</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor" title="flexops.unit_models.powergeneration.combustor.Combustor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Combustor</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>An arbitrary number of named inlet streams joined into one outlet at constant
+density, so volume is conserved directly and no energy is involved. Pressure
+is held equal across the inlets and passed through to the outlet; the outlet
+temperature is either equal to the inlets’ (the linear default) or their
+volume-weighted blend, per <code class="docutils literal notranslate"><span class="pre">temperature_mixing</span></code>.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.mixer.Mixer.html#flexops.unit_models.mixer.Mixer" title="flexops.unit_models.mixer.Mixer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Mixer</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>One inlet stream divided among an arbitrary number of named outlets at
+constant density. Conservation is its only flow constraint, so the routing
+stays a decision variable — <span class="math notranslate nohighlight">\((N-1)\)</span> degrees of freedom per time point
+that the enclosing model’s objective resolves. Use <code class="docutils literal notranslate"><span class="pre">SIDOBlock</span></code> instead when
+the split is meant to be prescribed rather than optimized.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.splitter.Splitter.html#flexops.unit_models.splitter.Splitter" title="flexops.unit_models.splitter.Splitter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Splitter</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -558,5 +592,6 @@ a whole plant modeled as one surrogate, as in the frozen API script.</p>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     </body>
 </html>

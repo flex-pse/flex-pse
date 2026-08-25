@@ -294,6 +294,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -362,13 +364,13 @@ conda<span class="w"> </span>activate<span class="w"> </span>flex-pse
 
 <span class="n">m</span> <span class="o">=</span> <span class="n">pyo</span><span class="o">.</span><span class="n">ConcreteModel</span><span class="p">()</span>
 <span class="n">m</span><span class="o">.</span><span class="n">time_block</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">TimeBlock</span><span class="p">(</span>
-    <span class="n">start_date</span><span class="o">=</span><span class="s2">&quot;2025-01-01&quot;</span><span class="p">,</span> <span class="n">end_date</span><span class="o">=</span><span class="s2">&quot;2025-01-30&quot;</span><span class="p">,</span> <span class="n">time_step</span><span class="o">=</span><span class="mi">15</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">min</span>
+    <span class="n">start_date</span><span class="o">=</span><span class="s2">"2025-01-01"</span><span class="p">,</span> <span class="n">end_date</span><span class="o">=</span><span class="s2">"2025-01-30"</span><span class="p">,</span> <span class="n">time_step</span><span class="o">=</span><span class="mi">15</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">min</span>
 <span class="p">)</span>
 <span class="n">m</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">SimpleAqueousFlow</span><span class="p">()</span>
 <span class="n">m</span><span class="o">.</span><span class="n">costing</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">FlexCosting</span><span class="p">(</span>
     <span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">,</span>
-    <span class="n">tariff_file</span><span class="o">=</span><span class="s2">&quot;tariff.json&quot;</span><span class="p">,</span>
-    <span class="n">dr_event_file</span><span class="o">=</span><span class="s2">&quot;dr_events.json&quot;</span><span class="p">,</span>
+    <span class="n">tariff_file</span><span class="o">=</span><span class="s2">"tariff.json"</span><span class="p">,</span>
+    <span class="n">dr_event_file</span><span class="o">=</span><span class="s2">"dr_events.json"</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">PlantBlock</span><span class="p">(</span><span class="n">time_block</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="p">)</span>
 <span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">tank</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">Tank</span><span class="p">(</span><span class="n">property_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
@@ -407,7 +409,7 @@ from <code class="docutils literal notranslate"><span class="pre">report_cost</s
 <p>Arc expansion is explicit — no library code does it for you:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">flexcore.solvers</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_solver</span>
 
-<span class="n">pyo</span><span class="o">.</span><span class="n">TransformationFactory</span><span class="p">(</span><span class="s2">&quot;network.expand_arcs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">apply_to</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+<span class="n">pyo</span><span class="o">.</span><span class="n">TransformationFactory</span><span class="p">(</span><span class="s2">"network.expand_arcs"</span><span class="p">)</span><span class="o">.</span><span class="n">apply_to</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
 <span class="n">results</span> <span class="o">=</span> <span class="n">get_solver</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -432,7 +434,7 @@ realized power trajectory post-solve through EECO to get the true bill.</p>
 and solves to the same objective:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">flexcore.config.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_model_config</span>
 
-<span class="n">m</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">build_model</span><span class="p">(</span><span class="n">load_model_config</span><span class="p">(</span><span class="s2">&quot;api_freeze_config.json&quot;</span><span class="p">))</span>
+<span class="n">m</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">build_model</span><span class="p">(</span><span class="n">load_model_config</span><span class="p">(</span><span class="s2">"api_freeze_config.json"</span><span class="p">))</span>
 </pre></div>
 </div>
 </section>

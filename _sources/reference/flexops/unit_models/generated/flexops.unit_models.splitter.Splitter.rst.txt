@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.splitter.Splitter
+======================================
+
+.. currentmodule:: flexops.unit_models.splitter
+
+.. autoclass:: Splitter

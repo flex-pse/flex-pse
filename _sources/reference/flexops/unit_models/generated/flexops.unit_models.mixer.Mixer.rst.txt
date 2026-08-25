@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.mixer.Mixer
+================================
+
+.. currentmodule:: flexops.unit_models.mixer
+
+.. autoclass:: Mixer
