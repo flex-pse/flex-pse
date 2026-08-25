@@ -47,9 +47,25 @@ a choice, ``config.temperature_mixing``:
    :class:`~flexops.unit_models.storage.tank.Tank` documents for
    ``capacity * level``. It also leaves ``T_out`` undetermined at a time point
    where every inlet flow is zero (the equation degenerates to 0 == 0).
+
+Because the model is *only* this volumetric balance, two configurations reach
+past what it represents, and each raises a ``UserWarning`` at construction
+rather than failing:
+
+* **A property package carrying more than one component.** Total volumetric
+  flow is summed and no per-component mass balance is written, so the outlet
+  composition is not tracked. Mix streams that share one composition.
+* **A vapor phase under** :attr:`MixerTemperatureRule.FLOW_WEIGHTED`. Volumes
+  are additive only at equal temperature and pressure; otherwise the equation
+  of state sets the mixed volume, and this unit conserves volume directly
+  instead. Pressure is held equal across inlets by construction under either
+  rule, and so is temperature under
+  :attr:`MixerTemperatureRule.EQUAL` — so this is the one configuration where a
+  gas can actually mix at unequal conditions.
 """
 
 import enum
+import warnings
 
 import pyomo.environ as pyo
 from idaes.core import declare_process_block_class
@@ -112,6 +128,14 @@ class MixerData(OpsBlockData):
         state — requesting :attr:`MixerTemperatureRule.FLOW_WEIGHTED` on one
         that does not is rejected.
 
+    Warns:
+        UserWarning: If ``property_package`` carries more than one component
+            (the outlet composition is not weighted), or if it is a vapor phase
+            and ``temperature_mixing`` is
+            :attr:`MixerTemperatureRule.FLOW_WEIGHTED` (the mixed volume is
+            approximate, since the equation of state is not applied). See the
+            module docstring.
+
     Example:
         >>> from flexops.testing import dummy_time_block
         >>> from flexops.unit_models import Mixer
@@ -155,13 +179,67 @@ class MixerData(OpsBlockData):
         super().build()
         validate_port_names(self.config.inlet_names, "inlet_names")
         self._phase = single_flow_phase(self.config.property_package, "Mixer")
+        self._warn_if_multicomponent()
         self.add_stream_ports(
             inlet_ports=self._inlet_port_names(), outlet_ports=("outlet",)
         )
         self._blend_temperature = self._resolve_temperature_rule()
+        self._warn_if_gas_blended_at_unequal_temperature()
         self._register_stream_states()
         self._build_mass_balance()
         self._build_outlet_state()
+
+    # -- simplification warnings --------------------------------------------
+    # TODO: these two warnings go through the standard library's `warnings`
+    # module because flex-pse has no logging facility of its own yet. Move them
+    # onto the project logging class when it lands (issue #61), so a caller can
+    # silence or route them alongside every other flex-pse diagnostic.
+
+    def _warn_if_multicomponent(self) -> None:
+        """Warn that a multi-component package's composition is not tracked.
+
+        The balance sums *total* volumetric flow and writes no per-component
+        mass balance, so streams of differing composition blend into an outlet
+        whose composition this unit simply does not carry. Not an error: a
+        caller who knows the composition is uniform (or who does not care about
+        it) still gets a correct total-volume balance.
+        """
+        components = list(self.config.property_package.component_list)
+        if len(components) < 2:
+            return
+        warnings.warn(
+            f"Mixer {self.name} was built on a property package carrying "
+            f"multiple components ({', '.join(components)}), but it models "
+            "simple volumetric mixing only: the balance sums total volumetric "
+            "flow and writes no per-component mass balance, so the outlet "
+            "composition is not tracked. Use it only where the inlet streams "
+            "share one composition.",
+            stacklevel=2,
+        )
+
+    def _warn_if_gas_blended_at_unequal_temperature(self) -> None:
+        """Warn that additive volumes need equal temperature for a vapor phase.
+
+        Volumes are only additive at equal temperature and pressure; otherwise
+        the equation of state sets the mixed volume, and this unit conserves
+        volume directly instead. Inlet pressures are held equal by construction
+        and so are inlet temperatures -- except under
+        :attr:`MixerTemperatureRule.FLOW_WEIGHTED`, which deliberately leaves
+        them independent. That leaves exactly one configuration to flag, known
+        entirely from the config and the package's metadata.
+        """
+        phase = self.config.property_package.get_phase(self._phase)
+        if not (phase.is_vapor_phase() and self._blend_temperature):
+            return
+        warnings.warn(
+            f"Mixer {self.name} blends a vapor-phase stream under "
+            "temperature_mixing='flow_weighted', so its inlets may enter at "
+            "different temperatures. This unit models simple volumetric "
+            "mixing: volume is conserved directly and the equation of state is "
+            "not applied, so the mixed volume is only approximate. Use "
+            "temperature_mixing='equal' for an exact volumetric balance.",
+            stacklevel=2,
+        )
 
     # -- config resolution --------------------------------------------------
 

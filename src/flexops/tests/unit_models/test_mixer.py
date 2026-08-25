@@ -1,12 +1,15 @@
 """Mixer(OpsBlockData): N named inlets joined into one outlet (§3.2, §3.4)."""
 
+import warnings
+
 import pyomo.environ as pyo
 import pytest
-from idaes.core import LiquidPhase, declare_process_block_class
+from idaes.core import Component, LiquidPhase, declare_process_block_class
 from pyomo.environ import units as pyunits
 from pyomo.network import Port
 
 from flexcore.exceptions import FlexConfigError
+from flexops.properties.simple_aqueous import SimpleAqueousFlow, SimpleAqueousFlowData
 from flexops.properties.simple_gas import SimpleGasFlowData
 from flexops.testing import (
     UnitModelTestHarness,
@@ -31,10 +34,26 @@ class _TwoPhaseMixerFlowData(SimpleGasFlowData):
         self.Liq = LiquidPhase()
 
 
+@declare_process_block_class("_MultiComponentMixerFlow")
+class _MultiComponentMixerFlowData(SimpleAqueousFlowData):
+    """Test-only stub: SimpleAqueousFlow plus a second component.
+
+    Exists only to exercise Mixer's multi-component warning -- no
+    multi-component property package exists in the repository. Neither shipped
+    state block indexes anything by ``component_list``, so the extra component
+    changes nothing but the parameter block's own metadata.
+    """
+
+    def build(self) -> None:
+        super().build()
+        self.TDS = Component()
+
+
 # declare_process_block_class injects the constructible wrapper into this
 # module's namespace at runtime; bind it explicitly (as simple_gas.py does)
 # so static tools resolve the forward reference used below.
 _TwoPhaseMixerFlow = globals()["_TwoPhaseMixerFlow"]
+_MultiComponentMixerFlow = globals()["_MultiComponentMixerFlow"]
 
 
 def _mixer(n: int = 3, **kwargs):
@@ -348,6 +367,86 @@ def test_mixer_accepts_the_temperature_rule_as_a_plain_string():
     """The config vocabulary is coerced, so a persisted string value works."""
     _, unit = _gas_mixer(3, inlet_names=("a", "b"), temperature_mixing="flow_weighted")
     assert unit.config.temperature_mixing is MixerTemperatureRule.FLOW_WEIGHTED
+
+
+# -- physical-simplification warnings ---------------------------------------
+
+
+def _warning_messages(build) -> list[str]:
+    """Return every warning message ``build()`` emits, as strings.
+
+    Recorded rather than turned into errors so an unrelated Pyomo or IDAES
+    warning raised during construction cannot masquerade as one of the mixer's.
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        build()
+    return [str(w.message) for w in caught]
+
+
+@pytest.mark.unit
+def test_mixer_warns_on_a_multi_component_property_package():
+    """Volumetric mixing tracks no composition, so extra components are flagged."""
+    m = dummy_time_block(3)
+    m.multi_component_properties = _MultiComponentMixerFlow()
+    with pytest.warns(UserWarning, match="multiple components"):
+        m.unit = Mixer(
+            property_package=m.multi_component_properties, inlet_names=("a", "b")
+        )
+
+
+@pytest.mark.unit
+def test_mixer_multi_component_warning_names_the_components():
+    """The message lists what the package carries, so the gap is actionable."""
+    m = dummy_time_block(3)
+    m.multi_component_properties = _MultiComponentMixerFlow()
+    with pytest.warns(UserWarning) as caught:
+        m.unit = Mixer(
+            property_package=m.multi_component_properties, inlet_names=("a", "b")
+        )
+    text = " ".join(str(w.message) for w in caught)
+    assert "H2O" in text and "TDS" in text
+
+
+@pytest.mark.unit
+def test_mixer_does_not_warn_on_a_single_component_property_package():
+    """Both shipped packages carry one component -- the common case stays quiet."""
+    messages = _warning_messages(lambda: _mixer(3, inlet_names=("a", "b")))
+    assert not [msg for msg in messages if "multiple components" in msg]
+
+
+@pytest.mark.unit
+def test_mixer_warns_when_a_gas_is_blended_at_unequal_temperatures():
+    """Vapour inlets at different temperatures need an equation of state."""
+    with pytest.warns(UserWarning, match="vapor-phase"):
+        _gas_mixer(
+            3,
+            inlet_names=("a", "b"),
+            temperature_mixing=MixerTemperatureRule.FLOW_WEIGHTED,
+        )
+
+
+@pytest.mark.unit
+def test_mixer_does_not_warn_for_a_gas_under_the_equal_temperature_rule():
+    """``EQUAL`` ties every inlet temperature, so volumes really are additive."""
+    messages = _warning_messages(lambda: _gas_mixer(3, inlet_names=("a", "b")))
+    assert not [msg for msg in messages if "vapor-phase" in msg]
+
+
+@pytest.mark.unit
+def test_mixer_does_not_warn_for_a_liquid_under_the_flow_weighted_rule():
+    """A liquid's volume is not set by an equation of state -- nothing to flag."""
+
+    def build():
+        m = dummy_time_block(3)
+        m.warm_properties = SimpleAqueousFlow(has_temperature=True)
+        m.unit = Mixer(
+            property_package=m.warm_properties,
+            inlet_names=("a", "b"),
+            temperature_mixing=MixerTemperatureRule.FLOW_WEIGHTED,
+        )
+
+    assert not [msg for msg in _warning_messages(build) if "vapor-phase" in msg]
 
 
 # -- integration with the rest of the library -------------------------------
