@@ -1,0 +1,767 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="flexops.properties" href="properties.html"><link rel="prev" title="FuelUsageRecord" href="generated/flexops.core.registration.FuelUsageRecord.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>flexops.logic - flex-pse documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">flex-pse  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  <span class="sidebar-brand-text">flex-pse  documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/relaxation_policies.html">Relaxation policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/config_schema.html">The config schema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/energy_nomenclature.html">Energy nomenclature</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/pass_through_and_bypass.html">Pass-through, bypass, and the arc layer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How-to</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to/build_a_plant.html">Build a plant</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexcore/index.html">flexcore</a><input aria-label="Toggle navigation of flexcore" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ModelConfig.html">ModelConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.NetworkConfig.html">NetworkConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.PlantConfig.html">PlantConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.UnitConfig.html">UnitConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.IOVariableSpec.html">IOVariableSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateSpec.html">SurrogateSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ExternalDispatchSpec.html">ExternalDispatchSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.UnitCommitmentConfig.html">UnitCommitmentConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ArcSpec.html">ArcSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.TimeConfig.html">TimeConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.CostingConfig.html">CostingConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.PriceSpec.html">PriceSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.DRConfig.html">DRConfig</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="core.html">flexops.core</a><input aria-label="Toggle navigation of flexops.core" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.time_block.TimeBlock.html">TimeBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.time_block.TimeBlockData.html">TimeBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.time_block.TimeWindow.html">TimeWindow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">flexops.logic</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html">SimpleAqueousFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousFlowData.html">SimpleAqueousFlowData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html">SimpleAqueousStateBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasFlow.html">SimpleGasFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasFlowData.html">SimpleGasFlowData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">SimpleGasStateBlockData</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.load_tariff.html">flexops.costing.load_tariff</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.merge_tariffs.html">flexops.costing.merge_tariffs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.load_dr_program.html">flexops.costing.load_dr_program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.tariff_csv_to_dict.html">flexops.costing.tariff_csv_to_dict</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.tariff_currency_units.html">flexops.costing.tariff_currency_units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.currency_units.html">flexops.costing.currency_units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.monthly_scale_factor.html">flexops.costing.monthly_scale_factor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.price_series.html">flexops.costing.price_series</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.is_peak.html">flexops.costing.is_peak</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.peak_windows.html">flexops.costing.peak_windows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.price_gradient.html">flexops.costing.price_gradient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.add_operating_cost.html">flexops.costing.add_operating_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.add_electricity_cost.html">flexops.costing.add_electricity_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.add_fuel_cost.html">flexops.costing.add_fuel_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.OperatingCostHandles.html">OperatingCostHandles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.evaluate_cost.html">flexops.costing.evaluate_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.evaluate_fuel_cost.html">flexops.costing.evaluate_fuel_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.DRConfig.html">DRConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCosting.html">FlexCosting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.FlexCostingData.html">FlexCostingData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.CostReport.html">CostReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.OperatingCostBreakdown.html">OperatingCostBreakdown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.CapitalCostBreakdown.html">CapitalCostBreakdown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.ScalarCostSpec.html">ScalarCostSpec</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.testing.UnitModelTestHarness.html">UnitModelTestHarness</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../_sources/reference/flexops/logic.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="flexops-logic">
+<h1>flexops.logic<a class="headerlink" href="#flexops-logic" title="Link to this heading">¶</a></h1>
+<p>The composable unit-commitment layer (architecture §3.5): a set of optional
+constraint pieces applied per unit. <a class="reference internal" href="#flexops.logic.status.add_status" title="flexops.logic.status.add_status"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_status()</span></code></a> is
+the base — present whenever a unit can be shut off — and everything else is
+opt-in. Every name below is re-exported from <code class="docutils literal notranslate"><span class="pre">flexops.logic</span></code> itself.</p>
+<section id="status">
+<h2>Status<a class="headerlink" href="#status" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.status.add_status">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.status.</span></span><span class="sig-name descname"><span class="pre">add_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a></span></span><a class="headerlink" href="#flexops.logic.status.add_status" title="Link to this definition">¶</a></dt>
+<dd><p>Attach the on/off status binary and its semicontinuous links to a unit.</p>
+<p>Adds <code class="docutils literal notranslate"><span class="pre">status[t]</span></code> (Binary, indexed by the unit’s time points) plus two
+Constraints linking <code class="docutils literal notranslate"><span class="pre">output_var</span></code> to it:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">status_min_link[t]</span></code>: <code class="docutils literal notranslate"><span class="pre">min_output</span> <span class="pre">*</span> <span class="pre">status[t]</span> <span class="pre">&lt;=</span> <span class="pre">output_var[t]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">status_max_link[t]</span></code>: <code class="docutils literal notranslate"><span class="pre">output_var[t]</span> <span class="pre">&lt;=</span> <span class="pre">max_output</span> <span class="pre">*</span> <span class="pre">status[t]</span></code></p></li>
+</ul>
+<p>Together they force <code class="docutils literal notranslate"><span class="pre">output_var[t]</span> <span class="pre">==</span> <span class="pre">0</span></code> when the unit is off
+(<code class="docutils literal notranslate"><span class="pre">status[t]</span> <span class="pre">==</span> <span class="pre">0</span></code>) and <code class="docutils literal notranslate"><span class="pre">min_output</span> <span class="pre">&lt;=</span> <span class="pre">output_var[t]</span> <span class="pre">&lt;=</span> <span class="pre">max_output</span></code> when
+it is on. The status binary is tracked so <code class="docutils literal notranslate"><span class="pre">relax</span></code>/<code class="docutils literal notranslate"><span class="pre">unrelax</span></code> cover it.
+Call at most once per unit (v0 uses the fixed component names <code class="docutils literal notranslate"><span class="pre">status</span></code> /
+<code class="docutils literal notranslate"><span class="pre">status_min_link</span></code> / <code class="docutils literal notranslate"><span class="pre">status_max_link</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> – The unit block to attach the status structure to.</p></li>
+<li><p><strong>output_var</strong> – The time-indexed output <code class="docutils literal notranslate"><span class="pre">Var</span></code> (e.g. a power draw) gated by
+the status binary.</p></li>
+<li><p><strong>min_output</strong> – Minimum output when on, a units-carrying quantity matching
+<code class="docutils literal notranslate"><span class="pre">output_var</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">*</span> <span class="pre">pyunits.kW</span></code>).</p></li>
+<li><p><strong>max_output</strong> – Maximum output when on, a units-carrying quantity matching
+<code class="docutils literal notranslate"><span class="pre">output_var</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The attached Binary <code class="docutils literal notranslate"><span class="pre">status</span></code> Var.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.status.relax">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.status.</span></span><span class="sig-name descname"><span class="pre">relax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.logic.status.relax" title="Link to this definition">¶</a></dt>
+<dd><p>Switch every logic-attached Binary on <code class="docutils literal notranslate"><span class="pre">unit</span></code> to <code class="docutils literal notranslate"><span class="pre">pyo.UnitInterval</span></code>.</p>
+<p>A first-class, live-model domain switch (LP relaxation of the unit’s
+discrete structure): it changes only variable domains – never constraints,
+bounds, or fixed values – so warm starts and references held elsewhere
+(costing, aggregation) survive. A no-op if the unit has no tracked binaries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>unit</strong> – The unit whose tracked binaries to relax.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.status.unrelax">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.status.</span></span><span class="sig-name descname"><span class="pre">unrelax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.logic.status.unrelax" title="Link to this definition">¶</a></dt>
+<dd><p>Switch every logic-attached Binary on <code class="docutils literal notranslate"><span class="pre">unit</span></code> back to <code class="docutils literal notranslate"><span class="pre">pyo.Binary</span></code>.</p>
+<p>The exact inverse of <a class="reference internal" href="#flexops.logic.status.relax" title="flexops.logic.status.relax"><code class="xref py py-func docutils literal notranslate"><span class="pre">relax()</span></code></a> (domain-only). A no-op if the unit has no
+tracked binaries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>unit</strong> – The unit whose tracked binaries to restore to integrality.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="commitment-and-timing">
+<h2>Commitment and timing<a class="headerlink" href="#commitment-and-timing" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.unit_commitment.add_startup_shutdown">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.unit_commitment.</span></span><span class="sig-name descname"><span class="pre">add_startup_shutdown</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">status_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_uptime</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_downtime</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#flexops.logic.unit_commitment.add_startup_shutdown" title="Link to this definition">¶</a></dt>
+<dd><p>Attach <code class="docutils literal notranslate"><span class="pre">startup[t]</span></code>/<code class="docutils literal notranslate"><span class="pre">shutdown[t]</span></code> binaries and transition logic.</p>
+<p>For each <code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>, adds:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">transition[t]</span></code>: <code class="docutils literal notranslate"><span class="pre">status_var[t]</span> <span class="pre">-</span> <span class="pre">status_var[t-1]</span> <span class="pre">==</span> <span class="pre">startup[t]</span> <span class="pre">-</span>
+<span class="pre">shutdown[t]</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_uptime[t]</span></code>: <code class="docutils literal notranslate"><span class="pre">sum(startup[i]</span> <span class="pre">for</span> <span class="pre">i</span> <span class="pre">in</span> <span class="pre">window)</span> <span class="pre">&lt;=</span> <span class="pre">status_var[t]</span></code>,
+window <code class="docutils literal notranslate"><span class="pre">=</span> <span class="pre">range(max(1,</span> <span class="pre">t</span> <span class="pre">-</span> <span class="pre">min_uptime</span> <span class="pre">+</span> <span class="pre">1),</span> <span class="pre">t</span> <span class="pre">+</span> <span class="pre">1)</span></code>. A startup within
+the trailing <code class="docutils literal notranslate"><span class="pre">min_uptime</span></code> steps forces the unit on at <code class="docutils literal notranslate"><span class="pre">t</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_downtime[t]</span></code>: the mirror, <code class="docutils literal notranslate"><span class="pre">sum(shutdown[i]</span> <span class="pre">for</span> <span class="pre">i</span> <span class="pre">in</span> <span class="pre">window)</span> <span class="pre">&lt;=</span>
+<span class="pre">1</span> <span class="pre">-</span> <span class="pre">status_var[t]</span></code>, window sized by <code class="docutils literal notranslate"><span class="pre">min_downtime</span></code>.</p></li>
+</ul>
+<p>At the defaults (<code class="docutils literal notranslate"><span class="pre">min_uptime=1,</span> <span class="pre">min_downtime=1</span></code>) each window is the
+single point <code class="docutils literal notranslate"><span class="pre">{t}</span></code>, so these reduce exactly to the tightening bounds
+<code class="docutils literal notranslate"><span class="pre">startup[t]</span> <span class="pre">&lt;=</span> <span class="pre">status_var[t]</span></code> and <code class="docutils literal notranslate"><span class="pre">shutdown[t]</span> <span class="pre">&lt;=</span> <span class="pre">1</span> <span class="pre">-</span> <span class="pre">status_var[t]</span></code>.
+Summing those two implies <code class="docutils literal notranslate"><span class="pre">startup[t]</span> <span class="pre">+</span> <span class="pre">shutdown[t]</span> <span class="pre">&lt;=</span> <span class="pre">1</span></code> directly (even
+under a continuous relaxation of <code class="docutils literal notranslate"><span class="pre">startup</span></code>/<code class="docutils literal notranslate"><span class="pre">shutdown</span></code>), so no separate
+exclusivity constraint is needed.</p>
+<p>No horizon-end truncation is needed – each window’s upper bound is always
+<code class="docutils literal notranslate"><span class="pre">t</span></code>, which is always in range; only the lower bound is clamped to 1.</p>
+<p><code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">=</span> <span class="pre">0</span></code> is left unconstrained in v0: there is no initial-status Param to
+reference a transition <em>into</em> the horizon’s first point.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> – The unit block to attach the transition structure to.</p></li>
+<li><p><strong>status_var</strong> – The unit’s time-indexed on/off <code class="docutils literal notranslate"><span class="pre">status</span></code> Binary (from
+<a class="reference internal" href="#flexops.logic.status.add_status" title="flexops.logic.status.add_status"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_status()</span></code></a>).</p></li>
+<li><p><strong>min_uptime</strong> – Minimum number of steps the unit must stay on after a
+startup. Must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code>; <code class="docutils literal notranslate"><span class="pre">1</span></code> means no additional requirement
+beyond the instant the unit turns on.</p></li>
+<li><p><strong>min_downtime</strong> – Minimum number of steps the unit must stay off after a
+shutdown. Must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code>, with the same “no-op at 1” meaning.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The attached <code class="docutils literal notranslate"><span class="pre">(startup,</span> <span class="pre">shutdown)</span></code> Binary Vars, each indexed over
+<code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">&gt;=</span> <span class="pre">1</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">min_uptime</span></code> or <code class="docutils literal notranslate"><span class="pre">min_downtime</span></code> is <code class="docutils literal notranslate"><span class="pre">&lt;</span> <span class="pre">1</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.delays.add_startup_delay">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.delays.</span></span><span class="sig-name descname"><span class="pre">add_startup_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">upstream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.constraint.Constraint.html#pyomo.core.base.constraint.Constraint" title="(in Pyomo v6.10.1)"><span class="pre">Constraint</span></a></span></span><a class="headerlink" href="#flexops.logic.delays.add_startup_delay" title="Link to this definition">¶</a></dt>
+<dd><p>Tie <code class="docutils literal notranslate"><span class="pre">unit</span></code>’s on/off status to an upstream unit’s status, delayed by <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
+<p>For each time point <code class="docutils literal notranslate"><span class="pre">t</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">&lt;</span> <span class="pre">k</span></code>: <code class="docutils literal notranslate"><span class="pre">unit.status[t]</span> <span class="pre">==</span> <span class="pre">0</span></code> (cannot be on before the delay has
+elapsed at all).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">&gt;=</span> <span class="pre">k</span></code>: <code class="docutils literal notranslate"><span class="pre">unit.status[t]</span> <span class="pre">&lt;=</span> <span class="pre">upstream.status[t</span> <span class="pre">-</span> <span class="pre">k]</span></code> (cannot be on
+unless the upstream unit was on <code class="docutils literal notranslate"><span class="pre">k</span></code> steps earlier).</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> – The downstream unit block; must already carry a <code class="docutils literal notranslate"><span class="pre">status</span></code> Var
+(via <a class="reference internal" href="#flexops.logic.status.add_status" title="flexops.logic.status.add_status"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_status()</span></code></a>).</p></li>
+<li><p><strong>upstream</strong> – The upstream unit block whose <code class="docutils literal notranslate"><span class="pre">status</span></code> Var gates <code class="docutils literal notranslate"><span class="pre">unit</span></code>.</p></li>
+<li><p><strong>k</strong> – Number of steps the downstream start is delayed behind the upstream.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Registers <code class="docutils literal notranslate"><span class="pre">unit</span></code>’s <code class="docutils literal notranslate"><span class="pre">status</span></code> Var as rolling-horizon state (trailing
+<code class="docutils literal notranslate"><span class="pre">k</span></code> steps) via <code class="docutils literal notranslate"><span class="pre">flexops.logic.status._register_rolling_state</span></code> –
+consuming that registry is the rolling-horizon scheduler’s job, not built
+here.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The attached <code class="docutils literal notranslate"><span class="pre">startup_delay</span></code> Constraint.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">upstream</span></code> has no <code class="docutils literal notranslate"><span class="pre">status</span></code> Var.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.dwell.add_dwell">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.dwell.</span></span><span class="sig-name descname"><span class="pre">add_dwell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#flexops.logic.dwell.add_dwell" title="Link to this definition">¶</a></dt>
+<dd><p>Hold a continuous, time-indexed Var constant within fixed <code class="docutils literal notranslate"><span class="pre">k</span></code>-step blocks.</p>
+<p>The horizon is partitioned into blocks starting at <code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">=</span> <span class="pre">0,</span> <span class="pre">k,</span> <span class="pre">2k,</span> <span class="pre">...</span></code>;
+within each block every point is constrained equal to its predecessor, so
+the variable can only change value at a block boundary. The unit is taken
+from <code class="docutils literal notranslate"><span class="pre">var.parent_block()</span></code> (the block <code class="docutils literal notranslate"><span class="pre">var</span></code> is already attached to).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>var</strong> – A continuous, time-indexed <code class="docutils literal notranslate"><span class="pre">Var</span></code> to hold steady within each
+block (e.g. an inlet flow or temperature set point).</p></li>
+<li><p><strong>k</strong> – Block length in steps. Must be <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The attached <code class="docutils literal notranslate"><span class="pre">{var.local_name}_dwell</span></code> Constraint, indexed over every
+<code class="docutils literal notranslate"><span class="pre">t</span></code> that is not a block boundary. <code class="docutils literal notranslate"><span class="pre">None</span></code> if <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">==</span> <span class="pre">1</span></code> (every
+point is its own block, so no constraint is built).</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">&lt;</span> <span class="pre">1</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p><code class="docutils literal notranslate"><span class="pre">add_dwell</span></code> is a distinct, unrelated concept from <code class="docutils literal notranslate"><span class="pre">add_startup_shutdown</span></code>’s
+minimum uptime/downtime: it holds a <strong>continuous</strong> process variable steady, not
+a unit’s on/off status.</p>
+</section>
+<section id="bypass-and-implications">
+<h2>Bypass and implications<a class="headerlink" href="#bypass-and-implications" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.bypass.add_bypass">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.bypass.</span></span><span class="sig-name descname"><span class="pre">add_bypass</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bypass_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a></span></span><a class="headerlink" href="#flexops.logic.bypass.add_bypass" title="Link to this definition">¶</a></dt>
+<dd><p>Attach <code class="docutils literal notranslate"><span class="pre">bypass_flow[t]</span></code> and the <code class="docutils literal notranslate"><span class="pre">treated_flow[t]</span></code> it defines.</p>
+<p>Adds:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bypass_flow[t]</span></code> – Var, same units as <code class="docutils literal notranslate"><span class="pre">flow_var</span></code>, bounded
+<code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">bypass_max]</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">treated_flow[t]</span></code> – Var, same units as <code class="docutils literal notranslate"><span class="pre">flow_var</span></code>; the quantity a
+unit’s energy relation should consume instead of the raw flow.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">treated_flow_eq[t]</span></code>: <code class="docutils literal notranslate"><span class="pre">treated_flow[t]</span> <span class="pre">==</span> <span class="pre">flow_var[t]</span> <span class="pre">-</span>
+<span class="pre">bypass_flow[t]</span></code>.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit</strong> – The unit block to attach the bypass structure to.</p></li>
+<li><p><strong>flow_var</strong> – The time-indexed flow <code class="docutils literal notranslate"><span class="pre">Var</span></code> being (partially) bypassed.</p></li>
+<li><p><strong>bypass_max</strong> – Upper bound on <code class="docutils literal notranslate"><span class="pre">bypass_flow[t]</span></code>, a units-carrying
+quantity matching <code class="docutils literal notranslate"><span class="pre">flow_var</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The attached <code class="docutils literal notranslate"><span class="pre">treated_flow</span></code> Var.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.conditional.add_conditional">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.conditional.</span></span><span class="sig-name descname"><span class="pre">add_conditional</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">then</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'on'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.constraint.Constraint.html#pyomo.core.base.constraint.Constraint" title="(in Pyomo v6.10.1)"><span class="pre">Constraint</span></a></span></span><a class="headerlink" href="#flexops.logic.conditional.add_conditional" title="Link to this definition">¶</a></dt>
+<dd><p>Attach a conditional status implication between two units, on <code class="docutils literal notranslate"><span class="pre">x_unit</span></code>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">then=&quot;on&quot;</span></code>: <code class="docutils literal notranslate"><span class="pre">y_unit.status[t]</span> <span class="pre">&gt;=</span> <span class="pre">x_unit.status[t]</span></code> (x on implies y on).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">then=&quot;off&quot;</span></code>: <code class="docutils literal notranslate"><span class="pre">y_unit.status[t]</span> <span class="pre">&lt;=</span> <span class="pre">1</span> <span class="pre">-</span> <span class="pre">x_unit.status[t]</span></code> (x on implies
+y off).</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x_unit</strong> – The “if” unit; must carry a <code class="docutils literal notranslate"><span class="pre">status</span></code> Var. The constraint is
+attached to this unit as <code class="docutils literal notranslate"><span class="pre">conditional</span></code>.</p></li>
+<li><p><strong>y_unit</strong> – The “then” unit; must carry a <code class="docutils literal notranslate"><span class="pre">status</span></code> Var.</p></li>
+<li><p><strong>then</strong> – <code class="docutils literal notranslate"><span class="pre">&quot;on&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;off&quot;</span></code>, the implied state of <code class="docutils literal notranslate"><span class="pre">y_unit</span></code> when
+<code class="docutils literal notranslate"><span class="pre">x_unit</span></code> is on.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The attached <code class="docutils literal notranslate"><span class="pre">conditional</span></code> Constraint (on <code class="docutils literal notranslate"><span class="pre">x_unit</span></code>).</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">then</span></code> is not <code class="docutils literal notranslate"><span class="pre">&quot;on&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;off&quot;</span></code>, or either unit
+    lacks a <code class="docutils literal notranslate"><span class="pre">status</span></code> Var.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="parallel-trains-and-degeneracy">
+<h2>Parallel trains and degeneracy<a class="headerlink" href="#parallel-trains-and-degeneracy" title="Link to this heading">¶</a></h2>
+<p>Symmetry among identical parallel trains creates solver-time degeneracy: many
+equal-objective solutions differ only in <em>which</em> interchangeable unit is on, or
+in how a shared duty is split between them. A unit cannot see its siblings, so
+this is handled <strong>outside the unit level</strong> (decision R8): the caller declares
+the group, never a unit’s own <code class="docutils literal notranslate"><span class="pre">build()</span></code>.</p>
+<p>The group is listed in priority order and ordered <strong>descending</strong> along that
+list:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">group</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">group</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="o">...</span> <span class="o">&gt;=</span> <span class="n">group</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>so a train may not run unless its predecessor runs, and the first-listed unit
+is the first one on. The same ordering applies to any continuous Vars named in
+<code class="docutils literal notranslate"><span class="pre">variables</span></code>. What an ordering buys is a smaller search — the permuted copies
+of a split duty are cut — rather than a unique split: an equal-cost split that
+is not merely a relabelling of another still satisfies it.</p>
+<p>Status ordering is the default and requires a <code class="docutils literal notranslate"><span class="pre">status</span></code> Var on every unit in
+the group. Since <code class="docutils literal notranslate"><span class="pre">status</span></code> is attached by the caller
+(<a class="reference internal" href="#flexops.logic.status.add_status" title="flexops.logic.status.add_status"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_status()</span></code></a>) rather than by a unit’s <code class="docutils literal notranslate"><span class="pre">build()</span></code>,
+a group that never had unit commitment applied — or one of units that have no
+on/off state at all, such as a tank — is registered with <code class="docutils literal notranslate"><span class="pre">order_status=False</span></code>,
+which orders the named <code class="docutils literal notranslate"><span class="pre">variables</span></code> alone.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.degeneracy.register_parallel_group">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.degeneracy.</span></span><span class="sig-name descname"><span class="pre">register_parallel_group</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">variables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order_status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.constraint.Constraint.html#pyomo.core.base.constraint.Constraint" title="(in Pyomo v6.10.1)"><span class="pre">Constraint</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#flexops.logic.degeneracy.register_parallel_group" title="Link to this definition">¶</a></dt>
+<dd><p>Declare units as a parallel/degenerate hierarchy group and order them.</p>
+<p>For units the caller knows to be interchangeable or otherwise
+hierarchically related — parallel skids, staged trains, a lead/lag pair.</p>
+<p><strong>Canonical direction.</strong> <code class="docutils literal notranslate"><span class="pre">units</span></code> is given in priority order, lowest
+first, and the group is ordered <em>descending</em> along that list:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">units</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">units</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="o">...</span> <span class="o">&gt;=</span> <span class="n">units</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">status</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>so a train may not run unless its predecessor runs and <code class="docutils literal notranslate"><span class="pre">units[0]</span></code> is the
+first one on. Pass <code class="docutils literal notranslate"><span class="pre">order_status=False</span></code> to skip this and order only the
+named <code class="docutils literal notranslate"><span class="pre">variables</span></code> – the way to register a group whose units carry no
+<code class="docutils literal notranslate"><span class="pre">status</span></code> Var. Implemented by chaining
+<a class="reference internal" href="#flexops.logic.conditional.add_conditional" title="flexops.logic.conditional.add_conditional"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_conditional()</span></code></a> over every consecutive
+pair <em>back to front</em> (<code class="docutils literal notranslate"><span class="pre">add_conditional(units[i</span> <span class="pre">+</span> <span class="pre">1],</span> <span class="pre">units[i])</span></code> reads as
+“<code class="docutils literal notranslate"><span class="pre">units[i</span> <span class="pre">+</span> <span class="pre">1]</span></code> on implies <code class="docutils literal notranslate"><span class="pre">units[i]</span></code> on”), reusing its tested two-unit
+implication semantics rather than re-implementing them. Each pair’s
+Constraint therefore lands on the <strong>later</strong> unit: <code class="docutils literal notranslate"><span class="pre">units[0]</span></code> carries no
+<code class="docutils literal notranslate"><span class="pre">conditional</span></code>, <code class="docutils literal notranslate"><span class="pre">units[-1]</span></code> does.</p>
+<p><strong>Continuous variables.</strong> Each name in <code class="docutils literal notranslate"><span class="pre">variables</span></code> is resolved on every
+unit and ordered the same way, <code class="docutils literal notranslate"><span class="pre">units[i].&lt;name&gt;</span> <span class="pre">&gt;=</span> <span class="pre">units[i</span> <span class="pre">+</span> <span class="pre">1].&lt;name&gt;</span></code>,
+as a Constraint named <code class="docutils literal notranslate"><span class="pre">{name}_ordering</span></code> attached beside that pair’s
+<code class="docutils literal notranslate"><span class="pre">conditional</span></code>. Time-indexed Vars are ordered at every index; scalar Vars
+(a unit’s regressable process parameters, e.g. <code class="docutils literal notranslate"><span class="pre">ReverseOsmosis.recovery</span></code>)
+get a single Constraint. Such parameters are <em>fixed</em> at construction, so an
+ordering over them only binds once a caller or FlexParameterize unfixes
+them — until then it is a trivially satisfied constant.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>units</strong> – &gt;= 2 units, in the intended canonical order (highest priority
+first).</p></li>
+<li><p><strong>variables</strong> – Local component names of continuous Vars to order across the
+group, as each unit exposes them – a renaming unit exposes the
+renamed name. One name is resolved on every unit and chained over
+the whole group, <code class="docutils literal notranslate"><span class="pre">units[0].&lt;name&gt;</span> <span class="pre">&gt;=</span> <span class="pre">units[1].&lt;name&gt;</span> <span class="pre">&gt;=</span> <span class="pre">...</span></code>.
+Empty by default.</p></li>
+<li><p><strong>order_status</strong> – Whether to order the group’s <code class="docutils literal notranslate"><span class="pre">status</span></code> Vars (default
+True). Pass False for a group whose units carry no <code class="docutils literal notranslate"><span class="pre">status</span></code> Var,
+or to leave the on/off order free and canonicalize only
+<code class="docutils literal notranslate"><span class="pre">variables</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <code class="docutils literal notranslate"><span class="pre">len(units)</span> <span class="pre">-</span> <span class="pre">1</span></code> attached <code class="docutils literal notranslate"><span class="pre">conditional</span></code> Constraints, one per
+consecutive pair, in order – empty when <code class="docutils literal notranslate"><span class="pre">order_status</span></code> is False. Any
+<code class="docutils literal notranslate"><span class="pre">variables</span></code> Constraints are reachable on the units as
+<code class="docutils literal notranslate"><span class="pre">{name}_ordering</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If fewer than two units are given, if a unit repeats
+    in the list, if <code class="docutils literal notranslate"><span class="pre">order_status</span></code> is False with no <code class="docutils literal notranslate"><span class="pre">variables</span></code> (the
+    call would order nothing), if a variable name does not resolve to a
+    Var on every unit or resolves to differently-indexed Vars across the
+    group, or – on the default path only, raised by
+    <code class="docutils literal notranslate"><span class="pre">add_conditional</span></code> – if a unit lacks a <code class="docutils literal notranslate"><span class="pre">status</span></code> Var.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="properties.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">flexops.properties</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="generated/flexops.core.registration.FuelUsageRecord.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">FuelUsageRecord</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, flex-pse contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">flexops.logic</a><ul>
+<li><a class="reference internal" href="#status">Status</a><ul>
+<li><a class="reference internal" href="#flexops.logic.status.add_status"><code class="docutils literal notranslate"><span class="pre">add_status()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.logic.status.relax"><code class="docutils literal notranslate"><span class="pre">relax()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.logic.status.unrelax"><code class="docutils literal notranslate"><span class="pre">unrelax()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#commitment-and-timing">Commitment and timing</a><ul>
+<li><a class="reference internal" href="#flexops.logic.unit_commitment.add_startup_shutdown"><code class="docutils literal notranslate"><span class="pre">add_startup_shutdown()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.logic.delays.add_startup_delay"><code class="docutils literal notranslate"><span class="pre">add_startup_delay()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.logic.dwell.add_dwell"><code class="docutils literal notranslate"><span class="pre">add_dwell()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bypass-and-implications">Bypass and implications</a><ul>
+<li><a class="reference internal" href="#flexops.logic.bypass.add_bypass"><code class="docutils literal notranslate"><span class="pre">add_bypass()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.logic.conditional.add_conditional"><code class="docutils literal notranslate"><span class="pre">add_conditional()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#parallel-trains-and-degeneracy">Parallel trains and degeneracy</a><ul>
+<li><a class="reference internal" href="#flexops.logic.degeneracy.register_parallel_group"><code class="docutils literal notranslate"><span class="pre">register_parallel_group()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

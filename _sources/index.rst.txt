@@ -33,6 +33,7 @@ design and operations optimization.
 
    reference/flexcore/index
    reference/flexops/core
+   reference/flexops/logic
    reference/flexops/properties
    reference/flexops/costing
    reference/flexops/testing
