@@ -37,6 +37,8 @@ pre-commit install --hook-type pre-push
 ## Documentation
 Repository documentation is hosted on [GitHub pages](https://flex-pse.github.io/flex-pse/).
 
+## Examples
+Example use cases of flex-pse are detailed in the [`flex-pse-examples`](https://github.com/flex-pse/flex-pse-examples) repository. We also provide a [web-based interface](https://flex-pse.github.io/flex-pse-examples/) to interact with results from select examples. 
 
 ## Development
 
