@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.feed.Feed
+==============================
+
+.. currentmodule:: flexops.unit_models.feed
+
+.. autoclass:: Feed

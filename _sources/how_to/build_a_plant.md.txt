@@ -63,6 +63,109 @@ After solving, read the **reported** cost — never the raw objective — from
 `m.costing.report_cost(m)`, which returns a categorized breakdown (operating vs.
 capital, each itemized).
 
+## Bracketing the plant: Feed and Product
+
+Nothing above owns the streams that *cross* the facility boundary — the raw
+water coming in and the potable water going out. `Feed` and `Product` are the
+two unit models that do. A `Feed` is a source (zero inlets, N named outlets); a
+`Product` is a sink (N named inlets, zero outlets). Each meters the total
+resource crossing the boundary, can bound it over time, and can price it:
+
+```python
+m.waterfacility.raw_water = fo.Feed(
+    property_package=m.properties,
+    resource_name="raw_water",
+    max_withdrawal=500 * pyunits.m**3 / pyunits.hr,
+    price=0.35,                       # $/m3 withdrawn: positive is a cost
+    costing_package=m.costing,
+)
+m.waterfacility.potable = fo.Product(
+    property_package=m.properties,
+    resource_name="potable_water",
+    price=-1.20,                      # negative price = revenue
+    costing_package=m.costing,
+)
+m.waterfacility.feed_to_tank = Arc(
+    source=m.waterfacility.raw_water.outlet_a,
+    destination=m.waterfacility.tank.inlet,
+)
+m.waterfacility.plant_to_product = Arc(
+    source=m.waterfacility.plant.outlet,
+    destination=m.waterfacility.potable.inlet_a,
+)
+```
+
+The plant **discovers** these the same way it discovers power and fuel — no
+registration call — and sums them into `total_feed["raw_water", t]` and
+`total_product["potable_water", t]`. `resource_name` is the aggregation key and
+is independent of the Pyomo block name: two `Feed` blocks with different names
+give two rows, and two sharing one `resource_name` sum into a single row, which
+is how you model the same resource entering at two points. Several inbound
+resources means several `Feed` blocks — one block, one resource.
+
+A plant normally has several of each (raw water, citric acid and antiscalant
+in; potable water, brine and waste out), so this is the expected case rather
+than the edge case. Costing stays per block: the opex line item is named from
+the block's own dotted Pyomo name, so two blocks sharing a resource still get
+separate, differently-priced line items even though their flows aggregate
+together.
+
+### Rate limits and horizon allowances are different constraints
+
+`max_withdrawal=500 * pyunits.m**3 / pyunits.hr` above is a **rate**, and it
+binds in every period. A permit or a delivery contract is usually not that — it
+is a **quantity** over the whole horizon, and how you shape the profile beneath
+it is exactly the flexibility you are trying to optimize. Say which you mean
+with `withdrawal_basis` (`demand_basis` on a `Product`):
+
+```python
+m.waterfacility.raw_water = fo.Feed(
+    property_package=m.properties,
+    resource_name="raw_water",
+    max_withdrawal=240_000 * pyunits.m**3,   # a quantity, not a rate
+    withdrawal_basis="horizon",
+)
+```
+
+That builds a scalar `withdrawal_total` and the equality `eq_withdrawal_total`
+defining it as `sum_t withdrawal[t] * dt`, then bounds *that*. Nothing else
+moves: `withdrawal[t]` stays time-indexed, so costing, the plant's
+`total_feed[resource, t]` aggregation and `set_external_dispatch` all work
+exactly as before. The scalar total is readable after a solve, and its limit
+carries a dual — the shadow price of the permit.
+
+Because the two bases take different dimensions, a limit whose units contradict
+the declared basis is rejected rather than silently rescaled:
+
+```python
+fo.Feed(..., max_withdrawal=500 * pyunits.m**3 / pyunits.hr,
+        withdrawal_basis="horizon")      # FlexConfigError(field="max_withdrawal")
+```
+
+Limits are **mutable Params**, not variable bounds, so a limit that varies over
+time is written rather than configured:
+
+```python
+for t in m.time_block.time_index:
+    m.waterfacility.raw_water.withdrawal_max[t].set_value(profile[t])
+```
+
+(On the horizon basis there is one period, so the same rewrite is
+`withdrawal_max.set_value(v)` with no index.)
+
+An *exact* profile is not a limit at all — fix the metered flow with the
+inherited external-dispatch hook:
+
+```python
+m.waterfacility.raw_water.set_external_dispatch(
+    m.waterfacility.raw_water.withdrawal, series, fix=True
+)
+```
+
+A `Product` aggregates flow and does **not** blend: each inlet's composition,
+temperature and pressure arrive from its own arc and stay independent. Put a
+`Mixer` upstream when a single blended stream is wanted.
+
 ## The config-driven twin
 
 Nothing essential lives only in imperative code: the same model is built from
@@ -126,3 +229,18 @@ Registering a quality declares that the resource is only interchangeable at
 equal quality, so the network permits mixing only between like-quality streams
 (`eq_product_quality`). `total_product["permeate", t]` is the network's summed
 flow.
+
+Linking one plant's product to another's feed needs no new API — `add_link`
+takes any two time-indexed quantities, so a plant total is passed as a
+`Reference` and a boundary block's own meter directly:
+
+```python
+m.campus.add_link(
+    "north_product_to_south_feed",
+    pyo.Reference(m.campus.north.total_product["potable_water", :]),
+    m.campus.south.raw_water.withdrawal,
+)
+```
+
+The network's `total_feed`/`total_product` are the sums of its child plants'
+totals — never a second walk over their units — so nothing is double-counted.

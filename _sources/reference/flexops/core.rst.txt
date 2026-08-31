@@ -38,8 +38,8 @@ units — and a ``NetworkBlock`` is a composition of **plant** blocks. Both are
 thin ``dynamic=False`` flowsheets whose time domain is the ``TimeBlock``'s
 ordered integer set (see :doc:`../../explanation/time_and_dynamics`). Their
 aggregation ``Expression``\ s (``total_electrical_power``,
-``total_thermal_power``, ``total_product``, ``total_fuel_usage``) are
-deferred, because units are normally added after the plant exists;
+``total_thermal_power``, ``total_product``, ``total_fuel_usage``,
+``total_feed``) are deferred, because units are normally added after the plant exists;
 ``FlexCosting.cost_process()`` builds them for every plant and network on the
 model.
 
@@ -93,5 +93,14 @@ The registry records FlexParameterize and the docs generator consume.
    ParameterRecord
    PowerRecord
    FuelUsageRecord
+   BoundaryRecord
+   BoundaryKind
 
 .. autofunction:: iter_io_registry
+
+A boundary flow is registered with
+:meth:`~flexops.core.ops_block.OpsBlockData.register_boundary_flow`, and the
+enclosing plant discovers it from this registry rather than by importing the
+:class:`~flexops.unit_models.feed.Feed`/
+:class:`~flexops.unit_models.product.Product` classes — ``flexops.unit_models``
+imports ``flexops.core``, so the reverse would be circular.

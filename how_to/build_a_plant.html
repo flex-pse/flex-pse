@@ -242,6 +242,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../reference/flexops/logic.html">flexops.logic</a></li>
@@ -297,6 +299,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.feed.Feed.html">flexops.unit_models.feed.Feed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.product.Product.html">flexops.unit_models.product.Product</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -398,6 +402,96 @@ transformation implicitly:</p>
 <code class="docutils literal notranslate"><span class="pre">m.costing.report_cost(m)</span></code>, which returns a categorized breakdown (operating vs.
 capital, each itemized).</p>
 </section>
+<section id="bracketing-the-plant-feed-and-product">
+<h2>Bracketing the plant: Feed and Product<a class="headerlink" href="#bracketing-the-plant-feed-and-product" title="Link to this heading">¶</a></h2>
+<p>Nothing above owns the streams that <em>cross</em> the facility boundary — the raw
+water coming in and the potable water going out. <code class="docutils literal notranslate"><span class="pre">Feed</span></code> and <code class="docutils literal notranslate"><span class="pre">Product</span></code> are the
+two unit models that do. A <code class="docutils literal notranslate"><span class="pre">Feed</span></code> is a source (zero inlets, N named outlets); a
+<code class="docutils literal notranslate"><span class="pre">Product</span></code> is a sink (N named inlets, zero outlets). Each meters the total
+resource crossing the boundary, can bound it over time, and can price it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">raw_water</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">Feed</span><span class="p">(</span>
+    <span class="n">property_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span>
+    <span class="n">resource_name</span><span class="o">=</span><span class="s2">"raw_water"</span><span class="p">,</span>
+    <span class="n">max_withdrawal</span><span class="o">=</span><span class="mi">500</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">3</span> <span class="o">/</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">hr</span><span class="p">,</span>
+    <span class="n">price</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>                       <span class="c1"># $/m3 withdrawn: positive is a cost</span>
+    <span class="n">costing_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">costing</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">potable</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">Product</span><span class="p">(</span>
+    <span class="n">property_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span>
+    <span class="n">resource_name</span><span class="o">=</span><span class="s2">"potable_water"</span><span class="p">,</span>
+    <span class="n">price</span><span class="o">=-</span><span class="mf">1.20</span><span class="p">,</span>                      <span class="c1"># negative price = revenue</span>
+    <span class="n">costing_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">costing</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">feed_to_tank</span> <span class="o">=</span> <span class="n">Arc</span><span class="p">(</span>
+    <span class="n">source</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">raw_water</span><span class="o">.</span><span class="n">outlet_a</span><span class="p">,</span>
+    <span class="n">destination</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">tank</span><span class="o">.</span><span class="n">inlet</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">plant_to_product</span> <span class="o">=</span> <span class="n">Arc</span><span class="p">(</span>
+    <span class="n">source</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">outlet</span><span class="p">,</span>
+    <span class="n">destination</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">potable</span><span class="o">.</span><span class="n">inlet_a</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The plant <strong>discovers</strong> these the same way it discovers power and fuel — no
+registration call — and sums them into <code class="docutils literal notranslate"><span class="pre">total_feed[&quot;raw_water&quot;,</span> <span class="pre">t]</span></code> and
+<code class="docutils literal notranslate"><span class="pre">total_product[&quot;potable_water&quot;,</span> <span class="pre">t]</span></code>. <code class="docutils literal notranslate"><span class="pre">resource_name</span></code> is the aggregation key and
+is independent of the Pyomo block name: two <code class="docutils literal notranslate"><span class="pre">Feed</span></code> blocks with different names
+give two rows, and two sharing one <code class="docutils literal notranslate"><span class="pre">resource_name</span></code> sum into a single row, which
+is how you model the same resource entering at two points. Several inbound
+resources means several <code class="docutils literal notranslate"><span class="pre">Feed</span></code> blocks — one block, one resource.</p>
+<p>A plant normally has several of each (raw water, citric acid and antiscalant
+in; potable water, brine and waste out), so this is the expected case rather
+than the edge case. Costing stays per block: the opex line item is named from
+the block’s own dotted Pyomo name, so two blocks sharing a resource still get
+separate, differently-priced line items even though their flows aggregate
+together.</p>
+<section id="rate-limits-and-horizon-allowances-are-different-constraints">
+<h3>Rate limits and horizon allowances are different constraints<a class="headerlink" href="#rate-limits-and-horizon-allowances-are-different-constraints" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">max_withdrawal=500</span> <span class="pre">*</span> <span class="pre">pyunits.m**3</span> <span class="pre">/</span> <span class="pre">pyunits.hr</span></code> above is a <strong>rate</strong>, and it
+binds in every period. A permit or a delivery contract is usually not that — it
+is a <strong>quantity</strong> over the whole horizon, and how you shape the profile beneath
+it is exactly the flexibility you are trying to optimize. Say which you mean
+with <code class="docutils literal notranslate"><span class="pre">withdrawal_basis</span></code> (<code class="docutils literal notranslate"><span class="pre">demand_basis</span></code> on a <code class="docutils literal notranslate"><span class="pre">Product</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">raw_water</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">Feed</span><span class="p">(</span>
+    <span class="n">property_package</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">properties</span><span class="p">,</span>
+    <span class="n">resource_name</span><span class="o">=</span><span class="s2">"raw_water"</span><span class="p">,</span>
+    <span class="n">max_withdrawal</span><span class="o">=</span><span class="mi">240_000</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">3</span><span class="p">,</span>   <span class="c1"># a quantity, not a rate</span>
+    <span class="n">withdrawal_basis</span><span class="o">=</span><span class="s2">"horizon"</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>That builds a scalar <code class="docutils literal notranslate"><span class="pre">withdrawal_total</span></code> and the equality <code class="docutils literal notranslate"><span class="pre">eq_withdrawal_total</span></code>
+defining it as <code class="docutils literal notranslate"><span class="pre">sum_t</span> <span class="pre">withdrawal[t]</span> <span class="pre">*</span> <span class="pre">dt</span></code>, then bounds <em>that</em>. Nothing else
+moves: <code class="docutils literal notranslate"><span class="pre">withdrawal[t]</span></code> stays time-indexed, so costing, the plant’s
+<code class="docutils literal notranslate"><span class="pre">total_feed[resource,</span> <span class="pre">t]</span></code> aggregation and <code class="docutils literal notranslate"><span class="pre">set_external_dispatch</span></code> all work
+exactly as before. The scalar total is readable after a solve, and its limit
+carries a dual — the shadow price of the permit.</p>
+<p>Because the two bases take different dimensions, a limit whose units contradict
+the declared basis is rejected rather than silently rescaled:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fo</span><span class="o">.</span><span class="n">Feed</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">max_withdrawal</span><span class="o">=</span><span class="mi">500</span> <span class="o">*</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">3</span> <span class="o">/</span> <span class="n">pyunits</span><span class="o">.</span><span class="n">hr</span><span class="p">,</span>
+        <span class="n">withdrawal_basis</span><span class="o">=</span><span class="s2">"horizon"</span><span class="p">)</span>      <span class="c1"># FlexConfigError(field="max_withdrawal")</span>
+</pre></div>
+</div>
+<p>Limits are <strong>mutable Params</strong>, not variable bounds, so a limit that varies over
+time is written rather than configured:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">time_block</span><span class="o">.</span><span class="n">time_index</span><span class="p">:</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">raw_water</span><span class="o">.</span><span class="n">withdrawal_max</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="n">profile</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>(On the horizon basis there is one period, so the same rewrite is
+<code class="docutils literal notranslate"><span class="pre">withdrawal_max.set_value(v)</span></code> with no index.)</p>
+<p>An <em>exact</em> profile is not a limit at all — fix the metered flow with the
+inherited external-dispatch hook:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">raw_water</span><span class="o">.</span><span class="n">set_external_dispatch</span><span class="p">(</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">waterfacility</span><span class="o">.</span><span class="n">raw_water</span><span class="o">.</span><span class="n">withdrawal</span><span class="p">,</span> <span class="n">series</span><span class="p">,</span> <span class="n">fix</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>A <code class="docutils literal notranslate"><span class="pre">Product</span></code> aggregates flow and does <strong>not</strong> blend: each inlet’s composition,
+temperature and pressure arrive from its own arc and stay independent. Put a
+<code class="docutils literal notranslate"><span class="pre">Mixer</span></code> upstream when a single blended stream is wanted.</p>
+</section>
+</section>
 <section id="the-config-driven-twin">
 <h2>The config-driven twin<a class="headerlink" href="#the-config-driven-twin" title="Link to this heading">¶</a></h2>
 <p>Nothing essential lives only in imperative code: the same model is built from
@@ -455,6 +549,18 @@ indicator — and the network sums it across plants:</p>
 equal quality, so the network permits mixing only between like-quality streams
 (<code class="docutils literal notranslate"><span class="pre">eq_product_quality</span></code>). <code class="docutils literal notranslate"><span class="pre">total_product[&quot;permeate&quot;,</span> <span class="pre">t]</span></code> is the network’s summed
 flow.</p>
+<p>Linking one plant’s product to another’s feed needs no new API — <code class="docutils literal notranslate"><span class="pre">add_link</span></code>
+takes any two time-indexed quantities, so a plant total is passed as a
+<code class="docutils literal notranslate"><span class="pre">Reference</span></code> and a boundary block’s own meter directly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">add_link</span><span class="p">(</span>
+    <span class="s2">"north_product_to_south_feed"</span><span class="p">,</span>
+    <span class="n">pyo</span><span class="o">.</span><span class="n">Reference</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">north</span><span class="o">.</span><span class="n">total_product</span><span class="p">[</span><span class="s2">"potable_water"</span><span class="p">,</span> <span class="p">:]),</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">campus</span><span class="o">.</span><span class="n">south</span><span class="o">.</span><span class="n">raw_water</span><span class="o">.</span><span class="n">withdrawal</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The network’s <code class="docutils literal notranslate"><span class="pre">total_feed</span></code>/<code class="docutils literal notranslate"><span class="pre">total_product</span></code> are the sums of its child plants’
+totals — never a second walk over their units — so nothing is double-counted.</p>
 </section>
 </section>
 
@@ -515,6 +621,10 @@ flow.</p>
             <ul>
 <li><a class="reference internal" href="#">Build a plant</a><ul>
 <li><a class="reference internal" href="#the-imperative-path">The imperative path</a></li>
+<li><a class="reference internal" href="#bracketing-the-plant-feed-and-product">Bracketing the plant: Feed and Product</a><ul>
+<li><a class="reference internal" href="#rate-limits-and-horizon-allowances-are-different-constraints">Rate limits and horizon allowances are different constraints</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#the-config-driven-twin">The config-driven twin</a></li>
 <li><a class="reference internal" href="#more-than-one-plant-networkblock">More than one plant: NetworkBlock</a></li>
 </ul>

@@ -165,6 +165,56 @@ the split is meant to be prescribed rather than optimized.
 
    Splitter
 
+Boundary blocks
+---------------
+
+.. currentmodule:: flexops.unit_models.feed
+
+A source: zero inlets, an arbitrary number of named outlets. It owns a boundary
+stream — the reference outlet's non-flow states are the boundary conditions,
+and every other outlet is held at them — meters the total ``withdrawal[t]``
+crossing the boundary, optionally bounds it with mutable limit Params, and
+optionally prices it into opex. Its ``resource_name`` is the key the enclosing
+plant aggregates it under in ``total_feed[resource, t]``, independent of the
+block's own Pyomo name.
+
+``withdrawal_basis`` (and ``demand_basis`` on a ``Product``) chooses what the
+configured limits mean, because a rate ceiling and a horizon allowance are
+different constraints rather than two spellings of one. On the default
+``"period"`` basis the limit is a **rate** holding in every period
+(``m**3/hr``), built as a Param over the time index. On the ``"horizon"`` basis
+it is a **quantity** over the whole horizon (``m**3``) — a monthly abstraction
+permit, a take-or-pay contract — bounding a scalar ``withdrawal_total`` defined
+by ``eq_withdrawal_total`` as :math:`\sum_t withdrawal[t] \cdot dt`, which
+leaves the optimizer free to shape the profile that reaches it. The metered
+``withdrawal[t]`` itself stays time-indexed either way, so costing, plant
+aggregation and ``set_external_dispatch`` are unaffected. A limit whose units
+contradict the declared basis raises ``FlexConfigError`` naming the config key.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   Feed
+
+.. currentmodule:: flexops.unit_models.product
+
+The mirror sink: an arbitrary number of named inlets, zero outlets, aggregating
+what arrives into ``delivery[t]`` and aggregating into
+``total_product[resource, t]``. It deliberately does **not** blend — each
+inlet's intensive states arrive from its own arc and are left independent, so
+put a ``Mixer`` upstream when a single blended stream is wanted — and its price
+follows the ``register_scalar_cost`` sign convention: positive is a cost (brine
+disposal), negative is revenue (potable water sold).
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   Product
+
 Generic surrogate
 -----------------
 

@@ -242,6 +242,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../logic.html">flexops.logic</a></li>
@@ -297,6 +299,8 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.feed.Feed.html">flexops.unit_models.feed.Feed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.product.Product.html">flexops.unit_models.product.Product</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -499,6 +503,53 @@ the split is meant to be prescribed rather than optimized.</p>
 </table>
 </div>
 </section>
+<section id="boundary-blocks">
+<h2>Boundary blocks<a class="headerlink" href="#boundary-blocks" title="Link to this heading">¶</a></h2>
+<p>A source: zero inlets, an arbitrary number of named outlets. It owns a boundary
+stream — the reference outlet’s non-flow states are the boundary conditions,
+and every other outlet is held at them — meters the total <code class="docutils literal notranslate"><span class="pre">withdrawal[t]</span></code>
+crossing the boundary, optionally bounds it with mutable limit Params, and
+optionally prices it into opex. Its <code class="docutils literal notranslate"><span class="pre">resource_name</span></code> is the key the enclosing
+plant aggregates it under in <code class="docutils literal notranslate"><span class="pre">total_feed[resource,</span> <span class="pre">t]</span></code>, independent of the
+block’s own Pyomo name.</p>
+<p><code class="docutils literal notranslate"><span class="pre">withdrawal_basis</span></code> (and <code class="docutils literal notranslate"><span class="pre">demand_basis</span></code> on a <code class="docutils literal notranslate"><span class="pre">Product</span></code>) chooses what the
+configured limits mean, because a rate ceiling and a horizon allowance are
+different constraints rather than two spellings of one. On the default
+<code class="docutils literal notranslate"><span class="pre">&quot;period&quot;</span></code> basis the limit is a <strong>rate</strong> holding in every period
+(<code class="docutils literal notranslate"><span class="pre">m**3/hr</span></code>), built as a Param over the time index. On the <code class="docutils literal notranslate"><span class="pre">&quot;horizon&quot;</span></code> basis
+it is a <strong>quantity</strong> over the whole horizon (<code class="docutils literal notranslate"><span class="pre">m**3</span></code>) — a monthly abstraction
+permit, a take-or-pay contract — bounding a scalar <code class="docutils literal notranslate"><span class="pre">withdrawal_total</span></code> defined
+by <code class="docutils literal notranslate"><span class="pre">eq_withdrawal_total</span></code> as <span class="math notranslate nohighlight">\(\sum_t withdrawal[t] \cdot dt\)</span>, which
+leaves the optimizer free to shape the profile that reaches it. The metered
+<code class="docutils literal notranslate"><span class="pre">withdrawal[t]</span></code> itself stays time-indexed either way, so costing, plant
+aggregation and <code class="docutils literal notranslate"><span class="pre">set_external_dispatch</span></code> are unaffected. A limit whose units
+contradict the declared basis raises <code class="docutils literal notranslate"><span class="pre">FlexConfigError</span></code> naming the config key.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.feed.Feed.html#flexops.unit_models.feed.Feed" title="flexops.unit_models.feed.Feed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Feed</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The mirror sink: an arbitrary number of named inlets, zero outlets, aggregating
+what arrives into <code class="docutils literal notranslate"><span class="pre">delivery[t]</span></code> and aggregating into
+<code class="docutils literal notranslate"><span class="pre">total_product[resource,</span> <span class="pre">t]</span></code>. It deliberately does <strong>not</strong> blend — each
+inlet’s intensive states arrive from its own arc and are left independent, so
+put a <code class="docutils literal notranslate"><span class="pre">Mixer</span></code> upstream when a single blended stream is wanted — and its price
+follows the <code class="docutils literal notranslate"><span class="pre">register_scalar_cost</span></code> sign convention: positive is a cost (brine
+disposal), negative is revenue (potable water sold).</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.unit_models.product.Product.html#flexops.unit_models.product.Product" title="flexops.unit_models.product.Product"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Product</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 <section id="generic-surrogate">
 <h2>Generic surrogate<a class="headerlink" href="#generic-surrogate" title="Link to this heading">¶</a></h2>
 <p>The default building block for anything without a bespoke physical topology —
@@ -575,6 +626,9 @@ a whole plant modeled as one surrogate, as in the frozen API script.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#physical-units">Physical units</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#boundary-blocks">Boundary blocks</a><ul>
 </ul>
 </li>
 <li><a class="reference internal" href="#generic-surrogate">Generic surrogate</a></li>

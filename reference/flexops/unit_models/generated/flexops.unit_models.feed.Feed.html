@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="next" title="flexops.unit_models.splitter.Splitter" href="flexops.unit_models.splitter.Splitter.html"><link rel="prev" title="flexops.unit_models.powergeneration.combustor.Combustor" href="flexops.unit_models.powergeneration.combustor.Combustor.html">
+<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="next" title="flexops.unit_models.product.Product" href="flexops.unit_models.product.Product.html"><link rel="prev" title="flexops.unit_models.splitter.Splitter" href="flexops.unit_models.splitter.Splitter.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>flexops.unit_models.mixer.Mixer - flex-pse documentation</title>
+        <title>flexops.unit_models.feed.Feed - flex-pse documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -297,9 +297,9 @@
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">flexops.unit_models.mixer.Mixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.feed.Feed.html">flexops.unit_models.feed.Feed</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">flexops.unit_models.feed.Feed</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.product.Product.html">flexops.unit_models.product.Product</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
@@ -324,7 +324,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../../../../_sources/reference/flexops/unit_models/generated/flexops.unit_models.mixer.Mixer.rst.txt" title="View this page">
+  <a class="muted-link" href="../../../../_sources/reference/flexops/unit_models/generated/flexops.unit_models.feed.Feed.rst.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -342,11 +342,11 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="flexops-unit-models-mixer-mixer">
-<h1>flexops.unit_models.mixer.Mixer<a class="headerlink" href="#flexops-unit-models-mixer-mixer" title="Link to this heading">¶</a></h1>
+          <section id="flexops-unit-models-feed-feed">
+<h1>flexops.unit_models.feed.Feed<a class="headerlink" href="#flexops-unit-models-feed-feed" title="Link to this heading">¶</a></h1>
 <dl class="py class">
-<dt class="sig sig-object py" id="flexops.unit_models.mixer.Mixer">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.unit_models.mixer.</span></span><span class="sig-name descname"><span class="pre">Mixer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.unit_models.mixer.Mixer" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="flexops.unit_models.feed.Feed">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexops.unit_models.feed.</span></span><span class="sig-name descname"><span class="pre">Feed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexops.unit_models.feed.Feed" title="Link to this definition">¶</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -393,19 +393,41 @@ register_power forwards the unit’s power draw to it. None
 for standalone units; the forwarding is strictly
 conditional.</p>
 </dd>
-<dt>inlet_names</dt><dd><p>Role names of the mixer’s inlets; inlet i is built as port
-f’inlet_{name}’. Must be unique and non-empty. The first
-name is the reference inlet, whose intensive states every
-other inlet is held at and which passes through to the
-outlet.</p>
+<dt>outlet_names</dt><dd><p>Role names of the feed’s outlets; outlet i is built as
+port f’outlet_{name}’. Must be unique and non-empty. The
+first name is the reference outlet, whose non-flow states
+are the boundary conditions every other outlet is held at.</p>
 </dd>
-<dt>temperature_mixing</dt><dd><p>How the outlet temperature is set: ‘equal’ (every inlet is
-held at the reference inlet’s temperature, which passes
-through to the outlet — isothermal and linear) or
-‘flow_weighted’ (the inlet temperatures stay independent
-and the outlet is their volume-weighted blend — bilinear,
-so the model becomes an NLP). Only meaningful when the
-property package carries a temperature state.</p>
+<dt>resource_name</dt><dd><p>The withdrawn resource’s name (e.g. ‘raw_water’), the key
+it aggregates under in the plant’s total_feed. Defaults to
+the block’s own Pyomo name; set it explicitly to override
+that — to merge two blocks under one key, or when the
+block name is not the name wanted in total_feed.</p>
+</dd>
+<dt>max_withdrawal</dt><dd><p>Units-carrying scalar upper limit on the withdrawal (e.g.
+a permitted abstraction rate, or a monthly permit volume).
+Its dimension follows withdrawal_basis: a rate per period,
+or a quantity over the horizon. Builds a mutable Param and
+its Constraint; rewrite the Param to move the bound.</p>
+</dd>
+<dt>min_withdrawal</dt><dd><p>Units-carrying scalar lower limit on the withdrawal (e.g.
+a take-or-pay minimum). Its dimension follows
+withdrawal_basis: a rate per period, or a quantity over
+the horizon. Builds a mutable Param and its Constraint.</p>
+</dd>
+<dt>withdrawal_basis</dt><dd><p>Whether min_withdrawal/max_withdrawal bind in every period
+(‘period’, the default – the limits are rates such as
+m**3/hr) or on the horizon total (‘horizon’ – the limits
+are quantities such as m**3, bounding the scalar
+withdrawal_total and leaving the optimizer to shape the
+profile that reaches it). A limit whose units contradict
+the basis is rejected. On its own, with no limit
+configured, this builds nothing.</p>
+</dd>
+<dt>price</dt><dd><p>Flat price per unit withdrawn, in the costing currency
+basis; positive is a cost. Requires costing_package, and
+is billed as a scalar operating cost (price * sum_t
+flow[t] * dt).</p>
 </dd>
 </dl>
 </div></blockquote>
@@ -420,7 +442,7 @@ BlockData index exactly to the index in initialize.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>(Mixer) New instance</p>
+<dd class="field-even"><p>(Feed) New instance</p>
 </dd>
 </dl>
 </dd></dl>
@@ -432,23 +454,23 @@ BlockData index exactly to the index in initialize.</p></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="flexops.unit_models.splitter.Splitter.html">
+          <a class="next-page" href="flexops.unit_models.product.Product.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">flexops.unit_models.splitter.Splitter</div>
+                <div class="title">flexops.unit_models.product.Product</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="flexops.unit_models.powergeneration.combustor.Combustor.html">
+          <a class="prev-page" href="flexops.unit_models.splitter.Splitter.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">flexops.unit_models.powergeneration.combustor.Combustor</div>
+                <div class="title">flexops.unit_models.splitter.Splitter</div>
                 
               </div>
             </a>
@@ -482,8 +504,8 @@ BlockData index exactly to the index in initialize.</p></li>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">flexops.unit_models.mixer.Mixer</a><ul>
-<li><a class="reference internal" href="#flexops.unit_models.mixer.Mixer"><code class="docutils literal notranslate"><span class="pre">Mixer</span></code></a></li>
+<li><a class="reference internal" href="#">flexops.unit_models.feed.Feed</a><ul>
+<li><a class="reference internal" href="#flexops.unit_models.feed.Feed"><code class="docutils literal notranslate"><span class="pre">Feed</span></code></a></li>
 </ul>
 </li>
 </ul>

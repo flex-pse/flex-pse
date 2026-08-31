@@ -1,0 +1,7 @@
+﻿BoundaryRecord
+==============
+
+.. currentmodule:: flexops.core.registration
+
+.. autoclass:: BoundaryRecord
+   :members:

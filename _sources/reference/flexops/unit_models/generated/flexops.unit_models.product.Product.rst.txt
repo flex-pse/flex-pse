@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.product.Product
+====================================
+
+.. currentmodule:: flexops.unit_models.product
+
+.. autoclass:: Product

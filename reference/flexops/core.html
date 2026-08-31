@@ -242,6 +242,8 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="logic.html">flexops.logic</a></li>
@@ -297,6 +299,8 @@
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.feed.Feed.html">flexops.unit_models.feed.Feed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.product.Product.html">flexops.unit_models.product.Product</a></li>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -385,8 +389,8 @@ units — and a <code class="docutils literal notranslate"><span class="pre">Net
 thin <code class="docutils literal notranslate"><span class="pre">dynamic=False</span></code> flowsheets whose time domain is the <code class="docutils literal notranslate"><span class="pre">TimeBlock</span></code>’s
 ordered integer set (see <a class="reference internal" href="../../explanation/time_and_dynamics.html"><span class="doc">Time and dynamics (decision R2)</span></a>). Their
 aggregation <code class="docutils literal notranslate"><span class="pre">Expression</span></code>s (<code class="docutils literal notranslate"><span class="pre">total_electrical_power</span></code>,
-<code class="docutils literal notranslate"><span class="pre">total_thermal_power</span></code>, <code class="docutils literal notranslate"><span class="pre">total_product</span></code>, <code class="docutils literal notranslate"><span class="pre">total_fuel_usage</span></code>) are
-deferred, because units are normally added after the plant exists;
+<code class="docutils literal notranslate"><span class="pre">total_thermal_power</span></code>, <code class="docutils literal notranslate"><span class="pre">total_product</span></code>, <code class="docutils literal notranslate"><span class="pre">total_fuel_usage</span></code>,
+<code class="docutils literal notranslate"><span class="pre">total_feed</span></code>) are deferred, because units are normally added after the plant exists;
 <code class="docutils literal notranslate"><span class="pre">FlexCosting.cost_process()</span></code> builds them for every plant and network on the
 model.</p>
 <div class="table-wrapper autosummary longtable docutils container">
@@ -513,6 +517,12 @@ currency (so <code class="docutils literal notranslate"><span class="pre">&quot;
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.core.registration.FuelUsageRecord.html#flexops.core.registration.FuelUsageRecord" title="flexops.core.registration.FuelUsageRecord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FuelUsageRecord</span></code></a></p></td>
 <td><p>A registered fuel-usage variable — a volumetric flow, not a power.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord" title="flexops.core.registration.BoundaryRecord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BoundaryRecord</span></code></a></p></td>
+<td><p>A registered boundary flow — a resource entering or leaving a facility.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.core.registration.BoundaryKind.html#flexops.core.registration.BoundaryKind" title="flexops.core.registration.BoundaryKind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BoundaryKind</span></code></a></p></td>
+<td><p>Which side of a facility boundary a registered flow crosses.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -533,6 +543,12 @@ FlexParameterize and the docs generator model-wide discoverability.</p>
 </dl>
 </dd></dl>
 
+<p>A boundary flow is registered with
+<a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.register_boundary_flow" title="flexops.core.ops_block.OpsBlockData.register_boundary_flow"><code class="xref py py-meth docutils literal notranslate"><span class="pre">register_boundary_flow()</span></code></a>, and the
+enclosing plant discovers it from this registry rather than by importing the
+<a class="reference internal" href="unit_models/generated/flexops.unit_models.feed.Feed.html#flexops.unit_models.feed.Feed" title="flexops.unit_models.feed.Feed"><code class="xref py py-class docutils literal notranslate"><span class="pre">Feed</span></code></a>/
+<a class="reference internal" href="unit_models/generated/flexops.unit_models.product.Product.html#flexops.unit_models.product.Product" title="flexops.unit_models.product.Product"><code class="xref py py-class docutils literal notranslate"><span class="pre">Product</span></code></a> classes — <code class="docutils literal notranslate"><span class="pre">flexops.unit_models</span></code>
+imports <code class="docutils literal notranslate"><span class="pre">flexops.core</span></code>, so the reverse would be circular.</p>
 </section>
 </section>
 

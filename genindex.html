@@ -240,6 +240,8 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="reference/flexops/logic.html">flexops.logic</a></li>
@@ -295,6 +297,8 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.feed.Feed.html">flexops.unit_models.feed.Feed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.product.Product.html">flexops.unit_models.product.Product</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -382,6 +386,12 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html#flexops.unit_models.storage.battery.BatteryModel">BatteryModel (class in flexops.unit_models.storage.battery)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry.boundary">boundary (flexops.core.registration.IORegistry attribute)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.BoundaryKind.html#flexops.core.registration.BoundaryKind">BoundaryKind (class in flexops.core.registration)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord">BoundaryRecord (class in flexops.core.registration)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.build">build() (flexops.core.ops_block.OpsBlockData method)</a>
 
@@ -541,6 +551,8 @@
   <h2>F</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.feed.Feed.html#flexops.unit_models.feed.Feed">Feed (class in flexops.unit_models.feed)</a>
+</li>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexConfigError.field">field (flexcore.exceptions.FlexConfigError attribute)</a>
 
         <ul>
@@ -555,10 +567,10 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData">FlexCostingData (class in flexops.costing.flex_costing)</a>
 </li>
-        <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexDataError">FlexDataError</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexDataError">FlexDataError</a>
+</li>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexError">FlexError</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexSolverError">FlexSolverError</a>
@@ -643,8 +655,12 @@
   <h2>K</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="reference/flexops/generated/flexops.core.registration.PowerRecord.html#flexops.core.registration.PowerRecord.kind">kind (flexops.core.registration.PowerRecord attribute)</a>
+        <li><a href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord.kind">kind (flexops.core.registration.BoundaryRecord attribute)</a>
+
+        <ul>
+          <li><a href="reference/flexops/generated/flexops.core.registration.PowerRecord.html#flexops.core.registration.PowerRecord.kind">(flexops.core.registration.PowerRecord attribute)</a>
 </li>
+        </ul></li>
     </ul></td>
   </tr></table>
 </section>
@@ -720,6 +736,8 @@
         <li><a href="reference/flexcore/index.html#flexcore.solvers.SolverFacade.name">name (flexcore.solvers.SolverFacade attribute)</a>
 
         <ul>
+          <li><a href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord.name">(flexops.core.registration.BoundaryRecord attribute)</a>
+</li>
           <li><a href="reference/flexops/generated/flexops.core.registration.FuelUsageRecord.html#flexops.core.registration.FuelUsageRecord.name">(flexops.core.registration.FuelUsageRecord attribute)</a>
 </li>
           <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord.name">(flexops.core.registration.IOVariableRecord attribute)</a>
@@ -815,6 +833,8 @@
         </ul></li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.ProblemClass">ProblemClass (class in flexcore.solvers)</a>
 </li>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.product.Product.html#flexops.unit_models.product.Product">Product (class in flexops.unit_models.product)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.DRConfig.html#flexops.costing.DRConfig.program">program (flexops.costing.DRConfig attribute)</a>
 </li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.pump.Pump.html#flexops.unit_models.pump.Pump">Pump (class in flexops.unit_models.pump)</a>
@@ -841,6 +861,8 @@
   <h2>R</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.register_boundary_flow">register_boundary_flow() (flexops.core.ops_block.OpsBlockData method)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.register_fuel_usage">register_fuel_usage() (flexops.core.ops_block.OpsBlockData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.register_initial_state">register_initial_state() (flexops.core.time_block.TimeBlockData method)</a>
@@ -868,6 +890,8 @@
         <li><a href="reference/flexops/generated/flexops.core.ops_block.RelaxationPolicy.html#flexops.core.ops_block.RelaxationPolicy">RelaxationPolicy (class in flexops.core.ops_block)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost">report_cost() (flexops.costing.flex_costing.FlexCostingData method)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord.resource">resource (flexops.core.registration.BoundaryRecord attribute)</a>
 </li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html#flexops.unit_models.reverseosmosis.ReverseOsmosis">ReverseOsmosis (class in flexops.unit_models.reverseosmosis)</a>
 </li>
@@ -1019,9 +1043,11 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexConfigError.value">value (flexcore.exceptions.FlexConfigError attribute)</a>
 </li>
-        <li><a href="reference/flexops/generated/flexops.core.registration.FuelUsageRecord.html#flexops.core.registration.FuelUsageRecord.var">var (flexops.core.registration.FuelUsageRecord attribute)</a>
+        <li><a href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord.var">var (flexops.core.registration.BoundaryRecord attribute)</a>
 
         <ul>
+          <li><a href="reference/flexops/generated/flexops.core.registration.FuelUsageRecord.html#flexops.core.registration.FuelUsageRecord.var">(flexops.core.registration.FuelUsageRecord attribute)</a>
+</li>
           <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord.var">(flexops.core.registration.IOVariableRecord attribute)</a>
 </li>
           <li><a href="reference/flexops/generated/flexops.core.registration.PowerRecord.html#flexops.core.registration.PowerRecord.var">(flexops.core.registration.PowerRecord attribute)</a>

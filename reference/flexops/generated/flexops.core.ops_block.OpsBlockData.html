@@ -242,6 +242,8 @@
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../logic.html">flexops.logic</a></li>
@@ -297,6 +299,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.feed.Feed.html">flexops.unit_models.feed.Feed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.product.Product.html">flexops.unit_models.product.Product</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
@@ -589,6 +593,38 @@ physically meaningless value (an efficiency above one, say);
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.register_boundary_flow">
+<span class="sig-name descname"><span class="pre">register_boundary_flow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="flexops.core.registration.BoundaryKind.html#flexops.core.registration.BoundaryKind" title="flexops.core.registration.BoundaryKind"><span class="pre">BoundaryKind</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.register_boundary_flow" title="Link to this definition">¶</a></dt>
+<dd><p>Register a total flow crossing the facility boundary, for aggregation.</p>
+<p>A boundary block (a source or a sink) meters the whole resource it
+withdraws or delivers, and the enclosing
+<a class="reference internal" href="flexops.core.plant_block.PlantBlockData.html#flexops.core.plant_block.PlantBlockData" title="flexops.core.plant_block.PlantBlockData"><code class="xref py py-class docutils literal notranslate"><span class="pre">PlantBlockData</span></code></a> discovers those flows
+through this registry rather than by importing the unit-model classes,
+summing them into <code class="docutils literal notranslate"><span class="pre">total_feed[resource,</span> <span class="pre">t]</span></code> /
+<code class="docutils literal notranslate"><span class="pre">total_product[resource,</span> <span class="pre">t]</span></code>. Any unit may call it, not only
+<a class="reference internal" href="../unit_models/generated/flexops.unit_models.feed.Feed.html#flexops.unit_models.feed.Feed" title="flexops.unit_models.feed.Feed"><code class="xref py py-class docutils literal notranslate"><span class="pre">Feed</span></code></a> and
+<a class="reference internal" href="../unit_models/generated/flexops.unit_models.product.Product.html#flexops.unit_models.product.Product" title="flexops.unit_models.product.Product"><code class="xref py py-class docutils literal notranslate"><span class="pre">Product</span></code></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">resource</span></code> is the aggregation key and is independent of the Pyomo
+block name: two blocks sharing one <code class="docutils literal notranslate"><span class="pre">resource</span></code> sum into a single row
+(the same resource entering at two points), and two blocks with
+different ones give two rows.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>var</strong> – The time-indexed Pyomo <code class="docutils literal notranslate"><span class="pre">Var</span></code>/<code class="docutils literal notranslate"><span class="pre">Reference</span></code> carrying the total
+flow across the boundary.</p></li>
+<li><p><strong>resource</strong> – The resource’s name (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;raw_water&quot;</span></code>), the key its
+flow aggregates under.</p></li>
+<li><p><strong>kind</strong> – Whether the flow enters or leaves the facility.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">resource</span></code> is empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="flexops.core.ops_block.OpsBlockData.register_fuel_usage">
 <span class="sig-name descname"><span class="pre">register_fuel_usage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fuel_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexops.core.ops_block.OpsBlockData.register_fuel_usage" title="Link to this definition">¶</a></dt>
 <dd><p>Register a fuel-usage variable — a volumetric flow — for costing.</p>
@@ -816,6 +852,7 @@ declared units.</p>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.create_stream_naming_convention"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.create_stream_naming_convention()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.declare_power"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.declare_power()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.declare_process_parameter"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.declare_process_parameter()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.register_boundary_flow"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.register_boundary_flow()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.register_fuel_usage"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.register_fuel_usage()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.register_io_variable"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.register_io_variable()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.core.ops_block.OpsBlockData.register_power"><code class="docutils literal notranslate"><span class="pre">OpsBlockData.register_power()</span></code></a></li>

@@ -1,0 +1,7 @@
+﻿BoundaryKind
+============
+
+.. currentmodule:: flexops.core.registration
+
+.. autoclass:: BoundaryKind
+   :members:
