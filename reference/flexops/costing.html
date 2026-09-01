@@ -356,7 +356,7 @@ imports <code class="docutils literal notranslate"><span class="pre">eeco</span>
 <p>EECO owns all cost math; these wrappers are glue: they marshal inputs, rename
 EECO’s outputs to stable flex-pse names, and translate EECO/pandas errors into
 the flex-pse exception hierarchy. A flex-pse tariff object is simply an EECO
-<code class="docutils literal notranslate"><span class="pre">rate_data</span></code> <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> (EECO 0.3.0 has no tariff loader of its own; its
+<code class="docutils literal notranslate"><span class="pre">rate_data</span></code> <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> (EECO 0.4.0 has no tariff loader of its own; its
 cost functions consume that frame directly).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -443,7 +443,7 @@ increasingly common in California.</p>
 <h2>Tariff signal helpers<a class="headerlink" href="#tariff-signal-helpers" title="Link to this heading">¶</a></h2>
 <p>Plain-pandas signals over a tariff, for writing logic/heuristic constraints.
 Each is a flex-pse helper built on EECO’s <code class="docutils literal notranslate"><span class="pre">get_charge_dict</span></code> charge arrays
-(the source of the price data); EECO 0.2.1 exposes no per-stamp price accessor.</p>
+(the source of the price data); EECO 0.4.0 exposes no per-stamp price accessor.</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -496,7 +496,7 @@ conversion as a plain float factor and constrains its own dimensionless Vars to
 the series it is given. The
 single-utility builders <a class="reference internal" href="generated/flexops.costing.add_electricity_cost.html#flexops.costing.add_electricity_cost" title="flexops.costing.add_electricity_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_electricity_cost()</span></code></a> and <a class="reference internal" href="generated/flexops.costing.add_fuel_cost.html#flexops.costing.add_fuel_cost" title="flexops.costing.add_fuel_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_fuel_cost()</span></code></a>
 remain available for building one leg alone. <a class="reference internal" href="generated/flexops.costing.add_fuel_cost.html#flexops.costing.add_fuel_cost" title="flexops.costing.add_fuel_cost"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_fuel_cost()</span></code></a> takes a
-<code class="docutils literal notranslate"><span class="pre">fuel_type</span></code> (default <code class="docutils literal notranslate"><span class="pre">&quot;gas&quot;</span></code>, the only value EECO 0.2.1 supports); a
+<code class="docutils literal notranslate"><span class="pre">fuel_type</span></code> (default <code class="docutils literal notranslate"><span class="pre">&quot;gas&quot;</span></code>, the only value EECO 0.4.0 supports); a
 hydrogen utility is expected upstream and will add a second value.</p>
 </section>
 <section id="post-optimization-evaluators">
@@ -531,7 +531,7 @@ hydrogen utility is expected upstream and will add a second value.</p>
 <a class="reference internal" href="generated/flexops.costing.DRConfig.html#flexops.costing.DRConfig" title="flexops.costing.DRConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">DRConfig</span></code></a> holds a loaded DR program so the wiring exists, and the
 internal DR hook is a no-op: supplying a DR file never changes the
 objective. Building DR event/curtailment/incentive/capacity constraints is
-post-v0. EECO 0.2.1 exposes no DR API, so the DR file format is a flex-pse
+post-v0. EECO 0.4.0 exposes no DR API, so the DR file format is a flex-pse
 placeholder loaded into the container only.</p>
 </div>
 </section>

@@ -17,7 +17,7 @@ imports ``eeco``, so there is one file to fix when EECO's API moves.
 EECO owns all cost math; these wrappers are glue: they marshal inputs, rename
 EECO's outputs to stable flex-pse names, and translate EECO/pandas errors into
 the flex-pse exception hierarchy. A flex-pse tariff object is simply an EECO
-``rate_data`` ``DataFrame`` (EECO 0.3.0 has no tariff loader of its own; its
+``rate_data`` ``DataFrame`` (EECO 0.4.0 has no tariff loader of its own; its
 cost functions consume that frame directly).
 
 .. note:: **EECO is only needed for tariffs.** The ``eeco`` import is soft, so
@@ -91,7 +91,7 @@ Tariff signal helpers
 
 Plain-pandas signals over a tariff, for writing logic/heuristic constraints.
 Each is a flex-pse helper built on EECO's ``get_charge_dict`` charge arrays
-(the source of the price data); EECO 0.2.1 exposes no per-stamp price accessor.
+(the source of the price data); EECO 0.4.0 exposes no per-stamp price accessor.
 
 .. autosummary::
    :toctree: generated
@@ -127,7 +127,7 @@ conversion as a plain float factor and constrains its own dimensionless Vars to
 the series it is given. The
 single-utility builders :func:`add_electricity_cost` and :func:`add_fuel_cost`
 remain available for building one leg alone. :func:`add_fuel_cost` takes a
-``fuel_type`` (default ``"gas"``, the only value EECO 0.2.1 supports); a
+``fuel_type`` (default ``"gas"``, the only value EECO 0.4.0 supports); a
 hydrogen utility is expected upstream and will add a second value.
 
 Post-optimization evaluators
@@ -155,7 +155,7 @@ Demand response (containers-only in v0)
    :class:`DRConfig` holds a loaded DR program so the wiring exists, and the
    internal DR hook is a no-op: supplying a DR file never changes the
    objective. Building DR event/curtailment/incentive/capacity constraints is
-   post-v0. EECO 0.2.1 exposes no DR API, so the DR file format is a flex-pse
+   post-v0. EECO 0.4.0 exposes no DR API, so the DR file format is a flex-pse
    placeholder loaded into the container only.
 
 In-objective vs. reported cost
