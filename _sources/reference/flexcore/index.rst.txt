@@ -118,3 +118,65 @@ Exceptions
 .. autoexception:: FlexSolverError
 
 .. autoexception:: FlexDataError
+
+Logging
+-------
+
+.. currentmodule:: flexcore.logger
+
+The shared logger for flex-pse. It provides a custom level for configuration
+simplifications, plus optional deduplication of ``INFO`` and ``WARNING`` records
+emitted from the same call site within a sliding window.
+
+.. autodata:: CONFIGURATION_SIMPLIFICATIONS
+
+.. autoclass:: FlexPseLogger
+   :members:
+
+.. autoclass:: DedupHandler
+   :members:
+
+.. autofunction:: get_logger
+
+.. autofunction:: get_global_level
+
+.. autofunction:: set_global_level
+
+.. autofunction:: get_global_dedup_enabled
+
+.. autofunction:: set_global_dedup_enabled
+
+Global configuration
+~~~~~~~~~~~~~~~~~~~~
+
+Call :func:`set_global_level` and :func:`set_global_dedup_enabled` once at the
+start of a script to control the threshold and deduplication behavior for all
+loggers obtained afterward:
+
+.. code-block:: python
+
+   import logging
+   from flexcore.logger import get_logger, set_global_level, set_global_dedup_enabled
+
+   set_global_level(logging.WARNING)
+   set_global_dedup_enabled({
+       logging.WARNING: True,
+       logging.INFO: True,
+   })
+
+   # import additional flex-pse modules here, they will use above defaults
+   _log = get_logger(__name__)
+
+
+Available levels (lowest to highest):
+
+- ``logging.DEBUG`` (10)
+- ``logging.INFO`` (20)
+- ``CONFIGURATION_SIMPLIFICATIONS`` (21)
+- ``logging.WARNING`` (30)
+- ``logging.ERROR`` (40)
+- ``logging.CRITICAL`` (50)
+
+The default threshold is ``CONFIGURATION_SIMPLIFICATIONS``. Deduplication is a
+per-level toggle; by default it is enabled for ``WARNING`` and
+``CONFIGURATION_SIMPLIFICATIONS``.

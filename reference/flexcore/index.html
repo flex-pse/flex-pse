@@ -780,6 +780,215 @@ or invalid data and what additional data or action would resolve it.</p>
 </dd></dl>
 
 </section>
+<section id="logging">
+<h2>Logging<a class="headerlink" href="#logging" title="Link to this heading">¶</a></h2>
+<p>The shared logger for flex-pse. It provides a custom level for configuration
+simplifications, plus optional deduplication of <code class="docutils literal notranslate"><span class="pre">INFO</span></code> and <code class="docutils literal notranslate"><span class="pre">WARNING</span></code> records
+emitted from the same call site within a sliding window.</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="flexcore.logger.CONFIGURATION_SIMPLIFICATIONS">
+<span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">21</span></span><a class="headerlink" href="#flexcore.logger.CONFIGURATION_SIMPLIFICATIONS" title="Link to this definition">¶</a></dt>
+<dd><p>int([x]) -&gt; integer
+int(x, base=10) -&gt; integer</p>
+<p>Convert a number or string to an integer, or return 0 if no arguments
+are given.  If x is a number, return x.__int__().  For floating-point
+numbers, this truncates towards zero.</p>
+<p>If x is not a number or if base is given, then x must be a string,
+bytes, or bytearray instance representing an integer literal in the
+given base.  The literal can be preceded by ‘+’ or ‘-’ and be surrounded
+by whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36.
+Base 0 means to interpret the base from the string as an integer
+iteral.
+&gt;&gt;&gt; int(‘0b100’, base=0)
+4</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="flexcore.logger.FlexPseLogger">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">FlexPseLogger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexcore.logger.FlexPseLogger" title="Link to this definition">¶</a></dt>
+<dd><p>Project logger class that adds a <code class="docutils literal notranslate"><span class="pre">configuration_simplifications</span></code> method.</p>
+<p>Note: This module was generated with AI assistance.</p>
+<p>Registered via <code class="docutils literal notranslate"><span class="pre">logging.setLoggerClass</span></code> so that <code class="docutils literal notranslate"><span class="pre">logging.getLogger</span></code>
+returns an instance of this class when the name matches. The added method
+emits log records at the custom <code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code> level,
+which is intended for user-facing physical-simplification notices that
+should appear in normal output but benefit from deduplication.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="flexcore.logger.FlexPseLogger.configuration_simplifications">
+<span class="sig-name descname"><span class="pre">configuration_simplifications</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexcore.logger.FlexPseLogger.configuration_simplifications" title="Link to this definition">¶</a></dt>
+<dd><p>Log a message at the <code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code> custom level.</p>
+<p>Note: This module was generated with AI assistance.</p>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>msg<span class="classifier">str</span></dt><dd><p>The message to log. Supports <code class="docutils literal notranslate"><span class="pre">%</span></code>-style formatting with <code class="docutils literal notranslate"><span class="pre">args</span></code>.</p>
+</dd>
+<dt><a href="#id1"><span class="problematic" id="id2">*</span></a>args</dt><dd><p>Positional arguments interpolated into <code class="docutils literal notranslate"><span class="pre">msg</span></code>.</p>
+</dd>
+<dt><a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs</dt><dd><p>Extra keyword arguments forwarded to <code class="xref py py-meth docutils literal notranslate"><span class="pre">logging.Logger._log()</span></code>.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="flexcore.logger.DedupHandler">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">DedupHandler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dedup_enabled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexcore.logger.DedupHandler" title="Link to this definition">¶</a></dt>
+<dd><p>Logging handler that suppresses duplicate messages within a sliding window.</p>
+<p>Note: this module was module were generated with AI assistance.</p>
+<p>Duplicates are keyed on <code class="docutils literal notranslate"><span class="pre">(message,</span> <span class="pre">pathname,</span> <span class="pre">lineno,</span> <span class="pre">levelno)</span></code>. The
+handler is thread-safe and allows an optional <code class="docutils literal notranslate"><span class="pre">target</span></code> handler for
+forwarding, making it composable with other handlers (e.g. a file handler
+plus a dedup wrapper).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="flexcore.logger.DedupHandler.emit">
+<span class="sig-name descname"><span class="pre">emit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexcore.logger.DedupHandler.emit" title="Link to this definition">¶</a></dt>
+<dd><p>Process a log record, emitting it if it is not a recent duplicate.</p>
+<p>Note: This module was generated with AI assistance.</p>
+<section id="id5">
+<h3>Parameters<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>record<span class="classifier">logging.LogRecord</span></dt><dd><p>The log record to process.</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h3>Returns<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>None</dt><dd><p>Returns <code class="docutils literal notranslate"><span class="pre">None</span></code> when the record is suppressed as a duplicate.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexcore.logger.get_logger">
+<span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">get_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dedup_enabled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexcore.logger.get_logger" title="Link to this definition">¶</a></dt>
+<dd><p>Return a project logger with a <code class="docutils literal notranslate"><span class="pre">DedupHandler</span></code> attached.</p>
+<p>Note: This module was generated with AI assistance.</p>
+<p>The logger is configured with the global log level and a single
+<code class="docutils literal notranslate"><span class="pre">DedupHandler</span></code>. If the logger already has a <code class="docutils literal notranslate"><span class="pre">DedupHandler</span></code>, no new
+handler is added, allowing callers to re-acquire the same logger safely.</p>
+<section id="id6">
+<h3>Parameters<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>name<span class="classifier">str, optional</span></dt><dd><p>Logger name. Defaults to <code class="docutils literal notranslate"><span class="pre">DEFAULT_LOGGER_NAME</span></code> (<code class="docutils literal notranslate"><span class="pre">&quot;flex-pse&quot;</span></code>).</p>
+</dd>
+<dt>dedup_enabled<span class="classifier">dict[int, bool], optional</span></dt><dd><p>Dedup mapping for the attached <code class="docutils literal notranslate"><span class="pre">DedupHandler</span></code>. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, the
+current global dedup configuration is used.</p>
+</dd>
+</dl>
+</section>
+<section id="id7">
+<h3>Returns<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>logging.Logger</dt><dd><p>A logger instance with dedup-aware output.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexcore.logger.get_global_level">
+<span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">get_global_level</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#flexcore.logger.get_global_level" title="Link to this definition">¶</a></dt>
+<dd><p>Return the current global minimum log level for flex-pse loggers.</p>
+<p>Note: This module was generated with AI assistance.</p>
+<section id="id8">
+<h3>Returns<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>int</dt><dd><p>The current global log level (defaults to
+<code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code>). Individual loggers created via
+<a class="reference internal" href="#flexcore.logger.get_logger" title="flexcore.logger.get_logger"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_logger()</span></code></a> inherit this level at creation time.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexcore.logger.set_global_level">
+<span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">set_global_level</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexcore.logger.set_global_level" title="Link to this definition">¶</a></dt>
+<dd><p>Set the global minimum log level for subsequently created loggers.</p>
+<p>Note: This module was generated with AI assistance.</p>
+<section id="id9">
+<h3>Parameters<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>level<span class="classifier">int</span></dt><dd><p>The new global log level. Standard levels (e.g. <code class="docutils literal notranslate"><span class="pre">logging.DEBUG</span></code>,
+<code class="docutils literal notranslate"><span class="pre">logging.INFO</span></code>) or custom levels (e.g. <code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code>)
+are accepted.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexcore.logger.get_global_dedup_enabled">
+<span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">get_global_dedup_enabled</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#flexcore.logger.get_global_dedup_enabled" title="Link to this definition">¶</a></dt>
+<dd><p>Return the global dedup configuration, keyed by log level.</p>
+<p>Note: This module was generated with AI assistance.</p>
+<section id="id10">
+<h3>Returns<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>dict[int, bool]</dt><dd><p>Mapping of <code class="docutils literal notranslate"><span class="pre">levelno</span></code> to <code class="docutils literal notranslate"><span class="pre">True</span></code> (dedup enabled) or <code class="docutils literal notranslate"><span class="pre">False</span></code>
+(dedup disabled). Missing levels default to <code class="docutils literal notranslate"><span class="pre">False</span></code>. The default
+mapping enables dedup for <code class="docutils literal notranslate"><span class="pre">logging.WARNING</span></code> and
+<code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code>.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexcore.logger.set_global_dedup_enabled">
+<span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">set_global_dedup_enabled</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dedup_enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexcore.logger.set_global_dedup_enabled" title="Link to this definition">¶</a></dt>
+<dd><p>Replace the global dedup configuration for subsequently created handlers.</p>
+<p>Note: This module was generated with AI assistance.</p>
+<section id="id11">
+<h3>Parameters<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
+<dl class="simple">
+<dt>dedup_enabled<span class="classifier">dict[int, bool]</span></dt><dd><p>New mapping of <code class="docutils literal notranslate"><span class="pre">levelno</span></code> to dedup flag. Existing handlers keep their
+current state; call <a class="reference internal" href="#flexcore.logger.get_logger" title="flexcore.logger.get_logger"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_logger()</span></code></a> again or mutate
+<code class="docutils literal notranslate"><span class="pre">handler.dedup_enabled</span></code> directly to update live handlers.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<section id="global-configuration">
+<h3>Global configuration<a class="headerlink" href="#global-configuration" title="Link to this heading">¶</a></h3>
+<p>Call <a class="reference internal" href="#flexcore.logger.set_global_level" title="flexcore.logger.set_global_level"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_global_level()</span></code></a> and <a class="reference internal" href="#flexcore.logger.set_global_dedup_enabled" title="flexcore.logger.set_global_dedup_enabled"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_global_dedup_enabled()</span></code></a> once at the
+start of a script to control the threshold and deduplication behavior for all
+loggers obtained afterward:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flexcore.logger</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span><span class="p">,</span> <span class="n">set_global_level</span><span class="p">,</span> <span class="n">set_global_dedup_enabled</span>
+
+<span class="n">set_global_level</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+<span class="n">set_global_dedup_enabled</span><span class="p">({</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="c1"># import additional flex-pse modules here, they will use above defaults</span>
+<span class="n">_log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Available levels (lowest to highest):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">logging.DEBUG</span></code> (10)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logging.INFO</span></code> (20)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code> (21)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logging.WARNING</span></code> (30)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logging.ERROR</span></code> (40)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logging.CRITICAL</span></code> (50)</p></li>
+</ul>
+<p>The default threshold is <code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code>. Deduplication is a
+per-level toggle; by default it is enabled for <code class="docutils literal notranslate"><span class="pre">WARNING</span></code> and
+<code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code>.</p>
+</section>
+</section>
 </section>
 
         </article>
@@ -885,6 +1094,24 @@ or invalid data and what additional data or action would resolve it.</p>
 <li><a class="reference internal" href="#flexcore.exceptions.FlexDataError.field"><code class="docutils literal notranslate"><span class="pre">FlexDataError.field</span></code></a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li><a class="reference internal" href="#logging">Logging</a><ul>
+<li><a class="reference internal" href="#flexcore.logger.CONFIGURATION_SIMPLIFICATIONS"><code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code></a></li>
+<li><a class="reference internal" href="#flexcore.logger.FlexPseLogger"><code class="docutils literal notranslate"><span class="pre">FlexPseLogger</span></code></a><ul>
+<li><a class="reference internal" href="#flexcore.logger.FlexPseLogger.configuration_simplifications"><code class="docutils literal notranslate"><span class="pre">FlexPseLogger.configuration_simplifications()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#flexcore.logger.DedupHandler"><code class="docutils literal notranslate"><span class="pre">DedupHandler</span></code></a><ul>
+<li><a class="reference internal" href="#flexcore.logger.DedupHandler.emit"><code class="docutils literal notranslate"><span class="pre">DedupHandler.emit()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#flexcore.logger.get_logger"><code class="docutils literal notranslate"><span class="pre">get_logger()</span></code></a></li>
+<li><a class="reference internal" href="#flexcore.logger.get_global_level"><code class="docutils literal notranslate"><span class="pre">get_global_level()</span></code></a></li>
+<li><a class="reference internal" href="#flexcore.logger.set_global_level"><code class="docutils literal notranslate"><span class="pre">set_global_level()</span></code></a></li>
+<li><a class="reference internal" href="#flexcore.logger.get_global_dedup_enabled"><code class="docutils literal notranslate"><span class="pre">get_global_dedup_enabled()</span></code></a></li>
+<li><a class="reference internal" href="#flexcore.logger.set_global_dedup_enabled"><code class="docutils literal notranslate"><span class="pre">set_global_dedup_enabled()</span></code></a></li>
+<li><a class="reference internal" href="#global-configuration">Global configuration</a></li>
 </ul>
 </li>
 </ul>
