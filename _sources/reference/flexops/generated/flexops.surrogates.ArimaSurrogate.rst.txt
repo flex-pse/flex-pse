@@ -1,0 +1,7 @@
+﻿ArimaSurrogate
+==============
+
+.. currentmodule:: flexops.surrogates
+
+.. autoclass:: ArimaSurrogate
+   :members:

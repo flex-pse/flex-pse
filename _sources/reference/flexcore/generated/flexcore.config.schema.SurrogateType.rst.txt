@@ -1,0 +1,7 @@
+﻿SurrogateType
+=============
+
+.. currentmodule:: flexcore.config.schema
+
+.. autoclass:: SurrogateType
+   :members:

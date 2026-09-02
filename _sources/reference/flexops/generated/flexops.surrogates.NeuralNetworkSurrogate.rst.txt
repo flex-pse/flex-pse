@@ -1,0 +1,7 @@
+﻿NeuralNetworkSurrogate
+======================
+
+.. currentmodule:: flexops.surrogates
+
+.. autoclass:: NeuralNetworkSurrogate
+   :members:

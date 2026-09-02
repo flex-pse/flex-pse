@@ -205,6 +205,7 @@
 <p class="caption" role="heading"><span class="caption-text">How-to</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="how_to/build_a_plant.html">Build a plant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how_to/parameterize_from_data.html">Parameterize a model from data</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
@@ -215,6 +216,7 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.UnitConfig.html">UnitConfig</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.IOVariableSpec.html">IOVariableSpec</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.SurrogateSpec.html">SurrogateSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.SurrogateType.html">SurrogateType</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.ExternalDispatchSpec.html">ExternalDispatchSpec</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.UnitCommitmentConfig.html">UnitCommitmentConfig</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.ArcSpec.html">ArcSpec</a></li>
@@ -240,12 +242,23 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.RelationRecord.html">RelationRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/surrogates.html">flexops.surrogates</a><input aria-label="Toggle navigation of flexops.surrogates" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.surrogates.SURROGATES.html">flexops.surrogates.surrogates.SURROGATES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html">Surrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.multilinear.MultilinearSurrogate.html">MultilinearSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.QuadraticSurrogate.html">QuadraticSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.ExponentialSurrogate.html">ExponentialSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.ArimaSurrogate.html">ArimaSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html">NeuralNetworkSurrogate</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="reference/flexops/logic.html">flexops.logic</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html">SimpleAqueousFlow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlowData.html">SimpleAqueousFlowData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html">SimpleAqueousStateBlockData</a></li>
@@ -254,7 +267,7 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">SimpleGasStateBlockData</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.costing.load_tariff.html">flexops.costing.load_tariff</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.costing.merge_tariffs.html">flexops.costing.merge_tariffs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.costing.load_dr_program.html">flexops.costing.load_dr_program</a></li>
@@ -281,11 +294,11 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html">ScalarCostSpec</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html">UnitModelTestHarness</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
@@ -302,6 +315,16 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexparameterize/index.html">flexparameterize</a><input aria-label="Toggle navigation of flexparameterize" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.tags.TagMap.html">TagMap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference/glossary.html">Glossary</a></li>
 </ul>
 
 </div>
@@ -337,7 +360,7 @@
           
 <section class="genindex-section">
   <h1 id="index">Index</h1>
-  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#K"><strong>K</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#O"><strong>O</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#Q"><strong>Q</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#U"><strong>U</strong></a> | <a href="#V"><strong>V</strong></a> | <a href="#W"><strong>W</strong></a></div>
+  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#K"><strong>K</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#O"><strong>O</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#Q"><strong>Q</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#U"><strong>U</strong></a> | <a href="#V"><strong>V</strong></a> | <a href="#W"><strong>W</strong></a> | <a href="#Z"><strong>Z</strong></a></div>
 </section>
 <section id="A" class="genindex-section">
   <h2>A</h2>
@@ -359,12 +382,12 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.add_operating_cost.html#flexops.costing.add_operating_cost">add_operating_cost() (in module flexops.costing)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.add_pass_through_constraints">add_pass_through_constraints() (flexops.core.ops_block.OpsBlockData method)</a>
 </li>
         <li><a href="reference/flexops/logic.html#flexops.logic.delays.add_startup_delay">add_startup_delay() (in module flexops.logic.delays)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/logic.html#flexops.logic.unit_commitment.add_startup_shutdown">add_startup_shutdown() (in module flexops.logic.unit_commitment)</a>
 </li>
         <li><a href="reference/flexops/logic.html#flexops.logic.status.add_status">add_status() (in module flexops.logic.status)</a>
@@ -373,7 +396,15 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.core.network_block.NetworkBlockData.html#flexops.core.network_block.NetworkBlockData.add_subset_aggregate">add_subset_aggregate() (flexops.core.network_block.NetworkBlockData method)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.tags.TagMap.html#flexparameterize.tags.TagMap.apply">apply() (flexparameterize.tags.TagMap method)</a>
+</li>
+        <li><a href="reference/flexparameterize/index.html#flexparameterize.apply.apply_to_model">apply_to_model() (in module flexparameterize.apply)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html#flexparameterize.apply.ApplyReport">ApplyReport (class in flexparameterize.apply)</a>
+</li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.ArcSpec.html#flexcore.config.schema.ArcSpec">ArcSpec (class in flexcore.config.schema)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.surrogates.ArimaSurrogate.html#flexops.surrogates.ArimaSurrogate">ArimaSurrogate (class in flexops.surrogates)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.available_solvers">available_solvers() (in module flexcore.solvers)</a>
 </li>
@@ -408,6 +439,18 @@
 </li>
           <li><a href="reference/flexops/generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html#flexops.properties.simple_gas.SimpleGasStateBlockData.build">(flexops.properties.simple_gas.SimpleGasStateBlockData method)</a>
 </li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.ArimaSurrogate.html#flexops.surrogates.ArimaSurrogate.build">(flexops.surrogates.ArimaSurrogate method)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate.build">(flexops.surrogates.base.Surrogate method)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.ExponentialSurrogate.html#flexops.surrogates.ExponentialSurrogate.build">(flexops.surrogates.ExponentialSurrogate method)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.multilinear.MultilinearSurrogate.html#flexops.surrogates.multilinear.MultilinearSurrogate.build">(flexops.surrogates.multilinear.MultilinearSurrogate method)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html#flexops.surrogates.NeuralNetworkSurrogate.build">(flexops.surrogates.NeuralNetworkSurrogate method)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.QuadraticSurrogate.html#flexops.surrogates.QuadraticSurrogate.build">(flexops.surrogates.QuadraticSurrogate method)</a>
+</li>
         </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
@@ -433,9 +476,17 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.CapitalCostBreakdown.html#flexops.costing.flex_costing.CapitalCostBreakdown">CapitalCostBreakdown (class in flexops.costing.flex_costing)</a>
 </li>
+        <li><a href="reference/flexparameterize/index.html#flexparameterize.validate.check_sufficiency">check_sufficiency() (in module flexparameterize.validate)</a>
+</li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.classify">classify() (in module flexcore.solvers)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.coefficient">coefficient (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+</li>
+        <li><a href="reference/flexparameterize/index.html#flexparameterize.regression.constant.COEFFICIENT_NAME">COEFFICIENT_NAME (in module flexparameterize.regression.constant)</a>
+</li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor">Combustor (class in flexops.unit_models.powergeneration.combustor)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.components">components (flexops.core.registration.RelationRecord attribute)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.logger.CONFIGURATION_SIMPLIFICATIONS">CONFIGURATION_SIMPLIFICATIONS (in module flexcore.logger)</a>
 </li>
@@ -443,10 +494,14 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.configure">configure() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
-        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html#flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel">ConstantEnergyIntensityModel (class in flexops.unit_models.constant_intensity)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html#flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel">ConstantEnergyIntensityModel (class in flexops.unit_models.constant_intensity)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor">ConstantIntensityRegressor (class in flexparameterize.regression.constant)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.constraint">constraint (flexops.core.registration.RelationRecord attribute)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.cost_process">cost_process() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.CostingConfig.html#flexcore.config.schema.CostingConfig">CostingConfig (class in flexcore.config.schema)</a>
@@ -471,6 +526,10 @@
   <h2>D</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate.data">data (flexops.surrogates.base.Surrogate attribute)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.data_window">data_window (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.datetime_index">datetime_index (flexops.core.time_block.TimeBlockData property)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.declare_power">declare_power() (flexops.core.ops_block.OpsBlockData method)</a>
@@ -503,6 +562,10 @@
 </li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html#flexops.unit_models.base.dido.DIDOBlock">DIDOBlock (class in flexops.unit_models.base.dido)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html#flexparameterize.apply.ApplyReport.dof_after">dof_after (flexparameterize.apply.ApplyReport attribute)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html#flexparameterize.apply.ApplyReport.dof_before">dof_before (flexparameterize.apply.ApplyReport attribute)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.OperatingCostBreakdown.html#flexops.costing.flex_costing.OperatingCostBreakdown.dr_revenue">dr_revenue (flexops.costing.flex_costing.OperatingCostBreakdown attribute)</a>
 </li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.DRConfig.html#flexcore.config.schema.DRConfig">DRConfig (class in flexcore.config.schema)</a>
@@ -531,6 +594,8 @@
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.logger.DedupHandler.emit">emit() (flexcore.logger.DedupHandler method)</a>
 </li>
+        <li><a href="reference/flexparameterize/index.html#flexparameterize.emit.emit_model_config">emit_model_config() (in module flexparameterize.emit)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeWindow.html#flexops.core.time_block.TimeWindow.end_time">end_time (flexops.core.time_block.TimeWindow attribute)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.OperatingCostHandles.html#flexops.costing.OperatingCostHandles.energy_cost">energy_cost (flexops.costing.OperatingCostHandles attribute)</a>
@@ -546,6 +611,8 @@
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.expected_dof">expected_dof (flexops.testing.UnitModelTestHarness attribute)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.expected_solution">expected_solution (flexops.testing.UnitModelTestHarness attribute)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.surrogates.ExponentialSurrogate.html#flexops.surrogates.ExponentialSurrogate">ExponentialSurrogate (class in flexops.surrogates)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.config.io.export_json_schemas">export_json_schemas() (in module flexcore.config.io)</a>
 </li>
@@ -567,7 +634,13 @@
           <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexDataError.field">(flexcore.exceptions.FlexDataError attribute)</a>
 </li>
         </ul></li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.fit">fit() (flexparameterize.regression.constant.ConstantIntensityRegressor method)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.fitted">fitted (flexops.core.registration.RelationRecord attribute)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.OperatingCostBreakdown.html#flexops.costing.flex_costing.OperatingCostBreakdown.fixed">fixed (flexops.costing.flex_costing.OperatingCostBreakdown attribute)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html#flexparameterize.apply.ApplyReport.fixed_parameters">fixed_parameters (flexparameterize.apply.ApplyReport attribute)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexConfigError">FlexConfigError</a>
 </li>
@@ -575,15 +648,17 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData">FlexCostingData (class in flexops.costing.flex_costing)</a>
 </li>
-        <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexDataError">FlexDataError</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexDataError">FlexDataError</a>
+</li>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexError">FlexError</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.logger.FlexPseLogger">FlexPseLogger (class in flexcore.logger)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexSolverError">FlexSolverError</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.tags.TagMap.html#flexparameterize.tags.TagMap.from_file">from_file() (flexparameterize.tags.TagMap class method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry.fuel">fuel (flexops.core.registration.IORegistry attribute)</a>
 
@@ -639,7 +714,11 @@
   <h2>I</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html#flexparameterize.validate.SufficiencyReport.index_message">index_message (flexparameterize.validate.SufficiencyReport attribute)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.index_of">index_of() (flexops.core.time_block.TimeBlockData method)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html#flexparameterize.validate.SufficiencyReport.index_ok">index_ok (flexparameterize.validate.SufficiencyReport attribute)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeWindow.html#flexops.core.time_block.TimeWindow.indices">indices (flexops.core.time_block.TimeWindow attribute)</a>
 </li>
@@ -647,10 +726,30 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.initialize_build">initialize_build() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
-        <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry.io_variables">io_variables (flexops.core.registration.IORegistry attribute)</a>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.input_variable">input_variable (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
 </li>
+        <li><a href="reference/flexops/generated/flexops.surrogates.ArimaSurrogate.html#flexops.surrogates.ArimaSurrogate.input_variables">input_variables (flexops.surrogates.ArimaSurrogate property)</a>
+
+        <ul>
+          <li><a href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate.input_variables">(flexops.surrogates.base.Surrogate property)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.ExponentialSurrogate.html#flexops.surrogates.ExponentialSurrogate.input_variables">(flexops.surrogates.ExponentialSurrogate property)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.multilinear.MultilinearSurrogate.html#flexops.surrogates.multilinear.MultilinearSurrogate.input_variables">(flexops.surrogates.multilinear.MultilinearSurrogate property)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html#flexops.surrogates.NeuralNetworkSurrogate.input_variables">(flexops.surrogates.NeuralNetworkSurrogate property)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.QuadraticSurrogate.html#flexops.surrogates.QuadraticSurrogate.input_variables">(flexops.surrogates.QuadraticSurrogate property)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry.intensity_basis">intensity_basis (flexops.core.registration.IORegistry attribute)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry.io_variables">io_variables (flexops.core.registration.IORegistry attribute)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus">IOPairStatus (class in flexparameterize.validate)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry">IORegistry (class in flexops.core.registration)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord">IOVariableRecord (class in flexops.core.registration)</a>
@@ -662,6 +761,8 @@
         <li><a href="reference/flexops/generated/flexops.costing.is_peak.html#flexops.costing.is_peak">is_peak() (in module flexops.costing)</a>
 </li>
         <li><a href="reference/flexops/core.html#flexops.core.registration.iter_io_registry">iter_io_registry() (in module flexops.core.registration)</a>
+</li>
+        <li><a href="reference/flexops/core.html#flexops.core.registration.iter_swapped_relations">iter_swapped_relations() (in module flexops.core.registration)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -687,9 +788,11 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.load_dr_program.html#flexops.costing.load_dr_program">load_dr_program() (in module flexops.costing)</a>
 </li>
+        <li><a href="reference/flexcore/index.html#flexcore.config.io.load_model_config">load_model_config() (in module flexcore.config.io)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="reference/flexcore/index.html#flexcore.config.io.load_model_config">load_model_config() (in module flexcore.config.io)</a>
+        <li><a href="reference/flexcore/index.html#flexcore.config.io.load_surrogate_source">load_surrogate_source() (in module flexcore.config.io)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.load_tariff.html#flexops.costing.load_tariff">load_tariff() (in module flexops.costing)</a>
 </li>
@@ -703,7 +806,19 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.merge_tariffs.html#flexops.costing.merge_tariffs">merge_tariffs() (in module flexops.costing)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.metrics">metrics (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+</li>
+        <li><a href="reference/flexcore/index.html#flexcore.config.io.MIGRATIONS">MIGRATIONS (in module flexcore.config.io)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus.min_rows">min_rows (flexparameterize.validate.IOPairStatus attribute)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus.missing">missing (flexparameterize.validate.IOPairStatus attribute)</a>
+</li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.mixer.Mixer.html#flexops.unit_models.mixer.Mixer">Mixer (class in flexops.unit_models.mixer)</a>
+</li>
+        <li><a href="reference/glossary.html#term-model-alias"><strong>model alias</strong></a>
+</li>
+        <li><a href="reference/flexparameterize/index.html#flexparameterize.tags.model_alias">model_alias() (in module flexparameterize.tags)</a>
 </li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.ArcSpec.html#flexcore.config.schema.ArcSpec.model_config">model_config (flexcore.config.schema.ArcSpec attribute)</a>
 
@@ -739,6 +854,8 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.monthly_scale_factor.html#flexops.costing.monthly_scale_factor">monthly_scale_factor() (in module flexops.costing)</a>
 </li>
+        <li><a href="reference/flexops/generated/flexops.surrogates.multilinear.MultilinearSurrogate.html#flexops.surrogates.multilinear.MultilinearSurrogate">MultilinearSurrogate (class in flexops.surrogates.multilinear)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -748,6 +865,8 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.n_points">n_points (flexops.core.time_block.TimeBlockData property)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.n_samples">n_samples (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.SolverFacade.name">name (flexcore.solvers.SolverFacade attribute)</a>
 
@@ -762,6 +881,8 @@
 </li>
           <li><a href="reference/flexops/generated/flexops.core.registration.PowerRecord.html#flexops.core.registration.PowerRecord.name">(flexops.core.registration.PowerRecord attribute)</a>
 </li>
+          <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.name">(flexops.core.registration.RelationRecord attribute)</a>
+</li>
           <li><a href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec.name">(flexops.costing.flex_costing.ScalarCostSpec attribute)</a>
 </li>
         </ul></li>
@@ -772,6 +893,10 @@
         <li><a href="reference/flexops/generated/flexops.core.network_block.NetworkBlockData.html#flexops.core.network_block.NetworkBlockData">NetworkBlockData (class in flexops.core.network_block)</a>
 </li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.NetworkConfig.html#flexcore.config.schema.NetworkConfig">NetworkConfig (class in flexcore.config.schema)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html#flexops.surrogates.NeuralNetworkSurrogate">NeuralNetworkSurrogate (class in flexops.surrogates)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus.non_null_counts">non_null_counts (flexparameterize.validate.IOPairStatus attribute)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -785,14 +910,30 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.OperatingCostBreakdown.html#flexops.costing.flex_costing.OperatingCostBreakdown">OperatingCostBreakdown (class in flexops.costing.flex_costing)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.OperatingCostHandles.html#flexops.costing.OperatingCostHandles">OperatingCostHandles (class in flexops.costing)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlock.html#flexops.core.ops_block.OpsBlock">OpsBlock (class in flexops.core.ops_block)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData">OpsBlockData (class in flexops.core.ops_block)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.output_variable">output_variable (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.surrogates.ArimaSurrogate.html#flexops.surrogates.ArimaSurrogate.output_variables">output_variables (flexops.surrogates.ArimaSurrogate property)</a>
+
+        <ul>
+          <li><a href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate.output_variables">(flexops.surrogates.base.Surrogate property)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.ExponentialSurrogate.html#flexops.surrogates.ExponentialSurrogate.output_variables">(flexops.surrogates.ExponentialSurrogate property)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.multilinear.MultilinearSurrogate.html#flexops.surrogates.multilinear.MultilinearSurrogate.output_variables">(flexops.surrogates.multilinear.MultilinearSurrogate property)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html#flexops.surrogates.NeuralNetworkSurrogate.output_variables">(flexops.surrogates.NeuralNetworkSurrogate property)</a>
+</li>
+          <li><a href="reference/flexops/generated/flexops.surrogates.QuadraticSurrogate.html#flexops.surrogates.QuadraticSurrogate.output_variables">(flexops.surrogates.QuadraticSurrogate property)</a>
+</li>
+        </ul></li>
     </ul></td>
   </tr></table>
 </section>
@@ -801,6 +942,8 @@
   <h2>P</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html#flexparameterize.validate.SufficiencyReport.pairs">pairs (flexparameterize.validate.SufficiencyReport attribute)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.core.registration.ParameterRecord.html#flexops.core.registration.ParameterRecord.param">param (flexops.core.registration.ParameterRecord attribute)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.ParameterRecord.html#flexops.core.registration.ParameterRecord">ParameterRecord (class in flexops.core.registration)</a>
@@ -833,6 +976,8 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.PowerRecord.html#flexops.core.registration.PowerRecord">PowerRecord (class in flexops.core.registration)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus.present">present (flexparameterize.validate.IOPairStatus attribute)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec.price">price (flexops.costing.flex_costing.ScalarCostSpec attribute)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.price_gradient.html#flexops.costing.price_gradient">price_gradient() (in module flexops.costing)</a>
@@ -863,10 +1008,12 @@
   <h2>Q</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec.quantity">quantity (flexops.costing.flex_costing.ScalarCostSpec attribute)</a>
+        <li><a href="reference/flexops/generated/flexops.surrogates.QuadraticSurrogate.html#flexops.surrogates.QuadraticSurrogate">QuadraticSurrogate (class in flexops.surrogates)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec.quantity">quantity (flexops.costing.flex_costing.ScalarCostSpec attribute)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec.quantity_units">quantity_units (flexops.costing.flex_costing.ScalarCostSpec attribute)</a>
 </li>
     </ul></td>
@@ -891,21 +1038,31 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.register_process_parameter">register_process_parameter() (flexops.core.ops_block.OpsBlockData method)</a>
 </li>
+        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.register_relation">register_relation() (flexops.core.ops_block.OpsBlockData method)</a>
+</li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.register_scalar_cost">register_scalar_cost() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.register_sizing_variable">register_sizing_variable() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.register_unit_power">register_unit_power() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.registration.ParameterRecord.html#flexops.core.registration.ParameterRecord.regressable">regressable (flexops.core.registration.ParameterRecord attribute)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord">RelationRecord (class in flexops.core.registration)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry.relations">relations (flexops.core.registration.IORegistry attribute)</a>
 </li>
         <li><a href="reference/flexops/logic.html#flexops.logic.status.relax">relax() (in module flexops.logic.status)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.RelaxationPolicy.html#flexops.core.ops_block.RelaxationPolicy">RelaxationPolicy (class in flexops.core.ops_block)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.report_cost">report_cost() (flexops.costing.flex_costing.FlexCostingData method)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.tags.TagMap.html#flexparameterize.tags.TagMap.report_unmapped">report_unmapped() (flexparameterize.tags.TagMap method)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.resolve_variable">resolve_variable() (flexops.core.ops_block.OpsBlockData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord.resource">resource (flexops.core.registration.BoundaryRecord attribute)</a>
 </li>
@@ -945,8 +1102,6 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html#flexops.properties.simple_aqueous.SimpleAqueousStateBlockData">SimpleAqueousStateBlockData (class in flexops.properties.simple_aqueous)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.properties.simple_gas.SimpleGasFlow.html#flexops.properties.simple_gas.SimpleGasFlow">SimpleGasFlow (class in flexops.properties.simple_gas)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.properties.simple_gas.SimpleGasFlowData.html#flexops.properties.simple_gas.SimpleGasFlowData">SimpleGasFlowData (class in flexops.properties.simple_gas)</a>
@@ -959,6 +1114,8 @@
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.SolverFacade.solve">solve() (flexcore.solvers.SolverFacade method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexSolverError.solver">solver (flexcore.exceptions.FlexSolverError attribute)</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.SolverFacade">SolverFacade (class in flexcore.solvers)</a>
@@ -969,9 +1126,33 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeWindow.html#flexops.core.time_block.TimeWindow.start_time">start_time (flexops.core.time_block.TimeWindow attribute)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html#flexparameterize.validate.SufficiencyReport">SufficiencyReport (class in flexparameterize.validate)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus.sufficient">sufficient (flexparameterize.validate.IOPairStatus property)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html#flexparameterize.validate.SufficiencyReport.sufficient">(flexparameterize.validate.SufficiencyReport property)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.tags.TagReport.html#flexparameterize.tags.TagReport.suggestions">suggestions (flexparameterize.tags.TagReport attribute)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate">Surrogate (class in flexops.surrogates.base)</a>
+</li>
+        <li><a href="reference/flexops/surrogates.html#flexops.surrogates.surrogates.surrogate_from_spec">surrogate_from_spec() (in module flexops.surrogates.surrogates)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate.surrogate_type">surrogate_type (flexops.surrogates.base.Surrogate attribute)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.surrogates.surrogates.SURROGATES.html#flexops.surrogates.surrogates.SURROGATES">SURROGATES (in module flexops.surrogates.surrogates)</a>
+</li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec">SurrogateSpec (class in flexcore.config.schema)</a>
 </li>
-        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.swap_energy_relation">swap_energy_relation() (flexops.core.ops_block.OpsBlockData method)</a>
+        <li><a href="reference/flexcore/generated/flexcore.config.schema.SurrogateType.html#flexcore.config.schema.SurrogateType">SurrogateType (class in flexcore.config.schema)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.swap_count">swap_count (flexops.core.registration.RelationRecord attribute)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.swap_relation">swap_relation() (flexops.core.ops_block.OpsBlockData method)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html#flexparameterize.apply.ApplyReport.swapped_relations">swapped_relations (flexparameterize.apply.ApplyReport attribute)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -983,7 +1164,15 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord.tag_hint">tag_hint (flexops.core.registration.IOVariableRecord attribute)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.tags.TagMap.html#flexparameterize.tags.TagMap">TagMap (class in flexparameterize.tags)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.tags.TagReport.html#flexparameterize.tags.TagReport">TagReport (class in flexparameterize.tags)</a>
+</li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.storage.tank.Tank.html#flexops.unit_models.storage.tank.Tank">Tank (class in flexops.unit_models.storage.tank)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.target">target (flexops.core.registration.RelationRecord attribute)</a>
+</li>
+        <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.target_name">target_name (flexops.core.registration.RelationRecord attribute)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.tariff_csv_to_dict.html#flexops.costing.tariff_csv_to_dict">tariff_csv_to_dict() (in module flexops.costing)</a>
 </li>
@@ -999,12 +1188,12 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.test_io_registration">test_io_registration() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.test_solution">test_solution() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.test_solve">test_solve() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.test_units_consistent">test_units_consistent() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord.time_indexed">time_indexed (flexops.core.registration.IOVariableRecord attribute)</a>
@@ -1018,6 +1207,8 @@
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.timestamp_of">timestamp_of() (flexops.core.time_block.TimeBlockData method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeWindow.html#flexops.core.time_block.TimeWindow">TimeWindow (class in flexops.core.time_block)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.to_surrogate_spec">to_surrogate_spec() (flexparameterize.regression.constant.ConstantIntensityRegressor method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.CapitalCostBreakdown.html#flexops.costing.flex_costing.CapitalCostBreakdown.total">total (flexops.costing.flex_costing.CapitalCostBreakdown attribute)</a>
 
@@ -1038,7 +1229,11 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html#flexops.costing.flex_costing.ScalarCostSpec.unit">unit (flexops.costing.flex_costing.ScalarCostSpec attribute)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus.unit">(flexparameterize.validate.IOPairStatus attribute)</a>
 </li>
+        </ul></li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.UnitCommitmentConfig.html#flexcore.config.schema.UnitCommitmentConfig">UnitCommitmentConfig (class in flexcore.config.schema)</a>
 </li>
         <li><a href="reference/flexcore/generated/flexcore.config.schema.UnitConfig.html#flexcore.config.schema.UnitConfig">UnitConfig (class in flexcore.config.schema)</a>
@@ -1048,6 +1243,8 @@
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness">UnitModelTestHarness (class in flexops.testing)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord.units">units (flexops.core.registration.IOVariableRecord attribute)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.tags.TagReport.html#flexparameterize.tags.TagReport.unmapped_columns">unmapped_columns (flexparameterize.tags.TagReport attribute)</a>
 </li>
         <li><a href="reference/flexops/logic.html#flexops.logic.status.unrelax">unrelax() (in module flexops.logic.status)</a>
 </li>
@@ -1074,6 +1271,10 @@
 </li>
         </ul></li>
     </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus.variables">variables (flexparameterize.validate.IOPairStatus attribute)</a>
+</li>
+    </ul></td>
   </tr></table>
 </section>
 
@@ -1082,6 +1283,16 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.window">window() (flexops.core.time_block.TimeBlockData method)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="Z" class="genindex-section">
+  <h2>Z</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/glossary.html#term-zero-degree-of-freedom-regression"><strong>zero-degree-of-freedom regression</strong></a>
 </li>
     </ul></td>
   </tr></table>

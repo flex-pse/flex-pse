@@ -1,0 +1,7 @@
+﻿ApplyReport
+===========
+
+.. currentmodule:: flexparameterize.apply
+
+.. autoclass:: ApplyReport
+   :members:

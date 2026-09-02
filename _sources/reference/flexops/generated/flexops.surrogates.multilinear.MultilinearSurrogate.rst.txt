@@ -1,0 +1,7 @@
+﻿MultilinearSurrogate
+====================
+
+.. currentmodule:: flexops.surrogates.multilinear
+
+.. autoclass:: MultilinearSurrogate
+   :members:

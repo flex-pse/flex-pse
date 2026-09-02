@@ -1,0 +1,6 @@
+﻿flexops.surrogates.surrogates.SURROGATES
+========================================
+
+.. currentmodule:: flexops.surrogates.surrogates
+
+.. autodata:: SURROGATES

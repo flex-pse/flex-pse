@@ -207,6 +207,7 @@
 <p class="caption" role="heading"><span class="caption-text">How-to</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../how_to/build_a_plant.html">Build a plant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to/parameterize_from_data.html">Parameterize a model from data</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul class="current">
@@ -217,6 +218,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.UnitConfig.html">UnitConfig</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.IOVariableSpec.html">IOVariableSpec</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateSpec.html">SurrogateSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateType.html">SurrogateType</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ExternalDispatchSpec.html">ExternalDispatchSpec</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.UnitCommitmentConfig.html">UnitCommitmentConfig</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ArcSpec.html">ArcSpec</a></li>
@@ -242,12 +244,23 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.RelationRecord.html">RelationRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="surrogates.html">flexops.surrogates</a><input aria-label="Toggle navigation of flexops.surrogates" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.surrogates.surrogates.SURROGATES.html">flexops.surrogates.surrogates.SURROGATES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.surrogates.base.Surrogate.html">Surrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.surrogates.multilinear.MultilinearSurrogate.html">MultilinearSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.surrogates.QuadraticSurrogate.html">QuadraticSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.surrogates.ExponentialSurrogate.html">ExponentialSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.surrogates.ArimaSurrogate.html">ArimaSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexops.surrogates.NeuralNetworkSurrogate.html">NeuralNetworkSurrogate</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="logic.html">flexops.logic</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html">SimpleAqueousFlow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousFlowData.html">SimpleAqueousFlowData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html">SimpleAqueousStateBlockData</a></li>
@@ -256,7 +269,7 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">SimpleGasStateBlockData</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.load_tariff.html">flexops.costing.load_tariff</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.merge_tariffs.html">flexops.costing.merge_tariffs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.load_dr_program.html">flexops.costing.load_dr_program</a></li>
@@ -283,11 +296,11 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.costing.flex_costing.ScalarCostSpec.html">ScalarCostSpec</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexops.testing.UnitModelTestHarness.html">UnitModelTestHarness</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
@@ -304,6 +317,16 @@
 <li class="toctree-l2"><a class="reference internal" href="unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexparameterize/index.html">flexparameterize</a><input aria-label="Toggle navigation of flexparameterize" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.tags.TagMap.html">TagMap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
 
 </div>
@@ -380,6 +403,15 @@ flex-pse never deletes model components; a built model is updated in place via
 </tbody>
 </table>
 </div>
+<p>A unit’s own relationships are swapped in place from a
+<a class="reference internal" href="generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate" title="flexops.surrogates.base.Surrogate"><code class="xref py py-class docutils literal notranslate"><span class="pre">Surrogate</span></code></a> via <a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.swap_relation" title="flexops.core.ops_block.OpsBlockData.swap_relation"><code class="xref py py-meth docutils literal notranslate"><span class="pre">OpsBlockData.swap_relation()</span></code></a>
+— not only its energy draw: any relationship the unit declared swappable with
+<a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.register_relation" title="flexops.core.ops_block.OpsBlockData.register_relation"><code class="xref py py-meth docutils literal notranslate"><span class="pre">OpsBlockData.register_relation()</span></code></a> (an RO skid’s recovery, a tank’s
+level-to-volume geometry). Conservation constraints are never registered, so
+they can never be swapped. The predefined surrogate classes themselves —
+which one a <a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">SurrogateSpec</span></code></a> names and how each
+validates and builds its own data — are documented on
+<a class="reference internal" href="surrogates.html"><span class="doc">flexops.surrogates</span></a>.</p>
 </section>
 <section id="composition-plantblock-and-networkblock">
 <h2>Composition: PlantBlock and NetworkBlock<a class="headerlink" href="#composition-plantblock-and-networkblock" title="Link to this heading">¶</a></h2>
@@ -517,10 +549,13 @@ currency (so <code class="docutils literal notranslate"><span class="pre">&quot;
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.core.registration.FuelUsageRecord.html#flexops.core.registration.FuelUsageRecord" title="flexops.core.registration.FuelUsageRecord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FuelUsageRecord</span></code></a></p></td>
 <td><p>A registered fuel-usage variable — a volumetric flow, not a power.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord" title="flexops.core.registration.BoundaryRecord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BoundaryRecord</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord" title="flexops.core.registration.RelationRecord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RelationRecord</span></code></a></p></td>
+<td><p>A non-conservation relationship a unit has declared swappable.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.core.registration.BoundaryRecord.html#flexops.core.registration.BoundaryRecord" title="flexops.core.registration.BoundaryRecord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BoundaryRecord</span></code></a></p></td>
 <td><p>A registered boundary flow — a resource entering or leaving a facility.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexops.core.registration.BoundaryKind.html#flexops.core.registration.BoundaryKind" title="flexops.core.registration.BoundaryKind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BoundaryKind</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexops.core.registration.BoundaryKind.html#flexops.core.registration.BoundaryKind" title="flexops.core.registration.BoundaryKind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BoundaryKind</span></code></a></p></td>
 <td><p>Which side of a facility boundary a registered flow crosses.</p></td>
 </tr>
 </tbody>
@@ -539,6 +574,32 @@ FlexParameterize and the docs generator model-wide discoverability.</p>
 </dd>
 <dt class="field-even">Yields<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(block,</span> <span class="pre">registry)</span></code> pairs, each block yielded at most once.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.core.registration.iter_swapped_relations">
+<span class="sig-prename descclassname"><span class="pre">flexops.core.registration.</span></span><span class="sig-name descname"><span class="pre">iter_swapped_relations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator" title="(in Python v3.14)"><span class="pre">Iterator</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord" title="flexops.core.registration.RelationRecord"><span class="pre">RelationRecord</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#flexops.core.registration.iter_swapped_relations" title="Link to this definition">¶</a></dt>
+<dd><p>Yield every relation on <code class="docutils literal notranslate"><span class="pre">model</span></code> that has actually been swapped.</p>
+<p>A debugging and reporting aid, not a required step on any build or apply
+path: it answers “what in this model differs from its defaults?” for a
+model built any way — from config, by hand, or by
+<code class="docutils literal notranslate"><span class="pre">flexparameterize.apply_to_model</span></code> — not only for the call that changed
+it. Cheap by construction: it reads the <code class="docutils literal notranslate"><span class="pre">fitted</span></code> field
+<a class="reference internal" href="generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.swap_relation" title="flexops.core.ops_block.OpsBlockData.swap_relation"><code class="xref py py-meth docutils literal notranslate"><span class="pre">swap_relation()</span></code></a> already set on
+each <a class="reference internal" href="generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord" title="flexops.core.registration.RelationRecord"><code class="xref py py-class docutils literal notranslate"><span class="pre">RelationRecord</span></code></a>, rather than re-deriving anything from
+constraint bodies.</p>
+<p>Deliberately out of scope: detecting a relationship altered some other
+way (hand-editing a constraint’s rule, rebuilding a component outside
+<code class="docutils literal notranslate"><span class="pre">swap_relation</span></code>) would mean constructing a shadow default unit and
+diffing constraint bodies — a “deep audit” left to a future milestone.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model</strong> – The Pyomo model (or block) to walk.</p>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(block,</span> <span class="pre">RelationRecord)</span></code> pairs for every swapped relation.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -620,6 +681,7 @@ imports <code class="docutils literal notranslate"><span class="pre">flexops.cor
 </li>
 <li><a class="reference internal" href="#registration">Registration</a><ul>
 <li><a class="reference internal" href="#flexops.core.registration.iter_io_registry"><code class="docutils literal notranslate"><span class="pre">iter_io_registry()</span></code></a></li>
+<li><a class="reference internal" href="#flexops.core.registration.iter_swapped_relations"><code class="docutils literal notranslate"><span class="pre">iter_swapped_relations()</span></code></a></li>
 </ul>
 </li>
 </ul>

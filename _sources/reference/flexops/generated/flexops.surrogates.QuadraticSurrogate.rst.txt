@@ -1,0 +1,7 @@
+﻿QuadraticSurrogate
+==================
+
+.. currentmodule:: flexops.surrogates
+
+.. autoclass:: QuadraticSurrogate
+   :members:

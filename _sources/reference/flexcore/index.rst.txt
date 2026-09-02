@@ -68,6 +68,7 @@ schema authority; :data:`CURRENT_SCHEMA_VERSION` tags what this build writes.
    UnitConfig
    IOVariableSpec
    SurrogateSpec
+   SurrogateType
    ExternalDispatchSpec
    UnitCommitmentConfig
    ArcSpec
@@ -86,6 +87,10 @@ Config I/O
 .. autofunction:: load_model_config
 
 .. autofunction:: dump_model_config
+
+.. autofunction:: load_surrogate_source
+
+.. autodata:: MIGRATIONS
 
 .. autofunction:: export_json_schemas
 

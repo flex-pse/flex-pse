@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="ModelConfig" href="generated/flexcore.config.schema.ModelConfig.html"><link rel="prev" title="Build a plant" href="../../how_to/build_a_plant.html">
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="ModelConfig" href="generated/flexcore.config.schema.ModelConfig.html"><link rel="prev" title="Parameterize a model from data" href="../../how_to/parameterize_from_data.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
         <title>flexcore - flex-pse documentation</title>
@@ -207,6 +207,7 @@
 <p class="caption" role="heading"><span class="caption-text">How-to</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../how_to/build_a_plant.html">Build a plant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to/parameterize_from_data.html">Parameterize a model from data</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul class="current">
@@ -217,6 +218,7 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexcore.config.schema.UnitConfig.html">UnitConfig</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexcore.config.schema.IOVariableSpec.html">IOVariableSpec</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexcore.config.schema.SurrogateSpec.html">SurrogateSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexcore.config.schema.SurrogateType.html">SurrogateType</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexcore.config.schema.ExternalDispatchSpec.html">ExternalDispatchSpec</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexcore.config.schema.UnitCommitmentConfig.html">UnitCommitmentConfig</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexcore.config.schema.ArcSpec.html">ArcSpec</a></li>
@@ -242,12 +244,23 @@
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.RelationRecord.html">RelationRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/surrogates.html">flexops.surrogates</a><input aria-label="Toggle navigation of flexops.surrogates" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.surrogates.SURROGATES.html">flexops.surrogates.surrogates.SURROGATES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.base.Surrogate.html">Surrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.multilinear.MultilinearSurrogate.html">MultilinearSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.QuadraticSurrogate.html">QuadraticSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.ExponentialSurrogate.html">ExponentialSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.ArimaSurrogate.html">ArimaSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html">NeuralNetworkSurrogate</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../flexops/logic.html">flexops.logic</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html">SimpleAqueousFlow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlowData.html">SimpleAqueousFlowData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html">SimpleAqueousStateBlockData</a></li>
@@ -256,7 +269,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">SimpleGasStateBlockData</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.load_tariff.html">flexops.costing.load_tariff</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.merge_tariffs.html">flexops.costing.merge_tariffs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.load_dr_program.html">flexops.costing.load_dr_program</a></li>
@@ -283,11 +296,11 @@
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html">ScalarCostSpec</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.testing.UnitModelTestHarness.html">UnitModelTestHarness</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
@@ -304,6 +317,16 @@
 <li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexparameterize/index.html">flexparameterize</a><input aria-label="Toggle navigation of flexparameterize" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.tags.TagMap.html">TagMap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexparameterize/generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
 
 </div>
@@ -557,25 +580,28 @@ schema authority; <a class="reference internal" href="#flexcore.config.schema.CU
 <tr class="row-even"><td><p><a class="reference internal" href="generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SurrogateSpec</span></code></a></p></td>
 <td><p>A fitted (or default) energy/IO relationship for a unit.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexcore.config.schema.ExternalDispatchSpec.html#flexcore.config.schema.ExternalDispatchSpec" title="flexcore.config.schema.ExternalDispatchSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ExternalDispatchSpec</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexcore.config.schema.SurrogateType.html#flexcore.config.schema.SurrogateType" title="flexcore.config.schema.SurrogateType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SurrogateType</span></code></a></p></td>
+<td><p>Which predefined surrogate class a SurrogateSpec's data describes.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexcore.config.schema.ExternalDispatchSpec.html#flexcore.config.schema.ExternalDispatchSpec" title="flexcore.config.schema.ExternalDispatchSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ExternalDispatchSpec</span></code></a></p></td>
 <td><p>Declares an external (DERMS) command source for a controllable variable.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/flexcore.config.schema.UnitCommitmentConfig.html#flexcore.config.schema.UnitCommitmentConfig" title="flexcore.config.schema.UnitCommitmentConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnitCommitmentConfig</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexcore.config.schema.UnitCommitmentConfig.html#flexcore.config.schema.UnitCommitmentConfig" title="flexcore.config.schema.UnitCommitmentConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnitCommitmentConfig</span></code></a></p></td>
 <td><p>Per-unit unit-commitment configuration, a validated container.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexcore.config.schema.ArcSpec.html#flexcore.config.schema.ArcSpec" title="flexcore.config.schema.ArcSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ArcSpec</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexcore.config.schema.ArcSpec.html#flexcore.config.schema.ArcSpec" title="flexcore.config.schema.ArcSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ArcSpec</span></code></a></p></td>
 <td><p>A directed connection between two unit (or plant) ports.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/flexcore.config.schema.TimeConfig.html#flexcore.config.schema.TimeConfig" title="flexcore.config.schema.TimeConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeConfig</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexcore.config.schema.TimeConfig.html#flexcore.config.schema.TimeConfig" title="flexcore.config.schema.TimeConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeConfig</span></code></a></p></td>
 <td><p>The discrete-time horizon specification.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexcore.config.schema.CostingConfig.html#flexcore.config.schema.CostingConfig" title="flexcore.config.schema.CostingConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CostingConfig</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexcore.config.schema.CostingConfig.html#flexcore.config.schema.CostingConfig" title="flexcore.config.schema.CostingConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CostingConfig</span></code></a></p></td>
 <td><p>Tariff, price, demand-response, and solve/objective options for a run.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/flexcore.config.schema.PriceSpec.html#flexcore.config.schema.PriceSpec" title="flexcore.config.schema.PriceSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PriceSpec</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexcore.config.schema.PriceSpec.html#flexcore.config.schema.PriceSpec" title="flexcore.config.schema.PriceSpec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PriceSpec</span></code></a></p></td>
 <td><p>A native price for one energy carrier or fuel: a number and its units.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexcore.config.schema.DRConfig.html#flexcore.config.schema.DRConfig" title="flexcore.config.schema.DRConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DRConfig</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexcore.config.schema.DRConfig.html#flexcore.config.schema.DRConfig" title="flexcore.config.schema.DRConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DRConfig</span></code></a></p></td>
 <td><p>Demand-response container slot, a placeholder in v0: DR containers exist so wiring is stable, but no DR constraints are built.</p></td>
 </tr>
 </tbody>
@@ -583,7 +609,7 @@ schema authority; <a class="reference internal" href="#flexcore.config.schema.CU
 </div>
 <dl class="py data">
 <dt class="sig sig-object py" id="flexcore.config.schema.CURRENT_SCHEMA_VERSION">
-<span class="sig-prename descclassname"><span class="pre">flexcore.config.schema.</span></span><span class="sig-name descname"><span class="pre">CURRENT_SCHEMA_VERSION</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'0.0.1'</span></span><a class="headerlink" href="#flexcore.config.schema.CURRENT_SCHEMA_VERSION" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">flexcore.config.schema.</span></span><span class="sig-name descname"><span class="pre">CURRENT_SCHEMA_VERSION</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'0.0.3'</span></span><a class="headerlink" href="#flexcore.config.schema.CURRENT_SCHEMA_VERSION" title="Link to this definition">¶</a></dt>
 <dd><p>the semantic schema version this build writes and validates against.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
@@ -598,6 +624,10 @@ schema authority; <a class="reference internal" href="#flexcore.config.schema.CU
 <dt class="sig sig-object py" id="flexcore.config.io.load_model_config">
 <span class="sig-prename descclassname"><span class="pre">flexcore.config.io.</span></span><span class="sig-name descname"><span class="pre">load_model_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/flexcore.config.schema.ModelConfig.html#flexcore.config.schema.ModelConfig" title="flexcore.config.schema.ModelConfig"><span class="pre">ModelConfig</span></a></span></span><a class="headerlink" href="#flexcore.config.io.load_model_config" title="Link to this definition">¶</a></dt>
 <dd><p>Load and validate a config file or dict into a model config.</p>
+<p>Any unit surrogate naming a <code class="docutils literal notranslate"><span class="pre">source</span></code> sidecar is filled in here, at the
+config boundary, so nothing downstream sees a half-loaded relationship. A
+relative source resolves against the config file’s own directory, or the
+working directory when the config came in as a dict.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>source</strong> – Path to a <code class="docutils literal notranslate"><span class="pre">.json</span></code> config file, or an already-parsed config
@@ -609,8 +639,8 @@ mapping (which is not mutated).</p>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If the format is unsupported, <code class="docutils literal notranslate"><span class="pre">schema_version</span></code> is
     missing, malformed, or newer than this build, a migration step is
-    missing, or the config fails validation (the message names the bad
-    field path).</p>
+    missing, the config fails validation (the message names the bad
+    field path), or a surrogate <code class="docutils literal notranslate"><span class="pre">source</span></code> cannot be loaded.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -630,6 +660,43 @@ mapping (which is not mutated).</p>
 <dd class="field-even"><p><a class="reference internal" href="#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – For a non-<code class="docutils literal notranslate"><span class="pre">.json</span></code> suffix.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="flexcore.config.io.load_surrogate_source">
+<span class="sig-prename descclassname"><span class="pre">flexcore.config.io.</span></span><span class="sig-name descname"><span class="pre">load_surrogate_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><span class="pre">SurrogateSpec</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><span class="pre">SurrogateSpec</span></a></span></span><a class="headerlink" href="#flexcore.config.io.load_surrogate_source" title="Link to this definition">¶</a></dt>
+<dd><p>Fill a surrogate in from the sidecar file its <code class="docutils literal notranslate"><span class="pre">source</span></code> names.</p>
+<p>Lets a relationship live beside the config rather than inside it — a fitted
+curve with hundreds of terms, or one a tool wrote separately. The file is a
+JSON object holding <code class="docutils literal notranslate"><span class="pre">data</span></code>, in the shape <code class="docutils literal notranslate"><span class="pre">surrogate_type</span></code>’s class
+expects; it replaces what the spec wrote inline. <code class="docutils literal notranslate"><span class="pre">source</span></code> is kept on the
+result, so the config still points at where the relationship came from.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spec</strong> – The <a class="reference internal" href="generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">SurrogateSpec</span></code></a> to fill in;
+returned unchanged when it names no <code class="docutils literal notranslate"><span class="pre">source</span></code>. Never mutated.</p></li>
+<li><p><strong>base_dir</strong> – Directory a relative <code class="docutils literal notranslate"><span class="pre">source</span></code> resolves against (the
+directory of the config file that named it). None resolves against
+the current working directory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A filled-in copy of <code class="docutils literal notranslate"><span class="pre">spec</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If the source is not a readable <code class="docutils literal notranslate"><span class="pre">.json</span></code> file, is not
+    a JSON object, carries a key that is not a surrogate field, or
+    supplies a value that fails validation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="flexcore.config.io.MIGRATIONS">
+<span class="sig-prename descclassname"><span class="pre">flexcore.config.io.</span></span><span class="sig-name descname"><span class="pre">MIGRATIONS</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'0.0.1':</span> <span class="pre">&lt;function</span> <span class="pre">_to_0_0_2&gt;,</span> <span class="pre">'0.0.2':</span> <span class="pre">&lt;function</span> <span class="pre">_to_0_0_3&gt;}</span></span><a class="headerlink" href="#flexcore.config.io.MIGRATIONS" title="Link to this definition">¶</a></dt>
+<dd><p>Source version -&gt; upgrade hook, applied in sequence on load. Each hook must
+set the new <code class="docutils literal notranslate"><span class="pre">schema_version</span></code> on the dict it returns.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -818,17 +885,16 @@ should appear in normal output but benefit from deduplication.</p>
 <span class="sig-name descname"><span class="pre">configuration_simplifications</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexcore.logger.FlexPseLogger.configuration_simplifications" title="Link to this definition">¶</a></dt>
 <dd><p>Log a message at the <code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code> custom level.</p>
 <p>Note: This module was generated with AI assistance.</p>
-<section id="parameters">
-<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
-<dl class="simple">
-<dt>msg<span class="classifier">str</span></dt><dd><p>The message to log. Supports <code class="docutils literal notranslate"><span class="pre">%</span></code>-style formatting with <code class="docutils literal notranslate"><span class="pre">args</span></code>.</p>
-</dd>
-<dt><a href="#id1"><span class="problematic" id="id2">*</span></a>args</dt><dd><p>Positional arguments interpolated into <code class="docutils literal notranslate"><span class="pre">msg</span></code>.</p>
-</dd>
-<dt><a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs</dt><dd><p>Extra keyword arguments forwarded to <code class="xref py py-meth docutils literal notranslate"><span class="pre">logging.Logger._log()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>msg</strong> – The message to log. Supports <code class="docutils literal notranslate"><span class="pre">%</span></code>-style formatting with <code class="docutils literal notranslate"><span class="pre">args</span></code>.</p></li>
+<li><p><strong>*args</strong> – Positional arguments interpolated into <code class="docutils literal notranslate"><span class="pre">msg</span></code>.</p></li>
+<li><p><strong>**kwargs</strong> – Extra keyword arguments forwarded to the underlying
+<a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">logging.Logger</span></code></a> emit call.</p></li>
+</ul>
 </dd>
 </dl>
-</section>
 </dd></dl>
 
 </dd></dl>
@@ -847,8 +913,8 @@ plus a dedup wrapper).</p>
 <span class="sig-name descname"><span class="pre">emit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#flexcore.logger.DedupHandler.emit" title="Link to this definition">¶</a></dt>
 <dd><p>Process a log record, emitting it if it is not a recent duplicate.</p>
 <p>Note: This module was generated with AI assistance.</p>
-<section id="id5">
-<h3>Parameters<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
 <dl class="simple">
 <dt>record<span class="classifier">logging.LogRecord</span></dt><dd><p>The log record to process.</p>
 </dd>
@@ -873,8 +939,8 @@ plus a dedup wrapper).</p>
 <p>The logger is configured with the global log level and a single
 <code class="docutils literal notranslate"><span class="pre">DedupHandler</span></code>. If the logger already has a <code class="docutils literal notranslate"><span class="pre">DedupHandler</span></code>, no new
 handler is added, allowing callers to re-acquire the same logger safely.</p>
-<section id="id6">
-<h3>Parameters<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<section id="id1">
+<h3>Parameters<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
 <dl class="simple">
 <dt>name<span class="classifier">str, optional</span></dt><dd><p>Logger name. Defaults to <code class="docutils literal notranslate"><span class="pre">DEFAULT_LOGGER_NAME</span></code> (<code class="docutils literal notranslate"><span class="pre">&quot;flex-pse&quot;</span></code>).</p>
 </dd>
@@ -883,8 +949,8 @@ current global dedup configuration is used.</p>
 </dd>
 </dl>
 </section>
-<section id="id7">
-<h3>Returns<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<section id="id2">
+<h3>Returns<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <dl class="simple">
 <dt>logging.Logger</dt><dd><p>A logger instance with dedup-aware output.</p>
 </dd>
@@ -897,8 +963,8 @@ current global dedup configuration is used.</p>
 <span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">get_global_level</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#flexcore.logger.get_global_level" title="Link to this definition">¶</a></dt>
 <dd><p>Return the current global minimum log level for flex-pse loggers.</p>
 <p>Note: This module was generated with AI assistance.</p>
-<section id="id8">
-<h3>Returns<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<section id="id3">
+<h3>Returns<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <dl class="simple">
 <dt>int</dt><dd><p>The current global log level (defaults to
 <code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code>). Individual loggers created via
@@ -913,8 +979,8 @@ current global dedup configuration is used.</p>
 <span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">set_global_level</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexcore.logger.set_global_level" title="Link to this definition">¶</a></dt>
 <dd><p>Set the global minimum log level for subsequently created loggers.</p>
 <p>Note: This module was generated with AI assistance.</p>
-<section id="id9">
-<h3>Parameters<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<section id="id4">
+<h3>Parameters<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <dl class="simple">
 <dt>level<span class="classifier">int</span></dt><dd><p>The new global log level. Standard levels (e.g. <code class="docutils literal notranslate"><span class="pre">logging.DEBUG</span></code>,
 <code class="docutils literal notranslate"><span class="pre">logging.INFO</span></code>) or custom levels (e.g. <code class="docutils literal notranslate"><span class="pre">CONFIGURATION_SIMPLIFICATIONS</span></code>)
@@ -929,8 +995,8 @@ are accepted.</p>
 <span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">get_global_dedup_enabled</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#flexcore.logger.get_global_dedup_enabled" title="Link to this definition">¶</a></dt>
 <dd><p>Return the global dedup configuration, keyed by log level.</p>
 <p>Note: This module was generated with AI assistance.</p>
-<section id="id10">
-<h3>Returns<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
+<section id="id5">
+<h3>Returns<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
 <dl class="simple">
 <dt>dict[int, bool]</dt><dd><p>Mapping of <code class="docutils literal notranslate"><span class="pre">levelno</span></code> to <code class="docutils literal notranslate"><span class="pre">True</span></code> (dedup enabled) or <code class="docutils literal notranslate"><span class="pre">False</span></code>
 (dedup disabled). Missing levels default to <code class="docutils literal notranslate"><span class="pre">False</span></code>. The default
@@ -946,8 +1012,8 @@ mapping enables dedup for <code class="docutils literal notranslate"><span class
 <span class="sig-prename descclassname"><span class="pre">flexcore.logger.</span></span><span class="sig-name descname"><span class="pre">set_global_dedup_enabled</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dedup_enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#flexcore.logger.set_global_dedup_enabled" title="Link to this definition">¶</a></dt>
 <dd><p>Replace the global dedup configuration for subsequently created handlers.</p>
 <p>Note: This module was generated with AI assistance.</p>
-<section id="id11">
-<h3>Parameters<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
+<section id="id6">
+<h3>Parameters<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
 <dl class="simple">
 <dt>dedup_enabled<span class="classifier">dict[int, bool]</span></dt><dd><p>New mapping of <code class="docutils literal notranslate"><span class="pre">levelno</span></code> to dedup flag. Existing handlers keep their
 current state; call <a class="reference internal" href="#flexcore.logger.get_logger" title="flexcore.logger.get_logger"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_logger()</span></code></a> again or mutate
@@ -1005,14 +1071,14 @@ per-level toggle; by default it is enabled for <code class="docutils literal not
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="../../how_to/build_a_plant.html">
+          <a class="prev-page" href="../../how_to/parameterize_from_data.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Build a plant</div>
+                <div class="title">Parameterize a model from data</div>
                 
               </div>
             </a>
@@ -1066,6 +1132,8 @@ per-level toggle; by default it is enabled for <code class="docutils literal not
 <li><a class="reference internal" href="#config-i-o">Config I/O</a><ul>
 <li><a class="reference internal" href="#flexcore.config.io.load_model_config"><code class="docutils literal notranslate"><span class="pre">load_model_config()</span></code></a></li>
 <li><a class="reference internal" href="#flexcore.config.io.dump_model_config"><code class="docutils literal notranslate"><span class="pre">dump_model_config()</span></code></a></li>
+<li><a class="reference internal" href="#flexcore.config.io.load_surrogate_source"><code class="docutils literal notranslate"><span class="pre">load_surrogate_source()</span></code></a></li>
+<li><a class="reference internal" href="#flexcore.config.io.MIGRATIONS"><code class="docutils literal notranslate"><span class="pre">MIGRATIONS</span></code></a></li>
 <li><a class="reference internal" href="#flexcore.config.io.export_json_schemas"><code class="docutils literal notranslate"><span class="pre">export_json_schemas()</span></code></a></li>
 </ul>
 </li>

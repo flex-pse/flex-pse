@@ -1,0 +1,7 @@
+﻿Surrogate
+=========
+
+.. currentmodule:: flexops.surrogates.base
+
+.. autoclass:: Surrogate
+   :members:

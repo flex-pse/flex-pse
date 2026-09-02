@@ -29,6 +29,16 @@ flex-pse never deletes model components; a built model is updated in place via
    OpsBlockData
    RelaxationPolicy
 
+A unit's own relationships are swapped in place from a
+:class:`~flexops.surrogates.base.Surrogate` via :meth:`OpsBlockData.swap_relation`
+— not only its energy draw: any relationship the unit declared swappable with
+:meth:`OpsBlockData.register_relation` (an RO skid's recovery, a tank's
+level-to-volume geometry). Conservation constraints are never registered, so
+they can never be swapped. The predefined surrogate classes themselves —
+which one a :class:`~flexcore.config.schema.SurrogateSpec` names and how each
+validates and builds its own data — are documented on
+:doc:`surrogates`.
+
 Composition: PlantBlock and NetworkBlock
 ----------------------------------------
 
@@ -93,10 +103,13 @@ The registry records FlexParameterize and the docs generator consume.
    ParameterRecord
    PowerRecord
    FuelUsageRecord
+   RelationRecord
    BoundaryRecord
    BoundaryKind
 
 .. autofunction:: iter_io_registry
+
+.. autofunction:: iter_swapped_relations
 
 A boundary flow is registered with
 :meth:`~flexops.core.ops_block.OpsBlockData.register_boundary_flow`, and the

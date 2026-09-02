@@ -1,0 +1,7 @@
+﻿TagReport
+=========
+
+.. currentmodule:: flexparameterize.tags
+
+.. autoclass:: TagReport
+   :members:

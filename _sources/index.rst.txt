@@ -26,6 +26,7 @@ design and operations optimization.
    :caption: How-to
 
    how_to/build_a_plant
+   how_to/parameterize_from_data
 
 .. toctree::
    :maxdepth: 2
@@ -33,8 +34,11 @@ design and operations optimization.
 
    reference/flexcore/index
    reference/flexops/core
+   reference/flexops/surrogates
    reference/flexops/logic
    reference/flexops/properties
    reference/flexops/costing
    reference/flexops/testing
    reference/flexops/unit_models/index
+   reference/flexparameterize/index
+   reference/glossary

@@ -1,0 +1,7 @@
+﻿TagMap
+======
+
+.. currentmodule:: flexparameterize.tags
+
+.. autoclass:: TagMap
+   :members:

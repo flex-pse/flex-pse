@@ -207,6 +207,7 @@
 <p class="caption" role="heading"><span class="caption-text">How-to</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="how_to/build_a_plant.html">Build a plant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how_to/parameterize_from_data.html">Parameterize a model from data</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
@@ -217,6 +218,7 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.UnitConfig.html">UnitConfig</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.IOVariableSpec.html">IOVariableSpec</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.SurrogateSpec.html">SurrogateSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.SurrogateType.html">SurrogateType</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.ExternalDispatchSpec.html">ExternalDispatchSpec</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.UnitCommitmentConfig.html">UnitCommitmentConfig</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexcore/generated/flexcore.config.schema.ArcSpec.html">ArcSpec</a></li>
@@ -242,12 +244,23 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.RelationRecord.html">RelationRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
 </ul>
 </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/surrogates.html">flexops.surrogates</a><input aria-label="Toggle navigation of flexops.surrogates" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.surrogates.SURROGATES.html">flexops.surrogates.surrogates.SURROGATES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html">Surrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.multilinear.MultilinearSurrogate.html">MultilinearSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.QuadraticSurrogate.html">QuadraticSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.ExponentialSurrogate.html">ExponentialSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.ArimaSurrogate.html">ArimaSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html">NeuralNetworkSurrogate</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="reference/flexops/logic.html">flexops.logic</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html">SimpleAqueousFlow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlowData.html">SimpleAqueousFlowData</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html">SimpleAqueousStateBlockData</a></li>
@@ -256,7 +269,7 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">SimpleGasStateBlockData</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.costing.load_tariff.html">flexops.costing.load_tariff</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.costing.merge_tariffs.html">flexops.costing.merge_tariffs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.costing.load_dr_program.html">flexops.costing.load_dr_program</a></li>
@@ -283,11 +296,11 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html">ScalarCostSpec</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html">UnitModelTestHarness</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
@@ -304,6 +317,16 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
 </ul>
 </li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="reference/flexparameterize/index.html">flexparameterize</a><input aria-label="Toggle navigation of flexparameterize" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.tags.TagMap.html">TagMap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference/glossary.html">Glossary</a></li>
 </ul>
 
 </div>
@@ -378,6 +401,8 @@ design and operations optimization.</p>
 <li class="toctree-l2"><a class="reference internal" href="explanation/config_schema.html#pydantic-is-the-authority-json-is-canonical-on-disk">Pydantic is the authority; JSON is canonical on disk</a></li>
 <li class="toctree-l2"><a class="reference internal" href="explanation/config_schema.html#versioning-and-migrations">Versioning and migrations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="explanation/config_schema.html#the-model-set">The model set</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanation/config_schema.html#how-a-surrogate-describes-its-function">How a surrogate describes its function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explanation/config_schema.html#which-relationships-are-swappable">Which relationships are swappable</a></li>
 <li class="toctree-l2"><a class="reference internal" href="explanation/config_schema.html#the-flexparameterize-flexops-seam">The FlexParameterize ↔ FlexOps seam</a></li>
 </ul>
 </li>
@@ -404,6 +429,17 @@ design and operations optimization.</p>
 <li class="toctree-l2"><a class="reference internal" href="how_to/build_a_plant.html#more-than-one-plant-networkblock">More than one plant: NetworkBlock</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="how_to/parameterize_from_data.html">Parameterize a model from data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="how_to/parameterize_from_data.html#map-the-data-s-columns-onto-model-aliases">1. Map the data’s columns onto model aliases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to/parameterize_from_data.html#check-that-the-data-determines-the-fit">2. Check that the data determines the fit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to/parameterize_from_data.html#fit">3. Fit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to/parameterize_from_data.html#a-apply-the-fit-to-the-live-model">4a. Apply the fit to the live model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to/parameterize_from_data.html#b-or-emit-a-config">4b. Or emit a config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to/parameterize_from_data.html#the-two-directions-agree">The two directions agree</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to/parameterize_from_data.html#supplying-a-relationship-you-already-know">Supplying a relationship you already know</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to/parameterize_from_data.html#swapping-a-relationship-other-than-the-energy-draw">Swapping a relationship other than the energy draw</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -425,6 +461,14 @@ design and operations optimization.</p>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/core.html#composition-plantblock-and-networkblock">Composition: PlantBlock and NetworkBlock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/core.html#config-driven-build">Config-driven build</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/core.html#registration">Registration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference/flexops/surrogates.html">flexops.surrogates</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/generated/flexops.surrogates.surrogates.SURROGATES.html">flexops.surrogates.surrogates.SURROGATES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/surrogates.html#flexops.surrogates.surrogates.surrogate_from_spec"><code class="docutils literal notranslate"><span class="pre">surrogate_from_spec()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/surrogates.html#base-class">Base class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/surrogates.html#multilinear">Multilinear</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexops/surrogates.html#not-yet-implemented">Not yet implemented</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="reference/flexops/logic.html">flexops.logic</a><ul>
@@ -469,6 +513,15 @@ design and operations optimization.</p>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexops/unit_models/index.html#generic-surrogate">Generic surrogate</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="reference/flexparameterize/index.html">flexparameterize</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/index.html#tag-aliasing">Tag aliasing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/index.html#sufficiency-validation">Sufficiency validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/index.html#regression">Regression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/index.html#applying-a-fit-to-a-live-model">Applying a fit to a live model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/index.html#emitting-a-config">Emitting a config</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference/glossary.html">Glossary</a></li>
 </ul>
 </div>
 </section>

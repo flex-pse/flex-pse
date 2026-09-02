@@ -1,0 +1,7 @@
+﻿IOPairStatus
+============
+
+.. currentmodule:: flexparameterize.validate
+
+.. autoclass:: IOPairStatus
+   :members:

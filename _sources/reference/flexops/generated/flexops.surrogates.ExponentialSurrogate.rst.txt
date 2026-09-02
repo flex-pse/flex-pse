@@ -1,0 +1,7 @@
+﻿ExponentialSurrogate
+====================
+
+.. currentmodule:: flexops.surrogates
+
+.. autoclass:: ExponentialSurrogate
+   :members:

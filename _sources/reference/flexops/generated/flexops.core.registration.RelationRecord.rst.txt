@@ -1,0 +1,7 @@
+﻿RelationRecord
+==============
+
+.. currentmodule:: flexops.core.registration
+
+.. autoclass:: RelationRecord
+   :members:

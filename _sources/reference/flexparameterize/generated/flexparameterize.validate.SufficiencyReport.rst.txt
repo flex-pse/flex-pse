@@ -1,0 +1,7 @@
+﻿SufficiencyReport
+=================
+
+.. currentmodule:: flexparameterize.validate
+
+.. autoclass:: SufficiencyReport
+   :members:

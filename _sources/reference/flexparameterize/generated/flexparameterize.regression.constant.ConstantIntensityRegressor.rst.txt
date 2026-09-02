@@ -1,0 +1,7 @@
+﻿ConstantIntensityRegressor
+==========================
+
+.. currentmodule:: flexparameterize.regression.constant
+
+.. autoclass:: ConstantIntensityRegressor
+   :members:

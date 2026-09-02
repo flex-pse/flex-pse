@@ -33,6 +33,18 @@ Rules (`plan/00_conventions.md` §2, `plan/01_architecture.md` §4):
   `POWER_ELECTRICAL` **negative** (upper-bounded at 0), so a combustor's
   output nets against plant load exactly as a discharging battery does, with
   no per-unit sign-flipping at the plant level either.
+- **A generating unit whose relation is swappable splits the magnitude from
+  the sign.** `Combustor` carries `power_generated[t]` — the generation
+  magnitude, bounded below at 0 — and ties it to the draw through the
+  constraint `power_electrical_sign[t]`. Only the magnitude relation is
+  registered, so a surrogate swap can never replace the sign constraint, and
+  the sign survives a fit no expression check could have vouched for: nothing
+  can prove an arbitrary fitted body is non-positive over the feasible region,
+  but a body feeding a target bounded below at 0 either respects the
+  convention or violates a bound that names it. It also means a generation
+  surrogate is fitted in **magnitude space** — positive, as generation data is
+  normally logged — which is why `power_generated` rather than
+  `power_electrical` is the unit's registered IO output.
 
 ## Fuel is a volume, not a power
 

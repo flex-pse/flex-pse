@@ -1,0 +1,696 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="TagMap" href="generated/flexparameterize.tags.TagMap.html"><link rel="prev" title="flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel" href="../flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>flexparameterize - flex-pse documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">flex-pse  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  <span class="sidebar-brand-text">flex-pse  documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/ten_minutes.html">flex-pse in ten minutes</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Explanation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/time_and_dynamics.html">Time and dynamics (decision R2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/model_and_block_structure.html">Model and block structure (decisions R1, R2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/relaxation_policies.html">Relaxation policies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/config_schema.html">The config schema</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/energy_nomenclature.html">Energy nomenclature</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../explanation/pass_through_and_bypass.html">Pass-through, bypass, and the arc layer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How-to</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to/build_a_plant.html">Build a plant</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../how_to/parameterize_from_data.html">Parameterize a model from data</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexcore/index.html">flexcore</a><input aria-label="Toggle navigation of flexcore" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ModelConfig.html">ModelConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.NetworkConfig.html">NetworkConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.PlantConfig.html">PlantConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.UnitConfig.html">UnitConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.IOVariableSpec.html">IOVariableSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateSpec.html">SurrogateSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateType.html">SurrogateType</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ExternalDispatchSpec.html">ExternalDispatchSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.UnitCommitmentConfig.html">UnitCommitmentConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ArcSpec.html">ArcSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.TimeConfig.html">TimeConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.CostingConfig.html">CostingConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.PriceSpec.html">PriceSpec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.DRConfig.html">DRConfig</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/core.html">flexops.core</a><input aria-label="Toggle navigation of flexops.core" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.time_block.TimeBlock.html">TimeBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.time_block.TimeBlockData.html">TimeBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.time_block.TimeWindow.html">TimeWindow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.ops_block.OpsBlock.html">OpsBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.ops_block.OpsBlockData.html">OpsBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.ops_block.RelaxationPolicy.html">RelaxationPolicy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.plant_block.PlantBlock.html">PlantBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.plant_block.PlantBlockData.html">PlantBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.network_block.NetworkBlock.html">NetworkBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.network_block.NetworkBlockData.html">NetworkBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.IORegistry.html">IORegistry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.IOVariableRecord.html">IOVariableRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.ParameterRecord.html">ParameterRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.PowerRecord.html">PowerRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.FuelUsageRecord.html">FuelUsageRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.RelationRecord.html">RelationRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.BoundaryRecord.html">BoundaryRecord</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.core.registration.BoundaryKind.html">BoundaryKind</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/surrogates.html">flexops.surrogates</a><input aria-label="Toggle navigation of flexops.surrogates" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.surrogates.SURROGATES.html">flexops.surrogates.surrogates.SURROGATES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.base.Surrogate.html">Surrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.multilinear.MultilinearSurrogate.html">MultilinearSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.QuadraticSurrogate.html">QuadraticSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.ExponentialSurrogate.html">ExponentialSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.ArimaSurrogate.html">ArimaSurrogate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html">NeuralNetworkSurrogate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../flexops/logic.html">flexops.logic</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/properties.html">flexops.properties</a><input aria-label="Toggle navigation of flexops.properties" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlow.html">SimpleAqueousFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousFlowData.html">SimpleAqueousFlowData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html">SimpleAqueousStateBlockData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_gas.SimpleGasFlow.html">SimpleGasFlow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_gas.SimpleGasFlowData.html">SimpleGasFlowData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html">SimpleGasStateBlockData</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/costing.html">flexops.costing</a><input aria-label="Toggle navigation of flexops.costing" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.load_tariff.html">flexops.costing.load_tariff</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.merge_tariffs.html">flexops.costing.merge_tariffs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.load_dr_program.html">flexops.costing.load_dr_program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.tariff_csv_to_dict.html">flexops.costing.tariff_csv_to_dict</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.tariff_currency_units.html">flexops.costing.tariff_currency_units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.currency_units.html">flexops.costing.currency_units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.monthly_scale_factor.html">flexops.costing.monthly_scale_factor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.price_series.html">flexops.costing.price_series</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.is_peak.html">flexops.costing.is_peak</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.peak_windows.html">flexops.costing.peak_windows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.price_gradient.html">flexops.costing.price_gradient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.add_operating_cost.html">flexops.costing.add_operating_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.add_electricity_cost.html">flexops.costing.add_electricity_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.add_fuel_cost.html">flexops.costing.add_fuel_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.OperatingCostHandles.html">OperatingCostHandles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.evaluate_cost.html">flexops.costing.evaluate_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.evaluate_fuel_cost.html">flexops.costing.evaluate_fuel_cost</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.DRConfig.html">DRConfig</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.flex_costing.FlexCosting.html">FlexCosting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.flex_costing.FlexCostingData.html">FlexCostingData</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.flex_costing.CostReport.html">CostReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.flex_costing.OperatingCostBreakdown.html">OperatingCostBreakdown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.flex_costing.CapitalCostBreakdown.html">CapitalCostBreakdown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.costing.flex_costing.ScalarCostSpec.html">ScalarCostSpec</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/testing.html">flexops.testing</a><input aria-label="Toggle navigation of flexops.testing" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/generated/flexops.testing.UnitModelTestHarness.html">UnitModelTestHarness</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../flexops/unit_models/index.html">flexops.unit_models</a><input aria-label="Toggle navigation of flexops.unit_models" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.base.siso.SISOBlock.html">flexops.unit_models.base.siso.SISOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.base.sido.SIDOBlock.html">flexops.unit_models.base.sido.SIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html">flexops.unit_models.base.dido.DIDOBlock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.pump.Pump.html">flexops.unit_models.pump.Pump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.storage.tank.Tank.html">flexops.unit_models.storage.tank.Tank</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.storage.battery.BatteryModel.html">flexops.unit_models.storage.battery.BatteryModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.exchanger.Exchanger.html">flexops.unit_models.exchanger.Exchanger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.reverseosmosis.ReverseOsmosis.html">flexops.unit_models.reverseosmosis.ReverseOsmosis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html">flexops.unit_models.powergeneration.combustor.Combustor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.mixer.Mixer.html">flexops.unit_models.mixer.Mixer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.splitter.Splitter.html">flexops.unit_models.splitter.Splitter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.feed.Feed.html">flexops.unit_models.feed.Feed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.product.Product.html">flexops.unit_models.product.Product</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">flexparameterize</a><input aria-label="Toggle navigation of flexparameterize" checked="" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.tags.TagMap.html">TagMap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../_sources/reference/flexparameterize/index.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="flexparameterize">
+<h1>flexparameterize<a class="headerlink" href="#flexparameterize" title="Link to this heading">¶</a></h1>
+<p>Parameterizes a FlexOps model from tabular plant data. The pipeline is
+<strong>tabular data → tag aliasing → sufficiency validation → regression →
+{apply to model | emit config}</strong> (architecture §5); see
+<a class="reference internal" href="../../how_to/parameterize_from_data.html"><span class="doc">Parameterize a model from data</span></a>.</p>
+<p>Any tabular source works — historian export, spreadsheet, CSV, database query.
+Nothing here requires a historian connection; the only requirement is that a
+<code class="docutils literal notranslate"><span class="pre">TagMap</span></code> maps the data’s columns onto the right model aliases.</p>
+<section id="tag-aliasing">
+<h2>Tag aliasing<a class="headerlink" href="#tag-aliasing" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexparameterize.tags.TagMap.html#flexparameterize.tags.TagMap" title="flexparameterize.tags.TagMap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TagMap</span></code></a></p></td>
+<td><p>Maps a tabular source's column names onto dotted model aliases.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexparameterize.tags.TagReport.html#flexparameterize.tags.TagReport" title="flexparameterize.tags.TagReport"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TagReport</span></code></a></p></td>
+<td><p>Which source columns no <code class="docutils literal notranslate"><span class="pre">TagMap</span></code> entry claimed, and near misses for them.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexparameterize.tags.model_alias">
+<span class="sig-prename descclassname"><span class="pre">flexparameterize.tags.</span></span><span class="sig-name descname"><span class="pre">model_alias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#flexparameterize.tags.model_alias" title="Link to this definition">¶</a></dt>
+<dd><p>Return the model alias of a registered Pyomo variable.</p>
+<p>The alias is the variable’s fully qualified name on its model — e.g.
+<code class="docutils literal notranslate"><span class="pre">&quot;facility.plant.power_electrical&quot;</span></code> for a unit <code class="docutils literal notranslate"><span class="pre">plant</span></code> in a plant block
+<code class="docutils literal notranslate"><span class="pre">facility</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;facility.plant.inlet_state.flow_vol_phase&quot;</span></code> for a
+state-block variable. This is the dotted <code class="docutils literal notranslate"><span class="pre">plant.unit.variable</span></code> form a
+<code class="docutils literal notranslate"><span class="pre">TagMap</span></code>’s values take, and it is unambiguous: an inlet and an outlet
+state variable share a local name but never an alias.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>var</strong> – A Pyomo component attached to a model.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The dotted alias.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="sufficiency-validation">
+<h2>Sufficiency validation<a class="headerlink" href="#sufficiency-validation" title="Link to this heading">¶</a></h2>
+<p>Does the data determine every registered regression problem — the
+<a class="reference internal" href="../glossary.html#term-zero-degree-of-freedom-regression"><span class="xref std std-term">zero-degree-of-freedom regression</span></a> condition? The check reports; it never
+raises.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexparameterize.validate.SufficiencyReport.html#flexparameterize.validate.SufficiencyReport" title="flexparameterize.validate.SufficiencyReport"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SufficiencyReport</span></code></a></p></td>
+<td><p>Whether a data frame determines every registered regression problem.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus" title="flexparameterize.validate.IOPairStatus"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IOPairStatus</span></code></a></p></td>
+<td><p>Data coverage of one registered <code class="docutils literal notranslate"><span class="pre">(input,</span> <span class="pre">output)</span></code> variable pair.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexparameterize.validate.check_sufficiency">
+<span class="sig-prename descclassname"><span class="pre">flexparameterize.validate.</span></span><span class="sig-name descname"><span class="pre">check_sufficiency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">registry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_block</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/flexparameterize.validate.SufficiencyReport.html#flexparameterize.validate.SufficiencyReport" title="flexparameterize.validate.SufficiencyReport"><span class="pre">SufficiencyReport</span></a></span></span><a class="headerlink" href="#flexparameterize.validate.check_sufficiency" title="Link to this definition">¶</a></dt>
+<dd><p>Report whether <code class="docutils literal notranslate"><span class="pre">data</span></code> determines every registered regression problem.</p>
+<p>Walks each registered IO pair — the cartesian product of a unit’s
+registered input and output variables, so a unit with several valid pairs
+gets each checked — and records which of the pair’s aliases are present as
+data columns and how many non-null rows they carry. Together with the index
+check this is the <strong>zero-degree-of-freedom regression</strong> condition: the
+registered IO pairs exactly determine the regression problem — no unmapped
+inputs, no free parameters after fit.</p>
+<p>Insufficient data is reported, never raised: the caller decides (see
+<a class="reference internal" href="#flexparameterize.apply.apply_to_model" title="flexparameterize.apply.apply_to_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_to_model()</span></code></a>, which does raise).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>registry</strong> – A built model to walk, or a single
+<a class="reference internal" href="../flexops/generated/flexops.core.registration.IORegistry.html#flexops.core.registration.IORegistry" title="flexops.core.registration.IORegistry"><code class="xref py py-class docutils literal notranslate"><span class="pre">IORegistry</span></code></a>.</p></li>
+<li><p><strong>data</strong> – The data frame, with columns already renamed to model aliases by
+<a class="reference internal" href="generated/flexparameterize.tags.TagMap.html#flexparameterize.tags.TagMap.apply" title="flexparameterize.tags.TagMap.apply"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply()</span></code></a>.</p></li>
+<li><p><strong>time_block</strong> – The model’s <code class="docutils literal notranslate"><span class="pre">TimeBlockData</span></code>; when given, the data index
+is compared against its horizon.</p></li>
+<li><p><strong>min_rows</strong> – Minimum non-null rows a present column must carry.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <a class="reference internal" href="generated/flexparameterize.validate.SufficiencyReport.html#flexparameterize.validate.SufficiencyReport" title="flexparameterize.validate.SufficiencyReport"><code class="xref py py-class docutils literal notranslate"><span class="pre">SufficiencyReport</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="regression">
+<h2>Regression<a class="headerlink" href="#regression" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor" title="flexparameterize.regression.constant.ConstantIntensityRegressor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstantIntensityRegressor</span></code></a></p></td>
+<td><p>Fits the mean energy intensity of a unit from paired flow and power data.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py data">
+<dt class="sig sig-object py" id="flexparameterize.regression.constant.COEFFICIENT_NAME">
+<span class="sig-prename descclassname"><span class="pre">flexparameterize.regression.constant.</span></span><span class="sig-name descname"><span class="pre">COEFFICIENT_NAME</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'energy_intensity'</span></span><a class="headerlink" href="#flexparameterize.regression.constant.COEFFICIENT_NAME" title="Link to this definition">¶</a></dt>
+<dd><p>key the fitted coefficient is stored under in a <code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">data['coefficients']</span></code>; it is also the name of the process parameter the fit
+determines on a unit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="applying-a-fit-to-a-live-model">
+<h2>Applying a fit to a live model<a class="headerlink" href="#applying-a-fit-to-a-live-model" title="Link to this heading">¶</a></h2>
+<p>The FlexParameterize → FlexOps direction of the two-way coupling (decision
+R10): fixes regressed parameters in place and, where the relationship is richer
+than the unit’s default constant intensity, realizes the
+<a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">SurrogateSpec</span></code></a> as a
+<a class="reference internal" href="../flexops/generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate" title="flexops.surrogates.base.Surrogate"><code class="xref py py-class docutils literal notranslate"><span class="pre">Surrogate</span></code></a> (<a class="reference internal" href="../flexops/surrogates.html#flexops.surrogates.surrogates.surrogate_from_spec" title="flexops.surrogates.surrogates.surrogate_from_spec"><code class="xref py py-func docutils literal notranslate"><span class="pre">surrogate_from_spec()</span></code></a>)
+and swaps it in for the unit’s <code class="docutils literal notranslate"><span class="pre">power_electrical_relation</span></code> Constraint — or
+any other relation the unit registered (see <code class="docutils literal notranslate"><span class="pre">surrogates=</span></code>) — same unit
+object, same ports and arcs.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexparameterize.apply.ApplyReport.html#flexparameterize.apply.ApplyReport" title="flexparameterize.apply.ApplyReport"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ApplyReport</span></code></a></p></td>
+<td><p>What <a class="reference internal" href="#flexparameterize.apply.apply_to_model" title="flexparameterize.apply.apply_to_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_to_model()</span></code></a> changed on the model.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexparameterize.apply.apply_to_model">
+<span class="sig-prename descclassname"><span class="pre">flexparameterize.apply.</span></span><span class="sig-name descname"><span class="pre">apply_to_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">tagmap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="generated/flexparameterize.tags.TagMap.html#flexparameterize.tags.TagMap" title="flexparameterize.tags.TagMap"><span class="pre">TagMap</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">surrogates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="generated/flexparameterize.apply.ApplyReport.html#flexparameterize.apply.ApplyReport" title="flexparameterize.apply.ApplyReport"><span class="pre">ApplyReport</span></a></span></span><a class="headerlink" href="#flexparameterize.apply.apply_to_model" title="Link to this definition">¶</a></dt>
+<dd><p>Fit a built model’s registered parameters from data and mutate it in place.</p>
+<p>Every unit that registers a regressable process parameter is fitted from
+<code class="docutils literal notranslate"><span class="pre">data</span></code> and updated. A unit named in <code class="docutils literal notranslate"><span class="pre">surrogates</span></code> is not fitted at all —
+its relationship is already known in closed form — so no data is required
+for it and no sufficiency check is run against it; the two paths mix freely
+across units in one call.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The built FlexOps model to mutate.</p></li>
+<li><p><strong>data</strong> – Tabular plant data from any source, indexed by timestamp.</p></li>
+<li><p><strong>tagmap</strong> – The <a class="reference internal" href="generated/flexparameterize.tags.TagMap.html#flexparameterize.tags.TagMap" title="flexparameterize.tags.TagMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">TagMap</span></code></a> renaming <code class="docutils literal notranslate"><span class="pre">data</span></code>’s
+columns onto model aliases (pass <code class="docutils literal notranslate"><span class="pre">TagMap({})</span></code> if they already are).</p></li>
+<li><p><strong>surrogates</strong> – Optional unit name (the unit’s full model name, e.g.
+<code class="docutils literal notranslate"><span class="pre">&quot;facility.pump&quot;</span></code>) -&gt; either a hand-built
+<a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">SurrogateSpec</span></code></a>, attached as the
+unit’s own energy relationship, or a <code class="docutils literal notranslate"><span class="pre">{relation_name:</span> <span class="pre">spec}</span></code>
+mapping naming one or more of the unit’s <em>other</em> registered
+relations (see
+<a class="reference internal" href="../flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.register_relation" title="flexops.core.ops_block.OpsBlockData.register_relation"><code class="xref py py-meth docutils literal notranslate"><span class="pre">register_relation()</span></code></a>) —
+an RO skid’s <code class="docutils literal notranslate"><span class="pre">split_definition</span></code>, a tank’s <code class="docutils literal notranslate"><span class="pre">level_definition</span></code>.</p></li>
+<li><p><strong>min_rows</strong> – Minimum non-null rows a data column must carry.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <a class="reference internal" href="generated/flexparameterize.apply.ApplyReport.html#flexparameterize.apply.ApplyReport" title="flexparameterize.apply.ApplyReport"><code class="xref py py-class docutils literal notranslate"><span class="pre">ApplyReport</span></code></a> describing what changed.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexDataError" title="flexcore.exceptions.FlexDataError"><strong>FlexDataError</strong></a> – If the data does not determine the fit for a unit that
+    has to be fitted; the model is left untouched.</p></li>
+<li><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If a relationship cannot be attached to its unit.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="emitting-a-config">
+<h2>Emitting a config<a class="headerlink" href="#emitting-a-config" title="Link to this heading">¶</a></h2>
+<p>The serializable direction: the same fit becomes a
+<a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ModelConfig.html#flexcore.config.schema.ModelConfig" title="flexcore.config.schema.ModelConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelConfig</span></code></a> that
+<a class="reference internal" href="../flexops/core.html#flexops.core.build.build_model" title="flexops.core.build.build_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">flexops.core.build.build_model()</span></code></a> rebuilds the parameterized model from.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexparameterize.emit.emit_model_config">
+<span class="sig-prename descclassname"><span class="pre">flexparameterize.emit.</span></span><span class="sig-name descname"><span class="pre">emit_model_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit_or_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_result</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provenance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.TimeConfig.html#flexcore.config.schema.TimeConfig" title="flexcore.config.schema.TimeConfig"><span class="pre">TimeConfig</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">costing</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.CostingConfig.html#flexcore.config.schema.CostingConfig" title="flexcore.config.schema.CostingConfig"><span class="pre">CostingConfig</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">construction_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plant_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ModelConfig.html#flexcore.config.schema.ModelConfig" title="flexcore.config.schema.ModelConfig"><span class="pre">ModelConfig</span></a></span></span><a class="headerlink" href="#flexparameterize.emit.emit_model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Assemble the config that rebuilds a parameterized unit.</p>
+<p>The emitted <code class="docutils literal notranslate"><span class="pre">ModelConfig</span></code> holds one plant of one unit: its class name,
+its construction options (a constant-intensity fit is written out as the
+unit’s <code class="docutils literal notranslate"><span class="pre">energy_intensity</span></code> option, so a rebuild carries the fitted value),
+its IO variable specs, the <code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code>, and provenance.</p>
+<p>Provenance always records the versions of <code class="docutils literal notranslate"><span class="pre">flex-pse</span></code>, <code class="docutils literal notranslate"><span class="pre">pyomo</span></code> and
+<code class="docutils literal notranslate"><span class="pre">pandas</span></code>, read at emit time, under <code class="docutils literal notranslate"><span class="pre">&quot;versions&quot;</span></code>. A <strong>fitted</strong> result
+adds <code class="docutils literal notranslate"><span class="pre">&quot;n_samples&quot;</span></code>, the regressor’s metrics (<code class="docutils literal notranslate"><span class="pre">&quot;r2&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;rmse&quot;</span></code>) and
+<code class="docutils literal notranslate"><span class="pre">&quot;data_window&quot;</span></code> (<code class="docutils literal notranslate"><span class="pre">[first,</span> <span class="pre">last]</span></code> ISO-8601 timestamps). A hand-built
+<code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code> has none of those — it documents its origin through
+<code class="docutils literal notranslate"><span class="pre">provenance</span></code> instead (e.g. <code class="docutils literal notranslate"><span class="pre">{&quot;source&quot;:</span> <span class="pre">&quot;vendor_datasheet&quot;}</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>unit_or_class</strong> – The built unit that was fitted (its class name, IO
+registry and horizon are read off it), or a unit-model class, in
+which case <code class="docutils literal notranslate"><span class="pre">time</span></code> is required and the IO specs come from the
+fit’s column names.</p></li>
+<li><p><strong>fit_result</strong> – A fitted regressor, or a hand-built
+<a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">SurrogateSpec</span></code></a> for a relationship
+already known in closed form — no data, no sufficiency check and no
+regressor are involved on that path.</p></li>
+<li><p><strong>provenance</strong> – Extra provenance entries, merged last so they win.</p></li>
+<li><p><strong>time</strong> – The horizon config; defaults to the built unit’s own TimeBlock.</p></li>
+<li><p><strong>costing</strong> – The costing config; defaults to a <strong>placeholder</strong> priced at
+0 USD/kWh, since a unit carries no tariff. Pass the real one for a
+config that is meant to be solved.</p></li>
+<li><p><strong>construction_options</strong> – Extra construction options for the unit (its
+non-default, non-fitted settings); the fitted coefficient is merged
+in on top.</p></li>
+<li><p><strong>plant_name</strong> – Name of the emitted plant; defaults to the built unit’s
+parent block name, else <code class="docutils literal notranslate"><span class="pre">&quot;plant&quot;</span></code>.</p></li>
+<li><p><strong>unit_name</strong> – Key the unit is stored under; defaults to the built unit’s
+own name, else <code class="docutils literal notranslate"><span class="pre">&quot;unit&quot;</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <a class="reference internal" href="../flexcore/generated/flexcore.config.schema.ModelConfig.html#flexcore.config.schema.ModelConfig" title="flexcore.config.schema.ModelConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelConfig</span></code></a>. Persist it with
+<a class="reference internal" href="../flexcore/index.html#flexcore.config.io.dump_model_config" title="flexcore.config.io.dump_model_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">flexcore.config.io.dump_model_config()</span></code></a>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">unit_or_class</span></code> is not a flexops unit model, or
+    is a class and no <code class="docutils literal notranslate"><span class="pre">time</span></code> was given.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="generated/flexparameterize.tags.TagMap.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">TagMap</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="../flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, flex-pse contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">flexparameterize</a><ul>
+<li><a class="reference internal" href="#tag-aliasing">Tag aliasing</a><ul>
+<li><a class="reference internal" href="#flexparameterize.tags.model_alias"><code class="docutils literal notranslate"><span class="pre">model_alias()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sufficiency-validation">Sufficiency validation</a><ul>
+<li><a class="reference internal" href="#flexparameterize.validate.check_sufficiency"><code class="docutils literal notranslate"><span class="pre">check_sufficiency()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#regression">Regression</a><ul>
+<li><a class="reference internal" href="#flexparameterize.regression.constant.COEFFICIENT_NAME"><code class="docutils literal notranslate"><span class="pre">COEFFICIENT_NAME</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#applying-a-fit-to-a-live-model">Applying a fit to a live model</a><ul>
+<li><a class="reference internal" href="#flexparameterize.apply.apply_to_model"><code class="docutils literal notranslate"><span class="pre">apply_to_model()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#emitting-a-config">Emitting a config</a><ul>
+<li><a class="reference internal" href="#flexparameterize.emit.emit_model_config"><code class="docutils literal notranslate"><span class="pre">emit_model_config()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

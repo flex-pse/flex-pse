@@ -24,10 +24,10 @@ directly. {func}`flexcore.config.io.load_model_config` and
 ## Versioning and migrations
 
 Every persisted config carries a mandatory `schema_version`: a semantic-version
-string like `"0.0.1"` (`CURRENT_SCHEMA_VERSION`). On load, a missing,
+string like `"0.0.2"` (`CURRENT_SCHEMA_VERSION`). On load, a missing,
 malformed, or too-new version is a `FlexConfigError`; older versions step
-through the `MIGRATIONS` table (empty at 0.0.1; each hook stamps the version it
-upgrades to) before validation. A JSON Schema exported from
+through the `MIGRATIONS` table (each hook stamps the version it upgrades to)
+before validation. A JSON Schema exported from
 `ModelConfig.model_json_schema()` is checked in under
 `src/flexcore/config/schemas/` (with `sort_keys=True, indent=2` for stable
 diffs, and descriptions collapsed to plain single-line text — wrapping is the
@@ -63,6 +63,78 @@ down to individual variables:
 
 `flexops.build_model(config)` constructs the whole Pyomo model from a validated
 `ModelConfig` — that function lands in M09.
+
+## How a surrogate describes its function
+
+{class}`~flexcore.config.schema.SurrogateSpec` names a **predefined surrogate
+class** — one of {class}`~flexcore.config.schema.SurrogateType`'s members —
+and carries an opaque `data` mapping in the shape that class defines. The
+class (`flexops.surrogates`) validates `data` and builds the Pyomo
+relationship; a type not yet implemented raises `NotImplementedError` when the
+model is built, not when the config is validated (`quadratic`, `exponential`,
+`arima`, and `neural_network` are reserved names today with no implementation
+yet — see {doc}`../reference/flexops/surrogates`).
+
+The only implemented class, `multilinear`
+({class}`~flexops.surrogates.multilinear.MultilinearSurrogate`), is a constant
+plus a sum of `coefficient * (product of distinct declared inputs)` — the
+expanded form that covers what an earlier milestone called `linear` (no cross
+terms) and `bilinear` (one cross term). A coefficient key is a
+`*`-separated product of names from `input_variables`, each appearing at most
+once (no `^` exponent, no repeated factor); the reserved key `intercept` is the
+constant term:
+
+```json
+{
+  "surrogate_type": "multilinear",
+  "data": {
+    "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
+    "output_variables": {"power_electrical": "kW"},
+    "coefficients": {
+      "intercept": 5.0,
+      "flow_out": 0.42,
+      "outlet_state.pressure": 1.1e-5,
+      "flow_out*outlet_state.pressure": 2.3e-6
+    }
+  }
+}
+```
+
+`input_variables` and `output_variables` are `{name: units}` mappings, each
+name resolved on the unit (dotted paths into a state block work). The declared
+units are **the basis the relationship was fitted or written in** — not
+whatever units the model happens to carry — so each factor is converted from
+its actual unit into its declared one before the coefficient multiplies it,
+and the whole body is converted from its declared output units into the
+registered target's own units. Both conversions double as validation: a
+declared unit dimensionally incompatible with the model's variable raises a
+`FlexConfigError` naming the mismatch, rather than silently rescaling.
+
+Registering another surrogate class is a new class in `flexops.surrogates`,
+never a config-schema change — see {doc}`../reference/flexops/surrogates` for
+the base class every one implements.
+
+When a relationship is too large to inline, `source` names a JSON sidecar
+supplying `data`. A relative path resolves against the config file's own
+directory, and {func}`~flexcore.config.io.load_model_config` fills it in at
+the boundary, so nothing downstream ever sees a half-loaded relationship.
+
+## Which relationships are swappable
+
+Not every constraint a unit builds can be swapped — only the ones it
+explicitly registered as swappable, via
+{meth}`~flexops.core.ops_block.OpsBlockData.register_relation`. A unit's
+mass/energy balance is never registered, so it can never be swapped: there is
+no naming convention to accidentally satisfy, and
+{meth}`~flexops.core.ops_block.OpsBlockData.swap_relation` refuses an
+unregistered name outright, listing what *is* registered. Every
+constant-intensity unit registers its own energy relation this way; an RO
+skid additionally registers its `split_definition` (recovery/flux), and a
+tank its `level_definition` (fill geometry) — conservation
+(`split_mass_balance`, the holdup difference equation) is not registered on
+either. {func}`~flexops.core.registration.iter_swapped_relations` walks a
+whole model and reports which registered relations have actually been
+swapped — a debugging aid, not a required step on any build or apply path.
 
 ## The FlexParameterize ↔ FlexOps seam
 
