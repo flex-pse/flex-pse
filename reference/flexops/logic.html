@@ -557,6 +557,58 @@ point is its own block, so no constraint is built).</p>
 minimum uptime/downtime: it holds a <strong>continuous</strong> process variable steady, not
 a unit’s on/off status.</p>
 </section>
+<section id="ramp-rate">
+<h2>Ramp rate<a class="headerlink" href="#ramp-rate" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexops.logic.ramp.add_ramp_rate">
+<span class="sig-prename descclassname"><span class="pre">flexops.logic.ramp.</span></span><span class="sig-name descname"><span class="pre">add_ramp_rate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ramp_up</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ramp_down</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ramp_rate_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.var.Var.html#pyomo.core.base.var.Var" title="(in Pyomo v6.10.1)"><span class="pre">Var</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.constraint.Constraint.html#pyomo.core.base.constraint.Constraint" title="(in Pyomo v6.10.1)"><span class="pre">Constraint</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://pyomo.readthedocs.io/en/stable/api/pyomo.core.base.constraint.Constraint.html#pyomo.core.base.constraint.Constraint" title="(in Pyomo v6.10.1)"><span class="pre">Constraint</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#flexops.logic.ramp.add_ramp_rate" title="Link to this definition">¶</a></dt>
+<dd><p>Attach a ramp-rate limit to a time-indexed Var.</p>
+<p>Builds a tracked Var (<code class="docutils literal notranslate"><span class="pre">name</span></code>, identical to <code class="docutils literal notranslate"><span class="pre">var[t]</span></code> via a defining
+constraint <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;_def</span></code>) and, for each direction requested, a
+Constraint bounding how much <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code> may change between <code class="docutils literal notranslate"><span class="pre">t</span></code> and
+<code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">-</span> <span class="pre">window</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;name&gt;_ramp_up[t]</span></code>: <code class="docutils literal notranslate"><span class="pre">tracked[t]</span> <span class="pre">-</span> <span class="pre">tracked[t</span> <span class="pre">-</span> <span class="pre">window]</span> <span class="pre">&lt;=</span> <span class="pre">ramp_up</span>
+<span class="pre">*</span> <span class="pre">ramp_rate_units</span> <span class="pre">*</span> <span class="pre">window</span> <span class="pre">*</span> <span class="pre">dt</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;name&gt;_ramp_down[t]</span></code>: <code class="docutils literal notranslate"><span class="pre">tracked[t</span> <span class="pre">-</span> <span class="pre">window]</span> <span class="pre">-</span> <span class="pre">tracked[t]</span> <span class="pre">&lt;=</span>
+<span class="pre">ramp_down</span> <span class="pre">*</span> <span class="pre">ramp_rate_units</span> <span class="pre">*</span> <span class="pre">window</span> <span class="pre">*</span> <span class="pre">dt</span></code>.</p></li>
+</ul>
+<p>Every <code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">&lt;</span> <span class="pre">window</span></code> is skipped: the horizon carries no pre-horizon
+history to ramp against (mirroring <code class="docutils literal notranslate"><span class="pre">add_startup_shutdown</span></code>’s untied
+<code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">=</span> <span class="pre">0</span></code>).</p>
+<p>Attaching more than one ramp to the same <code class="docutils literal notranslate"><span class="pre">var</span></code> (e.g. a fast
+step-to-step check plus a slower windowed one) is allowed, but is more
+often an accidental duplicate call, so it is logged as a warning.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>var</strong> – The time-indexed Var to ramp-limit. The unit block is inferred
+from <code class="docutils literal notranslate"><span class="pre">var.parent_block()</span></code>.</p></li>
+<li><p><strong>name</strong> – Component-name stem. Defaults to <code class="docutils literal notranslate"><span class="pre">f&quot;{var.local_name}_ramp&quot;</span></code>.</p></li>
+<li><p><strong>ramp_up</strong> – Maximum allowed increase, in <code class="docutils literal notranslate"><span class="pre">ramp_rate_units</span></code>, over
+<code class="docutils literal notranslate"><span class="pre">window</span></code> steps. <code class="docutils literal notranslate"><span class="pre">None</span></code> to leave increases unconstrained.</p></li>
+<li><p><strong>ramp_down</strong> – Maximum allowed decrease, in <code class="docutils literal notranslate"><span class="pre">ramp_rate_units</span></code>, over
+<code class="docutils literal notranslate"><span class="pre">window</span></code> steps. <code class="docutils literal notranslate"><span class="pre">None</span></code> to leave decreases unconstrained.</p></li>
+<li><p><strong>ramp_rate_units</strong> – Pyomo unit expression (e.g. <code class="docutils literal notranslate"><span class="pre">pyunits.kW</span> <span class="pre">/</span>
+<span class="pre">pyunits.hr</span></code>) that <code class="docutils literal notranslate"><span class="pre">ramp_up</span></code>/<code class="docutils literal notranslate"><span class="pre">ramp_down</span></code> are given in.
+Required whenever either is given.</p></li>
+<li><p><strong>window</strong> – Number of steps the ramp is measured across. Must be
+<code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(tracked_var,</span> <span class="pre">ramp_up_constraint,</span> <span class="pre">ramp_down_constraint)</span></code>. The
+unused direction’s constraint is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">window</span> <span class="pre">&lt;</span> <span class="pre">1</span></code>; if both <code class="docutils literal notranslate"><span class="pre">ramp_up</span></code> and
+    <code class="docutils literal notranslate"><span class="pre">ramp_down</span></code> are <code class="docutils literal notranslate"><span class="pre">None</span></code>; if either is negative; or if either
+    is given without <code class="docutils literal notranslate"><span class="pre">ramp_rate_units</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 <section id="bypass-and-implications">
 <h2>Bypass and implications<a class="headerlink" href="#bypass-and-implications" title="Link to this heading">¶</a></h2>
 <dl class="py function">
@@ -771,6 +823,10 @@ consecutive pair, in order – empty when <code class="docutils literal notransl
 <li><a class="reference internal" href="#flexops.logic.unit_commitment.add_startup_shutdown"><code class="docutils literal notranslate"><span class="pre">add_startup_shutdown()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.logic.delays.add_startup_delay"><code class="docutils literal notranslate"><span class="pre">add_startup_delay()</span></code></a></li>
 <li><a class="reference internal" href="#flexops.logic.dwell.add_dwell"><code class="docutils literal notranslate"><span class="pre">add_dwell()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ramp-rate">Ramp rate</a><ul>
+<li><a class="reference internal" href="#flexops.logic.ramp.add_ramp_rate"><code class="docutils literal notranslate"><span class="pre">add_ramp_rate()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#bypass-and-implications">Bypass and implications</a><ul>

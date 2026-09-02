@@ -36,6 +36,13 @@ Commitment and timing
 minimum uptime/downtime: it holds a **continuous** process variable steady, not
 a unit's on/off status.
 
+Ramp rate
+---------
+
+.. currentmodule:: flexops.logic.ramp
+
+.. autofunction:: add_ramp_rate
+
 Bypass and implications
 -----------------------
 
