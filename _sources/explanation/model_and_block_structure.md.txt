@@ -79,9 +79,11 @@ ships two, both structurally modeled on WaterTAP's zero-order package:
   which **always** carries all three state variables (`flow_vol_phase` over the
   single `Vap` phase and time, plus `pressure`/`temperature`) because a gas
   stream's conditions always matter (no equation of state is
-  imposed; a unit adds any relation it needs as its own constraint). Its first
-  consumer is {py:class}`~flexops.unit_models.powergeneration.combustor.Combustor`, so the
-  extensive/intensive table below is live rather than hypothetical.
+   imposed; a unit adds any relation it needs as its own constraint). Its first
+   consumer is {py:class}`~flexops.unit_models.powergeneration.combustor.Combustor`
+   -- N fuel sources (inlet ports and/or utility fuel names) burned into one
+   flue-gas outlet, exporting power -- so the
+   extensive/intensive table below is live rather than hypothetical.
 
 Ports built from state blocks carry a stream between units via standard
 IDAES/Pyomo `Arc`s, honoring the extensive/intensive split described below.

@@ -122,11 +122,13 @@ Physical units
 
 .. currentmodule:: flexops.unit_models.powergeneration.combustor
 
-An arbitrary number of gas inlets mixed into one flue-gas outlet, exporting
+An arbitrary number of fuel sources mixed into one flue-gas outlet, exporting
 electrical power (``power_electrical`` upper-bounded at 0, the
 battery-discharge sign convention) under a heating-value or a
-constant-intensity relation, resolved automatically from whether every inlet
-was given a heating value. The relation determines ``power_generated`` — the
+constant-intensity relation, resolved automatically from whether every fuel
+source was given a heating value. Fuel sources may be connected via inlet
+ports (``inlet_names``), pulled from utilities (``utility_fuel_source``),
+or both. The relation determines ``power_generated`` — the
 non-negative generation magnitude, and the unit's registered IO output — which
 the separate, deliberately unregistered ``power_electrical_sign`` constraint
 negates into the draw, so the export convention holds under any surrogate

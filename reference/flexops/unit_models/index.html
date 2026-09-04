@@ -487,11 +487,13 @@ means N ports, never one port fed by N arcs.</p></li>
 </tbody>
 </table>
 </div>
-<p>An arbitrary number of gas inlets mixed into one flue-gas outlet, exporting
+<p>An arbitrary number of fuel sources mixed into one flue-gas outlet, exporting
 electrical power (<code class="docutils literal notranslate"><span class="pre">power_electrical</span></code> upper-bounded at 0, the
 battery-discharge sign convention) under a heating-value or a
-constant-intensity relation, resolved automatically from whether every inlet
-was given a heating value. The relation determines <code class="docutils literal notranslate"><span class="pre">power_generated</span></code> — the
+constant-intensity relation, resolved automatically from whether every fuel
+source was given a heating value. Fuel sources may be connected via inlet
+ports (<code class="docutils literal notranslate"><span class="pre">inlet_names</span></code>), pulled from utilities (<code class="docutils literal notranslate"><span class="pre">utility_fuel_source</span></code>),
+or both. The relation determines <code class="docutils literal notranslate"><span class="pre">power_generated</span></code> — the
 non-negative generation magnitude, and the unit’s registered IO output — which
 the separate, deliberately unregistered <code class="docutils literal notranslate"><span class="pre">power_electrical_sign</span></code> constraint
 negates into the draw, so the export convention holds under any surrogate

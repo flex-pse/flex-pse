@@ -421,20 +421,24 @@ for standalone units; the forwarding is strictly
 conditional.</p>
 </dd>
 <dt>inlet_names</dt><dd><p>Role names of the combustor’s gas inlets; inlet i is built
-as port f’inlet_{name}’. Must be unique and non-empty.</p>
+as port f’inlet_{name}’. Must be unique and non-empty when
+given. Defaults to None, meaning no inlet ports are built;
+provide at least one name to enable inlet-connected
+combustion.</p>
 </dd>
-<dt>heating_values</dt><dd><p>Mapping of inlet name to its lower heating value per unit
-volume (a fixed, regressable Var per inlet once built,
-kWh/m^3). A value for every inlet in inlet_names selects
-the heating-value power relation; None or empty selects
-the constant-intensity relation; a partial mapping is
-rejected.</p>
+<dt>heating_values</dt><dd><p>Mapping of fuel name to its lower heating value per unit
+volume (a fixed, regressable Var per fuel once built,
+kWh/m^3). A value for every fuel source – both inlets in
+<code class="docutils literal notranslate"><span class="pre">inlet_names</span></code> and names in <code class="docutils literal notranslate"><span class="pre">utility_fuel_source</span></code> –
+selects the heating-value power relation; None or empty
+selects the constant-intensity relation; a partial mapping
+is rejected.</p>
 </dd>
 <dt>efficiency</dt><dd><p>Electrical conversion efficiency, a dimensionless fraction
 in (0, 1] (a fixed, regressable Var once built). Used only
 under the heating-value power relation.</p>
 </dd>
-<dt>energy_intensity</dt><dd><p>Electrical output per unit total inlet volume (a fixed,
+<dt>energy_intensity</dt><dd><p>Electrical output per unit total fuel volume (a fixed,
 regressable Var once built), kWh/m^3. Used only under the
 constant-intensity power relation.</p>
 </dd>
@@ -448,6 +452,22 @@ natural gas.</p>
 </dd>
 <dt>flue_gas_temperature</dt><dd><p>Flue-gas outlet temperature (a fixed, regressable Var once
 built), K.</p>
+</dd>
+<dt>utility_fuel_source</dt><dd><p>Fuel names pulled from utilities rather than connected via
+inlet ports. Accepts a single name or a list of names;
+these names are independent of <code class="docutils literal notranslate"><span class="pre">inlet_names</span></code> and must
+not overlap with it. Each utility fuel gets its own
+<code class="docutils literal notranslate"><span class="pre">utility_flow_{name}</span></code> Var (m^3/hr) registered via
+<code class="docutils literal notranslate"><span class="pre">register_fuel_usage</span></code> for costing. If None, no utility
+fuel is used.</p>
+</dd>
+<dt>blend_ratio</dt><dd><p>Optional fixed volume ratio between two fuel sources.
+Accepts a single dict or a list of dicts, each of the form
+{fuel_a: fuel_b, ratio: r}, which enforces flow_fuel_a[t]
+== flow_fuel_b[t] * r. Both fuel names must be known
+inlets or utility fuel sources, and r must be positive.
+The ratio is a fixed, regressable process parameter. Pass
+a list to define multiple independent ratio constraints.</p>
 </dd>
 </dl>
 </div></blockquote>
