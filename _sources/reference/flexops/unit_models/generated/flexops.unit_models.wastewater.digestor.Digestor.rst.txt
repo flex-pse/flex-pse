@@ -1,0 +1,6 @@
+﻿flexops.unit\_models.wastewater.digestor.Digestor
+=================================================
+
+.. currentmodule:: flexops.unit_models.wastewater.digestor
+
+.. autoclass:: Digestor

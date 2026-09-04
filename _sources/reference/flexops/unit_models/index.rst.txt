@@ -169,6 +169,21 @@ the split is meant to be prescribed rather than optimized.
 
    Splitter
 
+.. currentmodule:: flexops.unit_models.wastewater.digestor
+
+An anaerobic digester accepting an arbitrary number of feed streams, each
+carrying its own property package, and converting them into one biogas outlet
+and an optional treated-sludge outlet. Biogas volume is driven by a
+fixed-fraction correlation of the total inlet volume, replaceable by a linear
+surrogate.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   Digestor
+
 Boundary blocks
 ---------------
 
