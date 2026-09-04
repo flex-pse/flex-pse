@@ -1,0 +1,7 @@
+﻿LinearRegressor
+===============
+
+.. currentmodule:: flexparameterize.regression.linear
+
+.. autoclass:: LinearRegressor
+   :members:

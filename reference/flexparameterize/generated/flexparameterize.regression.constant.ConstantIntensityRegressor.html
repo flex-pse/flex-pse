@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html"><link rel="next" title="ApplyReport" href="flexparameterize.apply.ApplyReport.html"><link rel="prev" title="IOPairStatus" href="flexparameterize.validate.IOPairStatus.html">
+<link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html"><link rel="next" title="LinearRegressor" href="flexparameterize.regression.linear.LinearRegressor.html"><link rel="prev" title="FitResult" href="flexparameterize.regression.base.FitResult.html">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
         <title>ConstantIntensityRegressor - flex-pse documentation</title>
@@ -323,7 +323,10 @@
 <li class="toctree-l2"><a class="reference internal" href="flexparameterize.tags.TagReport.html">TagReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexparameterize.regression.base.Regressor.html">Regressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexparameterize.regression.base.FitResult.html">FitResult</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flexparameterize.regression.linear.LinearRegressor.html">LinearRegressor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
 </ul>
 </li>
@@ -449,6 +452,21 @@ the observed power.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="flexparameterize.regression.constant.ConstantIntensityRegressor.to_fit_result">
+<span class="sig-name descname"><span class="pre">to_fit_result</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult" title="flexparameterize.regression.base.FitResult"><span class="pre">FitResult</span></a></span></span><a class="headerlink" href="#flexparameterize.regression.constant.ConstantIntensityRegressor.to_fit_result" title="Link to this definition">¶</a></dt>
+<dd><p>Return this fit as the shared <a class="reference internal" href="flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult" title="flexparameterize.regression.base.FitResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">FitResult</span></code></a> shape.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The coefficient under <a class="reference internal" href="../index.html#flexparameterize.regression.constant.COEFFICIENT_NAME" title="flexparameterize.regression.constant.COEFFICIENT_NAME"><code class="xref py py-data docutils literal notranslate"><span class="pre">COEFFICIENT_NAME</span></code></a>, alongside the
+fit’s metrics, sample count and data window.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../../flexcore/index.html#flexcore.exceptions.FlexDataError" title="flexcore.exceptions.FlexDataError"><strong>FlexDataError</strong></a> – If <a class="reference internal" href="#flexparameterize.regression.constant.ConstantIntensityRegressor.fit" title="flexparameterize.regression.constant.ConstantIntensityRegressor.fit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fit()</span></code></a> has not been called.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="flexparameterize.regression.constant.ConstantIntensityRegressor.to_surrogate_spec">
 <span class="sig-name descname"><span class="pre">to_surrogate_spec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../flexcore/generated/flexcore.config.schema.SurrogateSpec.html#flexcore.config.schema.SurrogateSpec" title="flexcore.config.schema.SurrogateSpec"><span class="pre">SurrogateSpec</span></a></span></span><a class="headerlink" href="#flexparameterize.regression.constant.ConstantIntensityRegressor.to_surrogate_spec" title="Link to this definition">¶</a></dt>
 <dd><p>Return the fit as a persistable <code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code>.</p>
@@ -489,23 +507,23 @@ names.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="flexparameterize.apply.ApplyReport.html">
+          <a class="next-page" href="flexparameterize.regression.linear.LinearRegressor.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">ApplyReport</div>
+                <div class="title">LinearRegressor</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="flexparameterize.validate.IOPairStatus.html">
+          <a class="prev-page" href="flexparameterize.regression.base.FitResult.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">IOPairStatus</div>
+                <div class="title">FitResult</div>
                 
               </div>
             </a>
@@ -548,6 +566,7 @@ names.</p>
 <li><a class="reference internal" href="#flexparameterize.regression.constant.ConstantIntensityRegressor.input_variable"><code class="docutils literal notranslate"><span class="pre">ConstantIntensityRegressor.input_variable</span></code></a></li>
 <li><a class="reference internal" href="#flexparameterize.regression.constant.ConstantIntensityRegressor.output_variable"><code class="docutils literal notranslate"><span class="pre">ConstantIntensityRegressor.output_variable</span></code></a></li>
 <li><a class="reference internal" href="#flexparameterize.regression.constant.ConstantIntensityRegressor.fit"><code class="docutils literal notranslate"><span class="pre">ConstantIntensityRegressor.fit()</span></code></a></li>
+<li><a class="reference internal" href="#flexparameterize.regression.constant.ConstantIntensityRegressor.to_fit_result"><code class="docutils literal notranslate"><span class="pre">ConstantIntensityRegressor.to_fit_result()</span></code></a></li>
 <li><a class="reference internal" href="#flexparameterize.regression.constant.ConstantIntensityRegressor.to_surrogate_spec"><code class="docutils literal notranslate"><span class="pre">ConstantIntensityRegressor.to_surrogate_spec()</span></code></a></li>
 </ul>
 </li>

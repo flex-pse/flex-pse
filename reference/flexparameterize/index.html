@@ -323,7 +323,10 @@
 <li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.regression.base.Regressor.html">Regressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.regression.base.FitResult.html">FitResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.regression.linear.LinearRegressor.html">LinearRegressor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
 </ul>
 </li>
@@ -461,6 +464,22 @@ is compared against its horizon.</p></li>
 </section>
 <section id="regression">
 <h2>Regression<a class="headerlink" href="#regression" title="Link to this heading">¶</a></h2>
+<p>The pluggable-regressor seam: every regressor conforms to
+<a class="reference internal" href="generated/flexparameterize.regression.base.Regressor.html#flexparameterize.regression.base.Regressor" title="flexparameterize.regression.base.Regressor"><code class="xref py py-class docutils literal notranslate"><span class="pre">Regressor</span></code></a>, a <code class="docutils literal notranslate"><span class="pre">runtime_checkable</span></code>
+Protocol, and reduces its fit to a shared
+<a class="reference internal" href="generated/flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult" title="flexparameterize.regression.base.FitResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">FitResult</span></code></a>.</p>
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexparameterize.regression.base.Regressor.html#flexparameterize.regression.base.Regressor" title="flexparameterize.regression.base.Regressor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Regressor</span></code></a></p></td>
+<td><p>Structural contract every pluggable regressor conforms to.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult" title="flexparameterize.regression.base.FitResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FitResult</span></code></a></p></td>
+<td><p>The common shape every regressor's fit reduces to, for provenance.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -479,6 +498,39 @@ determines on a unit.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="table-wrapper autosummary longtable docutils container">
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor" title="flexparameterize.regression.linear.LinearRegressor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearRegressor</span></code></a></p></td>
+<td><p>Fits a unit's output as an ordinary-least-squares function of its inputs.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="flexparameterize.regression.get_regressor">
+<span class="sig-prename descclassname"><span class="pre">flexparameterize.regression.</span></span><span class="sig-name descname"><span class="pre">get_regressor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateType.html#flexcore.config.schema.SurrogateType" title="flexcore.config.schema.SurrogateType"><span class="pre">SurrogateType</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span></span><a class="headerlink" href="#flexparameterize.regression.get_regressor" title="Link to this definition">¶</a></dt>
+<dd><p>Resolve a <code class="docutils literal notranslate"><span class="pre">SurrogateType</span></code> to the regressor class that fits it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> – A <a class="reference internal" href="../flexcore/generated/flexcore.config.schema.SurrogateType.html#flexcore.config.schema.SurrogateType" title="flexcore.config.schema.SurrogateType"><code class="xref py py-class docutils literal notranslate"><span class="pre">SurrogateType</span></code></a> member or its
+string value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The regressor class.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">name</span></code> is a reserved <code class="docutils literal notranslate"><span class="pre">SurrogateType</span></code> with
+    no regressor yet (mirrors the corresponding
+    <code class="docutils literal notranslate"><span class="pre">flexops.surrogates</span></code> stub class).</p></li>
+<li><p><a class="reference internal" href="../flexcore/index.html#flexcore.exceptions.FlexConfigError" title="flexcore.exceptions.FlexConfigError"><strong>FlexConfigError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">name</span></code> is not a known <code class="docutils literal notranslate"><span class="pre">SurrogateType</span></code> value at
+    all, listing the valid and reserved names.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -668,6 +720,7 @@ own name, else <code class="docutils literal notranslate"><span class="pre">&quo
 </li>
 <li><a class="reference internal" href="#regression">Regression</a><ul>
 <li><a class="reference internal" href="#flexparameterize.regression.constant.COEFFICIENT_NAME"><code class="docutils literal notranslate"><span class="pre">COEFFICIENT_NAME</span></code></a></li>
+<li><a class="reference internal" href="#flexparameterize.regression.get_regressor"><code class="docutils literal notranslate"><span class="pre">get_regressor()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#applying-a-fit-to-a-live-model">Applying a fit to a live model</a><ul>

@@ -323,7 +323,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html">Regressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html">FitResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html">LinearRegressor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
 </ul>
 </li>
@@ -474,7 +477,13 @@ declared unit dimensionally incompatible with the model’s variable raises a
 <code class="docutils literal notranslate"><span class="pre">FlexConfigError</span></code> naming the mismatch, rather than silently rescaling.</p>
 <p>Registering another surrogate class is a new class in <code class="docutils literal notranslate"><span class="pre">flexops.surrogates</span></code>,
 never a config-schema change — see <a class="reference internal" href="../reference/flexops/surrogates.html"><span class="doc">flexops.surrogates</span></a> for
-the base class every one implements.</p>
+the base class every one implements. The other half of that extension point is
+a <em>regressor</em> that can produce the class’s <code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code> from data:
+<a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html#flexparameterize.regression.base.Regressor" title="flexparameterize.regression.base.Regressor"><code class="xref py py-class docutils literal notranslate"><span class="pre">Regressor</span></code></a> is the matching Protocol,
+and <code class="docutils literal notranslate"><span class="pre">flexparameterize.regression</span></code>’s registry names the same reserved
+<code class="docutils literal notranslate"><span class="pre">SurrogateType</span></code> members (<code class="docutils literal notranslate"><span class="pre">quadratic</span></code>, <code class="docutils literal notranslate"><span class="pre">exponential</span></code>, <code class="docutils literal notranslate"><span class="pre">arima</span></code>,
+<code class="docutils literal notranslate"><span class="pre">neural_network</span></code>) as <code class="docutils literal notranslate"><span class="pre">flexops.surrogates</span></code>, so a future regressor for one of
+them is “implement the protocol, register the name” on both sides at once.</p>
 <p>When a relationship is too large to inline, <code class="docutils literal notranslate"><span class="pre">source</span></code> names a JSON sidecar
 supplying <code class="docutils literal notranslate"><span class="pre">data</span></code>. A relative path resolves against the config file’s own
 directory, and <a class="reference internal" href="../reference/flexcore/index.html#flexcore.config.io.load_model_config" title="flexcore.config.io.load_model_config"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_model_config()</span></code></a> fills it in at

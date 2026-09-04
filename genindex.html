@@ -321,7 +321,10 @@
 <li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html">Regressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html">FitResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html">LinearRegressor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
 </ul>
 </li>
@@ -487,6 +490,12 @@
 </li>
         <li><a href="reference/flexparameterize/index.html#flexparameterize.regression.constant.COEFFICIENT_NAME">COEFFICIENT_NAME (in module flexparameterize.regression.constant)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult.coefficients">coefficients (flexparameterize.regression.base.FitResult attribute)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.coefficients">(flexparameterize.regression.linear.LinearRegressor attribute)</a>
+</li>
+        </ul></li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.powergeneration.combustor.Combustor.html#flexops.unit_models.powergeneration.combustor.Combustor">Combustor (class in flexops.unit_models.powergeneration.combustor)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.components">components (flexops.core.registration.RelationRecord attribute)</a>
@@ -495,10 +504,10 @@
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.logger.FlexPseLogger.configuration_simplifications">configuration_simplifications() (flexcore.logger.FlexPseLogger method)</a>
 </li>
-        <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.configure">configure() (flexops.testing.UnitModelTestHarness method)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.configure">configure() (flexops.testing.UnitModelTestHarness method)</a>
+</li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel.html#flexops.unit_models.constant_intensity.ConstantEnergyIntensityModel">ConstantEnergyIntensityModel (class in flexops.unit_models.constant_intensity)</a>
 </li>
         <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor">ConstantIntensityRegressor (class in flexparameterize.regression.constant)</a>
@@ -531,8 +540,14 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.surrogates.base.Surrogate.html#flexops.surrogates.base.Surrogate.data">data (flexops.surrogates.base.Surrogate attribute)</a>
 </li>
-        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.data_window">data_window (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult.data_window">data_window (flexparameterize.regression.base.FitResult attribute)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.data_window">(flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
 </li>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.data_window">(flexparameterize.regression.linear.LinearRegressor attribute)</a>
+</li>
+        </ul></li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.datetime_index">datetime_index (flexops.core.time_block.TimeBlockData property)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData.declare_power">declare_power() (flexops.core.ops_block.OpsBlockData method)</a>
@@ -553,14 +568,14 @@
           <li><a href="reference/flexops/generated/flexops.properties.simple_gas.SimpleGasFlowData.html#flexops.properties.simple_gas.SimpleGasFlowData.define_metadata">(flexops.properties.simple_gas.SimpleGasFlowData class method)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.html#flexops.properties.simple_aqueous.SimpleAqueousStateBlockData.define_state_vars">define_state_vars() (flexops.properties.simple_aqueous.SimpleAqueousStateBlockData method)</a>
 
         <ul>
           <li><a href="reference/flexops/generated/flexops.properties.simple_gas.SimpleGasStateBlockData.html#flexops.properties.simple_gas.SimpleGasStateBlockData.define_state_vars">(flexops.properties.simple_gas.SimpleGasStateBlockData method)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.OperatingCostHandles.html#flexops.costing.OperatingCostHandles.demand_charge">demand_charge (flexops.costing.OperatingCostHandles attribute)</a>
 </li>
         <li><a href="reference/flexops/unit_models/generated/flexops.unit_models.base.dido.DIDOBlock.html#flexops.unit_models.base.dido.DIDOBlock">DIDOBlock (class in flexops.unit_models.base.dido)</a>
@@ -639,7 +654,15 @@
           <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexDataError.field">(flexcore.exceptions.FlexDataError attribute)</a>
 </li>
         </ul></li>
-        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.fit">fit() (flexparameterize.regression.constant.ConstantIntensityRegressor method)</a>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html#flexparameterize.regression.base.Regressor.fit">fit() (flexparameterize.regression.base.Regressor method)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.fit">(flexparameterize.regression.constant.ConstantIntensityRegressor method)</a>
+</li>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.fit">(flexparameterize.regression.linear.LinearRegressor method)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult">FitResult (class in flexparameterize.regression.base)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord.fitted">fitted (flexops.core.registration.RelationRecord attribute)</a>
 </li>
@@ -649,12 +672,12 @@
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexConfigError">FlexConfigError</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCosting.html#flexops.costing.flex_costing.FlexCosting">FlexCosting (class in flexops.costing.flex_costing)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData">FlexCostingData (class in flexops.costing.flex_costing)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexDataError">FlexDataError</a>
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.exceptions.FlexError">FlexError</a>
@@ -699,6 +722,8 @@
 </li>
         <li><a href="reference/flexcore/index.html#flexcore.logger.get_logger">get_logger() (in module flexcore.logger)</a>
 </li>
+        <li><a href="reference/flexparameterize/index.html#flexparameterize.regression.get_regressor">get_regressor() (in module flexparameterize.regression)</a>
+</li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.get_solver">get_solver() (in module flexcore.solvers)</a>
 </li>
     </ul></td>
@@ -731,6 +756,8 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.FlexCostingData.html#flexops.costing.flex_costing.FlexCostingData.initialize_build">initialize_build() (flexops.costing.flex_costing.FlexCostingData method)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.input_units">input_units (flexparameterize.regression.linear.LinearRegressor attribute)</a>
+</li>
         <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.input_variable">input_variable (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.surrogates.ArimaSurrogate.html#flexops.surrogates.ArimaSurrogate.input_variables">input_variables (flexops.surrogates.ArimaSurrogate property)</a>
@@ -745,6 +772,8 @@
           <li><a href="reference/flexops/generated/flexops.surrogates.NeuralNetworkSurrogate.html#flexops.surrogates.NeuralNetworkSurrogate.input_variables">(flexops.surrogates.NeuralNetworkSurrogate property)</a>
 </li>
           <li><a href="reference/flexops/generated/flexops.surrogates.QuadraticSurrogate.html#flexops.surrogates.QuadraticSurrogate.input_variables">(flexops.surrogates.QuadraticSurrogate property)</a>
+</li>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.input_variables">(flexparameterize.regression.linear.LinearRegressor attribute)</a>
 </li>
         </ul></li>
     </ul></td>
@@ -791,12 +820,14 @@
   <h2>L</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="reference/flexops/generated/flexops.costing.load_dr_program.html#flexops.costing.load_dr_program">load_dr_program() (in module flexops.costing)</a>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor">LinearRegressor (class in flexparameterize.regression.linear)</a>
 </li>
-        <li><a href="reference/flexcore/index.html#flexcore.config.io.load_model_config">load_model_config() (in module flexcore.config.io)</a>
+        <li><a href="reference/flexops/generated/flexops.costing.load_dr_program.html#flexops.costing.load_dr_program">load_dr_program() (in module flexops.costing)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="reference/flexcore/index.html#flexcore.config.io.load_model_config">load_model_config() (in module flexcore.config.io)</a>
+</li>
         <li><a href="reference/flexcore/index.html#flexcore.config.io.load_surrogate_source">load_surrogate_source() (in module flexcore.config.io)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.costing.load_tariff.html#flexops.costing.load_tariff">load_tariff() (in module flexops.costing)</a>
@@ -811,8 +842,14 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.costing.merge_tariffs.html#flexops.costing.merge_tariffs">merge_tariffs() (in module flexops.costing)</a>
 </li>
-        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.metrics">metrics (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult.metrics">metrics (flexparameterize.regression.base.FitResult attribute)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.metrics">(flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
 </li>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.metrics">(flexparameterize.regression.linear.LinearRegressor attribute)</a>
+</li>
+        </ul></li>
         <li><a href="reference/flexcore/index.html#flexcore.config.io.MIGRATIONS">MIGRATIONS (in module flexcore.config.io)</a>
 </li>
         <li><a href="reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html#flexparameterize.validate.IOPairStatus.min_rows">min_rows (flexparameterize.validate.IOPairStatus attribute)</a>
@@ -871,8 +908,14 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlockData.html#flexops.core.time_block.TimeBlockData.n_points">n_points (flexops.core.time_block.TimeBlockData property)</a>
 </li>
-        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.n_samples">n_samples (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult.n_samples">n_samples (flexparameterize.regression.base.FitResult attribute)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.n_samples">(flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
 </li>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.n_samples">(flexparameterize.regression.linear.LinearRegressor attribute)</a>
+</li>
+        </ul></li>
         <li><a href="reference/flexcore/index.html#flexcore.solvers.SolverFacade.name">name (flexcore.solvers.SolverFacade attribute)</a>
 
         <ul>
@@ -921,8 +964,14 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.core.ops_block.OpsBlockData.html#flexops.core.ops_block.OpsBlockData">OpsBlockData (class in flexops.core.ops_block)</a>
 </li>
-        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.output_variable">output_variable (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.output_units">output_units (flexparameterize.regression.linear.LinearRegressor attribute)</a>
 </li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.output_variable">output_variable (flexparameterize.regression.constant.ConstantIntensityRegressor attribute)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.output_variable">(flexparameterize.regression.linear.LinearRegressor attribute)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.surrogates.ArimaSurrogate.html#flexops.surrogates.ArimaSurrogate.output_variables">output_variables (flexops.surrogates.ArimaSurrogate property)</a>
@@ -1054,6 +1103,8 @@
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.registration.ParameterRecord.html#flexops.core.registration.ParameterRecord.regressable">regressable (flexops.core.registration.ParameterRecord attribute)</a>
+</li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html#flexparameterize.regression.base.Regressor">Regressor (class in flexparameterize.regression.base)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.registration.RelationRecord.html#flexops.core.registration.RelationRecord">RelationRecord (class in flexops.core.registration)</a>
 </li>
@@ -1193,14 +1244,14 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.test_io_registration">test_io_registration() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.test_solution">test_solution() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.test_solve">test_solve() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.testing.UnitModelTestHarness.html#flexops.testing.UnitModelTestHarness.test_units_consistent">test_units_consistent() (flexops.testing.UnitModelTestHarness method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="reference/flexops/generated/flexops.core.registration.IOVariableRecord.html#flexops.core.registration.IOVariableRecord.time_indexed">time_indexed (flexops.core.registration.IOVariableRecord attribute)</a>
 </li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeBlock.html#flexops.core.time_block.TimeBlock">TimeBlock (class in flexops.core.time_block)</a>
@@ -1213,8 +1264,22 @@
 </li>
         <li><a href="reference/flexops/generated/flexops.core.time_block.TimeWindow.html#flexops.core.time_block.TimeWindow">TimeWindow (class in flexops.core.time_block)</a>
 </li>
-        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.to_surrogate_spec">to_surrogate_spec() (flexparameterize.regression.constant.ConstantIntensityRegressor method)</a>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html#flexparameterize.regression.base.Regressor.to_fit_result">to_fit_result() (flexparameterize.regression.base.Regressor method)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.to_fit_result">(flexparameterize.regression.constant.ConstantIntensityRegressor method)</a>
 </li>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.to_fit_result">(flexparameterize.regression.linear.LinearRegressor method)</a>
+</li>
+        </ul></li>
+        <li><a href="reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html#flexparameterize.regression.base.Regressor.to_surrogate_spec">to_surrogate_spec() (flexparameterize.regression.base.Regressor method)</a>
+
+        <ul>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html#flexparameterize.regression.constant.ConstantIntensityRegressor.to_surrogate_spec">(flexparameterize.regression.constant.ConstantIntensityRegressor method)</a>
+</li>
+          <li><a href="reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html#flexparameterize.regression.linear.LinearRegressor.to_surrogate_spec">(flexparameterize.regression.linear.LinearRegressor method)</a>
+</li>
+        </ul></li>
         <li><a href="reference/flexops/generated/flexops.costing.flex_costing.CapitalCostBreakdown.html#flexops.costing.flex_costing.CapitalCostBreakdown.total">total (flexops.costing.flex_costing.CapitalCostBreakdown attribute)</a>
 
         <ul>

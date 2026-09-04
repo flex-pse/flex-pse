@@ -76,10 +76,40 @@ a recovery or a loss they do not, and regressing against the wrong stream would
 recover a coefficient that means something the model does not.
 `apply_to_model` resolves the same basis for itself from the unit's registry.
 
-**Choosing a regressor** — the pluggable regressor protocol and the registry
-that selects between regressors are completed in M11. Until then the
-constant-intensity regressor is the only one, and `apply_to_model` uses it
-directly.
+**Choosing a regressor** — every regressor conforms to the
+{py:class}`~flexparameterize.regression.base.Regressor` protocol: `fit(X, y)`
+returns the fitted regressor itself, `to_fit_result()` returns the shared
+{py:class}`~flexparameterize.regression.base.FitResult` (coefficients,
+metrics, sample count, data window), and `to_surrogate_spec(**kwargs)` returns
+the `SurrogateSpec`. `ConstantIntensityRegressor` is the one-input,
+one-coefficient fit shown above; `LinearRegressor` fits an ordinary-least-
+squares line against one or more input columns and emits a `multilinear`
+`SurrogateSpec`:
+
+```python
+from flexparameterize import LinearRegressor
+
+regressor = LinearRegressor().fit(
+    aliased[["flow_out", "outlet_state.pressure"]],
+    aliased[["power_electrical"]],
+)
+regressor.coefficients   # {"flow_out": ..., "outlet_state.pressure": ..., "intercept": ...}
+spec = regressor.to_surrogate_spec(
+    input_units={"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
+    output_units="kW",
+)
+```
+
+`LinearRegressor` needs the `[parameterize]` extra's `scikit-learn`
+dependency: `pip install 'flex-pse[parameterize]'`. A fitted
+`LinearRegressor`'s `SurrogateSpec` works identically to a hand-built one in
+§4a/§4b below — no changes needed there.
+
+`get_regressor(surrogate_type)` resolves a
+{py:class}`~flexcore.config.schema.SurrogateType` (member or its string
+value) to the regressor class that fits it — the config-driven lookup for a
+spec's own provenance, not something `apply_to_model`'s fit-from-data path
+calls itself.
 
 ## 4a. Apply the fit to the live model
 

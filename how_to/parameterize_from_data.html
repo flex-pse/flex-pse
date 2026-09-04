@@ -323,7 +323,10 @@
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.tags.TagReport.html">TagReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.validate.SufficiencyReport.html">SufficiencyReport</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.validate.IOPairStatus.html">IOPairStatus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html">Regressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html">FitResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.constant.ConstantIntensityRegressor.html">ConstantIntensityRegressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.linear.LinearRegressor.html">LinearRegressor</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.apply.ApplyReport.html">ApplyReport</a></li>
 </ul>
 </li>
@@ -434,10 +437,37 @@ For a unit that passes flow straight through the two coincide, but for one with
 a recovery or a loss they do not, and regressing against the wrong stream would
 recover a coefficient that means something the model does not.
 <code class="docutils literal notranslate"><span class="pre">apply_to_model</span></code> resolves the same basis for itself from the unit’s registry.</p>
-<p><strong>Choosing a regressor</strong> — the pluggable regressor protocol and the registry
-that selects between regressors are completed in M11. Until then the
-constant-intensity regressor is the only one, and <code class="docutils literal notranslate"><span class="pre">apply_to_model</span></code> uses it
-directly.</p>
+<p><strong>Choosing a regressor</strong> — every regressor conforms to the
+<a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.base.Regressor.html#flexparameterize.regression.base.Regressor" title="flexparameterize.regression.base.Regressor"><code class="xref py py-class docutils literal notranslate"><span class="pre">Regressor</span></code></a> protocol: <code class="docutils literal notranslate"><span class="pre">fit(X,</span> <span class="pre">y)</span></code>
+returns the fitted regressor itself, <code class="docutils literal notranslate"><span class="pre">to_fit_result()</span></code> returns the shared
+<a class="reference internal" href="../reference/flexparameterize/generated/flexparameterize.regression.base.FitResult.html#flexparameterize.regression.base.FitResult" title="flexparameterize.regression.base.FitResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">FitResult</span></code></a> (coefficients,
+metrics, sample count, data window), and <code class="docutils literal notranslate"><span class="pre">to_surrogate_spec(**kwargs)</span></code> returns
+the <code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code>. <code class="docutils literal notranslate"><span class="pre">ConstantIntensityRegressor</span></code> is the one-input,
+one-coefficient fit shown above; <code class="docutils literal notranslate"><span class="pre">LinearRegressor</span></code> fits an ordinary-least-
+squares line against one or more input columns and emits a <code class="docutils literal notranslate"><span class="pre">multilinear</span></code>
+<code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">flexparameterize</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearRegressor</span>
+
+<span class="n">regressor</span> <span class="o">=</span> <span class="n">LinearRegressor</span><span class="p">()</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">aliased</span><span class="p">[[</span><span class="s2">"flow_out"</span><span class="p">,</span> <span class="s2">"outlet_state.pressure"</span><span class="p">]],</span>
+    <span class="n">aliased</span><span class="p">[[</span><span class="s2">"power_electrical"</span><span class="p">]],</span>
+<span class="p">)</span>
+<span class="n">regressor</span><span class="o">.</span><span class="n">coefficients</span>   <span class="c1"># {"flow_out": ..., "outlet_state.pressure": ..., "intercept": ...}</span>
+<span class="n">spec</span> <span class="o">=</span> <span class="n">regressor</span><span class="o">.</span><span class="n">to_surrogate_spec</span><span class="p">(</span>
+    <span class="n">input_units</span><span class="o">=</span><span class="p">{</span><span class="s2">"flow_out"</span><span class="p">:</span> <span class="s2">"m^3/hr"</span><span class="p">,</span> <span class="s2">"outlet_state.pressure"</span><span class="p">:</span> <span class="s2">"Pa"</span><span class="p">},</span>
+    <span class="n">output_units</span><span class="o">=</span><span class="s2">"kW"</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">LinearRegressor</span></code> needs the <code class="docutils literal notranslate"><span class="pre">[parameterize]</span></code> extra’s <code class="docutils literal notranslate"><span class="pre">scikit-learn</span></code>
+dependency: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">'flex-pse[parameterize]'</span></code>. A fitted
+<code class="docutils literal notranslate"><span class="pre">LinearRegressor</span></code>’s <code class="docutils literal notranslate"><span class="pre">SurrogateSpec</span></code> works identically to a hand-built one in
+§4a/§4b below — no changes needed there.</p>
+<p><code class="docutils literal notranslate"><span class="pre">get_regressor(surrogate_type)</span></code> resolves a
+<a class="reference internal" href="../reference/flexcore/generated/flexcore.config.schema.SurrogateType.html#flexcore.config.schema.SurrogateType" title="flexcore.config.schema.SurrogateType"><code class="xref py py-class docutils literal notranslate"><span class="pre">SurrogateType</span></code></a> (member or its string
+value) to the regressor class that fits it — the config-driven lookup for a
+spec’s own provenance, not something <code class="docutils literal notranslate"><span class="pre">apply_to_model</span></code>’s fit-from-data path
+calls itself.</p>
 </section>
 <section id="a-apply-the-fit-to-the-live-model">
 <h2>4a. Apply the fit to the live model<a class="headerlink" href="#a-apply-the-fit-to-the-live-model" title="Link to this heading">¶</a></h2>

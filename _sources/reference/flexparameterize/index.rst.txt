@@ -45,6 +45,20 @@ raises.
 Regression
 ----------
 
+The pluggable-regressor seam: every regressor conforms to
+:class:`~flexparameterize.regression.base.Regressor`, a ``runtime_checkable``
+Protocol, and reduces its fit to a shared
+:class:`~flexparameterize.regression.base.FitResult`.
+
+.. currentmodule:: flexparameterize.regression.base
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   Regressor
+   FitResult
+
 .. currentmodule:: flexparameterize.regression.constant
 
 .. autosummary::
@@ -54,6 +68,18 @@ Regression
    ConstantIntensityRegressor
 
 .. autodata:: COEFFICIENT_NAME
+
+.. currentmodule:: flexparameterize.regression.linear
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   LinearRegressor
+
+.. currentmodule:: flexparameterize.regression
+
+.. autofunction:: get_regressor
 
 Applying a fit to a live model
 ------------------------------

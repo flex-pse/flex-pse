@@ -1,0 +1,7 @@
+﻿FitResult
+=========
+
+.. currentmodule:: flexparameterize.regression.base
+
+.. autoclass:: FitResult
+   :members:

@@ -1,0 +1,7 @@
+﻿Regressor
+=========
+
+.. currentmodule:: flexparameterize.regression.base
+
+.. autoclass:: Regressor
+   :members:

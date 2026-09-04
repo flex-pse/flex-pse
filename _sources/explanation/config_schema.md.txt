@@ -112,7 +112,13 @@ declared unit dimensionally incompatible with the model's variable raises a
 
 Registering another surrogate class is a new class in `flexops.surrogates`,
 never a config-schema change — see {doc}`../reference/flexops/surrogates` for
-the base class every one implements.
+the base class every one implements. The other half of that extension point is
+a *regressor* that can produce the class's `SurrogateSpec` from data:
+{class}`~flexparameterize.regression.base.Regressor` is the matching Protocol,
+and `flexparameterize.regression`'s registry names the same reserved
+`SurrogateType` members (`quadratic`, `exponential`, `arima`,
+`neural_network`) as `flexops.surrogates`, so a future regressor for one of
+them is "implement the protocol, register the name" on both sides at once.
 
 When a relationship is too large to inline, `source` names a JSON sidecar
 supplying `data`. A relative path resolves against the config file's own
