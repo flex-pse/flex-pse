@@ -1,5 +1,7 @@
 """FlexOps: the flex-pse unit-model and plant-composition library."""
 
+from importlib.metadata import version as _dist_version
+
 from flexcore.nomenclature import PowerKind
 from flexops.core.build import build_model
 from flexops.core.network_block import NetworkBlock
@@ -30,6 +32,8 @@ from flexops.unit_models import (
 from flexops.unit_models.mixer import MixerTemperatureRule
 from flexops.unit_models.powergeneration.combustor import CombustorPowerRelation
 
+__version__ = _dist_version("flex-pse")
+
 __all__ = [
     "BatteryModel",
     "BoundaryKind",
@@ -57,5 +61,6 @@ __all__ = [
     "Splitter",
     "Tank",
     "TimeBlock",
+    "__version__",
     "build_model",
 ]

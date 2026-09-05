@@ -52,6 +52,27 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: unit
+  coverage-floors:
+    name: coverage-floors
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -e ".[dev,solvers]"
+      - uses: ./.github/actions/setup-ipopt
+      # All tiers combined (unit+component+integration), one run: per-subpackage
+      # floors are actual - 2%, rounded down, from the coverage this suite
+      # reports as of M15 (94/96/82/100 -> 92/94/80/98). Denominator excludes
+      # */tests/* and flexops/testing/ (pyproject.toml [tool.coverage.run]).
+      - run: pytest -q --cov=flexcore --cov=flexops --cov=flexparameterize --cov=flexschedule
+      - run: coverage report --include="src/flexcore/*" --fail-under=92
+      - run: coverage report --include="src/flexops/*" --fail-under=94
+      - run: coverage report --include="src/flexparameterize/*" --fail-under=80
+      - run: coverage report --include="src/flexschedule/*" --fail-under=98
+
   standard-install:
     name: standard-install (py${{ matrix.python-version }})
     needs: lint

@@ -8,6 +8,7 @@ schedule flexible industrial energy operations.
    :maxdepth: 2
    :caption: Getting started
 
+   getting_started/installation
    getting_started/ten_minutes
 
 .. toctree::
@@ -34,6 +35,12 @@ schedule flexible industrial energy operations.
    :caption: Examples
 
    examples/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Release notes
+
+   changelog
 
 .. toctree::
    :maxdepth: 2

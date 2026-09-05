@@ -10,9 +10,10 @@ library.
 ## 1. Install
 
 ```bash
-conda env create -f environment.yml
-conda activate flex-pse
+pip install "flex-pse[solvers]"
 ```
+
+See [Installation](installation.md) for the IPOPT solver setup step.
 
 ## 2. Build the model
 
