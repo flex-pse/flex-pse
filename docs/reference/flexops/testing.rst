@@ -3,13 +3,14 @@ flexops.testing
 
 .. currentmodule:: flexops.testing
 
-The public, shipped unit-model test harness. Every
-unit-model milestone -- and any user writing a custom unit model -- subclasses
-:class:`UnitModelTestHarness` instead of hand-writing the
-build/units-consistency/registration/DoF/solve checks.
+The public, shipped test harness for unit models. Every milestone that adds a
+unit model, and anyone writing a custom one, subclasses
+:class:`UnitModelTestHarness` instead of writing the
+build/units-consistency/registration/DoF/solve checks by hand.
 
-This module imports ``pytest``, so it requires the ``testing`` extra:
-``pip install "flex-pse[testing]"`` (already covered by the ``dev`` extra).
+This module imports ``pytest``, so it requires the ``testing`` extra. Install
+it with ``pip install "flex-pse[testing]"`` (already covered by the ``dev``
+extra).
 
 .. autosummary::
    :toctree: generated
@@ -24,8 +25,8 @@ This module imports ``pytest``, so it requires the ``testing`` extra:
 Testing your own unit model
 ----------------------------
 
-A concrete unit's test file is ~30 lines: ``configure()`` plus the two
-expected-value dicts.
+A concrete unit's test file is about 30 lines long, just ``configure()`` plus
+the two dicts of expected values.
 
 .. code-block:: python
 

@@ -1,10 +1,11 @@
 # flex-pse in ten minutes
 
-This is the frozen public API, end to end: a facility with a storage tank, a
-treatment plant modeled as one energy-intensity surrogate, and a behind-the-meter
-battery, scheduled against a time-of-use tariff for a month at 15-minute
-resolution. A component test runs this exact script on every pull request, so it
-cannot drift from the library.
+Here is the frozen public API, start to finish. You'll build a facility with a
+storage tank, a treatment plant modeled as one energy intensity surrogate, and
+a battery sitting behind the meter. You'll schedule it against a tariff that
+changes through the day, for one month at 15 minute steps. A component test
+runs this exact script on every pull request. It cannot drift from the
+library.
 
 ## 1. Install
 
@@ -15,9 +16,9 @@ conda activate flex-pse
 
 ## 2. Build the model
 
-Run this from a directory holding the two data files it loads by name,
-`tariff.json` (a time-of-use price sheet) and `dr_events.json` (a
-demand-response program, which may be empty).
+Run this from a directory holding the two data files it loads by name.
+`tariff.json` is a time of use price sheet. `dr_events.json` is a
+demand response program, and it can be empty.
 
 ```python
 import pyomo.environ as pyo
@@ -52,23 +53,24 @@ m.costing.cost_process()
 m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
 ```
 
-Five things are worth noticing in those thirty lines:
+Five things are worth noticing in those thirty lines.
 
-- **The `TimeBlock` is the substrate.** 29 days at 15 minutes is 2 784 discrete
-  time points, an ordered integer set — not a DAE
-  ([why](../explanation/time_and_dynamics.md)).
-- **Costing is built before the plant.** `FlexCosting` defers all aggregation to
-  `cost_process()`, so it can be handed to units that do not exist yet.
-- **`PlantBlock` composes units.** For several facilities, compose *plants* in a
-  `NetworkBlock` instead ([how](../how_to/build_a_plant.md)).
-- **Units carry units.** Every physical quantity is a `pyunits`-carrying
-  expression; a mis-dimensioned one fails loudly rather than silently rescaling.
-- **The objective is the relaxed proxy, not the answer.** Read the cost back
-  from `report_cost` (step 4).
+- **The `TimeBlock` is the substrate.** 29 days at 15 minutes gives you 2 784
+  discrete time points, an ordered integer set. It's not a DAE. See
+  [why](../explanation/time_and_dynamics.md).
+- **Costing is built before the plant.** `FlexCosting` defers all aggregation
+  to `cost_process()`, so you can hand it units that don't exist yet.
+- **`PlantBlock` composes units.** If you have several facilities, compose
+  *plants* in a `NetworkBlock` instead. See [how](../how_to/build_a_plant.md).
+- **Units carry units.** Every physical quantity is a `pyunits` carrying
+  expression. Get the dimensions wrong and it fails loudly instead of
+  silently rescaling.
+- **The objective is the relaxed proxy, not the answer.** Read the real cost
+  back from `report_cost` in step 4.
 
 ## 3. Solve
 
-Arc expansion is explicit — no library code does it for you:
+Arc expansion is explicit. No library code does it for you.
 
 ```python
 from flexcore.solvers import get_solver
@@ -88,14 +90,16 @@ report = m.costing.report_cost(m)
 print(report.operating.electricity)
 ```
 
-The raw solver objective is a convex-relaxed, possibly scalarized internal
-quantity, so it is never the user-facing number. `report_cost` re-evaluates the
-realized power trajectory post-solve through EECO to get the true bill.
+The raw solver objective is a convex relaxed, possibly scalarized internal
+quantity. It's never the number you want. `report_cost` re-evaluates the
+realized power trajectory after the solve, through EECO, to get the true
+bill.
 
 ## 5. Or build the same model from a config
 
-Nothing above has to live in Python. The same model can be described by a JSON
-config file, `api_freeze_config.json`, which solves to the same objective:
+None of this has to live in Python. You can describe the same model with a
+JSON config file, `api_freeze_config.json`, and it solves to the same
+objective.
 
 ```python
 from flexcore.config.io import load_model_config
@@ -105,10 +109,11 @@ m = fo.build_model(load_model_config("api_freeze_config.json"))
 
 ## Where next
 
-- [Build a plant](../how_to/build_a_plant.md) — the build order in detail, the
-  config conventions, and multi-plant networks.
-- [Time and dynamics](../explanation/time_and_dynamics.md) — why discrete time.
-- [Energy nomenclature](../explanation/energy_nomenclature.md) —
-  `power_electrical` / `power_thermal` and why fuel is a volume.
-- [Examples](../examples/index.md) — solved, interactive walkthroughs built on
+- [Build a plant](../how_to/build_a_plant.md). The build order in detail, the
+  config conventions, and multi plant networks.
+- [Time and dynamics](../explanation/time_and_dynamics.md). Why discrete
+  time.
+- [Energy nomenclature](../explanation/energy_nomenclature.md).
+  `power_electrical` / `power_thermal`, and why fuel is a volume.
+- [Examples](../examples/index.md). Solved, interactive walkthroughs built on
   this API.

@@ -1,8 +1,8 @@
 flexcore
 ========
 
-Shared substrate for the flex-pse tools: the exception hierarchy, the solver
-facade, and (later) the versioned config schema.
+flex-pse's tools share this substrate. It holds the exception hierarchy, the
+solver facade, and (later) the versioned config schema.
 
 Solvers
 -------
@@ -10,7 +10,7 @@ Solvers
 .. currentmodule:: flexcore.solvers
 
 The solver layer classifies a model, detects which solvers are installed, and
-selects one — erroring loudly rather than transforming the model (see
+selects one. It errors loudly rather than transforming the model (see
 :doc:`../../explanation/relaxation_policies`).
 
 .. autofunction:: get_solver
@@ -30,7 +30,7 @@ Capability matrix
 
 :func:`available_solvers` returns the subset of this matrix whose solver is
 installed. The matrix is a plain module constant (``flexcore.solvers.registry.CAPABILITIES``)
-and is extensible — a user may register an additional solver entry before
+and is extensible. You can register an additional solver entry before
 calling :func:`get_solver`.
 
 .. list-table::
@@ -45,7 +45,7 @@ calling :func:`get_solver`.
    * - ``ipopt``
      - NLP (built from idaes with HSL ``ma27`` when available, else stock IPOPT)
    * - ``scip``
-     - MILP, MINLP (preferred over HiGHS for MILP; the default open-source MINLP solver)
+     - MILP, MINLP (preferred over HiGHS for MILP, the default open source MINLP solver)
    * - ``gurobi``
      - LP, QP, MILP
 
@@ -54,9 +54,9 @@ Config schema
 
 .. currentmodule:: flexcore.config.schema
 
-The versioned, JSON-canonical config the whole model+run is built from (see
-:doc:`../../explanation/config_schema`). Pydantic is the schema authority;
-:data:`CURRENT_SCHEMA_VERSION` tags what this build writes.
+The versioned, canonical JSON config that the whole model and run get built
+from (see :doc:`../../explanation/config_schema`). Pydantic is the schema
+authority, and :data:`CURRENT_SCHEMA_VERSION` tags what this build writes.
 
 .. autosummary::
    :toctree: generated
@@ -99,7 +99,7 @@ Nomenclature
 
 .. currentmodule:: flexcore.nomenclature
 
-The canonical energy-variable names (see
+The canonical names for energy variables (see
 :doc:`../../explanation/energy_nomenclature`).
 
 .. autodata:: POWER_ELECTRICAL
@@ -156,7 +156,7 @@ Global configuration
 
 Call :func:`set_global_level` and :func:`set_global_dedup_enabled` once at the
 start of a script to control the threshold and deduplication behavior for all
-loggers obtained afterward:
+loggers obtained afterward.
 
 .. code-block:: python
 
@@ -173,7 +173,7 @@ loggers obtained afterward:
    _log = get_logger(__name__)
 
 
-Available levels (lowest to highest):
+These are the available levels, from lowest to highest.
 
 - ``logging.DEBUG`` (10)
 - ``logging.INFO`` (20)
@@ -183,5 +183,5 @@ Available levels (lowest to highest):
 - ``logging.CRITICAL`` (50)
 
 The default threshold is ``CONFIGURATION_SIMPLIFICATIONS``. Deduplication is a
-per-level toggle; by default it is enabled for ``WARNING`` and
+toggle you set per level. By default it is enabled for ``WARNING`` and
 ``CONFIGURATION_SIMPLIFICATIONS``.

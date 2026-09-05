@@ -1,13 +1,13 @@
 # Build a plant
 
-A flex-pse model is built in one order: **TimeBlock → property package →
-costing → plant → units → arcs → `cost_process()` → objective**. Costing comes
-*before* the units on purpose — `FlexCosting` aggregates power at
-`cost_process()` time, so it may be constructed while the plant is still empty.
-Plant totals are deferred for the same reason.
+A flex-pse model builds in one order. **TimeBlock, property package, costing,
+plant, units, arcs, `cost_process()`, objective.** Costing comes *before* the
+units on purpose. `FlexCosting` aggregates power at `cost_process()` time, so
+you can construct it while the plant is still empty. Plant totals are
+deferred for the same reason.
 
-The script below is exactly this sequence, and a component test runs it on
-every pull request: a change that breaks it is a breaking change to the public
+The script below follows exactly this order. A component test runs it on
+every pull request. If a change breaks it, that change breaks the public
 API.
 
 ## The imperative path
@@ -29,8 +29,8 @@ m.costing = fo.FlexCosting(
     dr_event_file="dr_events.json",
 )
 
-# A PlantBlock is a collection of UNITS. It takes the TimeBlock explicitly;
-# omit it only when the model carries exactly one.
+# A PlantBlock is a collection of UNITS. It takes the TimeBlock explicitly.
+# Omit it only when the model carries exactly one.
 m.waterfacility = fo.PlantBlock(time_block=m.time_block)
 m.waterfacility.tank = fo.Tank(property_package=m.properties)
 m.waterfacility.plant = fo.ConstantEnergyIntensityModel(
@@ -49,8 +49,8 @@ m.costing.cost_process()
 m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
 ```
 
-Arc expansion and the solve stay explicit — no library code applies the
-transformation implicitly:
+Arc expansion and the solve stay explicit. No library code applies the
+transformation for you.
 
 ```python
 from flexcore.solvers import get_solver
@@ -59,17 +59,18 @@ pyo.TransformationFactory("network.expand_arcs").apply_to(m)
 results = get_solver(model=m).solve(m)
 ```
 
-After solving, read the **reported** cost — never the raw objective — from
-`m.costing.report_cost(m)`, which returns a categorized breakdown (operating vs.
-capital, each itemized).
+After solving, read the **reported** cost, never the raw objective, from
+`m.costing.report_cost(m)`. It returns a categorized breakdown, operating
+against capital, each itemized.
 
-## Bracketing the plant: Feed and Product
+## Bracketing the plant with Feed and Product
 
-Nothing above owns the streams that *cross* the facility boundary — the raw
-water coming in and the potable water going out. `Feed` and `Product` are the
-two unit models that do. A `Feed` is a source (zero inlets, N named outlets); a
-`Product` is a sink (N named inlets, zero outlets). Each meters the total
-resource crossing the boundary, can bound it over time, and can price it:
+Nothing above owns the streams that cross the facility boundary, the raw
+water coming in and the potable water going out. `Feed` and `Product` are
+the two unit models that do. A `Feed` is a source, with zero inlets and N
+named outlets. A `Product` is a sink, with N named inlets and zero outlets.
+Each one meters the total resource crossing the boundary. Each one can bound
+that resource over time, and each one can price it.
 
 ```python
 m.waterfacility.raw_water = fo.Feed(
@@ -95,28 +96,29 @@ m.waterfacility.plant_to_product = Arc(
 )
 ```
 
-The plant **discovers** these the same way it discovers power and fuel — no
-registration call — and sums them into `total_feed["raw_water", t]` and
-`total_product["potable_water", t]`. `resource_name` is the aggregation key and
-is independent of the Pyomo block name: two `Feed` blocks with different names
-give two rows, and two sharing one `resource_name` sum into a single row, which
-is how you model the same resource entering at two points. Several inbound
-resources means several `Feed` blocks — one block, one resource.
+The plant **discovers** these the same way it discovers power and fuel. You
+don't register anything. It sums them into `total_feed["raw_water", t]` and
+`total_product["potable_water", t]`. `resource_name` is the aggregation key,
+and it's independent of the Pyomo block name. Two `Feed` blocks with
+different names give you two rows. Two blocks sharing one `resource_name`
+sum into a single row, which is how you model the same resource entering at
+two points. If you have several inbound resources, you add several `Feed`
+blocks. One block, one resource.
 
-A plant normally has several of each (raw water, citric acid and antiscalant
-in; potable water, brine and waste out), so this is the expected case rather
-than the edge case. Costing stays per block: the opex line item is named from
-the block's own dotted Pyomo name, so two blocks sharing a resource still get
-separate, differently-priced line items even though their flows aggregate
-together.
+A plant normally has several of each (raw water, citric acid, and
+antiscalant coming in, potable water, brine, and waste going out). That's
+the expected case, not the edge case. Costing stays per block. The opex line
+item takes its name from the block's own dotted Pyomo name, so two blocks
+sharing a resource still get separate, differently priced line items. Their
+flows aggregate together, but the billing doesn't.
 
 ### Rate limits and horizon allowances are different constraints
 
-`max_withdrawal=500 * pyunits.m**3 / pyunits.hr` above is a **rate**, and it
-binds in every period. A permit or a delivery contract is usually not that — it
-is a **quantity** over the whole horizon, and how you shape the profile beneath
-it is exactly the flexibility you are trying to optimize. Say which you mean
-with `withdrawal_basis` (`demand_basis` on a `Product`):
+`max_withdrawal=500 * pyunits.m**3 / pyunits.hr` above is a **rate**. It
+binds in every period. A permit or a delivery contract usually isn't that.
+It's a **quantity** over the whole horizon, and shaping the profile beneath
+it is exactly the flexibility you're trying to optimize. Say which you mean
+with `withdrawal_basis` (`demand_basis` on a `Product`).
 
 ```python
 m.waterfacility.raw_water = fo.Feed(
@@ -129,32 +131,32 @@ m.waterfacility.raw_water = fo.Feed(
 
 That builds a scalar `withdrawal_total` and the equality `eq_withdrawal_total`
 defining it as `sum_t withdrawal[t] * dt`, then bounds *that*. Nothing else
-moves: `withdrawal[t]` stays time-indexed, so costing, the plant's
-`total_feed[resource, t]` aggregation and `set_external_dispatch` all work
-exactly as before. The scalar total is readable after a solve, and its limit
-carries a dual — the shadow price of the permit.
+moves. `withdrawal[t]` stays indexed by time, so costing, the plant's
+`total_feed[resource, t]` aggregation, and `set_external_dispatch` all work
+exactly as before. You can read the scalar total after a solve, and its
+limit carries a dual, the shadow price of the permit.
 
-Because the two bases take different dimensions, a limit whose units contradict
-the declared basis is rejected rather than silently rescaled:
+The two bases take different dimensions. A limit whose units contradict the
+declared basis gets rejected instead of silently rescaled.
 
 ```python
 fo.Feed(..., max_withdrawal=500 * pyunits.m**3 / pyunits.hr,
         withdrawal_basis="horizon")      # FlexConfigError(field="max_withdrawal")
 ```
 
-Limits are **mutable Params**, not variable bounds, so a limit that varies over
-time is written rather than configured:
+Limits are **mutable Params**, not variable bounds. If a limit varies over
+time, you write that directly instead of configuring it.
 
 ```python
 for t in m.time_block.time_index:
     m.waterfacility.raw_water.withdrawal_max[t].set_value(profile[t])
 ```
 
-(On the horizon basis there is one period, so the same rewrite is
-`withdrawal_max.set_value(v)` with no index.)
+On the horizon basis there's just one period, so the same rewrite becomes
+`withdrawal_max.set_value(v)` with no index.
 
-An *exact* profile is not a limit at all — fix the metered flow with the
-inherited external-dispatch hook:
+An *exact* profile isn't a limit at all. Fix the metered flow with the
+inherited external dispatch hook instead.
 
 ```python
 m.waterfacility.raw_water.set_external_dispatch(
@@ -162,16 +164,16 @@ m.waterfacility.raw_water.set_external_dispatch(
 )
 ```
 
-A `Product` aggregates flow and does **not** blend: each inlet's composition,
-temperature and pressure arrive from its own arc and stay independent. Put a
-`Mixer` upstream when a single blended stream is wanted.
+A `Product` aggregates flow and does **not** blend. Each inlet's
+composition, temperature, and pressure arrive from its own arc and stay
+independent. Put a `Mixer` upstream if you want a single blended stream.
 
-## The config-driven twin
+## The config driven twin
 
-Nothing essential lives only in imperative code: the same model can be built
-from one version-controlled JSON file. The config twin of the script above is
-`api_freeze_config.json`, and a component test holds the two to the same solved
-objective.
+Nothing that matters has to live only in imperative code. You can build the
+same model from one version-controlled JSON file. The config twin of the
+script above is `api_freeze_config.json`, and a component test holds the two
+to the same solved objective.
 
 ```python
 from flexcore.config.io import load_model_config
@@ -179,27 +181,30 @@ from flexcore.config.io import load_model_config
 m = fo.build_model(load_model_config("api_freeze_config.json"))
 ```
 
-`build_model` constructs the TimeBlock, the property package, the `FlexCosting`
-block, the plant/unit tree, its arcs, any declared external (DERMS) dispatch,
-and the objective. Two conventions matter when writing one of these files:
+`build_model` constructs the TimeBlock, the property package, the
+`FlexCosting` block, the plant and unit tree, its arcs, any declared
+external (DERMS) dispatch, and the objective. Two conventions matter when
+you write one of these files.
 
-- **Units are data.** A config cannot carry a Pyomo expression, so a
-  units-carrying quantity is written `{"value": 0.5, "units": "kWh/m^3"}` —
-  or, for `time.time_step`, the string `"15 min"`. Anything else in
-  `construction_options` is passed to the unit's constructor unchanged.
-- **Runtime-only options are supplied by the builder.** `property_package` and
-  `costing_package` are live Pyomo objects, not serializable, so `build_model`
-  wires them into every unit; do not list them in `construction_options`.
+- **Units are data.** A config can't carry a Pyomo expression, so you write
+  a unit carrying quantity as `{"value": 0.5, "units": "kWh/m^3"}`, or, for
+  `time.time_step`, as the string `"15 min"`. Anything else in
+  `construction_options` passes to the unit's constructor unchanged.
+- **Runtime only options come from the builder.** `property_package` and
+  `costing_package` are live Pyomo objects, not serializable, so
+  `build_model` wires them into every unit. Don't list them in
+  `construction_options`.
 
-A malformed config raises `FlexConfigError` naming the exact field path (e.g.
-`plant.units.surrogate.unit_model_class`), with the underlying pydantic
-`ValidationError` as its cause.
+A malformed config raises `FlexConfigError` naming the exact field path
+(for example, `plant.units.surrogate.unit_model_class`), with the
+underlying pydantic `ValidationError` as its cause.
 
-## More than one plant: NetworkBlock
+## More than one plant with NetworkBlock
 
-A plant containing plants is a `NetworkBlock`, not a nested `PlantBlock`:
-`PlantBlock` composes units, `NetworkBlock` composes plants. Its totals are the
-sums of its child plants' totals, so every unit is counted exactly once.
+A plant containing plants is a `NetworkBlock`, not a nested `PlantBlock`.
+`PlantBlock` composes units. `NetworkBlock` composes plants. Its totals are
+the sums of its child plants' totals, so every unit gets counted exactly
+once.
 
 ```python
 m.campus = fo.NetworkBlock(time_block=m.time_block)
@@ -215,8 +220,8 @@ m.campus.add_link(
 )
 ```
 
-A plant can also register a **product** — a flow, optionally with a quality
-indicator — and the network sums it across plants:
+A plant can also register a **product**, a flow with an optional quality
+indicator, and the network sums it across plants.
 
 ```python
 m.campus.north.register_product(
@@ -225,13 +230,13 @@ m.campus.north.register_product(
 ```
 
 Registering a quality declares that the resource is only interchangeable at
-equal quality, so the network permits mixing only between like-quality streams
-(`eq_product_quality`). `total_product["permeate", t]` is the network's summed
-flow.
+equal quality, so the network permits mixing only between streams of like
+quality (`eq_product_quality`). `total_product["permeate", t]` is the
+network's summed flow.
 
-Linking one plant's product to another's feed needs no new API — `add_link`
-takes any two time-indexed quantities, so a plant total is passed as a
-`Reference` and a boundary block's own meter directly:
+Linking one plant's product to another's feed needs no new API. `add_link`
+takes any two quantities indexed by time, so you pass a plant total as a
+`Reference` alongside a boundary block's own meter.
 
 ```python
 m.campus.add_link(
@@ -241,13 +246,15 @@ m.campus.add_link(
 )
 ```
 
-The network's `total_feed`/`total_product` are the sums of its child plants'
-totals — never a second walk over their units — so nothing is double-counted.
+The network's `total_feed`/`total_product` are the sums of its child
+plants' totals. It never walks their units a second time, so nothing gets
+counted twice.
 
 ## See it running
 
-For a worked, solved example built on this API — a pump-scheduling facility
-shifting load off-peak, with the resulting schedule plotted against the
-tariff — see the interactive examples at
+Want a worked, solved example built on this API? Check the interactive
+examples at
 [flex-pse.github.io/flex-pse-examples](https://flex-pse.github.io/flex-pse-examples/).
-Each example page opens directly in a browser with no installation.
+One shows a pump scheduling facility shifting load away from peak hours,
+with the resulting schedule plotted against the tariff. Each example page
+opens directly in a browser. You don't need to install anything.
