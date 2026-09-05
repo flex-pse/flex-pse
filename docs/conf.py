@@ -1,6 +1,7 @@
 """Sphinx configuration for flex-pse."""
 
 import sys
+from importlib.metadata import version as _dist_version
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "_ext"))
@@ -8,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 project = "flex-pse"
 copyright = "2025, flex-pse contributors"
 author = "flex-pse contributors"
+release = _dist_version("flex-pse")
+version = release
 
 extensions = [
     "sphinx.ext.autodoc",

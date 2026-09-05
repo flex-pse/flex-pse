@@ -5,6 +5,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-04
+
+flex-pse 0.1.0 is the first release. It ships **flexops** and
+**flexparameterize**: build a plant imperatively in Python or from one
+versioned JSON config (`flexops.build_model`); model unit commitment (on/off,
+dwell, startup/shutdown delays, conditional and parallel-train ordering,
+bypass); price tariff- and demand-response-aware operating cost through EECO,
+reported post-solve from the de-relaxed realized dispatch (never the solver's
+own objective); and round-trip parameterize a model from tabular plant data
+(fit -> apply in place, or emit a config, both from the same regressor so they
+cannot disagree). Single-period design-mode costing (`set_design_mode`/
+`set_operations_mode`) works; the multi-period design wrapper does not exist
+yet.
+
+Deferred to 0.2 or later (PLAN.md §4, "Post-0.1.0 backlog"):
+`flexschedule` ships as an **unpopulated scaffold** — rolling-horizon
+scheduling and solve sequences, and set-point extraction/smoothing, are not
+implemented; the multi-period `flexops.design` wrapper; multi-dimensional
+surrogates and multi-component property packages; and the further backlog
+(parallel-train replication helpers, a working demand-response formulation, a
+scenario/sweep tool, an external forecaster interface, and more).
+
 ### Removed
 
 - **`examples/` is gone.** Worked examples and notebooks move to the companion repo `flex-pse-examples`, published as an interactive site at [flex-pse.github.io/flex-pse-examples](https://flex-pse.github.io/flex-pse-examples/); the marimo `pump_tank_load_shifting/` demo goes with them. The frozen-API tripwire is unaffected in substance but has moved: `api_freeze.py`, `api_freeze_config.json`, and the `tariff.json`/`dr_events.json` fixtures now live under `src/flexops/tests/fixtures/api_freeze/`, next to the test that runs them, and the ruff/black excludes that keep the script byte-for-byte identical to the PLAN.md §2 snippet moved with it. Anyone running the frozen script by hand should copy that fixture directory rather than `examples/`.

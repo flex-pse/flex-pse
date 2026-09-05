@@ -14,6 +14,8 @@ provided its columns are mapped to model aliases by a
 :class:`~flexparameterize.tags.TagMap`.
 """
 
+from importlib.metadata import version as _dist_version
+
 from flexparameterize.apply import ApplyReport, apply_to_model
 from flexparameterize.emit import emit_model_config
 from flexparameterize.regression import (
@@ -30,6 +32,8 @@ from flexparameterize.validate import (
     check_sufficiency,
 )
 
+__version__ = _dist_version("flex-pse")
+
 __all__ = [
     "ApplyReport",
     "ConstantIntensityRegressor",
@@ -40,6 +44,7 @@ __all__ = [
     "SufficiencyReport",
     "TagMap",
     "TagReport",
+    "__version__",
     "apply_to_model",
     "check_sufficiency",
     "emit_model_config",
