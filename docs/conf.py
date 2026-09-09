@@ -60,6 +60,8 @@ nitpick_ignore_regex = [
 ]
 
 html_theme = "furo"
+html_static_path = ["_static"]
+html_logo = "_static/logo/flex-pse-horizontal-light.png"
 
 
 def _skip_deprecated_or_todo(app, what, name, obj, skip, options):
