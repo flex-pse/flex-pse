@@ -330,3 +330,81 @@ def test_hessian_matches_analytic_second_derivative():
     )
     hess = surrogate._driver.hessian(np.array([2.0]))
     assert hess == pytest.approx([[12.0]])
+
+
+# -- swap_relation + real solve (component, needs_cyipopt, needs_torch) -----
+
+
+def _swapped_unit(model_name: str):
+    """A unit with power_electrical_relation swapped to a linear grey box."""
+    globals()[model_name] = lambda x: 2.0 * x[0] + 1.0
+    m, unit = _unit()
+    for t in unit.flow_out.index_set():
+        unit.flow_out[t].fix(3.0)
+    surrogate = ExternalModelSurrogate(
+        {
+            "framework": "pytorch",
+            "model_path": f"{__name__}.{model_name}",
+            "input_variables": {"flow_out": "m^3/hr"},
+            "output_variables": {"power_electrical": "kW"},
+            "probe_point": {"flow_out": 3.0},
+        }
+    )
+    unit.swap_relation("power_electrical_relation", surrogate)
+    m.obj = pyo.Objective(expr=1)
+    return m, unit
+
+
+@pytest.mark.component
+@pytest.mark.needs_cyipopt
+@pytest.mark.needs_torch
+def test_swap_relation_attaches_grey_box_and_solves():
+    """A swapped external_model relation solves via cyipopt to the model's
+    own hand-computed value: power = 2 * flow_out + 1."""
+    pytest.importorskip("torch")
+    m, unit = _swapped_unit("_swap_solve_model")
+
+    solver = pyo.SolverFactory("cyipopt")
+    results = solver.solve(m, tee=False)
+
+    assert str(results.solver.status) == "ok"
+    t0 = next(iter(unit.power_electrical.index_set()))
+    assert pyo.value(unit.power_electrical[t0]) == pytest.approx(7.0, rel=1e-5)
+
+
+@pytest.mark.component
+@pytest.mark.needs_cyipopt
+@pytest.mark.needs_torch
+def test_reswapping_a_grey_box_relation_solves_to_the_same_optimum():
+    """Guards pitfall 2: re-swapping must deactivate the stale grey box
+    itself, not just its parent surrogate block -- PyomoNLPWithGreyBoxBlocks
+    checks the grey-box data object's own active flag, ignoring its parent's,
+    so a flag assertion on the wrong object would pass while the bug is
+    live. This checks the exact nested flag *and* that the model still
+    solves to the same, correct optimum."""
+    pytest.importorskip("torch")
+    m, unit = _swapped_unit("_swap_resolve_model_1")
+    record = next(
+        r for r in unit._io_registry.relations if r.name == "power_electrical_relation"
+    )
+    stale_block = record.surrogate_block
+
+    second = ExternalModelSurrogate(
+        {
+            "framework": "pytorch",
+            "model_path": f"{__name__}._swap_resolve_model_1",
+            "input_variables": {"flow_out": "m^3/hr"},
+            "output_variables": {"power_electrical": "kW"},
+            "probe_point": {"flow_out": 3.0},
+        }
+    )
+    unit.swap_relation("power_electrical_relation", second)
+
+    t0 = next(iter(unit.power_electrical.index_set()))
+    assert stale_block.egb[t0].active is False
+
+    solver = pyo.SolverFactory("cyipopt")
+    results = solver.solve(m, tee=False)
+
+    assert str(results.solver.status) == "ok"
+    assert pyo.value(unit.power_electrical[t0]) == pytest.approx(7.0, rel=1e-5)
