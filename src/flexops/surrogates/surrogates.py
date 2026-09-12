@@ -13,6 +13,7 @@ from flexcore.exceptions import FlexConfigError
 from flexops.surrogates.arima import ArimaSurrogate
 from flexops.surrogates.base import Surrogate
 from flexops.surrogates.exponential import ExponentialSurrogate
+from flexops.surrogates.grey_box import ExternalModelSurrogate
 from flexops.surrogates.multilinear import MultilinearSurrogate
 from flexops.surrogates.neural_network import NeuralNetworkSurrogate
 from flexops.surrogates.quadratic import QuadraticSurrogate
@@ -23,6 +24,7 @@ SURROGATES: dict[SurrogateType, type[Surrogate]] = {
     SurrogateType.EXPONENTIAL: ExponentialSurrogate,
     SurrogateType.ARIMA: ArimaSurrogate,
     SurrogateType.NEURAL_NETWORK: NeuralNetworkSurrogate,
+    SurrogateType.EXTERNAL_MODEL: ExternalModelSurrogate,
 }
 """dict: SurrogateType -> the class that implements it. The extension point
 for a new relationship shape: add the member to
