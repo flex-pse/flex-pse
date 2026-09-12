@@ -234,6 +234,14 @@ existing work orders and cross-references in M14/M15 stay findable.
 - **External forecaster interface** — "forecast, then fix parameters" adapter so
   any forecasting tool (ARIMA, NN, vendor) can feed FlexOps parameters; a specific
   wastewater-inflow forecaster pairs with it. FlexOps stays forecaster-agnostic.
+- **External-model grey-box surrogate** — a distinct, harder capability from the
+  item above: wrap an arbitrary external differentiable model (no closed form)
+  as a `flexops.surrogates.Surrogate`, resolved through a pluggable framework
+  driver (PyTorch via `torch.autograd` first; TensorFlow/ONNX/JAX reserved) and
+  requiring a `SolverFactory("cyipopt")` solve, for cases where the model's
+  output must live *inside* the optimization's feedback loop rather than be
+  fixed beforehand. Work order (in progress on `feature/grey-box`):
+  [`plan/milestones/M17_greybox_surrogate.md`](plan/milestones/M17_greybox_surrogate.md).
 - **Knowledge-graph / WaTr / PyPES connector** — map each FlexOps unit-model class
   to a Water-ontology class; build FlexOps flowsheets from Pipes/WaTr knowledge
   graphs by pattern/string matching. Depends on the (external) Pipes→TTL

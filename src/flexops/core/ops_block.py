@@ -882,6 +882,32 @@ class OpsBlockData(UnitModelBlockData):
             )
         )
 
+    @staticmethod
+    def _deactivate_nested_grey_boxes(component) -> None:
+        """Deactivate any ``ExternalGreyBoxBlock`` nested inside ``component``.
+
+        ``BlockData.deactivate()`` does not recurse into child components, so
+        a deactivated surrogate block would otherwise leave its grey box (and
+        the multipliers/derivatives PyNumero attaches to it) live in the NLP
+        after a re-swap. Local import: this pynumero module is core Pyomo
+        (importable with neither ``cyipopt`` nor a framework installed), kept
+        function-scope so it is not paid for by a unit that never swaps to a
+        grey-box surrogate.
+
+        Args:
+            component: A component from a deactivated ``RelationRecord``
+                (a Block, or a bare Constraint with no sub-components).
+        """
+        from pyomo.contrib.pynumero.interfaces.external_grey_box import (
+            ExternalGreyBoxBlock,
+        )
+
+        component_objects = getattr(component, "component_objects", None)
+        if component_objects is None:
+            return
+        for egb in component_objects(ExternalGreyBoxBlock, descend_into=True):
+            egb.deactivate()
+
     def swap_relation(
         self,
         relation_name: str,
@@ -970,6 +996,7 @@ class OpsBlockData(UnitModelBlockData):
             deactivate = getattr(component, "deactivate", None)
             if deactivate is not None:
                 deactivate()
+            self._deactivate_nested_grey_boxes(component)
 
         before = set(self.component_map())
         surrogate_block, body = surrogate.build(self, record.target)

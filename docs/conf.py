@@ -26,6 +26,11 @@ autosummary_generate = True
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 
+# The docs CI job installs [dev,docs] only, no [greybox] -- autosummary_generate
+# imports every documented module, so flexops.surrogates.drivers.torch_driver
+# would otherwise fail the build with a missing torch.
+autodoc_mock_imports = ["torch"]
+
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "pyomo": ("https://pyomo.readthedocs.io/en/stable/", None),

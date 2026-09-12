@@ -61,7 +61,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install -e ".[dev,solvers,parameterize]"
+      # cyipopt has no PyPI wheel (source-only) and its C extension build
+      # needs a pkg-config-discoverable system IPOPT -- the IDAES binary
+      # setup-ipopt installs below is a standalone executable, not a
+      # dev/headers install, so it can't satisfy this on its own. liblapack
+      # -dev/libblas-dev are needed too: coinor-libipopt-dev's pkg-config
+      # file links -llapack/-lblas, and Ubuntu's runtime liblapack3/libblas3
+      # packages ship only the versioned .so.3, not the unversioned .so link
+      # name the linker needs for -l.
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            coinor-libipopt1v5 coinor-libipopt-dev liblapack-dev libblas-dev
+      - run: pip install -e ".[dev,solvers,parameterize,greybox]"
       - uses: ./.github/actions/setup-ipopt
       # All tiers combined (unit+component+integration), one run: per-subpackage
       # floors are actual - 2%, rounded down, from the coverage this suite
@@ -71,6 +83,12 @@ jobs:
       # job's environment matches the one the flexparameterize floor was
       # calibrated against -- without it, LinearRegressor's real fit path never
       # executes and flexparameterize coverage reads ~5pp low (82% -> 77%).
+      # [greybox] (cyipopt, torch) is needed here too: this job is pinned to
+      # py3.13 (torch publishes wheels for it) and is the job that enforces the
+      # flexops floor -- without torch/cyipopt installed, TorchDriver and the
+      # grey-box adapter report 0% and drop flexops below its floor. The
+      # standard-install job below stays bare on purpose (proves the optional
+      # dependency stays optional, memory flex-pse-dependency-packaging).
       - run: pytest -q --cov=flexcore --cov=flexops --cov=flexparameterize --cov=flexschedule
       - run: coverage report --include="src/flexcore/*" --fail-under=92
       - run: coverage report --include="src/flexops/*" --fail-under=94

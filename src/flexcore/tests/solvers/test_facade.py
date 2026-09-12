@@ -164,3 +164,39 @@ def test_unit_tier_forbids_solve():
     fac = SolverFacade(name="highs", problem_class=ProblemClass.LP)
     with pytest.raises(RuntimeError, match="forbidden"):
         fac.solve(pyo.ConcreteModel())
+
+
+@pytest.mark.component
+def test_get_solver_raises_clear_error_for_grey_box_model():
+    """get_solver refuses a model with an ExternalGreyBoxBlock, pointing at
+    cyipopt -- classify() alone would misclassify it as LP (documented here,
+    not gated on cyipopt/torch: this guard protects every normal install)."""
+    from pyomo.contrib.pynumero.interfaces.external_grey_box import (
+        ExternalGreyBoxBlock,
+        ExternalGreyBoxModel,
+    )
+
+    from flexcore.solvers.classify import ProblemClass, classify
+
+    class _StubExternalModel(ExternalGreyBoxModel):
+        def input_names(self):
+            return ["x"]
+
+        def output_names(self):
+            return ["y"]
+
+        def set_input_values(self, input_values):
+            pass
+
+        def evaluate_outputs(self):
+            import numpy as np
+
+            return np.array([0.0])
+
+    m = pyo.ConcreteModel()
+    m.egb = ExternalGreyBoxBlock(external_model=_StubExternalModel())
+
+    assert classify(m) is ProblemClass.LP
+
+    with pytest.raises(FlexSolverError, match="cyipopt"):
+        get_solver(model=m)

@@ -45,6 +45,11 @@ parameterize = ["pandas>=2.0", "scikit-learn>=1.3"]
 # HiGHS ships as a self-contained wheel; IPOPT does not (see
 # .github/actions/setup-ipopt and docs installation notes).
 solvers = ["highspy"]
+# cyipopt and torch are heavy, optional, and not needed for anything but
+# ExternalModelSurrogate (M17). A CPU-only torch build is an install-time flag
+# (--extra-index-url https://download.pytorch.org/whl/cpu), not something this
+# list can pin by itself -- see docs installation notes.
+greybox = ["cyipopt", "torch"]
 # `flexops.testing` (UnitModelTestHarness) imports pytest at runtime, so users
 # subclassing the harness in their own test suites need this extra.
 testing = ["pytest"]
@@ -85,6 +90,8 @@ markers = [
     "needs_cbc: skip if the CBC solver is unavailable",
     "needs_gurobi: skip if the Gurobi solver is unavailable",
     "needs_scip: skip if the SCIP solver is unavailable",
+    "needs_cyipopt: skip if the cyipopt package is unavailable",
+    "needs_torch: skip if the torch package is unavailable",
 ]
 
 [tool.ruff]

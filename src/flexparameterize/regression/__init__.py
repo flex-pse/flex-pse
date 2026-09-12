@@ -61,6 +61,16 @@ def get_regressor(name: SurrogateType | str) -> type:
             field="surrogate_type",
             value=name,
         ) from exc
+    if surrogate_type is SurrogateType.EXTERNAL_MODEL:
+        raise FlexConfigError(
+            "'external_model' has no regressor: an external model's internal "
+            "weights are not something FlexParameterize can fit (that is the "
+            "whole point of wrapping it opaquely). Fit the model with its own "
+            "framework's training loop and point ExternalModelSurrogate's "
+            "'model_path' at the fitted result.",
+            field="surrogate_type",
+            value=surrogate_type,
+        )
     if surrogate_type in _RESERVED:
         raise NotImplementedError(
             f"No regressor is implemented for {surrogate_type.value!r} yet; "

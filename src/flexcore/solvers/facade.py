@@ -33,6 +33,46 @@ _log = get_logger(__name__)
 _PRIORITY = ["gurobi", "scip", "highs", "cbc", "ipopt"]
 
 
+def _has_grey_box_block(model: pyo.ConcreteModel) -> bool:
+    """Report whether ``model`` contains an ``ExternalGreyBoxBlock``.
+
+    ``classify`` sees no Pyomo constraints inside a grey-box block and reports
+    the smallest class (often ``LP``), so the priority list below would
+    silently hand back an ASL/NL-file solver -- none of which can call back
+    into Python to evaluate the grey box. This check is core Pyomo (present
+    regardless of whether ``cyipopt``/``torch`` are installed), so it runs
+    unconditionally, before ``classify``.
+
+    Args:
+        model: The Pyomo model to inspect.
+
+    Returns:
+        ``True`` if any active or inactive block on the model is an
+        ``ExternalGreyBoxBlockData``.
+
+    Note:
+        ``descend_into=True`` alone defaults to ``ctype=(Block,)``: an
+        ``ExternalGreyBoxBlock`` is registered as its own distinct ctype (via
+        ``declare_custom_block``), so plain ``block_data_objects(descend_into=True)``
+        would neither descend into nor return one -- a deviation from the
+        milestone's literal snippet, verified against the installed Pyomo
+        source. ``ExternalGreyBoxBlock`` must be named explicitly so the walk
+        still descends through the ordinary ``Block``s (unit, surrogate
+        block) above it.
+    """
+    from pyomo.contrib.pynumero.interfaces.external_grey_box import (
+        ExternalGreyBoxBlock,
+        ExternalGreyBoxBlockData,
+    )
+
+    return any(
+        isinstance(b, ExternalGreyBoxBlockData)
+        for b in model.block_data_objects(
+            descend_into=(pyo.Block, ExternalGreyBoxBlock)
+        )
+    )
+
+
 def _idaes_ipopt():
     """Return idaes's HSL-linked IPOPT solver, or ``None`` if idaes is absent.
 
@@ -163,6 +203,15 @@ def get_solver(
             "select for a known class."
         )
     if model is not None:
+        if _has_grey_box_block(model):
+            raise FlexSolverError(
+                "this model contains an ExternalGreyBoxBlock (an "
+                "ExternalModelSurrogate); get_solver cannot select for it -- "
+                "its whole priority list is ASL/NL-file solvers, none of "
+                "which can call back into Python. Solve directly with "
+                "SolverFactory('cyipopt').",
+                solver="cyipopt",
+            )
         problem_class = classify(model)
     elif problem_class is None:
         problem_class = ProblemClass.LP

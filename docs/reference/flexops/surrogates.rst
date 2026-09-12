@@ -66,6 +66,64 @@ constant term, read in the declared output units.
 
    MultilinearSurrogate
 
+External model (grey box)
+-------------------------
+
+.. currentmodule:: flexops.surrogates.grey_box
+
+Some relationships have no closed form a modeler can write as a Pyomo
+expression, but *do* have external code that can report a numeric value and
+its derivatives at a point -- a fitted neural network, a linearized CFD or
+process simulator, a vendor's own sensitivity-aware solver, anything with
+that shape. Rather than deriving a closed-form expression,
+:class:`ExternalModelSurrogate` wraps that external code opaquely -- named by
+a dotted ``model_path`` -- as a unit's relation via a PyNumero
+``ExternalGreyBoxBlock``: only its numeric output and derivatives (evaluated
+through a pluggable :class:`ExternalModelDriver`) are used. Building this
+surrogate requires solving with ``SolverFactory("cyipopt")`` -- ``get_solver``
+raises a clear error rather than silently misrouting the model to an ASL
+solver.
+
+Registers no coefficients: an external model's internal weights are not
+something FlexParameterize can regress, so
+:func:`~flexparameterize.regression.get_regressor` raises a permanent
+:class:`~flexcore.exceptions.FlexConfigError` for
+``SurrogateType.EXTERNAL_MODEL`` rather than a "not implemented yet" stub.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   ExternalModelSurrogate
+
+Which tool actually evaluates the wrapped model is a declared ``framework``
+field, resolved to a **driver** -- a small object evaluating one model and
+its first two derivatives at a point. PyTorch (wrapping a fitted ``nn.Module``
+or a plain callable, via ``torch.autograd``) is the only driver implemented
+today, but the abstraction exists for future non-neural-network cases too --
+e.g. a CFD model exposing its own adjoint/sensitivity computation would be a
+new driver here, not a new kind of surrogate. A driver's own framework is
+imported only when :func:`get_driver` resolves it, so importing
+``flexops.surrogates`` never imports ``torch``.
+
+The PyTorch driver runs the model's forward/backward pass on whatever device
+its own parameters already live on -- call ``model.to("cuda")`` yourself on
+the object ``model_path`` names to run it on GPU. This needs no config: every
+value handed back to Pyomo/CyIpopt always crosses to CPU first, so the
+optimization itself stays CPU-only regardless. The model is re-evaluated
+independently at every time index, every solver iteration, with no batching
+or caching -- GPU is a net win mainly for a large model; a small one mostly
+just pays the host/device transfer overhead.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   ExternalFramework
+   ExternalModelDriver
+
+.. autofunction:: get_driver
+
 Not yet implemented
 --------------------
 

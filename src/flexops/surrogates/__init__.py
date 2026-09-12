@@ -13,16 +13,23 @@ import -- this is what lets a config's surrogate be realized at
 unit construction time (``build_model``), with no ``flexparameterize`` import
 anywhere in ``flexops``.
 
-Only :class:`~multilinear.MultilinearSurrogate` is implemented; the rest raise
-``NotImplementedError`` at construction, naming it as the implemented
-alternative. ``SurrogateType.CONSTANT_INTENSITY`` has no class here at all --
-it fixes a process parameter rather than swapping a Constraint, so
+:class:`~multilinear.MultilinearSurrogate` and
+:class:`~grey_box.ExternalModelSurrogate` are implemented; the rest raise
+``NotImplementedError`` at construction, naming
+``MultilinearSurrogate`` as the implemented alternative.
+``SurrogateType.CONSTANT_INTENSITY`` has no class here at all -- it fixes a
+process parameter rather than swapping a Constraint, so
 ``flexparameterize.apply.apply_to_model`` handles it directly.
 """
 
 from flexops.surrogates.arima import ArimaSurrogate
 from flexops.surrogates.base import Surrogate
 from flexops.surrogates.exponential import ExponentialSurrogate
+from flexops.surrogates.grey_box import (
+    ExternalFramework,
+    ExternalModelSurrogate,
+    get_driver,
+)
 from flexops.surrogates.multilinear import MultilinearSurrogate
 from flexops.surrogates.neural_network import NeuralNetworkSurrogate
 from flexops.surrogates.quadratic import QuadraticSurrogate
@@ -32,9 +39,12 @@ __all__ = [
     "SURROGATES",
     "ArimaSurrogate",
     "ExponentialSurrogate",
+    "ExternalFramework",
+    "ExternalModelSurrogate",
     "MultilinearSurrogate",
     "NeuralNetworkSurrogate",
     "QuadraticSurrogate",
     "Surrogate",
+    "get_driver",
     "surrogate_from_spec",
 ]

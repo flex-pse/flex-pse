@@ -392,7 +392,8 @@
         "quadratic",
         "exponential",
         "arima",
-        "neural_network"
+        "neural_network",
+        "external_model"
       ],
       "title": "SurrogateType",
       "type": "string"

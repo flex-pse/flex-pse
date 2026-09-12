@@ -46,6 +46,14 @@ def test_unknown_name_raises():
 
 
 @pytest.mark.unit
+def test_external_model_raises_config_error_not_not_implemented():
+    """An external model's own weights are permanently unregressable -- a
+    FlexConfigError, not a 'not implemented yet' NotImplementedError."""
+    with pytest.raises(FlexConfigError, match="external_model"):
+        get_regressor(SurrogateType.EXTERNAL_MODEL)
+
+
+@pytest.mark.unit
 def test_package_import_without_sklearn(monkeypatch):
     """flexparameterize and its regression package import fine without sklearn."""
     monkeypatch.setitem(sys.modules, "sklearn", None)
