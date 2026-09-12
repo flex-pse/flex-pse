@@ -747,6 +747,11 @@ def test_report_cost_breakdown_shape():
     )
     assert report.total == pytest.approx(report.operating.total + report.capital.total)
 
+    relaxed = pyo.value(m.costing.opex.electricity_cost + m.costing.opex.fuel_cost)
+    assert m.costing.relaxation_gap(m) == pytest.approx(
+        report.operating.electricity + report.operating.fuel - relaxed
+    )
+
 
 @pytest.mark.unit
 def test_mode_toggles():
@@ -1148,6 +1153,18 @@ def test_energy_prices_mapping_value_rejected():
         m.costing = FlexCosting(
             time_block=m.time_block,
             energy_prices={"electrical": dict(enumerate(_HALVES))},
+        )
+
+
+@pytest.mark.unit
+def test_consumption_estimate_domain_rejects_unknown_utility():
+    """A consumption_estimate key that is not an EECO utility raises."""
+    m = _time_model()
+    with pytest.raises(ValueError, match="electric"):
+        m.costing = FlexCosting(
+            time_block=m.time_block,
+            tariff_file=str(_TARIFF_JSON),
+            consumption_estimate={"electricity": 74500.0},
         )
 
 

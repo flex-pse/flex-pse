@@ -129,9 +129,9 @@ def test_report_cost_post_hoc():
     assert report.total == pytest.approx(report.operating.total)
     # On this short horizon the convex relaxation is tight, so the reported bill
     # coincides with the relaxed objective; the reporting rule is encoded by
-    # the independent recomputation above, not by trusting the objective. The two
-    # diverge once the tiered surcharge is reached.
+    # the independent recomputation above, not by trusting the objective.
     assert report.operating.total == pytest.approx(pyo.value(m.objective), rel=1e-6)
+    assert m.costing.relaxation_gap(m) == pytest.approx(0.0, abs=1e-6)
 
 
 @pytest.mark.component

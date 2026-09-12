@@ -141,6 +141,7 @@ def _build_costing(model, cfg: ModelConfig):
         energy_prices=prices or None,
         currency=costing.currency,
         dr_event_file=None if costing.dr is None else costing.dr.events_source,
+        consumption_estimate=costing.consumption_estimate,
         fixed_operating_cost=costing.fixed_operating_cost,
         prorate_monthly_charges=costing.prorate_monthly_charges,
         lifetime_years=costing.lifetime_years,

@@ -150,6 +150,47 @@ def _energy_prices_domain(value):
     return dict(value)
 
 
+def _consumption_estimate_domain(value):
+    """Validate ``consumption_estimate``: EECO utility -> total over the horizon.
+
+    Args:
+        value: The configured mapping, or ``None``.
+
+    Returns:
+        The mapping unchanged (``{}`` for ``None``).
+
+    Raises:
+        FlexConfigError: If it is not a mapping, a key is not ``"electric"`` or
+            ``"gas"``, or a value is not a positive number.
+    """
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise FlexConfigError(
+            "consumption_estimate must be a mapping of EECO utility "
+            f"('electric'/'gas') to a total over the horizon; got "
+            f"{type(value).__name__}.",
+            field="consumption_estimate",
+            value=value,
+        )
+    for utility, total in value.items():
+        if utility not in ("electric", "gas"):
+            raise FlexConfigError(
+                f"consumption_estimate key {utility!r} is not an EECO utility; "
+                f"use 'electric' or 'gas'.",
+                field="consumption_estimate",
+                value=utility,
+            )
+        if not isinstance(total, (int, float)) or total < 0:
+            raise FlexConfigError(
+                f"consumption_estimate[{utility!r}] must be a non-negative "
+                f"number; got {total!r}.",
+                field="consumption_estimate",
+                value=total,
+            )
+    return dict(value)
+
+
 def _price_terms(name: str, value, n_points: int):
     """Normalize one configured price to a scalar, or one value per time point.
 
@@ -425,6 +466,17 @@ class FlexCostingData(FlowsheetCostingBlockData):
             "fixed (customer) charge to the horizon length when the horizon is "
             "shorter than the calendar month it starts in. Set False to bill the "
             "full monthly charges regardless of horizon length.",
+        ),
+    )
+    CONFIG.declare(
+        "consumption_estimate",
+        ConfigValue(
+            default=None,
+            domain=_consumption_estimate_domain,
+            description="Estimated total consumption over the horizon, keyed by "
+            "EECO utility ('electric'/'gas'; kWh / m**3). Without it, a tiered "
+            "tariff charge prices at $0 in the objective (a logged warning); with "
+            "it, EECO's convex relaxation of the tier is active instead.",
         ),
     )
     CONFIG.declare(
@@ -961,6 +1013,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 tariff=self._tariff,
                 dr_config=self.dr,
                 prorate=self.config.prorate_monthly_charges,
+                consumption_estimate=self.config.consumption_estimate,
             )
             opex.eq_electricity_cost = pyo.Constraint(
                 expr=opex.electricity_cost == elec.total_operating_cost * cur
@@ -1137,6 +1190,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
             tariff=self._tariff,
             dr_config=self.dr,
             prorate=self.config.prorate_monthly_charges,
+            consumption_estimate=self.config.consumption_estimate,
         )
         opex.add_component(
             f"eq_fuel_cost_{name}",
@@ -1487,3 +1541,44 @@ class FlexCostingData(FlowsheetCostingBlockData):
             total=operating.total + capital.total,
             currency=str(self.base_currency),
         )
+
+    def relaxation_gap(self, model, *, prev_demand_dict=None) -> float:
+        """How much the in-objective proxy diverges from the reported bill.
+
+        Positive means the objective **understated** the reported bill — the
+        case when a tariff has a tiered charge and no ``consumption_estimate``
+        was given, so EECO's relaxation dropped it from the objective entirely.
+        Negative means the objective overstated it, which a poorly chosen
+        estimate can also cause. A natively priced carrier contributes 0, since
+        its in-objective constraint is already exact.
+
+        Post-solve only: on an unsolved model ``opex.electricity_cost``/
+        ``opex.fuel_cost`` sit at their initial value (0), so the gap equals the
+        whole reported bill. With ``prev_demand_dict`` the reported bill carries
+        the rolling-horizon demand offset that the in-objective proxy does not,
+        so the gap then also reflects that offset.
+
+        Args:
+            model: The solved model (see :meth:`report_cost`).
+            prev_demand_dict: See :meth:`report_cost`.
+
+        Returns:
+            ``reported bill − in-objective proxy``, in the report's currency.
+        """
+        reported = self.report_cost(model, prev_demand_dict=prev_demand_dict)
+        relaxed = pyo.value(self.opex.electricity_cost + self.opex.fuel_cost)
+        gap = reported.operating.electricity + reported.operating.fuel - relaxed
+        if abs(gap) > 0.005:
+            _log.configuration_simplifications(
+                "The in-objective (convex-relaxed) cost %s the reported bill by "
+                "%.2f (%.2g%%). The reported cost is the exact post-solve bill; "
+                "the objective the scheduler minimized is a relaxation.",
+                "understates" if gap > 0 else "overstates",
+                abs(gap),
+                (
+                    100 * abs(gap) / reported.operating.total
+                    if reported.operating.total
+                    else 0.0
+                ),
+            )
+        return gap
