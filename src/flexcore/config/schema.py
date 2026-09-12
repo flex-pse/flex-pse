@@ -60,6 +60,7 @@ class SurrogateType(enum.StrEnum):
     EXPONENTIAL = "exponential"
     ARIMA = "arima"
     NEURAL_NETWORK = "neural_network"
+    EXTERNAL_MODEL = "external_model"
 
 
 class SurrogateSpec(_StrictModel):
