@@ -4,6 +4,9 @@ The PyNumero-adapter tests use a hand-written stub driver so they run without
 torch and pin the sparse-matrix contract independently of any framework.
 """
 
+import subprocess
+import sys
+
 import numpy as np
 import pyomo.environ as pyo
 import pytest
@@ -16,8 +19,13 @@ from flexops.core.ops_block import OpsBlock
 from flexops.core.time_block import TimeBlock
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.surrogates import grey_box
-from flexops.surrogates.external import ExternalFramework, ExternalModelDriver
-from flexops.surrogates.grey_box import ExternalModelSurrogate, _ExternalModelGreyBox
+from flexops.surrogates.grey_box import (
+    ExternalFramework,
+    ExternalModelDriver,
+    ExternalModelSurrogate,
+    _ExternalModelGreyBox,
+    get_driver,
+)
 
 
 def _unit(has_pressure: bool = False):
@@ -78,6 +86,42 @@ _EXTERNAL_MODEL_DATA = {
     "input_variables": {"flow_out": "m^3/hr"},
     "output_variables": {"power_electrical": "kW"},
 }
+
+
+# -- framework/driver registry (no framework, no solver) ---------------------
+
+
+@pytest.mark.unit
+@pytest.mark.needs_torch
+def test_get_driver_resolves_pytorch():
+    """The implemented framework resolves to its driver class."""
+    from flexops.surrogates.drivers.torch_driver import TorchDriver
+
+    assert get_driver(ExternalFramework.PYTORCH) is TorchDriver
+    assert get_driver("pytorch") is TorchDriver
+
+
+@pytest.mark.unit
+def test_get_driver_unknown_framework_raises_config_error():
+    """An unknown framework name raises FlexConfigError listing known values."""
+    with pytest.raises(FlexConfigError, match="pytorch"):
+        get_driver("not_a_real_framework")
+
+
+@pytest.mark.unit
+def test_importing_flexops_surrogates_does_not_import_torch():
+    """A bare install imports flexops.surrogates with no torch import."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import flexops.surrogates; "
+            "assert 'torch' not in sys.modules, sys.modules.keys()",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 # -- validation (no framework, no solver) ------------------------------------
@@ -329,7 +373,7 @@ def test_hessian_matches_analytic_second_derivative():
         }
     )
     hess = surrogate._driver.hessian(np.array([2.0]))
-    assert hess == pytest.approx([[12.0]])
+    assert hess[0, 0] == pytest.approx(12.0)
 
 
 # -- swap_relation + real solve (component, needs_cyipopt, needs_torch) -----

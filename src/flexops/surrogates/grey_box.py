@@ -1,19 +1,38 @@
-"""ExternalModelSurrogate: wraps an arbitrary external differentiable model as
-a unit's registered relation, via a PyNumero ``ExternalGreyBoxBlock``.
+"""Wrap an arbitrary external differentiable model as a unit's relation.
 
-No closed-form Pyomo expression is ever derived -- the model stays opaque to
-Pyomo; only its numeric output and derivatives (from an
-:class:`~flexops.surrogates.external.ExternalModelDriver`) are used. Building
-this surrogate requires solving with ``SolverFactory("cyipopt")``; see
+The general idea this module implements: some relationships have no closed
+form a modeler can write as a Pyomo expression, but *do* have external code
+that can report a numeric value and its derivatives at a point -- a fitted
+neural network, a linearized CFD or process simulator, a vendor's own
+sensitivity-aware solver, anything with that shape. Rather than deriving a
+closed-form expression, this module wraps that external code opaquely as a
+PyNumero ``ExternalGreyBoxBlock``: only its numeric output and derivatives
+are used, evaluated at whatever point the optimizer asks for. Building a unit
+with this surrogate therefore requires solving with ``SolverFactory("cyipopt")``,
+the one Pyomo-side solver that can call back into such a block; see
 :mod:`flexcore.solvers.facade` for the guard that raises otherwise.
 
+Which tool actually evaluates the wrapped model is a declared ``framework``
+field on the surrogate's data, resolved to a **driver** -- a small object
+evaluating one model and its first two derivatives at a point
+(:class:`ExternalModelDriver`). PyTorch (wrapping a fitted ``nn.Module`` or a
+plain callable, via ``torch.autograd``) is the only driver implemented today,
+but the driver abstraction exists for future non-neural-network cases too --
+e.g. a CFD model that exposes its own adjoint/sensitivity computation would
+be a new driver here, not a new kind of surrogate. Resolving a framework
+(:func:`get_driver`) is the only place a driver's own heavy dependency
+(``torch``, ...) is imported, and that happens lazily, at call time -- this
+is what keeps ``import flexops.surrogates`` clean on a bare install.
+
 ``pyomo.contrib.pynumero.interfaces.external_grey_box`` is core Pyomo,
-importable with neither ``cyipopt`` nor a framework (``torch``) installed --
-only :func:`~flexops.surrogates.external.get_driver` (called from
-:meth:`ExternalModelSurrogate._validate`) imports a framework.
+importable with neither ``cyipopt`` nor a driver's framework (``torch``)
+installed -- only :func:`get_driver` (called from
+:meth:`ExternalModelSurrogate._validate`) imports one.
 """
 
+import enum
 import importlib
+from abc import ABC, abstractmethod
 from typing import ClassVar
 
 import numpy as np
@@ -30,16 +49,98 @@ from flexcore.config.schema import SurrogateType
 from flexcore.exceptions import FlexConfigError
 from flexops.core.units import parse_units
 from flexops.surrogates.base import Surrogate
-from flexops.surrogates.external import get_driver
 
 _DATA_KEYS = ("framework", "model_path", "input_variables", "output_variables")
 _OPTIONAL_KEYS = ("probe_point",)
 
 
+class ExternalFramework(enum.StrEnum):
+    """Which tool a driver evaluates an external model through.
+
+    Only ``PYTORCH`` is implemented; add a member here only when a concrete
+    new driver is actually being built (e.g. a CFD-model driver), not
+    speculatively ahead of one.
+    """
+
+    PYTORCH = "pytorch"
+
+
+class ExternalModelDriver(ABC):
+    """Evaluate one external model and its first two derivatives at a point.
+
+    Attributes:
+        framework: The :class:`ExternalFramework` this driver implements.
+    """
+
+    framework: ClassVar[ExternalFramework]
+
+    def __init__(self, model, n_inputs: int) -> None:
+        """Store the model and its input dimension.
+
+        Args:
+            model: The fitted, callable external model.
+            n_inputs: Number of scalar inputs the model takes.
+        """
+        self._model = model
+        self._n_inputs = n_inputs
+
+    @abstractmethod
+    def evaluate(self, x: np.ndarray) -> float:
+        """Return the model's scalar output at ``x``."""
+
+    @abstractmethod
+    def jacobian(self, x: np.ndarray) -> np.ndarray:
+        """Dense gradient, shape ``(n_inputs,)``."""
+
+    @abstractmethod
+    def hessian(self, x: np.ndarray) -> np.ndarray:
+        """Dense *full symmetric* Hessian, shape ``(n_inputs, n_inputs)``."""
+
+    @abstractmethod
+    def check_differentiable(self, x: np.ndarray) -> None:
+        """Raise FlexConfigError if the model is not differentiable at ``x``."""
+
+
+_DRIVERS: dict[ExternalFramework, str] = {
+    ExternalFramework.PYTORCH: "flexops.surrogates.drivers.torch_driver.TorchDriver",
+}
+"""dict: framework -> dotted path of its driver class. The extension point
+for a new driver: add a member to :class:`ExternalFramework` and an entry
+here -- no other change is needed to resolve it."""
+
+
+def get_driver(framework: ExternalFramework | str) -> type[ExternalModelDriver]:
+    """Resolve a framework to its driver class, importing it lazily.
+
+    Args:
+        framework: An :class:`ExternalFramework` member or its string value.
+
+    Returns:
+        The driver class.
+
+    Raises:
+        FlexConfigError: If ``framework`` is not a known ``ExternalFramework``
+            value.
+    """
+    try:
+        member = ExternalFramework(framework)
+    except ValueError as exc:
+        known = ", ".join(repr(m.value) for m in ExternalFramework)
+        raise FlexConfigError(
+            f"{framework!r} is not a known ExternalFramework. Known: {known}.",
+            field="framework",
+            value=framework,
+        ) from exc
+    dotted = _DRIVERS[member]
+    module_name, class_name = dotted.rsplit(".", 1)
+    module = importlib.import_module(module_name)
+    return getattr(module, class_name)
+
+
 class _ExternalModelGreyBox(ExternalGreyBoxModel):
-    """Adapts an :class:`~flexops.surrogates.external.ExternalModelDriver`
-    into PyNumero's ``ExternalGreyBoxModel`` interface. One instance per time
-    index -- never shared (see ``ExternalModelSurrogate.build`` pitfall 1).
+    """Adapts an :class:`ExternalModelDriver` into PyNumero's
+    ``ExternalGreyBoxModel`` interface. One instance per time index -- never
+    shared (see ``ExternalModelSurrogate.build`` pitfall 1).
     """
 
     def __init__(self, driver, input_names: list[str], output_name: str, probe: dict):
@@ -127,6 +228,10 @@ class ExternalModelSurrogate(Surrogate):
     ``1.0`` for every input) is the point the grey-box block's input Vars are
     initialized to and the point ``check_differentiable`` is smoke-tested at.
 
+    GPU placement (for the PyTorch driver) is controlled entirely by the
+    model object itself -- call ``model.to("cuda")`` before it is ever named
+    by ``model_path`` -- not by any key here; there is no ``"device"`` field.
+
     Registers no coefficients: a wrapped model's internal weights are not
     something FlexParameterize can regress.
     """
@@ -142,7 +247,6 @@ class ExternalModelSurrogate(Surrogate):
                 entry, ``probe_point`` names a key not in ``input_variables``,
                 ``framework`` is unknown, ``model_path`` does not resolve, or
                 the resolved model fails ``check_differentiable``.
-            NotImplementedError: If ``framework`` is a reserved member.
         """
         unknown = sorted(set(self.data) - set(_DATA_KEYS) - set(_OPTIONAL_KEYS))
         if unknown:

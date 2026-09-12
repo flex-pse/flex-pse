@@ -25,8 +25,11 @@ process parameter rather than swapping a Constraint, so
 from flexops.surrogates.arima import ArimaSurrogate
 from flexops.surrogates.base import Surrogate
 from flexops.surrogates.exponential import ExponentialSurrogate
-from flexops.surrogates.external import ExternalFramework, get_driver
-from flexops.surrogates.grey_box import ExternalModelSurrogate
+from flexops.surrogates.grey_box import (
+    ExternalFramework,
+    ExternalModelSurrogate,
+    get_driver,
+)
 from flexops.surrogates.multilinear import MultilinearSurrogate
 from flexops.surrogates.neural_network import NeuralNetworkSurrogate
 from flexops.surrogates.quadratic import QuadraticSurrogate
