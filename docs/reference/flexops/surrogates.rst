@@ -66,6 +66,50 @@ constant term, read in the declared output units.
 
    MultilinearSurrogate
 
+External model (grey box)
+-------------------------
+
+.. currentmodule:: flexops.surrogates.grey_box
+
+Wraps an arbitrary **external differentiable model** -- an already-fitted
+PyTorch module or plain callable, named by a dotted ``model_path`` -- as a
+unit's relation. No closed-form Pyomo expression is ever derived: the model
+stays opaque to Pyomo, and only its numeric output and derivatives (evaluated
+through a pluggable :class:`~flexops.surrogates.external.ExternalModelDriver`)
+are used, via a PyNumero ``ExternalGreyBoxBlock``. Building this surrogate
+requires solving with ``SolverFactory("cyipopt")`` -- ``get_solver`` raises a
+clear error rather than silently misrouting the model to an ASL solver.
+
+Registers no coefficients: an external model's internal weights are not
+something FlexParameterize can regress, so
+:func:`~flexparameterize.regression.get_regressor` raises a permanent
+:class:`~flexcore.exceptions.FlexConfigError` for
+``SurrogateType.EXTERNAL_MODEL`` rather than a "not implemented yet" stub.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   ExternalModelSurrogate
+
+.. currentmodule:: flexops.surrogates.external
+
+Which framework a spec's model uses is a declared ``framework`` field,
+resolved to a **driver** -- a small object evaluating one model and its first
+two derivatives at a point. PyTorch (via ``torch.autograd``) is the only
+driver implemented; the framework itself is imported only when
+:func:`get_driver` resolves it, so importing ``flexops.surrogates`` never
+imports ``torch``.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   ExternalFramework
+   ExternalModelDriver
+
+.. autofunction:: get_driver
+
 Not yet implemented
 --------------------
 

@@ -24,6 +24,28 @@ idaes get-extensions
 This is a one-time step per environment; `idaes-pse` is already a core
 dependency, so no separate install is needed to run it.
 
+## External-model grey-box surrogates
+
+Wrapping an external differentiable model (`flexops.surrogates.ExternalModelSurrogate`)
+needs `cyipopt` and a framework driver, both in the optional `[greybox]` extra:
+
+```bash
+pip install "flex-pse[greybox]"
+```
+
+`torch` (the only implemented driver today) is a large dependency; on a
+CPU-only machine, install its CPU wheel first to avoid pulling in CUDA
+libraries you don't need:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install "flex-pse[greybox]"
+```
+
+Building this surrogate requires solving with `SolverFactory("cyipopt")`
+directly — `flexcore.solvers.get_solver` refuses a model containing one
+(it cannot pick an ASL/NL-file solver for it) and names `cyipopt` in the error.
+
 ## Verify the install
 
 ```bash
