@@ -986,6 +986,7 @@ class OpsBlockData(UnitModelBlockData):
             self.add_component(block_name, surrogate_block)
             record.surrogate_blocks.append(surrogate_block)
             record.surrogate_block = surrogate_block
+            record.surrogate_instance = surrogate
             block_component = surrogate_block
         else:
             record.surrogate_block = None
@@ -1142,6 +1143,150 @@ class OpsBlockData(UnitModelBlockData):
             if record.surrogate_block is not None
         }
         return result if result else None
+
+    def get_surrogate_spec(self, relation_name: str | None = None) -> dict:
+        """Retrieve the solved surrogate spec from the active surrogate block.
+
+        After solving a model with a surrogate (e.g. ARIMA), this method
+        extracts the current coefficient values, init_values, and
+        training_y_values from the surrogate block so the user can rebuild
+        or refit with the solved state.
+
+        Args:
+            relation_name: The relation whose active surrogate spec to
+                retrieve. If ``None``, use the first/only active surrogate
+                on this unit.
+
+        Returns:
+            A dict with keys ``"coefficients"``, ``"init_values"``, and
+            ``"training_y_values"`` as defined by the surrogate's
+            ``get_surrogate_spec`` implementation.
+
+        Raises:
+            FlexConfigError: If the relation is not registered, has no
+                active surrogate block, or the surrogate does not implement
+                ``get_surrogate_spec``.
+        """
+        if relation_name is not None:
+            record = next(
+                (r for r in self._io_registry.relations if r.name == relation_name),
+                None,
+            )
+            if record is None:
+                raise FlexConfigError(
+                    f"{relation_name!r} is not a registered relation on "
+                    f"{self.name!r}.",
+                    field="relation_name",
+                    value=relation_name,
+                )
+            if record.surrogate_block is None:
+                raise FlexConfigError(
+                    f"{relation_name!r} on {self.name!r} has no active "
+                    "surrogate block; call swap_relation first.",
+                    field="relation_name",
+                    value=relation_name,
+                )
+        else:
+            records = [
+                r for r in self._io_registry.relations if r.surrogate_block is not None
+            ]
+            if not records:
+                raise FlexConfigError(
+                    f"{self.name!r} has no active surrogate blocks; call "
+                    "swap_relation first.",
+                    field="relation_name",
+                    value=None,
+                )
+            record = records[0]
+
+        surrogate = record.surrogate_instance
+        if surrogate is None or not hasattr(surrogate, "get_surrogate_spec"):
+            raise FlexConfigError(
+                f"Surrogate block {record.surrogate_block.local_name!r} "
+                f"on {self.name!r} does not implement get_surrogate_spec; "
+                "cannot extract spec.",
+                field="relation_name",
+                value=record.name,
+            )
+
+        time_block = self._find_time_block()
+        return surrogate.get_surrogate_spec(
+            record.surrogate_block, record.target, time_block.time_index
+        )
+
+    def get_surrogate_objective(
+        self,
+        relation_name: str | None = None,
+        **kwargs,
+    ):
+        """Return the active surrogate's objective expression, if it exposes one.
+
+        This mirrors :meth:`get_surrogate_spec`: the method picks the active
+        surrogate on the selected relation and delegates to the surrogate block's
+        objective helper when available, without creating a persistent Objective.
+
+        Args:
+            relation_name: The relation whose active surrogate objective to fetch.
+                If ``None``, use the first/only active surrogate on this unit.
+            **kwargs: Extra arguments forwarded to the surrogate block's objective
+                helper (for example, ``innovation_scale`` or ``time_index``).
+
+        Returns:
+            A Pyomo expression representing the objective contribution from the
+            active surrogate block.
+
+        Raises:
+            FlexConfigError: If there is no active surrogate block, or the active
+                surrogate block does not expose a regression/objective helper.
+        """
+        if relation_name is not None:
+            record = next(
+                (r for r in self._io_registry.relations if r.name == relation_name),
+                None,
+            )
+            if record is None:
+                raise FlexConfigError(
+                    f"{relation_name!r} is not a registered relation on "
+                    f"{self.name!r}.",
+                    field="relation_name",
+                    value=relation_name,
+                )
+            if record.surrogate_block is None:
+                raise FlexConfigError(
+                    f"{relation_name!r} on {self.name!r} has no active "
+                    "surrogate block; call swap_relation first.",
+                    field="relation_name",
+                    value=relation_name,
+                )
+        else:
+            records = [
+                r for r in self._io_registry.relations if r.surrogate_block is not None
+            ]
+            if not records:
+                raise FlexConfigError(
+                    f"{self.name!r} has no active surrogate blocks; call "
+                    "swap_relation first.",
+                    field="relation_name",
+                    value=None,
+                )
+            record = records[0]
+
+        block = record.surrogate_block
+        objective = getattr(block, "get_regression_objective", None)
+        if callable(objective):
+            return objective(**kwargs)
+
+        objective = getattr(block, "get_objective", None)
+        if callable(objective):
+            return objective(**kwargs)
+
+        raise FlexConfigError(
+            f"Surrogate block {block.local_name!r} on {self.name!r} does not "
+            "expose a usable objective expression; add a helper like "
+            "get_regression_objective() to the surrogate block.",
+            field="relation_name",
+            value=record.name,
+        )
 
     def switch_surrogate_block(self, block_name: str) -> None:
         """Switch to a previously built surrogate block by its local name.

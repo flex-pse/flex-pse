@@ -49,6 +49,12 @@ nitpick_ignore = [
     # pydantic documents its validation error under pydantic_core, so the name
     # config-facing Raises: entries use has no intersphinx target.
     ("py:exc", "pydantic.ValidationError"),
+    # pandas type hints (pd.DataFrame, etc.) resolve to internal pandas class
+    # paths that are not present in the pandas intersphinx inventory.
+    ("py:class", "pandas.core.frame.DataFrame"),
+    ("py:class", "pandas.core.indexes.datetimes.DatetimeIndex"),
+    ("py:class", "pandas.core.series.Series"),
+    ("py:class", "pandas._libs.tslibs.timestamps.Timestamp"),
 ]
 
 # autodoc renders the subscripted generics in a pydantic model's constructor

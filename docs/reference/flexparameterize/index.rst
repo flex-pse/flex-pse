@@ -76,9 +76,20 @@ Protocol, and reduces its fit to a shared
 
    LinearRegressor
 
+.. currentmodule:: flexparameterize.regression.arima
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   ArimaRegressor
+
 .. currentmodule:: flexparameterize.regression
 
 .. autofunction:: get_regressor
+
+Examples
+--------
 
 Applying a fit to a live model
 ------------------------------

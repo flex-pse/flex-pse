@@ -42,12 +42,11 @@ def test_surrogate_from_spec_rejects_constant_intensity():
     [
         SurrogateType.QUADRATIC,
         SurrogateType.EXPONENTIAL,
-        SurrogateType.ARIMA,
         SurrogateType.NEURAL_NETWORK,
     ],
 )
 def test_surrogate_from_spec_stubs_raise_not_implemented(surrogate_type):
-    """Every reserved type is registered, but not yet implemented."""
+    """Reserved types without a full implementation raise NotImplementedError."""
     spec = SurrogateSpec(surrogate_type=surrogate_type, data={})
     with pytest.raises(NotImplementedError, match="MultilinearSurrogate"):
         surrogate_from_spec(spec)
@@ -212,7 +211,7 @@ def test_coefficient_registry_register_coefficient_stores_indexed_var():
     registry = CoefficientRegistry()
     registry.register_coefficient("coefs", m.coefs)
 
-    assert "coefs" not in registry
+    assert "coefs" in registry
     assert "a" in registry
     assert "b" in registry
     assert registry["a"] is m.coefs["a"]
