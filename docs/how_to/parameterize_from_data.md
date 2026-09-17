@@ -95,10 +95,7 @@ regressor = LinearRegressor().fit(
     aliased[["power_electrical"]],
 )
 regressor.coefficients   # {"flow_out": ..., "outlet_state.pressure": ..., "intercept": ...}
-spec = regressor.to_surrogate_spec(
-    input_units={"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
-    output_units="kW",
-)
+spec = regressor.to_surrogate_spec()
 ```
 
 `LinearRegressor` needs the `[parameterize]` extra's `scikit-learn`
@@ -251,16 +248,125 @@ recovery = SurrogateSpec(
 apply_to_model(m, raw, tagmap, surrogates={"facility.ro": {"split_definition": recovery}})
 ```
 
-The two forms of `surrogates=` mix per unit in one call. A plain spec
-attaches the unit's own energy relation. A mapping attaches one or more of
-its other registered relations. Only a relationship the unit registered via
-`register_relation` can be named this way. Its mass/energy balance was
-never registered, so it can never be swapped. See
-[the config schema](../explanation/config_schema.md) for which relations
-each unit registers.
+The two forms of `surrogates=` mix per unit in one call: a plain spec attaches
+the unit's own energy relation, a mapping attaches one or more of its other
+registered relations. Only a relationship the unit registered via
+`register_relation` can be named this way — its mass/energy balance was never
+registered and so can never be swapped; see
+[the config schema](../explanation/config_schema.md) for which relations each
+unit registers.
 
-## See it running
+## Time-series surrogate: ARIMA
 
-Want worked, solved examples built on the FlexOps models this pipeline
-parameterizes? Check the interactive examples at
-[flex-pse.github.io/flex-pse-examples](https://flex-pse.github.io/flex-pse-examples/).
+For processes whose output is a time series driven by both past values and
+exogenous controls, `ArimaRegressor` fits an ARIMAX model and `ArimaSurrogate`
+embeds the mean equation directly inside the Pyomo model.  The result is a
+surrogate that can be differentiated and solved as part of an optimization
+problem.
+
+### Fit
+
+```python
+from flexparameterize.regression.arima import ArimaRegressor
+
+regressor = ArimaRegressor(order=(1, 0, 0), max_ar_persistence=None).fit(X_train, y_train)
+spec = regressor.to_surrogate_spec()
+```
+
+`order=(p, d, q)` may use `d=0` or `d=1`; seasonal differencing and seasonal
+AR/MA terms are not supported.  When `max_ar_persistence` is set, fits whose
+AR root is too close to the unit circle raise `FlexConfigError` — the surrogate
+would be numerically unstable inside an optimizer.
+
+### Build the Pyomo surrogate
+
+```python
+from flexops.core.ops_block import OpsBlock
+from flexops.core.time_block import TimeBlock
+from flexops.properties.simple_aqueous import SimpleAqueousFlow
+from flexops.surrogates import ArimaSurrogate
+import pyomo.environ as pyo
+from pyomo.environ import units as pyunits
+
+m = pyo.ConcreteModel()
+m.time_block = TimeBlock(
+    start_date="2025-01-01T00:00",
+    end_date="2025-01-02T00:00",
+    time_step=1 * pyunits.hr,
+)
+m.props = SimpleAqueousFlow(has_pressure=False)
+m.unit = OpsBlock(property_package=m.props)
+m.unit.add_stream_ports()
+
+m.unit.add_component(
+    "biogas_m3_hour",
+    pyo.Var(m.time_block.time_index, units=pyunits.m**3 / pyunits.hr),
+)
+m.unit.register_io_variable(m.unit.biogas_m3_hour, role="output")
+
+for name, units in [("feed_volume_kg", pyunits.kg), ("TS_pct", pyunits.dimensionless)]:
+    m.unit.add_component(name, pyo.Var(m.time_block.time_index, units=units))
+    m.unit.register_io_variable(getattr(m.unit, name), role="input")
+
+# Placeholder relation -> swap in the ArimaSurrogate
+m.unit.add_component(
+    "biogas_m3_hour_relation",
+    pyo.Constraint(m.time_block.time_index, rule=lambda b, t: pyo.Constraint.Skip),
+)
+m.unit.register_relation(m.unit.biogas_m3_hour_relation, target=m.unit.biogas_m3_hour)
+
+surrogate = ArimaSurrogate(spec.data)
+m.unit.swap_relation("biogas_m3_hour_relation", surrogate)
+```
+
+`swap_relation` is the only place the ARIMA equality constraint is built.
+Calling `ArimaSurrogate.build()` directly does **not** add an enforcing
+constraint; it only attaches auxiliary `Param` objects that carry the fitted
+coefficients and residuals.
+
+### Optimize
+
+Fix historical and forecast exogenous inputs to their observed values, unfix
+the decision horizon, set bounds, and solve:
+
+```python
+# Fix exog for in-sample + forecast window
+for t in range(n_insample + n_fcst):
+    m.unit.feed_volume_kg[t].set_value(observed_feed[t])
+    m.unit.feed_volume_kg[t].fix()
+    m.unit.TS_pct[t].set_value(observed_ts[t])
+    m.unit.TS_pct[t].fix()
+
+# Unfix and bound the optimization window
+for t in range(n_insample + n_fcst, n_total):
+    m.unit.feed_volume_kg[t].unfix()
+    m.unit.feed_volume_kg[t].setlb(feed_min)
+    m.unit.feed_volume_kg[t].setub(feed_max)
+    m.unit.TS_pct[t].unfix()
+    m.unit.TS_pct[t].setlb(ts_min)
+    m.unit.TS_pct[t].setub(ts_max)
+
+m.obj = pyo.Objective(
+    expr=sum((m.unit.biogas_m3_hour[t] - target) ** 2 for t in opt_window),
+    sense=pyo.minimize,
+)
+
+solver = pyo.SolverFactory("ipopt")
+result = solver.solve(m, tee=False)
+```
+
+Because the surrogate encodes the **mean** ARIMA equation (not a Kalman
+filter), in-sample predictions match the direct fit's fitted values exactly,
+and multi-step forecasts follow the deterministic mean-equation recursion.
+That determinism is what makes the surrogate ideal for optimization: same
+inputs → same output, with smooth derivatives.
+
+### Validation
+
+The example compares three horizons:
+
+| Horizon | Method | Check |
+|---------|--------|-------|
+| In-sample (last day of training) | Pyomo surrogate vs direct fit | RMSE ≈ 0 |
+| 2-day forecast | Pyomo surrogate vs direct fit | RMSE ≈ 0 |
+| 1-day optimization | Pyomo optimized mean vs observed target | close match |

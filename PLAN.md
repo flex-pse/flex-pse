@@ -241,6 +241,12 @@ existing work orders and cross-references in M14/M15 stay findable.
 - **Validate/Evaluate** — run detailed ODE/PDE models in parallel with the
   scheduler and flag when optimization outputs leave the feasible envelope.
   Requires an ODE model library that does not exist yet.
+- **M10b: multi-dimensional surrogates + multi-component properties** — skipped
+  by decision, not deferred for a technical reason found later. Its draft work
+  order remains at `plan/milestones/future/M10b_parameterize_multicomponent.md`
+  for reference if this is revisited, but M11 no longer depends on it and was
+  rewritten to not assume any of it (multi-output regression, in particular,
+  is now explicitly out of scope — see M11's own update note).
 - **Repo split** — when a package reaches roughly 20 modules / 10k lines *and* has
   external users of its own, promote it to its own repository. `flexcore.config`'s
   versioned schema (JSON canonical, pydantic authority, exported JSON Schema) is
