@@ -88,7 +88,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install "git+${{ format('{0}/{1}@{2}', github.server_url, github.repository, github.ref) }}"
+      - run: pip install "git+${{ format('{0}/{1}@{2}', github.server_url, github.repository, github.event.pull_request.head.sha || github.sha) }}"
       # Run from a scratch dir (no repo checkout exists) so the *installed*
       # package is exercised.
       - working-directory: ${{ runner.temp }}
@@ -111,7 +111,7 @@ jobs:
           PY
       # flexops.testing imports pytest, so it needs the `testing` extra; the
       # bare install above deliberately does not carry it.
-      - run: pip install "flex-pse[testing] @ git+${{ format('{0}/{1}@{2}', github.server_url, github.repository, github.ref) }}"
+      - run: pip install "flex-pse[testing] @ git+${{ format('{0}/{1}@{2}', github.server_url, github.repository, github.event.pull_request.head.sha || github.sha) }}"
       - working-directory: ${{ runner.temp }}
         run: |
           python -c "import flexops.testing; print('OK: flexops.testing with the [testing] extra')"
