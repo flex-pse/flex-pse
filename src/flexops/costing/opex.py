@@ -25,10 +25,16 @@ exception hierarchy.
    evaluate EECO on a **fixed, realized** aggregate-power numpy array to compute
    the TRUE (de-relaxed) cost — the user-facing reported number.
 
-Because EECO convex-relaxes a non-convex pricing structure (notably the tiered
-energy surcharge, which the relaxation drops when no consumption estimate is
-supplied), the in-objective total is a proxy that is **≤ or ≈** the post-hoc
-true bill. The raw solver objective is never the user-facing cost.
+Because EECO convex-relaxes a non-convex pricing structure, the in-objective
+total is only a proxy for the post-hoc true bill for most tiered charges.
+EECO prices a *top* tier at one constant rate exactly, with no
+``consumption_estimate`` needed. Any other tier — a middle tier, or one whose
+rate is not uniform across its own window — is dropped from the objective
+entirely without an estimate (EECO warns), including a base tier that shares
+its ``name`` with a higher one, so the proxy **understates** the true bill for
+those. With an estimate, EECO's relaxation prices such a tier instead, but only
+approximately, so the proxy can then land on **either side** of the true bill.
+The raw solver objective is never the user-facing cost.
 
 **Units.** Electrical power is a **kW** series and fuel usage is a **volumetric
 m³/hr** series — always, since fuel is metered and billed on volume. Both are
@@ -853,6 +859,7 @@ def _add_utility_cost(
     utility: str,
     dr_config: "DRConfig | None",
     prorate: bool = True,
+    consumption_estimate: "dict[str, float] | None" = None,
 ) -> OperatingCostHandles:
     """Ask EECO to build the convex-relaxed in-objective cost for one utility.
 
@@ -875,6 +882,12 @@ def _add_utility_cost(
         dr_config: DR container (v0: stored via the no-op hook only).
         prorate: Prorate monthly-assessed demand and fixed charges to the horizon
             (see :func:`monthly_scale_factor`).
+        consumption_estimate: Estimated total consumption over the horizon,
+            keyed by EECO utility (``"electric"``/``"gas"``; kWh / m³). A top
+            tier at one constant rate is priced exactly by EECO regardless; any
+            other tier (a middle tier, or one whose rate varies within its own
+            window) prices at $0 in the objective without an estimate (EECO
+            warns), and only approximately with one.
 
     Returns:
         The renamed :class:`OperatingCostHandles`.
@@ -894,6 +907,7 @@ def _add_utility_cost(
 
     _build_dr(block, dr_config)
 
+    estimate = (consumption_estimate or {}).get(utility, 0)
     itemized, _ = _eeco_costs.calculate_itemized_cost(
         charge_dict,
         {utility: power},
@@ -902,6 +916,7 @@ def _add_utility_cost(
         demand_scale_factor=scale,
         fixed_scale_factor=scale,
         model=block,
+        consumption_estimate=estimate,
         **_eeco_consumption_units(),
     )
     util_costs = itemized[utility]
@@ -952,6 +967,7 @@ def add_electricity_cost(
     tariff: pd.DataFrame,
     dr_config: "DRConfig | None" = None,
     prorate: bool = True,
+    consumption_estimate: "dict[str, float] | None" = None,
 ) -> OperatingCostHandles:
     """Build EECO's convex-relaxed in-objective **electricity** cost on ``block``.
 
@@ -977,6 +993,8 @@ def add_electricity_cost(
         dr_config: Optional DR container (v0: no constraints built).
         prorate: Prorate monthly demand and fixed charges to the horizon length
             (see :func:`monthly_scale_factor`).
+        consumption_estimate: See :func:`_add_utility_cost`; only the
+            ``"electric"`` entry, if any, applies here.
 
     Returns:
         The :class:`OperatingCostHandles` for the electric utility.
@@ -994,6 +1012,7 @@ def add_electricity_cost(
         utility=_ELECTRIC,
         dr_config=dr_config,
         prorate=prorate,
+        consumption_estimate=consumption_estimate,
     )
 
 
@@ -1007,6 +1026,7 @@ def add_fuel_cost(
     fuel_type: str = "gas",
     dr_config: "DRConfig | None" = None,
     prorate: bool = True,
+    consumption_estimate: "dict[str, float] | None" = None,
 ) -> OperatingCostHandles:
     """Build EECO's convex-relaxed in-objective fuel cost on ``block``.
 
@@ -1028,6 +1048,8 @@ def add_fuel_cost(
         dr_config: Optional DR container (v0: no constraints built).
         prorate: Prorate monthly demand and fixed charges to the horizon length
             (see :func:`monthly_scale_factor`).
+        consumption_estimate: See :func:`_add_utility_cost`; only the
+            entry for ``fuel_type``'s EECO utility, if any, applies here.
 
     Returns:
         The :class:`OperatingCostHandles` for the fuel utility.
@@ -1053,6 +1075,7 @@ def add_fuel_cost(
         utility=_FUEL_UTILITY[fuel_type],
         dr_config=dr_config,
         prorate=prorate,
+        consumption_estimate=consumption_estimate,
     )
 
 
@@ -1066,6 +1089,7 @@ def add_operating_cost(
     fuel_power=None,
     dr_config: "DRConfig | None" = None,
     prorate: bool = True,
+    consumption_estimate: "dict[str, float] | None" = None,
 ) -> OperatingCostHandles:
     """Build the facility's whole in-objective operating cost — electric **and** fuel.
 
@@ -1099,6 +1123,8 @@ def add_operating_cost(
             units); defaults to ``block.fuel_usage`` if present, else the fuel leg
             is skipped.
         dr_config: Optional DR container (v0: no constraints built).
+        consumption_estimate: See :func:`_add_utility_cost`; routed to
+            each leg's matching utility entry.
 
     Returns:
         A combined :class:`OperatingCostHandles`: ``energy_cost``,
@@ -1133,6 +1159,7 @@ def add_operating_cost(
             tariff=tariff,
             dr_config=dr_config,
             prorate=prorate,
+            consumption_estimate=consumption_estimate,
         )
     if fuel_power is not None:
         per_utility[_GAS] = add_fuel_cost(
@@ -1143,6 +1170,7 @@ def add_operating_cost(
             tariff=tariff,
             dr_config=dr_config,
             prorate=prorate,
+            consumption_estimate=consumption_estimate,
         )
 
     legs = list(per_utility.values())

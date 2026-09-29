@@ -7,6 +7,7 @@ in-objective cost on a toy model, solve the trivial LP with HiGHS, and check the
 relaxed proxy against the post-hoc bill, the DR no-op, and LP classification.
 """
 
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,7 @@ import pandas as pd
 import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
+from pyomo.repn import generate_standard_repn
 
 from flexcore.exceptions import FlexConfigError
 from flexcore.solvers import ProblemClass, classify
@@ -119,8 +121,14 @@ def test_golden_monthly_bill():
 
 @pytest.mark.component
 @pytest.mark.needs_highs
-def test_relaxed_leq_or_approx_true():
-    """The relaxed in-objective total is <= or ~= the post-hoc true bill."""
+@pytest.mark.parametrize("consumption_estimate", [None, {"electric": 74500.0}])
+def test_relaxed_leq_or_approx_true(consumption_estimate):
+    """The relaxed in-objective total is <= or ~= the post-hoc true bill.
+
+    The demo tariff's tier2 surcharge is a top tier at one constant rate, which
+    EECO prices exactly regardless of consumption_estimate; the two totals
+    match whether or not one is supplied.
+    """
     from flexcore.solvers import get_solver
 
     tariff = load_tariff(_TARIFF_JSON)
@@ -134,6 +142,7 @@ def test_relaxed_leq_or_approx_true():
         time_index=index,
         dt_hours=1.0,
         tariff=tariff,
+        consumption_estimate=consumption_estimate,
     )
     m.objective = pyo.Objective(expr=handles.total_operating_cost, sense=pyo.minimize)
     get_solver(model=m, prefer="highs").solve(m)
@@ -141,6 +150,7 @@ def test_relaxed_leq_or_approx_true():
     relaxed = pyo.value(handles.total_operating_cost)
     true_cost = evaluate_cost(load, tariff, dt_hours=1.0, time_index=index)
     assert relaxed <= true_cost + 1e-3
+    assert true_cost - relaxed == pytest.approx(0.0, abs=0.01)
 
 
 @pytest.mark.component
@@ -233,6 +243,103 @@ def _flat_two_utility_tariff():
         },
     ]
     return load_tariff(records)
+
+
+def _tiered_tariff():
+    """A two-tier electric energy charge, both tiers sharing one ``name``.
+
+    The shared name is what makes EECO link them (``get_next_limit`` matches on
+    utility, type, name and dates), so the base tier also carries a finite
+    ``next_limit`` -- the case in which a missing estimate zeroes *every* tier.
+    """
+    base = {
+        "utility": "electric",
+        "type": "energy",
+        "name": "allday",
+        "month_start": 1,
+        "month_end": 12,
+        "weekday_start": 0,
+        "weekday_end": 6,
+        "hour_start": 0,
+        "hour_end": 24,
+        "basic_charge_limit (metric)": 0,
+        "charge (metric)": 0.10,
+        "units": "$/kWh",
+    }
+    tier2 = dict(
+        base, **{"basic_charge_limit (metric)": 50000, "charge (metric)": 0.20}
+    )
+    return load_tariff([base, tier2])
+
+
+def _tier_coefficient(block: pyo.Block, limit: int) -> float:
+    """The per-step price coefficient EECO built for one tiered charge key.
+
+    Only the *non-exact* tier path (a finite ``next_limit``) builds a
+    ``_multiply_constraint`` at all; a zero coefficient there is dropped
+    entirely by ``generate_standard_repn``, so no term found means ``0.0``,
+    not "not applicable".
+    """
+    for con in block.component_objects(pyo.Constraint, active=True):
+        if f"_{limit}_multiply_constraint" not in con.name:
+            continue
+        repn = generate_standard_repn(con[0].body)
+        terms = {
+            var.name: coef
+            for var, coef in zip(repn.linear_vars, repn.linear_coefs, strict=True)
+        }
+        return next((abs(c) for n, c in terms.items() if "multiply" not in n), 0.0)
+    raise AssertionError(f"no _{limit}_multiply_constraint on {block.name}")
+
+
+@pytest.mark.unit
+def test_tiered_charge_is_not_silently_zeroed():
+    """A non-exact tiered charge prices at zero without an estimate, and EECO
+    warns; a top tier at one constant rate is exact regardless."""
+    tariff = _tiered_tariff()
+    index = pd.date_range("2025-07-01", periods=_N24, freq="h")
+    load = np.full(_N24, 5000.0)
+
+    without = pyo.ConcreteModel()
+    without.step = pyo.RangeSet(0, _N24 - 1)
+    without.agg = pyo.Var(without.step, initialize=5000.0)
+    with pytest.warns(UserWarning, match="allday_20250701_20250701_0"):
+        add_electricity_cost(
+            block=without,
+            electrical_power=without.agg,
+            time_index=index,
+            dt_hours=1.0,
+            tariff=tariff,
+        )
+    # The base tier (limit 0) has a finite next_limit (both tiers share a
+    # name), so it still needs an estimate and is dropped without one.
+    assert _tier_coefficient(without, 0) == 0.0
+    # The top tier (limit 50000, one constant rate) is exactly LP-representable
+    # and needs no estimate: EECO builds a sum/max epigraph, not a multiply
+    # constraint, for it at all.
+    assert not any(
+        "_50000_multiply_constraint" in con.name
+        for con in without.component_objects(pyo.Constraint, active=True)
+    )
+    assert any(
+        "_50000_over_limit_constraint" in con.name
+        for con in without.component_objects(pyo.Constraint, active=True)
+    )
+
+    with_est = pyo.ConcreteModel()
+    with_est.step = pyo.RangeSet(0, _N24 - 1)
+    with_est.agg = pyo.Var(with_est.step, initialize=5000.0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        add_electricity_cost(
+            block=with_est,
+            electrical_power=with_est.agg,
+            time_index=index,
+            dt_hours=1.0,
+            tariff=tariff,
+            consumption_estimate={"electric": float(load.sum())},
+        )
+    assert _tier_coefficient(with_est, 0) == pytest.approx(0.10)
 
 
 def _two_utility_model(elec_kw: np.ndarray, gas_flow: np.ndarray) -> pyo.ConcreteModel:

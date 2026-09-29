@@ -26,6 +26,22 @@
       "additionalProperties": false,
       "description": "Tariff, price, demand-response, and solve/objective options for a run.",
       "properties": {
+        "consumption_estimate": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Estimated total consumption over the horizon, keyed by EECO utility ('electric'/'gas'; kWh / m^3). Without it, a tiered tariff charge prices at $0 in the objective (a logged warning); with it, EECO's convex relaxation of the tier is active instead.",
+          "title": "Consumption Estimate"
+        },
         "currency": {
           "default": "USD",
           "description": "Currency basis to use when no tariff is given; a tariff's own currency basis always wins.",

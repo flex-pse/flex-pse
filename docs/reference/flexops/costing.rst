@@ -170,11 +170,36 @@ on a **fixed, realized** aggregate power numpy array to compute the TRUE
 (no longer relaxed) cost, the bill the user actually sees (see
 :doc:`../../explanation/reported_cost`).
 
-The relaxation drops the tiered energy surcharge when no consumption estimate
-is supplied, so the in-objective total is a proxy that is **≤ or ≈** the true
-bill computed after the fact. The raw solver objective is never reported as
-the cost the user sees. See :doc:`../../explanation/reported_cost` for why
-that distinction matters to a user.
+EECO prices a *top* tier (no higher tier above it) at one constant rate
+exactly, with no ``consumption_estimate`` needed. Any other tiered energy or
+demand charge — a middle tier, or one whose rate is not uniform across its own
+window — is dropped from the objective entirely when no consumption estimate
+is supplied (EECO warns), including a base tier that shares its ``name`` with
+a higher one, so the in-objective total **understates** the post-hoc true bill
+for those. The raw solver objective is never reported as the
+user-facing cost.
+
+.. note:: **Tiered charges and the consumption estimate**
+
+   Pass ``consumption_estimate`` (a mapping of EECO utility, ``"electric"`` or
+   ``"gas"``, to an estimated total consumption over the horizon in kWh / m^3)
+   to :func:`add_electricity_cost`/:func:`add_fuel_cost`/:func:`add_operating_cost`,
+   or ``CostingConfig.consumption_estimate`` at the model-config layer, to
+   include a middle or non-uniform tier in the objective. Without it, EECO's
+   relaxation prices such a tier at $0 and warns; with it, the relaxation is
+   active but only approximate, so the in-objective total can then land on
+   either side of the true bill. Use :meth:`FlexCostingData.relaxation_gap` to
+   check by how much.
+
+   Two caveats: tier limits are monthly while the estimate is over the
+   *horizon*, so on a sub-month horizon a tier only triggers if the horizon
+   alone exceeds the limit (M12's rolling-horizon carry is the correct fix for
+   that). And for a tiered *demand* charge, EECO converts a scalar estimate into
+   an *average* kW, which can still miss a real peak.
+
+   EECO links a charge's tiers by matching utility, charge type, ``name`` and
+   dates: give every tier of one charge the same ``name``, or EECO will not
+   link them and even a limit-0 base tier will never see a finite next limit.
 
 .. admonition:: Timezones / DST
 
