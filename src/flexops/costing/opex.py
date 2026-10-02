@@ -853,6 +853,7 @@ def _add_utility_cost(
     utility: str,
     dr_config: "DRConfig | None",
     prorate: bool = True,
+    decomposition_type: str | None = None,
 ) -> OperatingCostHandles:
     """Ask EECO to build the convex-relaxed in-objective cost for one utility.
 
@@ -875,6 +876,10 @@ def _add_utility_cost(
         dr_config: DR container (v0: stored via the no-op hook only).
         prorate: Prorate monthly-assessed demand and fixed charges to the horizon
             (see :func:`monthly_scale_factor`).
+        decomposition_type: EECO's net-power decomposition, e.g.
+            ``"absolute_value"``, which splits power into non-negative imports and
+            exports so a tariff's ``export`` charges apply. ``None`` (default)
+            skips it, as before. EECO documents which types are linear.
 
     Returns:
         The renamed :class:`OperatingCostHandles`.
@@ -901,6 +906,7 @@ def _add_utility_cost(
         desired_utility=utility,
         demand_scale_factor=scale,
         fixed_scale_factor=scale,
+        decomposition_type=decomposition_type,
         model=block,
         **_eeco_consumption_units(),
     )
@@ -952,6 +958,7 @@ def add_electricity_cost(
     tariff: pd.DataFrame,
     dr_config: "DRConfig | None" = None,
     prorate: bool = True,
+    decomposition_type: str | None = None,
 ) -> OperatingCostHandles:
     """Build EECO's convex-relaxed in-objective **electricity** cost on ``block``.
 
@@ -977,6 +984,10 @@ def add_electricity_cost(
         dr_config: Optional DR container (v0: no constraints built).
         prorate: Prorate monthly demand and fixed charges to the horizon length
             (see :func:`monthly_scale_factor`).
+        decomposition_type: EECO's net-power decomposition, e.g.
+            ``"absolute_value"``, which splits power into non-negative imports and
+            exports so a tariff's ``export`` charges apply. ``None`` (default)
+            skips it, as before. EECO documents which types are linear.
 
     Returns:
         The :class:`OperatingCostHandles` for the electric utility.
@@ -994,6 +1005,7 @@ def add_electricity_cost(
         utility=_ELECTRIC,
         dr_config=dr_config,
         prorate=prorate,
+        decomposition_type=decomposition_type,
     )
 
 
@@ -1202,6 +1214,7 @@ def _itemized_cost(
     time_index: "pd.DatetimeIndex | None" = None,
     prorate: bool = True,
     prev_demand_dict: "dict | None" = None,
+    decomposition_type: str | None = None,
 ) -> dict:
     """Evaluate EECO's itemized cost on a fixed, realized usage array.
 
@@ -1219,6 +1232,10 @@ def _itemized_cost(
         prev_demand_dict: Optional prior demand carry for billing this horizon as
             one slice of a longer billing period (see :func:`evaluate_cost`).
             ``None`` (default) bills the horizon standalone.
+        decomposition_type: EECO's net-power decomposition, e.g.
+            ``"absolute_value"``, which splits power into non-negative imports and
+            exports so a tariff's ``export`` charges apply. ``None`` (default)
+            skips it, as before. EECO documents which types are linear.
 
     Returns:
         EECO's per-utility itemized-cost dict (``itemized[utility]``), plus a
@@ -1237,6 +1254,7 @@ def _itemized_cost(
         prev_demand_dict=prev_demand_dict,
         demand_scale_factor=scale,
         fixed_scale_factor=scale,
+        decomposition_type=decomposition_type,
         **_eeco_consumption_units(),
     )
     util_costs = itemized[utility]
@@ -1280,6 +1298,7 @@ def evaluate_cost(
     time_index: "pd.DatetimeIndex | None" = None,
     prorate: bool = True,
     prev_demand_dict: "dict | None" = None,
+    decomposition_type: str | None = None,
 ) -> float:
     """Compute the TRUE (de-relaxed) electricity cost on a fixed realized load.
 
@@ -1304,6 +1323,10 @@ def evaluate_cost(
             one slice of a longer billing period; EECO then bills only the
             incremental demand above the carry. ``None`` (the default) bills the
             horizon standalone.
+        decomposition_type: EECO's net-power decomposition, e.g.
+            ``"absolute_value"``, which splits power into non-negative imports and
+            exports so a tariff's ``export`` charges apply. ``None`` (default)
+            skips it, as before. EECO documents which types are linear.
 
     Returns:
         The horizon-total electricity cost in dollars.
@@ -1317,6 +1340,7 @@ def evaluate_cost(
             time_index=time_index,
             prorate=prorate,
             prev_demand_dict=prev_demand_dict,
+            decomposition_type=decomposition_type,
         )["total"]
     )
 

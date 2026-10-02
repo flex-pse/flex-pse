@@ -1442,3 +1442,186 @@ def test_priced_boundary_blocks_get_their_own_opex_line_items():
     assert pyo.value(opex.scalar_cost_plant_potable) == pytest.approx(
         -2.0 * 3.0 * dt_hours * n, abs=0.01
     )
+
+
+# -- export price (native, LP-compatible) --------------------------------
+
+_IMPORT_PRICE = 0.10 * _USD / pyunits.kWh
+_EXPORT_PRICE = 0.05 * _USD / pyunits.kWh
+# 12 h importing 100 kW, then 12 h exporting 40 kW.
+_NET_KW = {t: (100.0 if t < 12 else -40.0) for t in range(24)}
+
+
+def _export_priced_costing(**kwargs) -> pyo.ConcreteModel:
+    """A natively priced costing model whose net electrical power is fixed."""
+    kwargs.setdefault("export_price", _EXPORT_PRICE)
+    m = _pump_tank_costing(
+        no_tariff=True, energy_prices={"electrical": _IMPORT_PRICE}, **kwargs
+    )
+    m.costing.eq_aggregate_power.deactivate()
+    for t, kw in _NET_KW.items():
+        m.costing.aggregate_power[t, "electrical"].fix(kw)
+    return m
+
+
+@pytest.mark.unit
+def test_export_price_above_import_price_raises():
+    """An export price above the import price would let the LP arbitrage the grid."""
+    with pytest.raises(FlexConfigError, match="export"):
+        _pump_tank_costing(
+            no_tariff=True,
+            energy_prices={"electrical": _IMPORT_PRICE},
+            export_price=0.20 * _USD / pyunits.kWh,
+        )
+
+
+@pytest.mark.unit
+def test_export_price_per_period_above_import_price_raises():
+    """The export <= import check applies at every time point."""
+    export = [0.05] * 23 + [0.11]
+    with pytest.raises(FlexConfigError, match="export"):
+        _pump_tank_costing(
+            no_tariff=True,
+            energy_prices={"electrical": 0.10},
+            export_price=export,
+        )
+
+
+@pytest.mark.unit
+def test_export_price_requires_native_import_price():
+    """An export price needs a native import price to be compared against."""
+    with pytest.raises(FlexConfigError, match="export_price"):
+        _pump_tank_costing(export_price=_EXPORT_PRICE)
+
+
+@pytest.mark.unit
+def test_no_export_price_builds_no_grid_variables():
+    """Single-price (net metering) models are unchanged."""
+    m = _pump_tank_costing(no_tariff=True, energy_prices={"electrical": _IMPORT_PRICE})
+    assert m.costing.find_component("grid_import") is None
+    assert m.costing.find_component("grid_export") is None
+
+
+@pytest.mark.unit
+def test_export_priced_constraints_are_unit_consistent():
+    """The grid split and the two-price bill are dimensionally consistent."""
+    m = _export_priced_costing()
+    assert_units_consistent(m.costing)
+
+
+@pytest.mark.unit
+def test_report_cost_split_electricity():
+    """split_electricity reports import cost and export revenue next to the net."""
+    m = _export_priced_costing()
+    for t, kw in _NET_KW.items():
+        m.costing.grid_import[t].set_value(max(kw, 0.0))
+        m.costing.grid_export[t].set_value(max(-kw, 0.0))
+    _propagate(m.costing)
+
+    split = m.costing.report_cost(m, split_electricity=True).operating
+    assert split.electricity_import == pytest.approx(120.0)
+    assert split.electricity_export == pytest.approx(24.0)
+    assert split.electricity == pytest.approx(96.0)
+    assert split.total == pytest.approx(96.0)
+
+
+@pytest.mark.unit
+def test_report_cost_split_defaults_off():
+    """Without the flag the split fields stay unset."""
+    m = _export_priced_costing()
+    for t, kw in _NET_KW.items():
+        m.costing.grid_import[t].set_value(max(kw, 0.0))
+        m.costing.grid_export[t].set_value(max(-kw, 0.0))
+    _propagate(m.costing)
+
+    operating = m.costing.report_cost(m).operating
+    assert operating.electricity == pytest.approx(96.0)
+    assert operating.electricity_import is None
+    assert operating.electricity_export is None
+
+
+@pytest.mark.unit
+def test_report_cost_split_single_price_splits_by_sign():
+    """With one price the split falls out of the sign of the net power."""
+    m = _pump_tank_costing(no_tariff=True, energy_prices={"electrical": _IMPORT_PRICE})
+    _propagate(m.costing)  # before fixing: it would overwrite the fixed power
+    m.costing.eq_aggregate_power.deactivate()
+    for t, kw in _NET_KW.items():
+        m.costing.aggregate_power[t, "electrical"].fix(kw)
+
+    split = m.costing.report_cost(m, split_electricity=True).operating
+    assert split.electricity_import == pytest.approx(120.0)
+    assert split.electricity_export == pytest.approx(48.0)
+    assert split.electricity == pytest.approx(72.0)
+
+
+@pytest.mark.unit
+def test_report_cost_split_on_tariff_raises():
+    """A tariff bill is EECO's and cannot be split into import and export."""
+    m = _pump_tank_costing()
+    _set_power(m, {t: 100.0 for t in range(24)})
+    _propagate(m.costing)
+    with pytest.raises(FlexConfigError, match="split_electricity"):
+        m.costing.report_cost(m, split_electricity=True)
+
+
+@pytest.mark.unit
+def test_decomposition_type_is_passed_to_eeco_on_tariff_path():
+    """FlexCosting(decomposition_type=...) splits net power for the tariff bill."""
+    m = _pump_tank_costing(decomposition_type="absolute_value")
+    assert m.costing.opex.find_component("electric_positive") is not None
+    assert m.costing.opex.find_component("electric_negative") is not None
+
+
+@pytest.mark.unit
+def test_decomposition_type_defaults_to_none():
+    """Existing tariff models are unchanged: no decomposition unless requested."""
+    m = _pump_tank_costing()
+    assert m.costing.opex.find_component("electric_positive") is None
+
+
+def _tariff_with_export_charge():
+    """A flat electric tariff with an energy charge and an export charge."""
+    base = {
+        "utility": "electric",
+        "month_start": 1,
+        "month_end": 12,
+        "weekday_start": 0,
+        "weekday_end": 6,
+        "hour_start": 0,
+        "hour_end": 24,
+        "basic_charge_limit (metric)": 0,
+        "units": "$/kWh",
+    }
+    return load_tariff(
+        [
+            {**base, "type": "energy", "name": "imp", "charge (metric)": 0.10},
+            {**base, "type": "export", "name": "exp", "charge (metric)": 0.05},
+        ]
+    )
+
+
+@pytest.mark.unit
+def test_tariff_export_charge_without_decomposition_raises():
+    """EECO bills the net series as both import and export unless it is decomposed."""
+    with pytest.raises(FlexConfigError, match="decomposition_type"):
+        _pump_tank_costing(tariff=_tariff_with_export_charge())
+
+
+@pytest.mark.unit
+def test_tariff_export_charge_with_decomposition_builds():
+    """Naming a decomposition type satisfies the export-charge check."""
+    m = _pump_tank_costing(
+        tariff=_tariff_with_export_charge(), decomposition_type="absolute_value"
+    )
+    assert m.costing.opex.find_component("electric_negative") is not None
+
+
+@pytest.mark.unit
+def test_tariff_export_charge_ignored_when_electricity_priced_natively():
+    """A native electricity price bypasses the tariff, so its export charge is moot."""
+    m = _pump_tank_costing(
+        tariff=_tariff_with_export_charge(),
+        energy_prices={"electrical": _IMPORT_PRICE},
+    )
+    assert m.costing.opex.find_component("electric_negative") is None

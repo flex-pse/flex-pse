@@ -86,6 +86,17 @@ def test_build_model_matches_hand_built(monkeypatch):
 
 
 @pytest.mark.unit
+def test_build_model_export_price_splits_grid_power():
+    """A config export_price reaches FlexCosting and builds the grid split."""
+    cfg = json.loads(_CONFIG.read_text())
+    del cfg["costing"]["tariff_source"]
+    cfg["costing"]["energy_prices"] = {"electrical": {"value": 0.1, "units": "USD/kWh"}}
+    cfg["costing"]["export_price"] = {"value": 0.05, "units": "USD/kWh"}
+    m = build_model(cfg)
+    assert m.costing.find_component("grid_export") is not None
+
+
+@pytest.mark.unit
 def test_build_model_bad_config_raises():
     """A malformed unit config errors with the offending field path in the message."""
     bad = {

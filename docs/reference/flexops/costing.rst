@@ -400,6 +400,46 @@ Every cost lives in one of two sub-blocks built by
    sizing Vars across them is a planned wrapper for design mode, not built
    yet.
 
+.. note:: **A separate export price.**
+
+   By default exports are credited at the import price, because export is
+   negative net power (net metering). To sell for less than you buy, give
+   ``export_price`` alongside a native ``energy_prices["electrical"]``::
+
+       m.costing = fo.FlexCosting(
+           time_block=m.time_block,
+           energy_prices={"electrical": pool_price},
+           export_price=0.5 * pool_price,
+       )
+
+   The export price takes the same forms and units as an ``energy_prices``
+   entry. The net electrical power is then split into ``grid_import`` and
+   ``grid_export`` (kW, both non-negative) with
+   ``aggregate_power[t, "electrical"] == grid_import[t] - grid_export[t]``, and
+   electricity costs ``Σ_t (import_price[t] × grid_import[t] − export_price[t] ×
+   grid_export[t]) × dt``. Because the export price may not exceed the import
+   price, the optimizer never imports and exports in the same period, so the
+   model stays an LP with no binaries. An export price above the import price at
+   any time point raises :class:`~flexcore.exceptions.FlexConfigError` (the
+   check skips a price component that has no value yet). ``export_price``
+   requires a native import price and does not apply to tariff-billed
+   electricity. ``grid_import`` and ``grid_export`` can carry import and export
+   limits directly.
+
+.. note:: **Exports on the tariff path.**
+
+   An EECO tariff can carry ``export`` charges, but EECO only applies them once
+   net power is split into imports and exports. Pass
+   ``decomposition_type="absolute_value"`` (or any type EECO supports) to
+   ``FlexCosting`` and it is handed to EECO for both the in-objective cost and
+   the post-solve bill (``report_cost``). The default ``None`` skips the split.
+   A tariff with an electric ``export`` charge requires it: with ``None`` EECO
+   bills the net power as both imports and exports, so ``FlexCosting`` raises
+   :class:`~flexcore.exceptions.FlexConfigError` instead of misbilling.
+   EECO owns the available types and whether a type keeps the problem linear;
+   its ``"absolute_value"`` type is nonlinear, so use ``export_price`` above
+   when you need an LP.
+
 .. note:: **Reporting rule.**
 
    :meth:`~FlexCostingData.report_cost` returns a categorized
@@ -410,7 +450,11 @@ Every cost lives in one of two sub-blocks built by
    ``aggregate_fuel_usage``, ``0`` when the model burns none), and fixed is
    the config constant. In v0 ``dr_revenue`` and the whole ``capital``
    breakdown are zero placeholders, so the structure is stable as those
-   features land. See :doc:`../../explanation/reported_cost` for why this
+   features land. Pass ``split_electricity=True`` to ``report_cost`` to also
+   get ``operating.electricity_import`` (import cost) and
+   ``operating.electricity_export`` (export revenue, a positive magnitude)
+   alongside the net ``electricity``; it needs a native electricity price.
+   See :doc:`../../explanation/reported_cost` for why this
    number, and not the solver's internal objective, is the one a user should
    trust.
 

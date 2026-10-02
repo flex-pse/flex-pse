@@ -32,6 +32,19 @@
           "title": "Currency",
           "type": "string"
         },
+        "decomposition_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional EECO decomposition of net electrical power into imports and exports on the tariff path (e.g. 'absolute_value'), so the tariff's export charges apply. Passed straight to EECO.",
+          "title": "Decomposition Type"
+        },
         "discount_rate": {
           "default": 0.08,
           "description": "Annual discount rate (fraction, e.g. 0.08 = 8%). Used alone as the effective rate when interest_rate is unset; otherwise it deflates interest_rate into a real effective rate. An effective rate of 0 falls back to straight-line 1/lifetime.",
@@ -65,6 +78,18 @@
           "default": null,
           "description": "Optional native prices keyed by carrier or fuel name ('electrical', or a fuel such as 'natural_gas'). A carrier priced here is billed at that price instead of through the tariff, so a run with every carrier priced needs no tariff at all. Each price is flat over the horizon or given per time point.",
           "title": "Energy Prices"
+        },
+        "export_price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PriceSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional price paid for exported electricity, in the same form as an energy_prices entry. Needs an 'electrical' entry in energy_prices and must not exceed it at any time point. Omit it to credit exports at the import price."
         },
         "fixed_operating_cost": {
           "default": 0.0,
