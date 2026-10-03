@@ -202,6 +202,33 @@ surrogate.
 
    Digestor
 
+.. currentmodule:: flexops.unit_models.electrolyzer
+
+An electrolyzer system whose boundary takes in the stack, the gas-liquid
+separators on both electrode sides, and the electrolyte recirculation loop, so
+every port carries a single phase. Stack current drives it: Faraday's law
+sets each product's molar rate, cell voltage sets the electrical draw, and both
+gas outlets leave at the fixed operating temperature and pressure. The
+separators hold a liquid inventory, so make-up water can be fed at a
+different time from when the stack consumes it. The per-product Faradaic relations and
+``power_electrical_relation`` are registered, so you can replace them in place with a
+fitted Faradaic-efficiency or polarization curve. ``WaterElectrolyzer`` fixes
+the product to hydrogen and takes its defaults from ``technology`` (PEM or AEM).
+``CO2Electrolyzer`` takes a product table and adds the CO2 feed, set by
+single-pass conversion, along with carbonate crossover to the anode. Every gas
+port builds from ``gas_property_package`` unless it is given its own package
+(``cathode_gas_property_package``, ``anode_gas_property_package``, or
+``co2_property_package``), so each stream can carry a different gas.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   Electrolyzer
+   WaterElectrolyzer
+   CO2Electrolyzer
+
 Boundary blocks
 ---------------
 
