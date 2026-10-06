@@ -104,53 +104,54 @@ def _is_multi_tariff_source(source) -> bool:
     return len(source) > 0 and not all(isinstance(item, Mapping) for item in source)
 
 
-def _energy_prices_domain(value):
-    """Validate the ``energy_prices`` mapping: carrier name -> price.
-
-    Checks only that the input is a mapping of string keys to a supported
-    price form. The length of a per-period price is checked against the
-    horizon in :meth:`FlexCostingData.build`, which is where the
-    ``time_block`` is available.
+def _price_mapping_domain(field: str):
+    """Return a ConfigValue domain validating a carrier name -> price mapping.
 
     Args:
-        value: The configured mapping, or ``None``.
+        field: The config field the domain validates, named in errors.
 
     Returns:
-        The mapping unchanged (``{}`` for ``None``).
+        A domain taking the configured mapping (or ``None``) and returning it
+        as a dict (``{}`` for ``None``).
 
     Raises:
-        FlexConfigError: If it is not a mapping, a key is not a string, or a price
-            is itself a mapping (which would be costed over its keys).
+        FlexConfigError: From the domain, if the value is not a mapping, a key
+            is not a string, or a price is itself a mapping.
     """
-    if value is None:
-        return {}
-    if not isinstance(value, Mapping):
-        raise FlexConfigError(
-            "energy_prices must be a mapping of carrier or fuel name to a price; "
-            f"got {type(value).__name__}.",
-            field="energy_prices",
-            value=value,
-        )
-    for name, price in value.items():
-        if not isinstance(name, str):
+
+    def domain(value):
+        if value is None:
+            return {}
+        if not isinstance(value, Mapping):
             raise FlexConfigError(
-                f"energy_prices keys must be carrier or fuel names (strings); got "
-                f"{name!r}.",
-                field="energy_prices",
-                value=name,
+                f"{field} must be a mapping of carrier or fuel name to a price; "
+                f"got {type(value).__name__}.",
+                field=field,
+                value=value,
             )
-        if isinstance(price, Mapping):
-            raise FlexConfigError(
-                f"energy_prices[{name!r}] is a mapping, which would be costed over "
-                "its keys. A price is a single value, an array-like with one value "
-                "per time point, or a Pyomo component indexed over the horizon.",
-                field="energy_prices",
-                value=price,
-            )
-    return dict(value)
+        for name, price in value.items():
+            if not isinstance(name, str):
+                raise FlexConfigError(
+                    f"{field} keys must be carrier or fuel names (strings); got "
+                    f"{name!r}.",
+                    field=field,
+                    value=name,
+                )
+            if isinstance(price, Mapping):
+                raise FlexConfigError(
+                    f"{field}[{name!r}] is a mapping, which would be costed over "
+                    "its keys. A price is a single value, an array-like with one "
+                    "value per time point, or a Pyomo component indexed over the "
+                    "horizon.",
+                    field=field,
+                    value=price,
+                )
+        return dict(value)
+
+    return domain
 
 
-def _price_terms(name: str, value, n_points: int):
+def _price_terms(field: str, name: str, value, n_points: int):
     """Normalize one configured price to a scalar, or one value per time point.
 
     Recognizes the three price forms, in the order they must be tested: a Pyomo
@@ -159,6 +160,7 @@ def _price_terms(name: str, value, n_points: int):
     is ``Sized`` with length 1, so the component check has to come first.
 
     Args:
+        field: The config field the price came from, for error messages.
         name: The carrier or fuel name, for error messages.
         value: The configured price.
         n_points: The number of time points a per-period price must cover.
@@ -178,20 +180,20 @@ def _price_terms(name: str, value, n_points: int):
         index = value.index_set()
         if len(index) != n_points:
             raise FlexConfigError(
-                f"energy_prices[{name!r}] is indexed by {index.name!r}, which has "
+                f"{field}[{name!r}] is indexed by {index.name!r}, which has "
                 f"{len(index)} members, but the horizon has {n_points} time points. "
                 "An indexed price needs exactly one value per time point.",
-                field="energy_prices",
+                field=field,
                 value=name,
             )
         return [value[i] for i in index]
     if isinstance(value, Sized):
         if len(value) != n_points:
             raise FlexConfigError(
-                f"energy_prices[{name!r}] has {len(value)} values, but the horizon "
+                f"{field}[{name!r}] has {len(value)} values, but the horizon "
                 f"has {n_points} time points. A price is either a single value or "
                 "an array-like with exactly one value per time point.",
-                field="energy_prices",
+                field=field,
                 value=name,
             )
         return list(value)
@@ -261,6 +263,13 @@ class OperatingCostBreakdown:
         dr_revenue: Demand-response incentive credit (subtracted); ``0`` in v0
             (DR is containers-only).
         total: ``electricity + fuel + fixed + scalar - dr_revenue``.
+        imports: Import cost per natively priced carrier, keyed like
+            ``energy_prices``; ``None`` unless
+            ``report_cost(..., split_imports_exports=True)``. Tariff-billed
+            carriers are left out.
+        exports: Export revenue per natively priced carrier, as a positive
+            magnitude (net cost is ``imports[c] - exports[c]``); ``None`` unless
+            ``split_imports_exports=True``.
     """
 
     electricity: float
@@ -269,6 +278,8 @@ class OperatingCostBreakdown:
     scalar: float
     dr_revenue: float
     total: float
+    imports: dict[str, float] | None = None
+    exports: dict[str, float] | None = None
 
 
 @dataclasses.dataclass
@@ -393,7 +404,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
         "energy_prices",
         ConfigValue(
             default=None,
-            domain=_energy_prices_domain,
+            domain=_price_mapping_domain("energy_prices"),
             description="Optional native prices, as a mapping of carrier or fuel "
             "name to its price. Keys are 'electrical' or a registered fuel name. A "
             "price is a single value (flat over the horizon), an array-like with "
@@ -404,6 +415,34 @@ class FlexCostingData(FlowsheetCostingBlockData):
             "which is read in the currency over the carrier's metered quantity — "
             "kWh for a power carrier, m**3 for a fuel. A carrier priced here is "
             "billed natively and is NOT sent to EECO, so it needs no tariff.",
+        ),
+    )
+    CONFIG.declare(
+        "export_prices",
+        ConfigValue(
+            default=None,
+            domain=_price_mapping_domain("export_prices"),
+            description="Optional prices paid for exports, as a mapping of carrier "
+            "or fuel name to its price, in the same forms and units as "
+            "energy_prices. Each key needs a native energy_prices entry, and its "
+            "export price must not exceed that import price at any time point. A "
+            "carrier priced here has its net series split into non-negative "
+            "import_<carrier> and export_<carrier>, billed at the import and "
+            "export prices; the model stays an LP because exporting is never more "
+            "profitable than importing is costly. A carrier left out credits "
+            "exports at its import price (net metering).",
+        ),
+    )
+    CONFIG.declare(
+        "decomposition_type",
+        ConfigValue(
+            default=None,
+            description="Optional EECO decomposition of net electrical power into "
+            "imports and exports on the tariff path, e.g. 'absolute_value', so "
+            "the tariff's export charges apply to an exporting site. Passed "
+            "straight to EECO, which owns the available types and whether they "
+            "are linear. None skips the decomposition. Has no effect on native "
+            "prices; use export_prices for those.",
         ),
     )
     CONFIG.declare(
@@ -565,8 +604,9 @@ class FlexCostingData(FlowsheetCostingBlockData):
 
         Raises:
             FlexConfigError: If not exactly one of ``tariff_file``/``tariff`` is
-                given, ``time_block`` is missing, or a per-period price in
-                ``energy_prices`` does not have one value per time point.
+                given, ``time_block`` is missing, an ``export_prices`` key has no
+                ``energy_prices`` entry, or a per-period price does not have one
+                value per time point.
         """
         # super().build() runs build_global_params, which resolves the tariff
         # (exclusivity check) and sets self._tariff, self._currency, base_currency.
@@ -586,9 +626,22 @@ class FlexCostingData(FlowsheetCostingBlockData):
         # so an unset energy_prices is None rather than the domain's {}.
         n_points = self.config.time_block.n_points
         self._prices: dict[str, Any] = {
-            name: _price_terms(name, value, n_points)
+            name: _price_terms("energy_prices", name, value, n_points)
             for name, value in (self.config.energy_prices or {}).items()
         }
+        self._export_prices: dict[str, Any] = {
+            name: _price_terms("export_prices", name, value, n_points)
+            for name, value in (self.config.export_prices or {}).items()
+        }
+
+        for name in self._export_prices:
+            if name not in self._prices:
+                raise FlexConfigError(
+                    f"export_prices[{name!r}] needs a native import price to compare "
+                    f"against: give energy_prices={{{name!r}: ...}} as well.",
+                    field="export_prices",
+                    value=name,
+                )
 
         self.dr = DRConfig(program=load_dr_program(self.config.dr_event_file))
 
@@ -839,7 +892,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
             tb.time_index, self._fuel_names, rule=_agg_rule
         )
 
-    def _price_for(self, carrier: str, per_quantity_units):
+    def _price_for(self, carrier: str, per_quantity_units, *, export: bool = False):
         """Return the configured native price for ``carrier``, or ``None``.
 
         A carrier priced here is billed natively and never sent to EECO. The
@@ -852,12 +905,13 @@ class FlexCostingData(FlowsheetCostingBlockData):
             carrier: A power carrier key (``"electrical"``) or a fuel name.
             per_quantity_units: Units to assume for a bare price, as currency over
                 the metered quantity (e.g. ``USD/kWh``).
+            export: Read the ``export_prices`` entry instead of ``energy_prices``.
 
         Returns:
             ``None`` if not priced, a units-carrying price for a flat price, or a
             ``{time point: units-carrying price}`` dict for a per-period price.
         """
-        terms = self._prices.get(carrier)
+        terms = (self._export_prices if export else self._prices).get(carrier)
         if terms is None:
             return None
         if isinstance(terms, list):
@@ -897,6 +951,38 @@ class FlexCostingData(FlowsheetCostingBlockData):
             value=carrier,
         )
 
+    def _check_export_price(
+        self, carrier, import_price, export_price, per_quantity_units
+    ) -> None:
+        """Require ``export_price[t] <= import_price[t]`` wherever both have values.
+
+        If an export price beat the import price, the LP would import and export
+        in the same period to profit from the spread, bounded only by grid limits.
+        A price that is a Pyomo component with no value yet cannot be checked.
+
+        Raises:
+            FlexConfigError: If the export price exceeds the import price at any
+                time point.
+        """
+
+        def magnitude(price, t):
+            price = price[t] if isinstance(price, Mapping) else price
+            return pyo.value(
+                pyunits.convert(price, per_quantity_units), exception=False
+            )
+
+        for t in self.config.time_block.time_index:
+            imported, exported = magnitude(import_price, t), magnitude(export_price, t)
+            if imported is not None and exported is not None and exported > imported:
+                raise FlexConfigError(
+                    f"export_prices[{carrier!r}] ({exported}) exceeds its import "
+                    f"price ({imported}) at time point {t}; the model would import "
+                    "and export at once to profit from the spread. Lower the export "
+                    "price to at most the import price.",
+                    field="export_prices",
+                    value=carrier,
+                )
+
     def _build_opex(self, tb, cur, dt_hours) -> None:
         """Build the ``opex`` block: electricity + fuel + fixed + scalar (Vars).
 
@@ -919,18 +1005,31 @@ class FlexCostingData(FlowsheetCostingBlockData):
         opex.electricity_cost = pyo.Var(
             initialize=0.0, units=cur, doc="Electricity cost (base currency)."
         )
-        price = self._price_for("electrical", cur / pyunits.kWh)
-        if price is not None:
+        if "electrical" in self._prices:
             opex.eq_electricity_cost = pyo.Constraint(
                 expr=opex.electricity_cost
-                == self._priced_integral(
+                == self._native_cost(
                     pyo.Reference(self.aggregate_power[:, "electrical"]),
-                    price,
+                    "electrical",
+                    cur / pyunits.kWh,
                     tb,
                     dt_hours,
                 )
             )
         else:
+            electric_charges = self._tariff[self._tariff["utility"] == "electric"]
+            if (
+                electric_charges["type"] == "export"
+            ).any() and self.config.decomposition_type is None:
+                raise FlexConfigError(
+                    "The tariff has an electric 'export' charge, but "
+                    "decomposition_type is None. EECO then bills the net power as "
+                    "both imports and exports, which misprices any site that "
+                    "exports. Set decomposition_type (e.g. 'absolute_value'), or "
+                    "price electricity natively with energy_prices and export_prices.",
+                    field="decomposition_type",
+                    value=None,
+                )
             # EECO bills bare numbers, so hand it the magnitude in EECO's units
             # (convert, then divide the units out) rather than a units-carrying
             # expression, which would make EECO's own conversion constraints
@@ -961,6 +1060,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 tariff=self._tariff,
                 dr_config=self.dr,
                 prorate=self.config.prorate_monthly_charges,
+                decomposition_type=self.config.decomposition_type,
             )
             opex.eq_electricity_cost = pyo.Constraint(
                 expr=opex.electricity_cost == elec.total_operating_cost * cur
@@ -1024,6 +1124,62 @@ class FlexCostingData(FlowsheetCostingBlockData):
 
         self._build_dr()  # no-op in v0
         self._assert_cost_units_consistent(fuel_names, scalar_names)
+
+    def _native_cost(self, series, carrier, per_quantity_units, tb, dt_hours):
+        """Return the native cost of one carrier's net series.
+
+        With an ``export_prices`` entry, the series is split into non-negative
+        ``opex.import_<carrier>`` and ``opex.export_<carrier>`` billed at the
+        import and export prices; otherwise the net series is billed at the
+        import price.
+
+        Args:
+            series: The carrier's time-indexed net rate (positive is import).
+            carrier: The carrier or fuel name, keyed as in ``energy_prices``.
+            per_quantity_units: Units to assume for a bare price (currency over
+                the metered quantity).
+            tb: The TimeBlock.
+            dt_hours: Timestep length in hours.
+
+        Returns:
+            The cost expression.
+
+        Raises:
+            FlexConfigError: If the export price exceeds the import price.
+        """
+        price = self._price_for(carrier, per_quantity_units)
+        export_price = self._price_for(carrier, per_quantity_units, export=True)
+        if export_price is None:
+            return self._priced_integral(series, price, tb, dt_hours)
+
+        self._check_export_price(carrier, price, export_price, per_quantity_units)
+        units = pyunits.get_units(series[tb.time_index.first()])
+        imported = pyo.Var(
+            tb.time_index,
+            domain=pyo.NonNegativeReals,
+            initialize=0.0,
+            units=units,
+            doc=f"Imported {carrier} (the positive part of its net series).",
+        )
+        exported = pyo.Var(
+            tb.time_index,
+            domain=pyo.NonNegativeReals,
+            initialize=0.0,
+            units=units,
+            doc=f"Exported {carrier} (the negative part, as a positive magnitude).",
+        )
+        self.opex.add_component(f"import_{carrier}", imported)
+        self.opex.add_component(f"export_{carrier}", exported)
+        self.opex.add_component(
+            f"eq_import_export_{carrier}",
+            pyo.Constraint(
+                tb.time_index,
+                rule=lambda _b, t: series[t] == imported[t] - exported[t],
+            ),
+        )
+        return self._priced_integral(
+            imported, price, tb, dt_hours
+        ) - self._priced_integral(exported, export_price, tb, dt_hours)
 
     def _priced_integral(self, series, price, tb, dt_hours, *, convert_to=None):
         """Return ``Σ_t price[t] × series[t] × dt`` — the one native cost formula.
@@ -1097,15 +1253,26 @@ class FlexCostingData(FlowsheetCostingBlockData):
         )
         opex.add_component(f"fuel_cost_{name}", cost)
 
-        price = self._price_for(name, cur / pyunits.m**3)
-        if price is not None:
+        if name in self._prices:
             opex.add_component(
                 f"eq_fuel_cost_{name}",
                 pyo.Constraint(
-                    expr=cost == self._priced_integral(usage, price, tb, dt_hours)
+                    expr=cost
+                    == self._native_cost(usage, name, cur / pyunits.m**3, tb, dt_hours)
                 ),
             )
             return
+
+        gas_charges = self._tariff[self._tariff["utility"] == "gas"]
+        if (gas_charges["type"] == "export").any():
+            raise FlexConfigError(
+                "The tariff has a gas 'export' charge, but EECO's gas leg cannot "
+                "split net usage into imports and exports, so it would misprice "
+                f"any {name!r} the site sells. Remove the gas export rows, or price "
+                f"{name!r} natively with energy_prices and export_prices.",
+                field="tariff",
+                value=name,
+            )
 
         # EECO namespaces its gas_* components by utility, not by fuel; give each
         # fuel its own sub-block so multiple fuels never collide.
@@ -1383,7 +1550,55 @@ class FlexCostingData(FlowsheetCostingBlockData):
         total = priced * quantity_units * dt_hours * pyunits.hr
         return float(pyo.value(pyunits.convert(total, self._currency)))
 
-    def report_cost(self, model, *, prev_demand_dict=None) -> CostReport:
+    def _native_split_cost(
+        self,
+        carrier: str,
+        realized,
+        per_quantity_units,
+        dt_hours: float,
+        *,
+        quantity_units=EECO_POWER_UNITS,
+    ) -> tuple[float, float]:
+        """Return a natively priced carrier's realized import cost and export revenue.
+
+        With an export price the split is the solved ``import_<carrier>`` /
+        ``export_<carrier>``; otherwise it is the sign of the realized net series,
+        both halves at the import price.
+
+        Args:
+            carrier: The carrier or fuel name, keyed as in ``energy_prices``.
+            realized: The realized net rates, in time-index order.
+            per_quantity_units: Units to assume for a bare price.
+            dt_hours: Timestep length in hours.
+            quantity_units: The units ``realized`` is in.
+
+        Returns:
+            ``(import cost, export revenue)`` in the base currency; the net cost is
+            their difference.
+        """
+        time_index = self.config.time_block.time_index
+        price = self._price_for(carrier, per_quantity_units)
+        export_price = self._price_for(carrier, per_quantity_units, export=True)
+        if export_price is None:
+            imported = np.clip(realized, 0.0, None)
+            exported = np.clip(-realized, 0.0, None)
+            export_price = price
+        else:
+            import_var = self.opex.find_component(f"import_{carrier}")
+            export_var = self.opex.find_component(f"export_{carrier}")
+            imported = np.array([pyo.value(import_var[t]) for t in time_index])
+            exported = np.array([pyo.value(export_var[t]) for t in time_index])
+        import_cost = self._natively_priced_cost(
+            imported, price, dt_hours, time_index, quantity_units=quantity_units
+        )
+        export_revenue = self._natively_priced_cost(
+            exported, export_price, dt_hours, time_index, quantity_units=quantity_units
+        )
+        return import_cost, export_revenue
+
+    def report_cost(
+        self, model, *, prev_demand_dict=None, split_imports_exports: bool = False
+    ) -> CostReport:
         """Return the reported, categorized cost, evaluated **post-solve**.
 
         The user-facing reported cost. Operating
@@ -1401,6 +1616,11 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 EECO bills only the demand incremental above the running peak,
                 rather than recounting the peak in every window. ``None`` (default)
                 bills the horizon standalone.
+            split_imports_exports: If ``True``, also report each natively priced
+                carrier's import cost and export revenue (``imports`` /
+                ``exports`` on the operating breakdown), alongside the net
+                ``electricity`` and ``fuel``. Tariff-billed carriers are left out,
+                as EECO bills them only as a net figure.
 
         Returns:
             The :class:`CostReport` breakdown, whose ``currency`` names the basis
@@ -1412,11 +1632,13 @@ class FlexCostingData(FlowsheetCostingBlockData):
         realized_power = np.array(
             [pyo.value(self.aggregate_electrical_power[t]) for t in tb.time_index]
         )
-        price = self._price_for("electrical", self._currency / pyunits.kWh)
-        if price is not None:
-            electricity = self._natively_priced_cost(
-                realized_power, price, dt_hours, tb.time_index
+        imports: dict[str, float] = {}
+        exports: dict[str, float] = {}
+        if "electrical" in self._prices:
+            imports["electrical"], exports["electrical"] = self._native_split_cost(
+                "electrical", realized_power, self._currency / pyunits.kWh, dt_hours
             )
+            electricity = imports["electrical"] - exports["electrical"]
         else:
             electricity = evaluate_cost(
                 realized_power,
@@ -1426,6 +1648,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 time_index=tb.datetime_index,
                 prorate=self.config.prorate_monthly_charges,
                 prev_demand_dict=prev_demand_dict,
+                decomposition_type=self.config.decomposition_type,
             )
 
         fuel = 0.0
@@ -1433,15 +1656,15 @@ class FlexCostingData(FlowsheetCostingBlockData):
             realized_usage = np.array(
                 [pyo.value(self.aggregate_fuel_usage[t, name]) for t in tb.time_index]
             )
-            price = self._price_for(name, self._currency / pyunits.m**3)
-            if price is not None:
-                fuel += self._natively_priced_cost(
+            if name in self._prices:
+                imports[name], exports[name] = self._native_split_cost(
+                    name,
                     realized_usage,
-                    price,
+                    self._currency / pyunits.m**3,
                     dt_hours,
-                    tb.time_index,
                     quantity_units=EECO_GAS_USAGE_UNITS,
                 )
+                fuel += imports[name] - exports[name]
             else:
                 fuel += evaluate_fuel_cost(
                     realized_usage,
@@ -1474,6 +1697,8 @@ class FlexCostingData(FlowsheetCostingBlockData):
             scalar=scalar,
             dr_revenue=dr_revenue,
             total=electricity + fuel + fixed + scalar - dr_revenue,
+            imports=imports if split_imports_exports else None,
+            exports=exports if split_imports_exports else None,
         )
         # Capex is an empty placeholder in v0 -> no per-component capital costs.
         by_component: dict[str, float] = {}

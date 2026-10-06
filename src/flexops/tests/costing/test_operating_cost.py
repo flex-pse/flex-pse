@@ -471,3 +471,50 @@ def test_evaluate_cost_sub_billing_period(
         prev_demand_dict=prev,
     )
     assert total == pytest.approx(expected, abs=0.005)
+
+
+@pytest.mark.unit
+def test_add_electricity_cost_forwards_decomposition_type():
+    """decomposition_type reaches EECO, which then splits power into import/export."""
+    tariff = _flat_two_utility_tariff()
+    index = pd.date_range("2025-07-01", periods=_N24, freq="h")
+    m = _two_utility_model(np.full(_N24, 100.0), np.zeros(_N24))
+    add_electricity_cost(
+        block=m,
+        electrical_power=m.power_electrical,
+        time_index=index,
+        dt_hours=1.0,
+        tariff=tariff,
+        decomposition_type="absolute_value",
+    )
+    assert m.find_component("electric_positive") is not None
+    assert m.find_component("electric_negative") is not None
+
+
+@pytest.mark.unit
+def test_add_electricity_cost_default_does_not_decompose():
+    """Without decomposition_type EECO is called exactly as before."""
+    tariff = _flat_two_utility_tariff()
+    index = pd.date_range("2025-07-01", periods=_N24, freq="h")
+    m = _two_utility_model(np.full(_N24, 100.0), np.zeros(_N24))
+    add_electricity_cost(
+        block=m,
+        electrical_power=m.power_electrical,
+        time_index=index,
+        dt_hours=1.0,
+        tariff=tariff,
+    )
+    assert m.find_component("electric_positive") is None
+
+
+@pytest.mark.unit
+def test_evaluate_cost_accepts_decomposition_type_on_exporting_load():
+    """The post-hoc bill takes the same decomposition_type and handles net export."""
+    tariff = _flat_two_utility_tariff()
+    index = pd.date_range("2025-07-01", periods=_N24, freq="h")
+    load = np.where(np.arange(_N24) < 12, 100.0, -40.0)
+    kwargs = dict(dt_hours=1.0, time_index=index)
+    decomposed = evaluate_cost(
+        load, tariff, decomposition_type="absolute_value", **kwargs
+    )
+    assert np.isfinite(decomposed)

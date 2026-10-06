@@ -278,6 +278,19 @@ class CostingConfig(_StrictModel):
         "carrier priced needs no tariff at all. Each price is flat over the horizon "
         "or given per time point.",
     )
+    export_prices: dict[str, PriceSpec] | None = Field(
+        default=None,
+        description="Optional prices paid for exports, keyed like energy_prices "
+        "('electrical' or a fuel name). Each key needs a matching energy_prices "
+        "entry and must not exceed it at any time point. A carrier left out "
+        "credits exports at its import price.",
+    )
+    decomposition_type: str | None = Field(
+        default=None,
+        description="Optional EECO decomposition of net electrical power into "
+        "imports and exports on the tariff path (e.g. 'absolute_value'), so the "
+        "tariff's export charges apply. Passed straight to EECO.",
+    )
     currency: str = Field(
         default="USD",
         description="Currency basis to use when no tariff is given; a tariff's own "
