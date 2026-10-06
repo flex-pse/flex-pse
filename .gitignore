@@ -222,3 +222,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .vscode/settings.json
+*.png
+
+# Local planning notes (kept on disk, not tracked)
+plan/

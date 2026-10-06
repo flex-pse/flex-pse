@@ -95,10 +95,7 @@ regressor = LinearRegressor().fit(
     aliased[["power_electrical"]],
 )
 regressor.coefficients   # {"flow_out": ..., "outlet_state.pressure": ..., "intercept": ...}
-spec = regressor.to_surrogate_spec(
-    input_units={"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
-    output_units="kW",
-)
+spec = regressor.to_surrogate_spec()
 ```
 
 `LinearRegressor` needs the `[parameterize]` extra's `scikit-learn`
@@ -251,16 +248,198 @@ recovery = SurrogateSpec(
 apply_to_model(m, raw, tagmap, surrogates={"facility.ro": {"split_definition": recovery}})
 ```
 
-The two forms of `surrogates=` mix per unit in one call. A plain spec
-attaches the unit's own energy relation. A mapping attaches one or more of
-its other registered relations. Only a relationship the unit registered via
-`register_relation` can be named this way. Its mass/energy balance was
-never registered, so it can never be swapped. See
-[the config schema](../explanation/config_schema.md) for which relations
-each unit registers.
+The two forms of `surrogates=` mix per unit in one call: a plain spec attaches
+the unit's own energy relation, a mapping attaches one or more of its other
+registered relations. Only a relationship the unit registered via
+`register_relation` can be named this way — its mass/energy balance was never
+registered and so can never be swapped; see
+[the config schema](../explanation/config_schema.md) for which relations each
+unit registers.
 
-## See it running
+## Time-series surrogate: ARIMA
 
-Want worked, solved examples built on the FlexOps models this pipeline
-parameterizes? Check the interactive examples at
-[flex-pse.github.io/flex-pse-examples](https://flex-pse.github.io/flex-pse-examples/).
+For processes whose output is a time series driven by both past values and
+exogenous controls, `ArimaRegressor` fits an ARIMAX model and `ArimaSurrogate`
+embeds the mean equation directly inside the Pyomo model.  The result is a
+surrogate that can be differentiated and solved as part of an optimization
+problem.
+
+### Fit
+
+```python
+from flexparameterize.regression.arima import ArimaRegressor
+
+regressor = ArimaRegressor(order=(1, 0, 0)).fit(X_train, y_train)
+spec = regressor.to_surrogate_spec()
+```
+
+`order=(p, d, q)` may use `d=0` or `d=1`; seasonal differencing and seasonal
+AR/MA terms are not supported.  `max_ar_persistence` (default `0.85`) bounds
+every AR coefficient during the fit itself.  Leave it on: disabling it is the
+single biggest source of unusable coefficients.
+
+A per-coefficient bound does not guarantee a stable model: `ar=[0.85, 0.85]`
+passes it, but forecasts from it explode.  `fit()` therefore also checks that
+the fitted AR block is stationary, and raises `FlexConfigError` when it is not.
+Lower the AR order or tighten `max_ar_persistence`.
+
+### Choosing the fitting objective
+
+Keep the default, `fit_objective="equation_error"`, unless a held-out
+comparison on your own data shows that `output_error` forecasts better.
+
+| Configuration | What it minimizes |
+|---------------|-------------------|
+| `fit_objective="equation_error"` (default) | One-step-ahead residuals, using actual lagged values |
+| `fit_objective="output_error"` | Windowed free-run error: the error the surrogate makes when it simulates forward with innovations at zero |
+| `fit_objective="output_error", fit_solver="ipopt"` | The same free-run error, through the real `ArimaSurrogate` over the whole series |
+
+`output_error` exists because a `d=1` model *integrates* its drift term.  A
+drift error that costs almost nothing per step accumulates linearly over a
+forecast, so the one-step objective barely constrains drift.  On held-out
+biogas data the expected pattern appeared for `d=1` orders and nowhere else.
+The test trained on 384 rows (4 days) and forecast the next 192 steps (2 days),
+repeated from 11 starting points across the series, for 13 orders:
+
+| Held-out 192-step RMSE (mean) | `equation_error` | `output_error` | `output_error` + ipopt |
+|---|---|---|---|
+| `d=0` orders | 0.00573 | 0.00576 | 0.00576 |
+| `d=1` orders | 0.00951 | 0.00653 | 0.00766 |
+| Fits refused (see below), of 143 | 0 | 17 | 8 |
+
+The `d=1` gain comes from a few orders. `ARIMA(0,1,1)` and `ARIMA(2,1,2)`
+improved at 91% of starting points.  Other orders were a coin flip.
+
+```python
+regressor = ArimaRegressor(
+    order=(2, 1, 2),
+    fit_objective="output_error",
+    forecast_horizon=192,       # set this to the horizon you will forecast over
+).fit(X_train, y_train, input_units=..., output_units=...)
+```
+
+Before switching, know the following:
+
+- **`output_error` refuses fits it cannot make safe.**  The free-run objective
+  barely constrains the MA block, and left alone it pushes MA outside the unit
+  circle.  The forecast starts its MA lags from one-step residuals, which such a
+  block makes explode: first-step forecasts reached ~1e6 before this was
+  guarded.  So every MA coefficient is bounded to ±0.99.  That bound alone does
+  not guarantee invertibility for `q >= 2`, so a non-invertible fit raises
+  `FlexConfigError`.  `output_error` also tends to push AR toward
+  non-stationarity, which the stationarity check refuses.  On the biogas data
+  that happened at about half the starting points for `(0,0,3)`, `(2,0,0)` and
+  `(3,1,3)`.  The default objective never raised.
+- **Under the default, a non-invertible MA block only logs a warning.**  It is
+  common (8 of 11 starting points for `(1,0,1)` on biogas data) and harmless for
+  forecasting, because the forecast starts from the very residuals the fit
+  minimized.  It does make the one-step statistics (`aic`, `bic`, `sigma2`) and
+  an in-Pyomo regression with free innovations unreliable.
+- **`output_error` is a forecaster, not an estimator.**  It trades parameter
+  consistency for multi-step accuracy.  Read coefficients off an
+  `equation_error` fit.
+- **Set `forecast_horizon` to your real forecast horizon.**  `"auto"` spans the
+  data up to a 192-step cap, which is a fallback, not an optimum.
+- **Judge on held-out data.**  `metrics["free_run_rmse"]` is reported for both
+  objectives, but it is in-sample, and `output_error` minimizes it directly, so
+  it flatters that objective.  In-sample, `output_error` cut the `ARIMA(3,1,3)`
+  free-run error by 2.9×.  Held out, it was refused at 6 of 11 starting points
+  and beat the default at the other 5.
+
+`fit_solver="ipopt"` requires declared `input_units`/`output_units` and a
+regular `DatetimeIndex`, since it builds a real `TimeBlock` and surrogate.  It
+needs no `forecast_horizon`, because one model spans the series.  It refused
+fewer fits than the scipy backend but improved `d=1` forecasts less.
+
+### Build the Pyomo surrogate
+
+```python
+from flexops.core.ops_block import OpsBlock
+from flexops.core.time_block import TimeBlock
+from flexops.properties.simple_aqueous import SimpleAqueousFlow
+from flexops.surrogates import ArimaSurrogate
+import pyomo.environ as pyo
+from pyomo.environ import units as pyunits
+
+m = pyo.ConcreteModel()
+m.time_block = TimeBlock(
+    start_date="2025-01-01T00:00",
+    end_date="2025-01-02T00:00",
+    time_step=1 * pyunits.hr,
+)
+m.props = SimpleAqueousFlow(has_pressure=False)
+m.unit = OpsBlock(property_package=m.props)
+m.unit.add_stream_ports()
+
+m.unit.add_component(
+    "biogas_m3_hour",
+    pyo.Var(m.time_block.time_index, units=pyunits.m**3 / pyunits.hr),
+)
+m.unit.register_io_variable(m.unit.biogas_m3_hour, role="output")
+
+for name, units in [("feed_volume_kg", pyunits.kg), ("TS_pct", pyunits.dimensionless)]:
+    m.unit.add_component(name, pyo.Var(m.time_block.time_index, units=units))
+    m.unit.register_io_variable(getattr(m.unit, name), role="input")
+
+# Placeholder relation -> swap in the ArimaSurrogate
+m.unit.add_component(
+    "biogas_m3_hour_relation",
+    pyo.Constraint(m.time_block.time_index, rule=lambda b, t: pyo.Constraint.Skip),
+)
+m.unit.register_relation(m.unit.biogas_m3_hour_relation, target=m.unit.biogas_m3_hour)
+
+surrogate = ArimaSurrogate(spec.data)
+m.unit.swap_relation("biogas_m3_hour_relation", surrogate)
+```
+
+`swap_relation` is the only place the ARIMA equality constraint is built.
+Calling `ArimaSurrogate.build()` directly does **not** add an enforcing
+constraint; it only attaches auxiliary `Param` objects that carry the fitted
+coefficients and residuals.
+
+### Optimize
+
+Fix historical and forecast exogenous inputs to their observed values, unfix
+the decision horizon, set bounds, and solve:
+
+```python
+# Fix exog for in-sample + forecast window
+for t in range(n_insample + n_fcst):
+    m.unit.feed_volume_kg[t].set_value(observed_feed[t])
+    m.unit.feed_volume_kg[t].fix()
+    m.unit.TS_pct[t].set_value(observed_ts[t])
+    m.unit.TS_pct[t].fix()
+
+# Unfix and bound the optimization window
+for t in range(n_insample + n_fcst, n_total):
+    m.unit.feed_volume_kg[t].unfix()
+    m.unit.feed_volume_kg[t].setlb(feed_min)
+    m.unit.feed_volume_kg[t].setub(feed_max)
+    m.unit.TS_pct[t].unfix()
+    m.unit.TS_pct[t].setlb(ts_min)
+    m.unit.TS_pct[t].setub(ts_max)
+
+m.obj = pyo.Objective(
+    expr=sum((m.unit.biogas_m3_hour[t] - target) ** 2 for t in opt_window),
+    sense=pyo.minimize,
+)
+
+solver = pyo.SolverFactory("ipopt")
+result = solver.solve(m, tee=False)
+```
+
+Because the surrogate encodes the **mean** ARIMA equation (not a Kalman
+filter), in-sample predictions match the direct fit's fitted values exactly,
+and multi-step forecasts follow the deterministic mean-equation recursion.
+That determinism is what makes the surrogate ideal for optimization: same
+inputs → same output, with smooth derivatives.
+
+### Validation
+
+The example compares three horizons:
+
+| Horizon | Method | Check |
+|---------|--------|-------|
+| In-sample (last day of training) | Pyomo surrogate vs direct fit | RMSE ≈ 0 |
+| 2-day forecast | Pyomo surrogate vs direct fit | RMSE ≈ 0 |
+| 1-day optimization | Pyomo optimized mean vs observed target | close match |

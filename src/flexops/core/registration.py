@@ -107,6 +107,8 @@ class CoefficientRegistry:
     def __getitem__(self, name: str) -> Any:
         if name in self._scalar_vars:
             return self._scalar_vars[name]
+        if name in self._indexed_vars:
+            return self._indexed_vars[name]
         for indexed_var in self._indexed_vars.values():
             if name in indexed_var.index_set():
                 return indexed_var[name]
@@ -114,6 +116,8 @@ class CoefficientRegistry:
 
     def __contains__(self, name: str) -> bool:
         if name in self._scalar_vars:
+            return True
+        if name in self._indexed_vars:
             return True
         return any(name in iv.index_set() for iv in self._indexed_vars.values())
 
@@ -262,6 +266,11 @@ class RelationRecord:
         surrogate_blocks: Every surrogate block ever built for this relation,
             oldest first. The list is append-only; deactivated blocks remain
             here so ``switch_surrogate_block`` can reactivate them.
+        surrogate_instance: The :class:`~flexops.surrogates.base.Surrogate`
+            instance currently active for this relation, or ``None`` when no
+            surrogate has been swapped. Used by
+            :meth:`~flexops.core.ops_block.OpsBlockData.get_surrogate_spec`
+            to delegate spec extraction without depending on block attributes.
     """
 
     constraint: Any
@@ -273,6 +282,7 @@ class RelationRecord:
     swap_count: int = 0
     surrogate_block: Any = None
     surrogate_blocks: list = field(default_factory=list)
+    surrogate_instance: Any = None
 
 
 @dataclass
