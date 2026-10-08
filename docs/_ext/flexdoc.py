@@ -37,6 +37,11 @@ from flexops.unit_models.base.dido import DIDOBlock
 from flexops.unit_models.base.sido import SIDOBlock
 from flexops.unit_models.base.siso import SISOBlock
 from flexops.unit_models.constant_intensity import ConstantEnergyIntensityModel
+from flexops.unit_models.electrolyzer import (
+    CO2Electrolyzer,
+    Electrolyzer,
+    WaterElectrolyzer,
+)
 from flexops.unit_models.exchanger import Exchanger
 from flexops.unit_models.feed import Feed
 from flexops.unit_models.mixer import Mixer
@@ -158,6 +163,13 @@ def _build_digestor():
     return m, m.unit
 
 
+def _build_electrolyzer(cls):
+    m = dummy_time_block(3)
+    m._gas_pkg = SimpleGasFlow()
+    m.unit = cls(liquid_property_package=m.properties, gas_property_package=m._gas_pkg)
+    return m, m.unit
+
+
 _BUILDERS: dict[type, Callable[[], tuple[Any, Any]]] = {
     SISOBlock: _build_siso,
     SIDOBlock: _build_sido,
@@ -175,6 +187,9 @@ _BUILDERS: dict[type, Callable[[], tuple[Any, Any]]] = {
     Combustor: _build_combustor,
     GenericRenewables: _build_generic_renewables,
     Digestor: _build_digestor,
+    Electrolyzer: lambda: _build_electrolyzer(Electrolyzer),
+    WaterElectrolyzer: lambda: _build_electrolyzer(WaterElectrolyzer),
+    CO2Electrolyzer: lambda: _build_electrolyzer(CO2Electrolyzer),
 }
 
 
@@ -289,6 +304,11 @@ def _rows_to_list_table(title: str, rows: list[list[str]]) -> list[str]:
     lines = [
         title,
         "" if not title else "",
+    ]
+    if len(rows) == 1:
+        # A header with no data rows is legitimate (e.g. a unit with no inputs).
+        return [*lines, "None.", ""]
+    lines += [
         ".. list-table::",
         "   :header-rows: 1",
         "",
