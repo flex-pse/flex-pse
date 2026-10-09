@@ -190,6 +190,159 @@
       "title": "DRConfig",
       "type": "object"
     },
+    "DegradationSpec": {
+      "additionalProperties": false,
+      "description": "A named, priced degradation penalty on a unit: a sum of wear-driver terms.",
+      "properties": {
+        "covered_cost": {
+          "default": 0.0,
+          "description": "Free wear cost per period, in the model currency; only cost beyond it is charged.",
+          "minimum": 0,
+          "title": "Covered Cost",
+          "type": "number"
+        },
+        "horizon_budget": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional hard cap on wear cost per period, in the model currency.",
+          "title": "Horizon Budget"
+        },
+        "name": {
+          "description": "Name of the penalty, unique on its unit.",
+          "title": "Name",
+          "type": "string"
+        },
+        "period_hours": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Length of the period covered_cost and horizon_budget are stated for (e.g. 730 for a month); they are prorated to the modeled horizon. None means they are stated for the modeled horizon.",
+          "title": "Period Hours"
+        },
+        "terms": {
+          "description": "The priced wear drivers that are summed.",
+          "items": {
+            "$ref": "#/$defs/DegradationTermSpec"
+          },
+          "minItems": 1,
+          "title": "Terms",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "terms"
+      ],
+      "title": "DegradationSpec",
+      "type": "object"
+    },
+    "DegradationTerm": {
+      "description": "Which wear driver a DegradationTermSpec charges for.",
+      "enum": [
+        "variation",
+        "deviation",
+        "exceedance",
+        "throughput"
+      ],
+      "title": "DegradationTerm",
+      "type": "string"
+    },
+    "DegradationTermSpec": {
+      "additionalProperties": false,
+      "description": "One priced wear driver of a unit variable, valued in that variable's units.",
+      "properties": {
+        "deadband": {
+          "default": 0.0,
+          "description": "Free amount per step, in the variable's units; only the excess beyond it is charged (a deadband). Not used by exceedance.",
+          "minimum": 0,
+          "title": "Deadband",
+          "type": "number"
+        },
+        "kind": {
+          "$ref": "#/$defs/DegradationTerm",
+          "description": "Wear driver: variation (change from window steps earlier), deviation (distance from reference), exceedance (excursion outside lower/upper), or throughput (the variable itself)."
+        },
+        "lower": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exceedance only: the charge-free lower bound.",
+          "title": "Lower"
+        },
+        "price": {
+          "description": "Cost in the model currency per unit of change for variation, or per unit of the variable held for one hour for the other kinds.",
+          "minimum": 0,
+          "title": "Price",
+          "type": "number"
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Deviation only (required): the target value.",
+          "title": "Reference"
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exceedance only: the charge-free upper bound.",
+          "title": "Upper"
+        },
+        "variable": {
+          "description": "Name of the time-indexed variable on the unit (dotted names into a sub-block resolve).",
+          "title": "Variable",
+          "type": "string"
+        },
+        "window": {
+          "default": 1,
+          "description": "Variation only: number of steps back the change is measured.",
+          "minimum": 1,
+          "title": "Window",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "variable",
+        "price"
+      ],
+      "title": "DegradationTermSpec",
+      "type": "object"
+    },
     "ExternalDispatchSpec": {
       "additionalProperties": false,
       "description": "Declares an external (DERMS) command source for a controllable variable.",
@@ -537,6 +690,14 @@
           "description": "Keyword options passed to the unit-model constructor.",
           "title": "Construction Options",
           "type": "object"
+        },
+        "degradation": {
+          "description": "Priced degradation penalties on the unit's variables.",
+          "items": {
+            "$ref": "#/$defs/DegradationSpec"
+          },
+          "title": "Degradation",
+          "type": "array"
         },
         "external_dispatch": {
           "anyOf": [

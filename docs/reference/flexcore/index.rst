@@ -71,6 +71,9 @@ authority, and :data:`CURRENT_SCHEMA_VERSION` tags what this build writes.
    SurrogateType
    ExternalDispatchSpec
    UnitCommitmentConfig
+   DegradationSpec
+   DegradationTermSpec
+   DegradationTerm
    ArcSpec
    TimeConfig
    CostingConfig

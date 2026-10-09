@@ -34,6 +34,7 @@ from flexops.core.plant_block import PlantBlock
 from flexops.core.time_block import TimeBlock
 from flexops.core.units import parse_units
 from flexops.costing import FlexCosting
+from flexops.logic import add_degradation
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 
 _QUANTITY_KEYS = {"value", "units"}
@@ -170,7 +171,10 @@ def _build_plant(parent, name: str, plant_cfg: PlantConfig, model) -> None:
                 costing_package=model.costing,
             ),
         )
-        _apply_external_dispatch(plant.find_component(unit_name), unit_cfg)
+        unit = plant.find_component(unit_name)
+        _apply_external_dispatch(unit, unit_cfg)
+        for spec in unit_cfg.degradation:
+            add_degradation(unit, spec, costing=model.costing)
     _build_arcs(plant, plant_cfg.arcs)
 
 

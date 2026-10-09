@@ -53,8 +53,10 @@ The schema shrinks from the top level
 - {class}`~flexcore.config.schema.UnitConfig` describes one unit model.
   Its class name, construction options, declared IO variables, an optional
   {class}`~flexcore.config.schema.SurrogateSpec`, a
-  {class}`~flexcore.config.schema.UnitCommitmentConfig`, and an optional
-  {class}`~flexcore.config.schema.ExternalDispatchSpec`.
+  {class}`~flexcore.config.schema.UnitCommitmentConfig`, an optional
+  {class}`~flexcore.config.schema.ExternalDispatchSpec`, and a list of
+  {class}`~flexcore.config.schema.DegradationSpec` wear penalties (see
+  [Degradation penalties](degradation.md)).
 - {class}`~flexcore.config.schema.IOVariableSpec`,
   {class}`~flexcore.config.schema.SurrogateSpec`,
   {class}`~flexcore.config.schema.CostingConfig` (carrying a

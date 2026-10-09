@@ -34,6 +34,7 @@ class RollingStateKind(enum.StrEnum):
     MIN_DOWNTIME = "min_downtime"
     DWELL = "dwell"
     STARTUP_DELAY = "startup_delay"
+    DEGRADATION = "degradation"
 
 
 def _register_rolling_state(

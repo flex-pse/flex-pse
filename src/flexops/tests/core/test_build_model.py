@@ -123,6 +123,28 @@ def test_build_model_network_branch(monkeypatch):
 
 
 @pytest.mark.unit
+def test_build_model_applies_and_prices_configured_degradation(monkeypatch):
+    """A unit's configured degradation penalty is built and billed through costing."""
+    monkeypatch.chdir(_FIXTURES)
+    cfg = json.loads(_CONFIG.read_text())
+    cfg["plant"]["units"]["surrogate"]["degradation"] = [
+        {
+            "name": "wear",
+            "terms": [
+                {"kind": "variation", "variable": "power_electrical", "price": 1.5}
+            ],
+        }
+    ]
+
+    model = build_model(cfg)
+
+    unit = model.demo.surrogate
+    assert unit.find_component("wear_rate") is not None
+    assert pyo.value(unit.wear_0_price) == 1.5
+    assert model.costing.opex.find_component("scalar_cost_surrogate_wear") is not None
+
+
+@pytest.mark.unit
 def test_build_arcs_bad_port_raises():
     """An arc endpoint that does not resolve to a port is a config error."""
     m = pyo.ConcreteModel()

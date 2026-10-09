@@ -91,9 +91,25 @@ def _to_0_0_3(data: dict) -> dict:
     return {**data, "schema_version": "0.0.3"}
 
 
+def _to_0_0_4(data: dict) -> dict:
+    """Upgrade a 0.0.3 config to 0.0.4 by re-stamping its version.
+
+    0.0.4 only added the optional ``UnitConfig.degradation`` list, so every
+    0.0.3 document is a valid 0.0.4 document.
+
+    Args:
+        data: The parsed 0.0.3 config.
+
+    Returns:
+        The same mapping, stamped 0.0.4.
+    """
+    return {**data, "schema_version": "0.0.4"}
+
+
 MIGRATIONS: dict[str, Callable[[dict], dict]] = {
     "0.0.1": _to_0_0_2,
     "0.0.2": _to_0_0_3,
+    "0.0.3": _to_0_0_4,
 }
 """Source version -> upgrade hook, applied in sequence on load. Each hook must
 set the new ``schema_version`` on the dict it returns."""

@@ -60,6 +60,9 @@ nitpick_ignore = [
 # resolve fine; ignore only these signature-parsing fragments.
 nitpick_ignore_regex = [
     ("py:class", r"dict\[.*"),
+    # pydantic Field constraints (ge=, gt=, min_length=) render as annotated_types
+    # metadata classes, which have no intersphinx target.
+    ("py:class", r"annotated_types\..*"),
 ]
 
 html_theme = "furo"
