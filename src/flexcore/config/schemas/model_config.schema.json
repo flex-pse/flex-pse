@@ -26,6 +26,29 @@
       "additionalProperties": false,
       "description": "Tariff, price, demand-response, and solve/objective options for a run.",
       "properties": {
+        "consumption_estimate": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "electric",
+                  "gas"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Estimated total consumption over the horizon, keyed by EECO utility ('electric'/'gas'; kWh / m^3). EECO needs it to price any tier other than a flat top tier.",
+          "title": "Consumption Estimate"
+        },
         "currency": {
           "default": "USD",
           "description": "Currency basis to use when no tariff is given; a tariff's own currency basis always wins.",

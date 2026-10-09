@@ -20,7 +20,7 @@ line-break art — rendering is the documentation builder's job.
 import enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, model_validator
 
 CURRENT_SCHEMA_VERSION = "0.0.3"
 """str: the semantic schema version this build writes and validates against."""
@@ -286,6 +286,14 @@ class CostingConfig(_StrictModel):
     dr: DRConfig | None = Field(
         default=None,
         description="Optional demand-response container (containers-only in v0).",
+    )
+    consumption_estimate: dict[Literal["electric", "gas"], NonNegativeFloat] | None = (
+        Field(
+            default=None,
+            description="Estimated total consumption over the horizon, keyed by EECO "
+            "utility ('electric'/'gas'; kWh / m^3). EECO needs it to price any tier "
+            "other than a flat top tier.",
+        )
     )
     fixed_operating_cost: float = Field(
         default=0.0,

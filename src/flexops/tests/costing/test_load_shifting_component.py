@@ -12,8 +12,9 @@ import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
 from pyomo.network import Arc
-from pyomo.opt import assert_optimal_termination
+from pyomo.opt import SolverResults, TerminationCondition, assert_optimal_termination
 
+from flexcore.exceptions import FlexSolverError
 from flexops.core.time_block import TimeBlock
 from flexops.costing import FlexCosting, evaluate_cost, load_tariff
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
@@ -98,6 +99,19 @@ def test_load_shifting_headline():
     assert pyo.value(m.objective) == pytest.approx(_EXPECTED_OBJECTIVE, rel=1e-6)
 
 
+@pytest.mark.unit
+def test_relaxation_gap_rejects_a_non_optimal_solve():
+    """relaxation_gap refuses results that are not an optimal solve."""
+    m = _build_headline()
+    results = SolverResults()
+    results.solver.termination_condition = TerminationCondition.infeasible
+    with pytest.raises(FlexSolverError, match="infeasible"):
+        m.costing.relaxation_gap(m, results)
+    results.solver.termination_condition = TerminationCondition.optimal
+    # This should not raise an error
+    m.costing.relaxation_gap(m, results)
+
+
 @pytest.mark.component
 @pytest.mark.needs_highs
 def test_report_cost_post_hoc():
@@ -105,7 +119,7 @@ def test_report_cost_post_hoc():
     from flexcore.solvers import get_solver
 
     m = _build_headline()
-    get_solver(model=m, prefer="highs").solve(m)
+    results = get_solver(model=m, prefer="highs").solve(m)
 
     report = m.costing.report_cost(m)
 
@@ -129,9 +143,9 @@ def test_report_cost_post_hoc():
     assert report.total == pytest.approx(report.operating.total)
     # On this short horizon the convex relaxation is tight, so the reported bill
     # coincides with the relaxed objective; the reporting rule is encoded by
-    # the independent recomputation above, not by trusting the objective. The two
-    # diverge once the tiered surcharge is reached.
+    # the independent recomputation above, not by trusting the objective.
     assert report.operating.total == pytest.approx(pyo.value(m.objective), rel=1e-6)
+    assert m.costing.relaxation_gap(m, results) == pytest.approx(0.0, abs=1e-6)
 
 
 @pytest.mark.component

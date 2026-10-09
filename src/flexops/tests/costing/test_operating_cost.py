@@ -7,6 +7,7 @@ in-objective cost on a toy model, solve the trivial LP with HiGHS, and check the
 relaxed proxy against the post-hoc bill, the DR no-op, and LP classification.
 """
 
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -120,7 +121,11 @@ def test_golden_monthly_bill():
 @pytest.mark.component
 @pytest.mark.needs_highs
 def test_relaxed_leq_or_approx_true():
-    """The relaxed in-objective total is <= or ~= the post-hoc true bill."""
+    """The relaxed in-objective total is <= or ~= the post-hoc true bill.
+
+    The demo tariff's tier2 surcharge is a top tier at one constant rate, which
+    EECO prices exactly, so the two totals match with no consumption_estimate.
+    """
     from flexcore.solvers import get_solver
 
     tariff = load_tariff(_TARIFF_JSON)
@@ -141,6 +146,7 @@ def test_relaxed_leq_or_approx_true():
     relaxed = pyo.value(handles.total_operating_cost)
     true_cost = evaluate_cost(load, tariff, dt_hours=1.0, time_index=index)
     assert relaxed <= true_cost + 1e-3
+    assert true_cost - relaxed == pytest.approx(0.0, abs=0.01)
 
 
 @pytest.mark.component
@@ -233,6 +239,96 @@ def _flat_two_utility_tariff():
         },
     ]
     return load_tariff(records)
+
+
+def _tiered_tariff():
+    """A two-tier electric energy charge, both tiers sharing one ``name``.
+
+    The shared name is what makes EECO link them (``get_next_limit`` matches on
+    utility, type, name and dates), so the base tier also carries a finite
+    ``next_limit`` -- the case in which a missing estimate zeroes *every* tier.
+    """
+    base = {
+        "utility": "electric",
+        "type": "energy",
+        "name": "allday",
+        "month_start": 1,
+        "month_end": 12,
+        "weekday_start": 0,
+        "weekday_end": 6,
+        "hour_start": 0,
+        "hour_end": 24,
+        "basic_charge_limit (metric)": 0,
+        "charge (metric)": 0.10,
+        "units": "$/kWh",
+    }
+    tier2 = dict(
+        base, **{"basic_charge_limit (metric)": 50000, "charge (metric)": 0.20}
+    )
+    return load_tariff([base, tier2])
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+@pytest.mark.parametrize(
+    ("consumption_estimate", "gap"), [(None, 5000.0), ({"electric": 120000.0}, 0.0)]
+)
+def test_consumption_estimate_prices_shared_name_base_tier(consumption_estimate, gap):
+    """A base tier linked to a higher one is dropped from the objective without
+    an estimate (its $5000 is missing), and priced once one is forwarded to EECO."""
+    from flexcore.solvers import get_solver
+
+    tariff = _tiered_tariff()
+    index = pd.date_range("2025-07-01", periods=_N24, freq="h")
+    load = np.full(_N24, 5000.0)
+    m = _build_toy_model(load)
+    handles = add_operating_cost(
+        block=m,
+        electrical_power=m.agg,
+        time_index=index,
+        dt_hours=1.0,
+        tariff=tariff,
+        consumption_estimate=consumption_estimate,
+    )
+    m.objective = pyo.Objective(expr=handles.total_operating_cost, sense=pyo.minimize)
+    get_solver(model=m, prefer="highs").solve(m)
+
+    true_cost = evaluate_cost(load, tariff, dt_hours=1.0, time_index=index)
+    assert true_cost - pyo.value(handles.total_operating_cost) == pytest.approx(gap)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("consumption_estimate", "warns"), [(None, True), ({"electric": 120000.0}, False)]
+)
+def test_tiered_charge_is_not_silently_zeroed(consumption_estimate, warns, caplog):
+    """A tier EECO zeroes without an estimate logs a warning."""
+    m = _build_toy_model(np.full(_N24, 5000.0))
+    with caplog.at_level(logging.WARNING, logger="flexops.costing.opex"):
+        add_operating_cost(
+            block=m,
+            electrical_power=m.agg,
+            time_index=pd.date_range("2025-07-01", periods=_N24, freq="h"),
+            dt_hours=1.0,
+            tariff=_tiered_tariff(),
+            consumption_estimate=consumption_estimate,
+        )
+    assert ("consumption_estimate" in caplog.text) is warns
+
+
+@pytest.mark.unit
+def test_consumption_estimate_unknown_utility_rejected():
+    """A misspelled utility key raises instead of being silently ignored."""
+    m = _build_toy_model(np.full(_N24, 5000.0))
+    with pytest.raises(FlexConfigError, match="electricity"):
+        add_operating_cost(
+            block=m,
+            electrical_power=m.agg,
+            time_index=pd.date_range("2025-07-01", periods=_N24, freq="h"),
+            dt_hours=1.0,
+            tariff=_flat_two_utility_tariff(),
+            consumption_estimate={"electricity": 120000.0},
+        )
 
 
 def _two_utility_model(elec_kw: np.ndarray, gas_flow: np.ndarray) -> pyo.ConcreteModel:

@@ -59,10 +59,12 @@ from pyomo.environ import units as pyunits
 from pyomo.util.check_units import assert_units_consistent, assert_units_equivalent
 
 from flexcore import nomenclature as nm
-from flexcore.exceptions import FlexConfigError
+from flexcore.exceptions import FlexConfigError, FlexSolverError
 from flexcore.logger import get_logger
 from flexops.core.registration import iter_io_registry
 from flexops.costing.opex import (
+    _ELECTRIC,
+    _GAS,
     EECO_GAS_USAGE_UNITS,
     EECO_POWER_UNITS,
     DRConfig,
@@ -425,6 +427,15 @@ class FlexCostingData(FlowsheetCostingBlockData):
             "fixed (customer) charge to the horizon length when the horizon is "
             "shorter than the calendar month it starts in. Set False to bill the "
             "full monthly charges regardless of horizon length.",
+        ),
+    )
+    CONFIG.declare(
+        "consumption_estimate",
+        ConfigValue(
+            default=None,
+            description="Estimated total consumption over the horizon, keyed by "
+            "EECO utility ('electric'/'gas'; kWh / m**3). EECO needs it to price "
+            "any tier other than a flat top tier.",
         ),
     )
     CONFIG.declare(
@@ -877,7 +888,8 @@ class FlexCostingData(FlowsheetCostingBlockData):
 
         Args:
             carrier: The carrier/fuel name, named in the error.
-            utility: The EECO utility that would have to price it.
+            utility: The EECO utility that would have to price it (``None``
+                without EECO, when there can be no tariff either).
 
         Raises:
             FlexConfigError: If no native price covers ``carrier`` and the tariff
@@ -887,12 +899,19 @@ class FlexCostingData(FlowsheetCostingBlockData):
             return
         if utility in self._tariff_utilities:
             return
-        priced = sorted(self._tariff_utilities) or "nothing"
+        if self._tariff is None:
+            raise FlexConfigError(
+                f"Nothing prices the {carrier!r} carrier: there is no tariff and "
+                f"energy_prices has no {carrier!r} entry. Give it a flat price: "
+                f"energy_prices={{{carrier!r}: ...}}.",
+                field="energy_prices",
+                value=carrier,
+            )
         raise FlexConfigError(
             f"Nothing prices the {carrier!r} carrier: the tariff has no "
-            f"{utility!r} rows (it prices {priced}) and energy_prices has no "
-            f"{carrier!r} entry. Add {utility!r} charges to the tariff, or give it "
-            f"a flat price: energy_prices={{{carrier!r}: ...}}.",
+            f"{utility!r} rows (it prices {sorted(self._tariff_utilities)}) and "
+            f"energy_prices has no {carrier!r} entry. Add {utility!r} charges to "
+            f"the tariff, or give it a flat price: energy_prices={{{carrier!r}: ...}}.",
             field="energy_prices",
             value=carrier,
         )
@@ -915,7 +934,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
         opex = self.opex
 
         # --- electricity: a native price, or EECO against the tariff --------
-        self._require_priced("electrical", "electric")
+        self._require_priced("electrical", _ELECTRIC)
         opex.electricity_cost = pyo.Var(
             initialize=0.0, units=cur, doc="Electricity cost (base currency)."
         )
@@ -961,6 +980,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 tariff=self._tariff,
                 dr_config=self.dr,
                 prorate=self.config.prorate_monthly_charges,
+                consumption_estimate=self.config.consumption_estimate,
             )
             opex.eq_electricity_cost = pyo.Constraint(
                 expr=opex.electricity_cost == elec.total_operating_cost * cur
@@ -1090,7 +1110,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
         expressions. No heating value is applied either way.
         """
         opex = self.opex
-        self._require_priced(name, "gas")
+        self._require_priced(name, _GAS)
         usage = pyo.Reference(self.aggregate_fuel_usage[:, name])
         cost = pyo.Var(
             initialize=0.0, units=cur, doc=f"Cost of fuel {name} (base currency)."
@@ -1137,6 +1157,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
             tariff=self._tariff,
             dr_config=self.dr,
             prorate=self.config.prorate_monthly_charges,
+            consumption_estimate=self.config.consumption_estimate,
         )
         opex.add_component(
             f"eq_fuel_cost_{name}",
@@ -1487,3 +1508,29 @@ class FlexCostingData(FlowsheetCostingBlockData):
             total=operating.total + capital.total,
             currency=str(self.base_currency),
         )
+
+    def relaxation_gap(self, model, results, *, prev_demand_dict=None) -> float:
+        """Return how much the in-objective proxy diverges from the reported bill.
+
+        Positive means the objective understated the reported bill (EECO
+        dropped a tiered charge); negative means it overstated it.
+
+        Args:
+            model: The solved model (see :meth:`report_cost`).
+            results: The solver results returned by solving ``model``.
+            prev_demand_dict: See :meth:`report_cost`.
+
+        Returns:
+            ``reported bill − in-objective proxy``, in the report's currency.
+
+        Raises:
+            FlexSolverError: If ``results`` is not an optimal solve.
+        """
+        if not pyo.check_optimal_termination(results):
+            raise FlexSolverError(
+                "relaxation_gap needs an optimally solved model; got termination "
+                f"{results.solver.termination_condition}."
+            )
+        operating = self.report_cost(model, prev_demand_dict=prev_demand_dict).operating
+        relaxed = pyo.value(self.opex.electricity_cost + self.opex.fuel_cost)
+        return operating.electricity + operating.fuel - relaxed

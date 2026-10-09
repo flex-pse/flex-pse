@@ -953,6 +953,13 @@ def test_report_cost_currency_follows_configured_basis():
 
 
 @pytest.mark.unit
+def test_unpriced_carrier_without_tariff_raises():
+    """With no tariff, a carrier missing from energy_prices is an error."""
+    with pytest.raises(FlexConfigError, match="there is no tariff"):
+        _pump_tank_costing(no_tariff=True, energy_prices={"water": 0.12})
+
+
+@pytest.mark.unit
 def test_flat_priced_model_needs_no_eeco(monkeypatch):
     """With every carrier flat-priced, build/cost/report never touch eeco."""
 

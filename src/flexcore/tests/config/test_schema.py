@@ -60,7 +60,11 @@ def _model_config() -> ModelConfig:
         time=TimeConfig(
             start_date="2025-01-01", end_date="2025-01-30", time_step="15 min"
         ),
-        costing=CostingConfig(tariff_source="tariff.json", dr=DRConfig()),
+        costing=CostingConfig(
+            tariff_source="tariff.json",
+            dr=DRConfig(),
+            consumption_estimate={"electric": 74500.0},
+        ),
         plant=PlantConfig(
             name="waterfacility", units={"tank": tank, "plant": plant_unit}
         ),
@@ -182,6 +186,15 @@ def test_surrogate_type_rejects_an_unknown_name():
     is rejected at config-validation time, not build time."""
     with pytest.raises(ValidationError):
         SurrogateSpec(surrogate_type="vendor_curve_v3")
+
+
+@pytest.mark.unit
+def test_consumption_estimate_rejects_an_unknown_utility():
+    """A misspelled utility key fails config validation."""
+    with pytest.raises(ValidationError):
+        CostingConfig(
+            tariff_source="tariff.json", consumption_estimate={"electricity": 1.0}
+        )
 
 
 @pytest.mark.unit
