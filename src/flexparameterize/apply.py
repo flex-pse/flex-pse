@@ -33,16 +33,13 @@ from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.environ import units as pyunits
 
 from flexcore import nomenclature as nm
-from flexcore.config.schema import SurrogateSpec, SurrogateType
-from flexcore.exceptions import FlexConfigError, FlexDataError
+from flexcore.config.schema import SurrogateSpec
+from flexcore.exceptions import FlexDataError
 from flexops.core.registration import iter_io_registry
+from flexops.core.stages import apply_relation_spec
 from flexops.core.time_block import find_time_block
 from flexops.surrogates import surrogate_from_spec
-from flexparameterize.regression import (
-    COEFFICIENT_NAME,
-    ConstantIntensityRegressor,
-    constant_intensity_coefficient,
-)
+from flexparameterize.regression import ConstantIntensityRegressor
 from flexparameterize.tags import TagMap, model_alias
 from flexparameterize.validate import DEFAULT_MIN_ROWS, check_sufficiency
 
@@ -193,7 +190,7 @@ def _attach_surrogate(unit, registry, surrogate) -> tuple[bool, dict[str, float]
 
     Args:
         unit: The built unit to mutate.
-        registry: Its :class:`~flexops.core.registration.IORegistry`.
+        registry: Unused; the unit's own registry is read instead.
         surrogate: The :class:`~flexcore.config.schema.SurrogateSpec` to attach.
 
     Returns:
@@ -205,46 +202,7 @@ def _attach_surrogate(unit, registry, surrogate) -> tuple[bool, dict[str, float]
             coefficient under that name, or the unit does not register one as a
             regressable process parameter.
     """
-    if surrogate.surrogate_type is not SurrogateType.CONSTANT_INTENSITY:
-        surrogate_obj = surrogate_from_spec(surrogate)
-        surrogate_block = unit.swap_relation(POWER_ELECTRICAL_RELATION, surrogate_obj)
-        coefficients = getattr(surrogate_block, "coefficients", None)
-        if coefficients is not None and hasattr(coefficients, "items"):
-            coef_names = {name for name, _ in coefficients.items()}
-            already_registered = any(
-                p.relation_name == POWER_ELECTRICAL_RELATION and p.name in coef_names
-                for p in unit._io_registry.parameters
-            )
-            if not already_registered:
-                unit.register_surrogate_coefficients(POWER_ELECTRICAL_RELATION)
-            for coef_name, coef_value in surrogate.data["coefficients"].items():
-                var = coefficients[coef_name]
-                var.set_value(coef_value)
-                var.fix()
-        return True, dict(surrogate.data.get("coefficients", {}))
-
-    coefficient = constant_intensity_coefficient(surrogate)
-    regressable = {
-        record.name: record.param
-        for record in registry.parameters
-        if record.regressable
-    }
-    if COEFFICIENT_NAME not in regressable:
-        raise FlexConfigError(
-            f"A 'constant_intensity' relationship determines "
-            f"{COEFFICIENT_NAME!r}, which {unit.name!r} does not register as a "
-            f"regressable process parameter (it registers "
-            f"{sorted(regressable)}). Supply this unit's relationship through "
-            "surrogates= instead.",
-            field=COEFFICIENT_NAME,
-            value=unit.name,
-        )
-
-    unit.update_parameters({COEFFICIENT_NAME: coefficient})
-    parameter = regressable[COEFFICIENT_NAME]
-    if parameter.is_variable_type():
-        parameter.fix()
-    return False, {COEFFICIENT_NAME: coefficient}
+    return apply_relation_spec(unit, surrogate)
 
 
 def _require_sufficient_data(model, data, unit_names, min_rows: int) -> None:

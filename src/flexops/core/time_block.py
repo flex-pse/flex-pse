@@ -202,6 +202,40 @@ class TimeBlockData(ProcessBlockData):
         ),
     )
 
+    def to_element(self):
+        """Describe this horizon as the spec's time element.
+
+        Returns:
+            The :class:`~flexcore.config.spec.TimeElement`.
+
+        Raises:
+            FlexConfigError: If ``max_length`` is not the default (the spec has no
+                field for it) or the time step's units can't be written.
+        """
+        # Local imports: serialize imports flexops.costing, which imports this module.
+        from flexcore.config.spec import TimeElement
+        from flexops.core.serialize import units_to_str
+
+        if self.config.max_length != relativedelta(months=1):
+            raise FlexConfigError(
+                f"{self.name}.max_length is not the default one month; the spec "
+                "has no field for it.",
+                field="max_length",
+                value=self.config.max_length,
+            )
+        step = self.config.time_step
+        units = units_to_str(pyunits.get_units(step), where="time_block.time_step")
+
+        def iso(value):
+            return value if isinstance(value, str) else value.isoformat()
+
+        return TimeElement(
+            kind="time",
+            start_date=iso(self.config.start_date),
+            end_date=iso(self.config.end_date),
+            time_step=f"{pyo.value(step):g} {units}",
+        )
+
     def build(self) -> None:
         """Construct `time_index`, `time`, `dt`, and the datetime/state registries."""
         super().build()

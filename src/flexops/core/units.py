@@ -19,9 +19,11 @@ def parse_units(text: str):
     """Parse a units string into a Pyomo units expression.
 
     Handles the compact forms persisted configs use: ``"min"``, ``"m^3/hr"``,
-    ``"kWh/m^3"``, ``"USD/kWh"`` — ``*``-separated factors, at most one ``/``,
-    and ``^``/``**`` exponents. A token Pyomo does not know is registered as a
-    currency (so ``"USD"`` works without the costing block existing yet).
+    ``"kWh/m^3"``, ``"USD/kWh"``, and the ``"kg/m^2/s"`` and ``"1/s"`` forms Pyomo
+    prints — ``*``-separated factors, ``^``/``**`` exponents, each factor after a
+    ``/`` divides, and a bare ``1`` is dimensionless. A token Pyomo does not know
+    is registered as a currency (so ``"USD"`` works without the costing block
+    existing yet).
 
     Args:
         text: The units string.
@@ -32,19 +34,19 @@ def parse_units(text: str):
     Raises:
         FlexConfigError: If a token is not a parsable unit name and exponent.
     """
-    numerator, _, denominator = text.strip().partition("/")
+    numerator, *denominators = text.strip().split("/")
     result = 1
-    for side, factors in ((1, numerator), (-1, denominator)):
+    for side, factors in [(1, numerator), *((-1, d) for d in denominators)]:
         for token in factors.split("*") if factors.strip() else []:
             token = token.strip()
-            if not token:
+            if not token or token == "1":
                 continue
             match = _UNIT_TOKEN.match(token)
             if match is None:
                 raise FlexConfigError(
                     f"Could not parse {token!r} in units string {text!r}. Write "
-                    "units as '*'-separated factors with at most one '/', e.g. "
-                    "'kWh/m^3'.",
+                    "units as '*'-separated factors divided by '/', e.g. "
+                    "'kg/m^2/s'.",
                     field="units",
                     value=text,
                 )

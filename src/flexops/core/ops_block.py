@@ -245,6 +245,7 @@ class OpsBlockData(UnitModelBlockData):
         if self.config.unit_commitment is None:
             self.config.unit_commitment = UnitCommitmentConfig()
         self._io_registry = IORegistry()
+        self._flex_dispatch: dict[str, dict] = {}
 
     # -- time access ------------------------------------------------------
 
@@ -995,6 +996,7 @@ class OpsBlockData(UnitModelBlockData):
             ]
 
         record.swap_count += 1
+        record.spec = getattr(surrogate, "spec", None)
         fitted_name = (
             "fitted" if record.swap_count == 1 else f"fitted_{record.swap_count}"
         )
@@ -1505,11 +1507,99 @@ class OpsBlockData(UnitModelBlockData):
             var[t].set_value(resolved[t])
             if fix:
                 var[t].fix()
+        self._flex_dispatch[var.local_name] = {
+            "values": [resolved[t] for t in tb.time_index],
+            "fix": fix,
+        }
+
+    # -- emitting a spec ----------------------------------------------------
+
+    def to_unit_element(self, name: str, *, packages: dict, costings: dict):
+        """Describe this unit as the spec element that builds it, without connections.
+
+        Args:
+            name: The unit element's name (the indexed component's for a member).
+            packages: Property-package element names mapped to their blocks.
+            costings: Costing element names mapped to their blocks.
+
+        Returns:
+            The :class:`~flexcore.config.spec.UnitElement`.
+
+        Raises:
+            FlexConfigError: If an option has no spec form, or the unit's package
+                or costing block is not among those given.
+        """
+        # Local imports: serialize reaches the unit models, which import this module.
+        from flexcore.config.spec import AUTO, UnitElement
+        from flexops.core.serialize import (
+            to_jsonable,
+            unit_model_class_name,
+            units_to_str,
+        )
+
+        # Set by the framework or build_from_config, or written as their own fields.
+        skip = {
+            "dynamic",
+            "has_holdup",
+            "property_package",
+            "property_package_args",
+            "costing_package",
+            "flexops_config",
+            "unit_commitment",
+            "external_dispatch",
+        }
+        given = {value.name(): value.value() for value in self.config.user_values()}
+        options = {
+            key: to_jsonable(value, where=f"{name}.{key}", packages=packages)
+            for key, value in given.items()
+            if key not in skip
+        }
+
+        def choose(block, named: dict, field: str):
+            if block is None:
+                return None
+            matches = [key for key, other in named.items() if other is block]
+            if not matches:
+                raise FlexConfigError(
+                    f"{name}.{field} is a block that is not on the model root, so "
+                    "it can't be written to a spec.",
+                    field=f"{name}.{field}",
+                )
+            return AUTO if len(named) == 1 else matches[0]
+
+        io_variables = []
+        for record in self._io_registry.io_variables:
+            first = next(iter(record.var.values()))
+            io_variables.append(
+                {
+                    "name": record.name,
+                    "role": record.role,
+                    "units": units_to_str(
+                        pyunits.get_units(first), where=f"{name}.{record.name}"
+                    ),
+                    "tag_hint": record.tag_hint,
+                    "time_indexed": record.time_indexed,
+                }
+            )
+        return UnitElement(
+            kind="unit",
+            name=name,
+            unit_model_class=unit_model_class_name(self),
+            construction_options=options,
+            property_package=choose(
+                self.config.property_package, packages, "property_package"
+            ),
+            costing_package=choose(
+                self.config.costing_package, costings, "costing_package"
+            ),
+            io_variables=io_variables,
+            unit_commitment=given.get("unit_commitment"),
+        )
 
     # -- config-driven construction ---------------------------------
 
     @classmethod
-    def build_from_config(cls, cfg: UnitConfig, **kwargs):
+    def build_from_config(cls, cfg: UnitConfig, *, index_set=None, **kwargs):
         """Construct a unit from a validated ``UnitConfig``.
 
         The per-unit primitive behind
@@ -1532,6 +1622,8 @@ class OpsBlockData(UnitModelBlockData):
 
         Args:
             cfg: A ``UnitConfig``, or a mapping/path to validate into one.
+            index_set: A Pyomo Set to build one unit per member over; omitted
+                builds a single unit.
             **kwargs: Extra runtime construction options.
 
         Returns:
@@ -1563,9 +1655,11 @@ class OpsBlockData(UnitModelBlockData):
             name: parse_quantity(value, strict=False)
             for name, value in cfg.construction_options.items()
         }
+        if cfg.unit_commitment is not None:
+            options["unit_commitment"] = cfg.unit_commitment
         return block_class(
+            *(() if index_set is None else (index_set,)),
             **options,
-            unit_commitment=cfg.unit_commitment,
             external_dispatch=cfg.external_dispatch,
             flexops_config=cfg,
             **kwargs,

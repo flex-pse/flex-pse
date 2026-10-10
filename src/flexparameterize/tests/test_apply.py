@@ -259,13 +259,13 @@ def test_apply_surrogate_without_coefficients_skips_registry():
             return _NoCoefSurrogate(spec.data)
         return original_surrogate_from_spec(spec)
 
-    import flexparameterize.apply as apply_module
+    import flexops.core.stages as stages_module
 
-    apply_module.surrogate_from_spec = _fake_surrogate_from_spec
+    stages_module.surrogate_from_spec = _fake_surrogate_from_spec
     try:
         report = apply_to_model(m, data, ALIASED, surrogates={unit.name: no_coef_spec})
     finally:
-        apply_module.surrogate_from_spec = original_surrogate_from_spec
+        stages_module.surrogate_from_spec = original_surrogate_from_spec
 
     assert report.swapped_relations == {unit.name: ["power_electrical_relation"]}
     assert unit.surrogate_power_electrical.fitted is not None
@@ -294,3 +294,14 @@ def test_apply_surrogate_idempotent_on_second_call():
     param_names = [p.name for p in unit._io_registry.parameters]
     assert param_names.count("flow_in") == 1
     assert param_names.count("intercept") == 1
+
+
+@pytest.mark.unit
+def test_apply_relation_spec_constants_match():
+    """flexops' shared relation constants equal flexparameterize's own."""
+    from flexops.core.stages import ENERGY_RELATION, INTENSITY_PARAMETER
+    from flexparameterize.apply import POWER_ELECTRICAL_RELATION
+    from flexparameterize.regression import COEFFICIENT_NAME
+
+    assert ENERGY_RELATION == POWER_ELECTRICAL_RELATION
+    assert INTENSITY_PARAMETER == COEFFICIENT_NAME

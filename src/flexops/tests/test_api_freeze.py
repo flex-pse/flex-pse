@@ -80,3 +80,22 @@ def test_api_freeze_config_is_schema_valid():
     schemas = Path(flexcore_config.__file__).parent / "schemas"
     schema = json.loads((schemas / "model_config.schema.json").read_text())
     jsonschema.validate(json.loads(_CONFIG.read_text()), schema)
+
+
+@pytest.mark.component
+@pytest.mark.xfail(
+    strict=True,
+    reason="Known script-vs-config difference: arc names, script "
+    "'tank_to_plant' vs config 'arc_0', and so their expanded constraints.",
+)
+def test_api_freeze_script_and_config_are_equivalent(tmp_path, monkeypatch):
+    """The frozen script and its config twin build structurally equal models."""
+    from flexops.testing import assert_models_equivalent
+
+    _in_fixture_dir(tmp_path, monkeypatch)
+    script = runpy.run_path(str(_SCRIPT))["m"]
+    twin = build_model(load_model_config(_CONFIG))
+    pyo.TransformationFactory("network.expand_arcs").apply_to(script)
+    pyo.TransformationFactory("network.expand_arcs").apply_to(twin)
+
+    assert_models_equivalent(script, twin)

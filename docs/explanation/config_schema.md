@@ -41,7 +41,8 @@ The schema shrinks from the top level
 
 - {class}`~flexcore.config.schema.ModelConfig` is the top level artifact.
   It holds `schema_version`, a
-  {class}`~flexcore.config.schema.TimeConfig`, a `properties` spec, a
+  {class}`~flexcore.config.schema.TimeConfig`, a dict of named
+  {class}`~flexcore.config.schema.PropertyPackageSpec` entries, a
   {class}`~flexcore.config.schema.CostingConfig`, and **exactly one** of a
   {class}`~flexcore.config.schema.NetworkConfig` **or** a
   {class}`~flexcore.config.schema.PlantConfig` (a validator enforces the
@@ -126,7 +127,9 @@ on both sides at once.
 
 When a relationship is too large to inline, `source` names a JSON sidecar
 that supplies `data`. A relative path resolves against the config file's
-own directory, and {func}`~flexcore.config.io.load_model_config` fills it
+own directory (see {func}`~flexcore.config.io.resolve_source_path`, which
+also covers tariff, demand response, and dispatch paths and falls back to the
+working directory with a `DeprecationWarning`), and {func}`~flexcore.config.io.load_model_config` fills it
 in at the boundary, so nothing downstream ever sees a half loaded
 relationship.
 
@@ -155,6 +158,34 @@ FlexOps. FlexParameterize can either mutate a live FlexOps model in place
 invariant is that both produce equivalent behavior. The schema is
 versioned and serializable, and that's what makes this seam the place the
 monorepo splits into separate repositories later.
+
+## Writing a spec from a model built in code
+
+{func}`~flexops.core.emit.emit_model` goes the other way from `build_model`. Given a model
+built in Python, it returns the flat spec that rebuilds the same model. It reads
+each component's construction options back from its config, writes each arc as a
+connection on its source unit (an indexed arc becomes a `{i}` template, which is
+checked against every member), and keeps each surrogate swapped in from a spec.
+It then rebuilds the spec and compares the two models. Anything the spec can't
+express yet, such as a constraint added by hand, a custom objective, or a
+surrogate object built without a spec, raises a `FlexEmitWarning` that names
+it. Nothing is dropped silently.
+
+Two kinds of reference keep a spec small and free of live objects:
+
+- **`{"$source": "data/prices.json.gz"}`** stands in for a long list of
+  numbers: an energy price series, a dispatch series, or a list inside
+  surrogate data. The path is relative to the spec file and names a `.json` or
+  gzipped `.json.gz` file. `emit_model(..., data_dir=...)` writes every list
+  longer than `inline_limit` (2,000 by default) this way.
+- **`{"$package": "biogas"}`** as a unit construction option passes the
+  property package element of that name, for units that take more than one
+  package (a digester's biogas and sludge outlets, for example).
+
+Units are written as Pyomo prints them, with `**` exponents changed to `^`, so
+`kg/m^2/s` (kilograms per square metre per second) and `1/s` both appear as
+written. A unit with a fractional exponent, such as `m^0.5`, can't be written
+yet, and `emit_model` raises a `FlexConfigError` naming the option.
 
 ## Field reference
 

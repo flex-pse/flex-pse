@@ -22,6 +22,8 @@ extra).
 
 .. autofunction:: dummy_gas_time_block
 
+.. autofunction:: assert_models_equivalent
+
 Testing your own unit model
 ----------------------------
 

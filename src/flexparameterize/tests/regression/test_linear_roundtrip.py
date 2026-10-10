@@ -14,6 +14,7 @@ import pytest
 pytest.importorskip("sklearn")
 
 from flexcore.config.io import dump_model_config, load_model_config  # noqa: E402
+from flexcore.config.schema import PropertyPackageSpec  # noqa: E402
 from flexops.core.build import build_model  # noqa: E402
 from flexparameterize.apply import apply_to_model  # noqa: E402
 from flexparameterize.emit import emit_model_config  # noqa: E402
@@ -72,7 +73,15 @@ def test_linear_fit_emit_rebuild_predictions(tmp_path):
     regressor, spec = _fit_linear_spec(unit)
 
     cfg = emit_model_config(unit, spec, {"data_source": "linear roundtrip test"})
-    cfg = cfg.model_copy(update={"properties": {"has_pressure": True}})
+    cfg = cfg.model_copy(
+        update={
+            "properties": {
+                "properties": PropertyPackageSpec(
+                    property_class="SimpleAqueousFlow", options={"has_pressure": True}
+                )
+            }
+        }
+    )
     path = tmp_path / "linear.json"
     dump_model_config(cfg, path)
     rebuilt = build_model(load_model_config(path)).facility.plant

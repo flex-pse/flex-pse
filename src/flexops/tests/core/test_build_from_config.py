@@ -47,3 +47,18 @@ def test_build_from_config_bad_config_raises():
     with pytest.raises(ValidationError) as excinfo:
         OpsBlockData.build_from_config(bad)
     assert "io_variables.0.role" in str(excinfo.value)
+
+
+@pytest.mark.unit
+def test_unset_unit_commitment_keeps_unit_default():
+    """A config that omits unit_commitment gets the unit's own default."""
+    m = dummy_time_block(3)
+    m.unit = OpsBlockData.build_from_config(
+        UnitConfig(
+            unit_model_class="BatteryModel",
+            construction_options={"capacity": {"value": 1.0, "units": "kWh"}},
+        )
+    )
+
+    assert m.unit.config.unit_commitment.status is False
+    assert m.unit.find_component("status") is None

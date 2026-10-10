@@ -491,6 +491,68 @@ class FlexCostingData(FlowsheetCostingBlockData):
 
     # -- required FlowsheetCostingBlockData overloads ---------------------
 
+    def to_element(self, *, relative_to=None):
+        """Describe this costing block as the spec element that builds it.
+
+        Args:
+            relative_to: Directory to write file paths under it relative to;
+                None keeps them as configured.
+
+        Returns:
+            The :class:`~flexcore.config.spec.CostingElement`.
+
+        Raises:
+            FlexConfigError: If a tariff was passed as an object, or a price has
+                no units.
+        """
+        # Local imports: serialize imports flexops.costing.
+        from flexcore.config.spec import CostingElement, SourcedPrice
+        from flexops.core.serialize import relative_path, to_jsonable
+
+        config = self.config
+        if config.tariff is not None:
+            raise FlexConfigError(
+                "a tariff passed as an object can't be written to a spec; pass "
+                "tariff_file",
+                field="tariff",
+            )
+        prices = {}
+        for name, price in (config.energy_prices or {}).items():
+            data = to_jsonable(price, where=f"energy_prices[{name!r}]")
+            if isinstance(data, list) and all(isinstance(d, dict) for d in data):
+                units = {d["units"] for d in data}
+                if len(units) == 1:
+                    data = {"value": [d["value"] for d in data], "units": units.pop()}
+            if not isinstance(data, dict):
+                raise FlexConfigError(
+                    f"energy_prices[{name!r}] needs units to be written to a spec",
+                    field="energy_prices",
+                    value=name,
+                )
+            prices[name] = SourcedPrice(**data)
+        tariff = config.tariff_file
+        if isinstance(tariff, (list, tuple)):
+            tariff = [relative_path(item, relative_to) for item in tariff]
+        elif isinstance(tariff, dict):
+            tariff = {k: relative_path(v, relative_to) for k, v in tariff.items()}
+        else:
+            tariff = relative_path(tariff, relative_to)
+        events = relative_path(config.dr_event_file, relative_to)
+        return CostingElement(
+            kind="costing",
+            name=self.local_name,
+            tariff_source=tariff,
+            energy_prices=prices or None,
+            currency=config.currency,
+            dr=None if events is None else {"events_source": events},
+            consumption_estimate=config.consumption_estimate,
+            fixed_operating_cost=config.fixed_operating_cost,
+            prorate_monthly_charges=config.prorate_monthly_charges,
+            lifetime_years=config.lifetime_years,
+            discount_rate=config.discount_rate,
+            interest_rate=config.interest_rate,
+        )
+
     def build_global_params(self) -> None:
         """Resolve the tariff (if any) and set the base currency.
 

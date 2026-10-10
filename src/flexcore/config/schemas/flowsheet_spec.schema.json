@@ -1,0 +1,939 @@
+{
+  "$defs": {
+    "Connection": {
+      "additionalProperties": false,
+      "description": "An arc from a port of the unit that owns it to another unit's port.",
+      "properties": {
+        "directed": {
+          "default": true,
+          "description": "False builds an undirected arc between the two ports.",
+          "title": "Directed",
+          "type": "boolean"
+        },
+        "doc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional arc description.",
+          "title": "Doc"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name of a set element to index the arc over; omitted: the owning unit's index, if it has one.",
+          "title": "Index"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name of the arc on the model; omitted: derived from the endpoints.",
+          "title": "Name"
+        },
+        "port": {
+          "description": "Port on the owning unit, e.g. 'outlet'.",
+          "title": "Port",
+          "type": "string"
+        },
+        "to": {
+          "description": "Destination as '<unit element name>.<port path>'; may contain '{i}' for an indexed connection.",
+          "title": "To",
+          "type": "string"
+        }
+      },
+      "required": [
+        "port",
+        "to"
+      ],
+      "title": "Connection",
+      "type": "object"
+    },
+    "CostingElement": {
+      "additionalProperties": false,
+      "description": "The costing package: tariff, prices, demand response and finance terms.",
+      "properties": {
+        "consumption_estimate": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "propertyNames": {
+                "enum": [
+                  "electric",
+                  "gas"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Estimated total consumption over the horizon, keyed by EECO utility ('electric'/'gas'; kWh / m^3). EECO needs it to price any tier other than a flat top tier.",
+          "title": "Consumption Estimate"
+        },
+        "currency": {
+          "default": "USD",
+          "description": "Currency basis to use when no tariff is given; a tariff's own currency basis always wins.",
+          "title": "Currency",
+          "type": "string"
+        },
+        "discount_rate": {
+          "default": 0.08,
+          "description": "Annual discount rate (fraction, e.g. 0.08 = 8%). Used alone as the effective rate when interest_rate is unset; otherwise it deflates interest_rate into a real effective rate. An effective rate of 0 falls back to straight-line 1/lifetime.",
+          "title": "Discount Rate",
+          "type": "number"
+        },
+        "dr": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DRConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional demand-response container (containers-only in v0)."
+        },
+        "energy_prices": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/SourcedPrice"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional native prices keyed by carrier or fuel name ('electrical', or a fuel such as 'natural_gas'). A carrier priced here is billed at that price instead of through the tariff, so a run with every carrier priced needs no tariff at all. Each price is flat over the horizon or given per time point.",
+          "title": "Energy Prices"
+        },
+        "fixed_operating_cost": {
+          "default": 0.0,
+          "description": "Fixed operating cost over the horizon, in the currency basis in force (a tariff's own, else 'currency'): non-tariff costs such as maintenance, labor, and chemicals. Distinct from the tariff's own fixed charge (which EECO includes in the electricity cost).",
+          "title": "Fixed Operating Cost",
+          "type": "number"
+        },
+        "interest_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional annual cost of capital (fraction, e.g. 0.06). When given, the capital recovery factor uses the effective rate (1 + interest_rate) / (1 + discount_rate) - 1. Omit to use discount_rate alone.",
+          "title": "Interest Rate"
+        },
+        "kind": {
+          "const": "costing",
+          "title": "Kind",
+          "type": "string"
+        },
+        "lifetime_years": {
+          "default": 20.0,
+          "description": "Plant lifetime in years (> 0), used with the effective rate to form the capital recovery factor that annualizes capital cost.",
+          "title": "Lifetime Years",
+          "type": "number"
+        },
+        "name": {
+          "description": "Name of the costing block on the model.",
+          "title": "Name",
+          "type": "string"
+        },
+        "prorate_monthly_charges": {
+          "default": true,
+          "description": "Prorate a tariff's monthly-assessed demand charge and fixed (customer) charge to the horizon length when the horizon is shorter than the calendar month it starts in. False bills the full monthly charges.",
+          "title": "Prorate Monthly Charges",
+          "type": "boolean"
+        },
+        "tariff_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where the EECO tariff comes from: one file or tag, a list of them to merge, or a mapping of EECO utility ('electric'/'gas') to file to merge and also assign each file to a utility. Omit to price every carrier from energy_prices instead.",
+          "title": "Tariff Source"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "title": "CostingElement",
+      "type": "object"
+    },
+    "DRConfig": {
+      "additionalProperties": false,
+      "description": "Demand-response container slot, a placeholder in v0: DR containers exist so wiring is stable, but no DR constraints are built. Turning DR on later is additive.",
+      "properties": {
+        "events_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional file or tag pointing at demand-response events.",
+          "title": "Events Source"
+        }
+      },
+      "title": "DRConfig",
+      "type": "object"
+    },
+    "DispatchElement": {
+      "additionalProperties": false,
+      "description": "Values an external controller sets for one variable of a unit.",
+      "properties": {
+        "fix": {
+          "default": true,
+          "description": "Whether to fix the variable to the values (removing its degrees of freedom).",
+          "title": "Fix",
+          "type": "boolean"
+        },
+        "kind": {
+          "const": "dispatch",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional label; not used to build anything.",
+          "title": "Name"
+        },
+        "unit": {
+          "description": "Name of the unit element it applies to.",
+          "title": "Unit",
+          "type": "string"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "$ref": "#/$defs/SourceRef"
+            }
+          ],
+          "description": "One value per time point as a list, a mapping of time index to value, or a $source reference to a file holding either.",
+          "title": "Values"
+        },
+        "variable": {
+          "description": "Name of the time-indexed variable on the unit.",
+          "title": "Variable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "unit",
+        "variable",
+        "values"
+      ],
+      "title": "DispatchElement",
+      "type": "object"
+    },
+    "IOVariableSpec": {
+      "additionalProperties": false,
+      "description": "A declared process input or output variable of a unit.",
+      "properties": {
+        "name": {
+          "description": "Local variable name on the unit block.",
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "description": "Whether the variable is a process input or output.",
+          "enum": [
+            "input",
+            "output"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "tag_hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional historian-tag hint for FlexParameterize aliasing.",
+          "title": "Tag Hint"
+        },
+        "time_indexed": {
+          "default": true,
+          "description": "Whether the variable is indexed over the time set.",
+          "title": "Time Indexed",
+          "type": "boolean"
+        },
+        "units": {
+          "description": "Units of the variable as a string, e.g. 'm^3/hr'.",
+          "title": "Units",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "role",
+        "units"
+      ],
+      "title": "IOVariableSpec",
+      "type": "object"
+    },
+    "NetworkElement": {
+      "additionalProperties": false,
+      "description": "A network of plants.",
+      "properties": {
+        "kind": {
+          "const": "network",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "description": "Dotted path of the network on the model.",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "title": "NetworkElement",
+      "type": "object"
+    },
+    "ObjectiveElement": {
+      "additionalProperties": false,
+      "description": "The objective the model optimizes.",
+      "properties": {
+        "costing_package": {
+          "default": "auto",
+          "description": "Name of the costing element whose cost is optimized; 'auto' means the model's only one.",
+          "title": "Costing Package",
+          "type": "string"
+        },
+        "expression": {
+          "const": "cost",
+          "default": "cost",
+          "description": "Quantity to optimize (only cost today).",
+          "title": "Expression",
+          "type": "string"
+        },
+        "kind": {
+          "const": "objective",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "default": "objective",
+          "description": "Name on the model.",
+          "title": "Name",
+          "type": "string"
+        },
+        "sense": {
+          "default": "minimize",
+          "description": "Direction of optimization.",
+          "enum": [
+            "minimize",
+            "maximize"
+          ],
+          "title": "Sense",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ObjectiveElement",
+      "type": "object"
+    },
+    "PlantElement": {
+      "additionalProperties": false,
+      "description": "A plant of units.",
+      "properties": {
+        "kind": {
+          "const": "plant",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "description": "Dotted path of the plant on the model.",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "title": "PlantElement",
+      "type": "object"
+    },
+    "PropertyPackageElement": {
+      "additionalProperties": false,
+      "description": "A property package, built at the model root under its name.",
+      "properties": {
+        "kind": {
+          "const": "property_package",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the package on the model.",
+          "title": "Name",
+          "type": "string"
+        },
+        "options": {
+          "additionalProperties": true,
+          "description": "Keyword options passed to the property-package constructor, e.g. {'has_pressure': true}.",
+          "title": "Options",
+          "type": "object"
+        },
+        "property_class": {
+          "description": "Name of a flexops property-package class, e.g. 'SimpleAqueousFlow' or 'SimpleGasFlow'.",
+          "title": "Property Class",
+          "type": "string"
+        }
+      },
+      "required": [
+        "property_class",
+        "kind",
+        "name"
+      ],
+      "title": "PropertyPackageElement",
+      "type": "object"
+    },
+    "SetElement": {
+      "additionalProperties": false,
+      "description": "A set of members that units and connections can be indexed over.",
+      "properties": {
+        "kind": {
+          "const": "set",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "description": "Dotted path of the set on the model.",
+          "title": "Name",
+          "type": "string"
+        },
+        "values": {
+          "description": "The set's members, in order; non-empty and unique.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "values"
+      ],
+      "title": "SetElement",
+      "type": "object"
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "description": "Data kept in a JSON or gzipped JSON file beside the spec.",
+      "properties": {
+        "$source": {
+          "description": "Path of a .json or .json.gz file, relative to the spec file.",
+          "title": "$Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "$source"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    },
+    "SourcedPrice": {
+      "additionalProperties": false,
+      "description": "A native price whose values may sit in a file beside the spec.",
+      "properties": {
+        "units": {
+          "description": "Units of the price as a string, e.g. 'USD/kWh' for electricity or 'USD/m^3' for a fuel.",
+          "title": "Units",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "$ref": "#/$defs/SourceRef"
+            }
+          ],
+          "description": "The numeric price: one number, one per time point, or a $source reference to a file holding that list.",
+          "title": "Value"
+        }
+      },
+      "required": [
+        "value",
+        "units"
+      ],
+      "title": "SourcedPrice",
+      "type": "object"
+    },
+    "SurrogateElement": {
+      "additionalProperties": false,
+      "description": "A fitted relationship swapped into a unit after it is built.",
+      "properties": {
+        "data": {
+          "additionalProperties": true,
+          "description": "The relationship's data, in the shape surrogate_type's class defines.",
+          "title": "Data",
+          "type": "object"
+        },
+        "kind": {
+          "const": "surrogate",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional label; not used to build anything.",
+          "title": "Name"
+        },
+        "provenance": {
+          "additionalProperties": true,
+          "description": "Free-form fit metadata (metrics, data window, versions).",
+          "title": "Provenance",
+          "type": "object"
+        },
+        "relation": {
+          "default": "power_electrical_relation",
+          "description": "Name of the unit's relation to replace.",
+          "title": "Relation",
+          "type": "string"
+        },
+        "surrogate_type": {
+          "$ref": "#/$defs/SurrogateType",
+          "description": "Which predefined surrogate class the data describes."
+        },
+        "unit": {
+          "description": "Name of the unit element it applies to.",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "unit",
+        "surrogate_type"
+      ],
+      "title": "SurrogateElement",
+      "type": "object"
+    },
+    "SurrogateType": {
+      "description": "Which predefined surrogate class a SurrogateSpec's data describes. Each member names a class in flexops.surrogates that validates and builds the relationship; CONSTANT_INTENSITY is the one exception -- it has no class, since it fixes a process parameter rather than swapping a Constraint (see flexops.core.ops_block.OpsBlockData.swap_relation).",
+      "enum": [
+        "constant_intensity",
+        "multilinear",
+        "quadratic",
+        "exponential",
+        "arima",
+        "neural_network"
+      ],
+      "title": "SurrogateType",
+      "type": "string"
+    },
+    "TimeElement": {
+      "additionalProperties": false,
+      "description": "The discrete-time horizon; builds the model's time_block.",
+      "properties": {
+        "end_date": {
+          "description": "Exclusive ISO-8601 end of the horizon.",
+          "title": "End Date",
+          "type": "string"
+        },
+        "kind": {
+          "const": "time",
+          "title": "Kind",
+          "type": "string"
+        },
+        "start_date": {
+          "description": "Inclusive ISO-8601 start of the horizon.",
+          "title": "Start Date",
+          "type": "string"
+        },
+        "time_step": {
+          "description": "Time-step as a units-carrying expression string, e.g. '15 min'; parsed at build time.",
+          "title": "Time Step",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_date",
+        "end_date",
+        "time_step",
+        "kind"
+      ],
+      "title": "TimeElement",
+      "type": "object"
+    },
+    "UnitCommitmentConfig": {
+      "additionalProperties": false,
+      "description": "Per-unit unit-commitment configuration, a validated container. Every piece is optional except status.",
+      "properties": {
+        "conditional": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Not yet built from config; must be left at its default. Conditional status implications between units.",
+          "title": "Conditional"
+        },
+        "delays": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Not yet built from config; must be left at its default. Upstream-linked startup-delay specification.",
+          "title": "Delays"
+        },
+        "dwell": {
+          "default": false,
+          "description": "Not yet built from config; must be left at its default. Whether to build minimum up/down-time (dwell) constraints.",
+          "title": "Dwell",
+          "type": "boolean"
+        },
+        "min_down": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Not yet built from config; must be left at its default. Minimum number of steps the unit must stay down once stopped.",
+          "title": "Min Down"
+        },
+        "min_up": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Not yet built from config; must be left at its default. Minimum number of steps the unit must stay up once started.",
+          "title": "Min Up"
+        },
+        "startup_shutdown": {
+          "default": false,
+          "description": "Not yet built from config; must be left at its default. Whether to build startup/shutdown transition logic.",
+          "title": "Startup Shutdown",
+          "type": "boolean"
+        },
+        "status": {
+          "default": true,
+          "description": "Whether the unit has an on/off status binary (a tank sets this False).",
+          "title": "Status",
+          "type": "boolean"
+        }
+      },
+      "title": "UnitCommitmentConfig",
+      "type": "object"
+    },
+    "UnitElement": {
+      "additionalProperties": false,
+      "description": "A unit model and the connections that leave it.",
+      "properties": {
+        "connections": {
+          "description": "Arcs leaving this unit. Each arc is written once, on its source unit.",
+          "items": {
+            "$ref": "#/$defs/Connection"
+          },
+          "title": "Connections",
+          "type": "array"
+        },
+        "construction_options": {
+          "additionalProperties": true,
+          "description": "Keyword options passed to the unit-model constructor. A value {'$package': name} passes the named property_package element.",
+          "title": "Construction Options",
+          "type": "object"
+        },
+        "costing_package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "auto",
+          "description": "Name of a costing element. 'auto' means the model's only one; null leaves the unit uncosted.",
+          "title": "Costing Package"
+        },
+        "index": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name of a set element; the unit is built once per member.",
+          "title": "Index"
+        },
+        "io_variables": {
+          "description": "Declared process input/output variables of the unit.",
+          "items": {
+            "$ref": "#/$defs/IOVariableSpec"
+          },
+          "title": "Io Variables",
+          "type": "array"
+        },
+        "kind": {
+          "const": "unit",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "description": "Dotted path of the unit on the model.",
+          "title": "Name",
+          "type": "string"
+        },
+        "property_package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "auto",
+          "description": "Name of a property_package element. 'auto' means the model's only one (an error if it has several); null gives the unit none.",
+          "title": "Property Package"
+        },
+        "unit_commitment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnitCommitmentConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Per-unit unit-commitment configuration. Unset (null) leaves the unit model's own default in force."
+        },
+        "unit_model_class": {
+          "description": "Name of the flexops unit-model class to construct.",
+          "title": "Unit Model Class",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "unit_model_class"
+      ],
+      "title": "UnitElement",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A flowsheet as a flat list of elements, in any order.",
+  "properties": {
+    "elements": {
+      "description": "Every element of the flowsheet; order is irrelevant.",
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "costing": "#/$defs/CostingElement",
+            "dispatch": "#/$defs/DispatchElement",
+            "network": "#/$defs/NetworkElement",
+            "objective": "#/$defs/ObjectiveElement",
+            "plant": "#/$defs/PlantElement",
+            "property_package": "#/$defs/PropertyPackageElement",
+            "set": "#/$defs/SetElement",
+            "surrogate": "#/$defs/SurrogateElement",
+            "time": "#/$defs/TimeElement",
+            "unit": "#/$defs/UnitElement"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/TimeElement"
+          },
+          {
+            "$ref": "#/$defs/PropertyPackageElement"
+          },
+          {
+            "$ref": "#/$defs/CostingElement"
+          },
+          {
+            "$ref": "#/$defs/NetworkElement"
+          },
+          {
+            "$ref": "#/$defs/PlantElement"
+          },
+          {
+            "$ref": "#/$defs/SetElement"
+          },
+          {
+            "$ref": "#/$defs/UnitElement"
+          },
+          {
+            "$ref": "#/$defs/SurrogateElement"
+          },
+          {
+            "$ref": "#/$defs/DispatchElement"
+          },
+          {
+            "$ref": "#/$defs/ObjectiveElement"
+          }
+        ]
+      },
+      "title": "Elements",
+      "type": "array"
+    },
+    "name": {
+      "description": "Name of the Pyomo ConcreteModel.",
+      "title": "Name",
+      "type": "string"
+    },
+    "schema_version": {
+      "description": "Semantic schema version of this spec, an X.Y.Z string; mandatory, no default.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "solver": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional solver name; None lets the facade pick.",
+      "title": "Solver"
+    }
+  },
+  "required": [
+    "schema_version",
+    "name",
+    "elements"
+  ],
+  "title": "FlowsheetSpec",
+  "type": "object"
+}

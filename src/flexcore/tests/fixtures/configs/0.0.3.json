@@ -1,0 +1,35 @@
+{
+  "schema_version": "0.0.3",
+  "time": {
+    "start_date": "2025-07-08",
+    "end_date": "2025-07-09",
+    "time_step": "1 hr"
+  },
+  "properties": {"has_pressure": true},
+  "costing": {
+    "energy_prices": {
+      "electrical": {"value": 0.12, "units": "USD/kWh"}
+    }
+  },
+  "plant": {
+    "name": "demo",
+    "units": {
+      "tank": {
+        "unit_model_class": "Tank",
+        "construction_options": {
+          "max_volume": {"value": 1000.0, "units": "m^3"},
+          "initial_volume": {"value": 500.0, "units": "m^3"}
+        }
+      },
+      "surrogate": {
+        "unit_model_class": "ConstantEnergyIntensityModel",
+        "construction_options": {
+          "energy_intensity": {"value": 0.5, "units": "kWh/m^3"}
+        }
+      }
+    },
+    "arcs": [
+      {"source": "tank.outlet", "destination": "surrogate.inlet"}
+    ]
+  }
+}

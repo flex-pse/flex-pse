@@ -69,6 +69,8 @@ flexops = [
     "tests/fixtures/*.csv",
     "tests/fixtures/api_freeze/*.json",
     "tests/fixtures/api_freeze/data/*.json",
+    "tests/fixtures/legacy_snapshots/*.json",
+    "tests/fixtures/legacy_snapshots/*.py",
 ]
 flexparameterize = ["py.typed"]
 flexschedule = ["py.typed"]

@@ -10,6 +10,7 @@ Thanks for your interest in contributing! This project welcomes issues, pull req
 - [Contributor Responsibility](#contributor-responsibility)
 - [Use of AI Tools](#use-of-ai-tools)
 - [Submitting a Pull Request](#submitting-a-pull-request)
+- [Config schema versioning](#config-schema-versioning)
 - [Review & Verification by Maintainers](#review--verification-by-maintainers)
 - [Code of Conduct](#code-of-conduct)
 - [Reporting Bugs & Security Issues](#reporting-bugs--security-issues)
@@ -68,6 +69,15 @@ AI-assisted contributions (code, docs, or issue text) are welcome, but the same 
 3. Link any related issue(s).
 4. Make sure CI passes before requesting review.
 5. Keep the scope of the PR narrow — one concern per PR.
+
+## Config schema versioning
+
+- An additive, optional field is a patch bump with no migration.
+- A renamed, reshaped, newly required, or newly rejected field is a bump with a `MIGRATIONS` hook in the same PR, plus a fixture `fixtures/configs/<old version>.json`.
+- A migration that cannot translate raises `FlexConfigError` naming the field and how to fix it.
+- Regenerate `schemas/model_config.schema.json` in the same PR.
+- There is one schema, the flat `FlowsheetSpec`, versioned by `SCHEMA_VERSION`. Versions up to 0.0.4 are the old nested `ModelConfig`; the `0.0.4` entry in `MIGRATIONS` converts them to the flat spec. Keep a fixture `fixtures/specs/<old version>.json` for each flat version and regenerate `schemas/flowsheet_spec.schema.json`.
+- A new element kind must be added to `KINDS` with its stage and mutability.
 
 ## Review & Verification by Maintainers
 

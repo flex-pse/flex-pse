@@ -84,3 +84,11 @@ class FlexDataError(FlexError):
     def __init__(self, message: str, *, field: str | None = None) -> None:
         super().__init__(message)
         self.field = field
+
+
+class FlexEmitWarning(UserWarning):
+    """Warned when a model holds something its emitted spec cannot express yet.
+
+    Raise it to an error with ``warnings.simplefilter("error", FlexEmitWarning)``
+    to require a model to round-trip exactly.
+    """

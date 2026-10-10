@@ -18,12 +18,22 @@ line-break art — rendering is the documentation builder's job.
 """
 
 import enum
+from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    NonNegativeFloat,
+    PrivateAttr,
+    model_validator,
+)
 
-CURRENT_SCHEMA_VERSION = "0.0.3"
-"""str: the semantic schema version this build writes and validates against."""
+CURRENT_SCHEMA_VERSION = "0.0.4"
+"""str: the last nested-format version. New configs use the flat spec's
+``flexcore.config.spec.SCHEMA_VERSION``; this stays until flexparameterize
+writes flat specs."""
 
 
 class _StrictModel(BaseModel):
@@ -127,27 +137,68 @@ class UnitCommitmentConfig(_StrictModel):
     )
     startup_shutdown: bool = Field(
         default=False,
-        description="Whether to build startup/shutdown transition logic.",
+        description="Not yet built from config; must be left at its default. "
+        "Whether to build startup/shutdown transition logic.",
     )
     dwell: bool = Field(
         default=False,
-        description="Whether to build minimum up/down-time (dwell) constraints.",
+        description="Not yet built from config; must be left at its default. "
+        "Whether to build minimum up/down-time (dwell) constraints.",
     )
     min_up: int | None = Field(
         default=None,
-        description="Minimum number of steps the unit must stay up once started.",
+        description="Not yet built from config; must be left at its default. "
+        "Minimum number of steps the unit must stay up once started.",
     )
     min_down: int | None = Field(
         default=None,
-        description="Minimum number of steps the unit must stay down once stopped.",
+        description="Not yet built from config; must be left at its default. "
+        "Minimum number of steps the unit must stay down once stopped.",
     )
     delays: dict[str, Any] | None = Field(
         default=None,
-        description="Upstream-linked startup-delay specification.",
+        description="Not yet built from config; must be left at its default. "
+        "Upstream-linked startup-delay specification.",
     )
     conditional: dict[str, Any] | None = Field(
         default=None,
-        description="Conditional status implications between units.",
+        description="Not yet built from config; must be left at its default. "
+        "Conditional status implications between units.",
+    )
+
+    @model_validator(mode="after")
+    def _only_supported_fields(self) -> "UnitCommitmentConfig":
+        """Reject fields the builder does not read, so none is silently ignored."""
+        defaults = {
+            "startup_shutdown": False,
+            "dwell": False,
+            "min_up": None,
+            "min_down": None,
+            "delays": None,
+            "conditional": None,
+        }
+        unsupported = [n for n, d in defaults.items() if getattr(self, n) != d]
+        if unsupported:
+            names = ", ".join(f"unit_commitment.{n}" for n in unsupported)
+            raise ValueError(
+                f"{names} is not built from config yet (planned for schema "
+                "0.1.0); remove it, or build this logic in code with "
+                "flexops.logic.add_startup_shutdown."
+            )
+        return self
+
+
+class PropertyPackageSpec(_StrictModel):
+    """A property package the model builds, by class name and options."""
+
+    property_class: str = Field(
+        description="Name of a flexops property-package class, e.g. "
+        "'SimpleAqueousFlow' or 'SimpleGasFlow'."
+    )
+    options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Keyword options passed to the property-package constructor, "
+        "e.g. {'has_pressure': true}.",
     )
 
 
@@ -169,13 +220,27 @@ class UnitConfig(_StrictModel):
         default=None,
         description="Optional fitted energy/IO relationship for the unit.",
     )
-    unit_commitment: UnitCommitmentConfig = Field(
-        default_factory=UnitCommitmentConfig,
-        description="Per-unit unit-commitment configuration.",
+    unit_commitment: UnitCommitmentConfig | None = Field(
+        default=None,
+        description="Per-unit unit-commitment configuration. Unset (null) "
+        "leaves the unit model's own default in force (a battery or tank has "
+        "no status binary unless asked for one).",
     )
     external_dispatch: ExternalDispatchSpec | None = Field(
         default=None,
         description="Optional external (DERMS) dispatch source for the unit.",
+    )
+    property_package: str | None = Field(
+        default="auto",
+        description="Which entry of ModelConfig.properties this unit uses. 'auto' "
+        "means the model's only property package (an error if it has several); "
+        "null means the unit gets no property package.",
+    )
+    costing: bool = Field(
+        default=True,
+        description="Whether this unit is attached to the model's costing block. "
+        "False builds it with no costing package, so none of its power or prices "
+        "are costed.",
     )
 
 
@@ -349,7 +414,7 @@ class CostingConfig(_StrictModel):
 
 # Architecture references: the config artifact is plan/01_architecture.md §2.3.
 class ModelConfig(_StrictModel):
-    """The top-level config artifact the whole model and run are built from."""
+    """Legacy nested format; new specs use flexcore.config.spec.FlowsheetSpec."""
 
     schema_version: str = Field(
         pattern=r"^\d+\.\d+\.\d+$",
@@ -357,10 +422,12 @@ class ModelConfig(_StrictModel):
         "mandatory, no default.",
     )
     time: TimeConfig = Field(description="The discrete-time horizon.")
-    properties: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Property-package specification (kept loose at schema "
-        "version 0.0.1).",
+    properties: dict[str, PropertyPackageSpec] = Field(
+        default_factory=lambda: {
+            "properties": PropertyPackageSpec(property_class="SimpleAqueousFlow")
+        },
+        description="Property packages the model builds, keyed by the attribute "
+        "name each gets on the model. Units pick one with property_package.",
     )
     costing: CostingConfig = Field(description="Tariff/DR/solve options.")
     network: NetworkConfig | None = Field(
@@ -371,6 +438,30 @@ class ModelConfig(_StrictModel):
         default=None,
         description="A single plant of units; mutually exclusive with 'network'.",
     )
+
+    _base_dir: Path | None = PrivateAttr(default=None)
+
+    @model_validator(mode="after")
+    def _units_name_a_property_package(self) -> "ModelConfig":
+        """Require every unit's property_package to resolve to a declared entry."""
+        plants = self.network.plants.values() if self.network else [self.plant]
+        keys = list(self.properties)
+        for plant in plants:
+            for name, unit in (plant.units if plant else {}).items():
+                choice = unit.property_package
+                if choice == "auto" and len(keys) != 1:
+                    raise ValueError(
+                        f"Unit {name!r} uses property_package 'auto', which needs "
+                        f"exactly one entry in properties, but there are "
+                        f"{len(keys)} ({keys}). Set property_package to one of "
+                        "those keys."
+                    )
+                if choice not in (None, "auto") and choice not in keys:
+                    raise ValueError(
+                        f"Unit {name!r} names property_package {choice!r}, which "
+                        f"is not in properties. Available: {keys}."
+                    )
+        return self
 
     @model_validator(mode="after")
     def _exactly_one_topology(self) -> "ModelConfig":

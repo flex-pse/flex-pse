@@ -11,7 +11,7 @@ of :meth:`Surrogate.build`.
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
-from flexcore.config.schema import SurrogateType
+from flexcore.config.schema import SurrogateSpec, SurrogateType
 
 
 class Surrogate(ABC):
@@ -25,9 +25,12 @@ class Surrogate(ABC):
         surrogate_type: The :class:`~flexcore.config.schema.SurrogateType`
             this class implements.
         data: The validated data mapping, as given to ``__init__``.
+        spec: The spec this surrogate was built from by ``surrogate_from_spec``,
+            or ``None`` when it was built directly.
     """
 
     surrogate_type: ClassVar[SurrogateType]
+    spec: SurrogateSpec | None = None
 
     def __init__(self, data: dict) -> None:
         """Store and validate ``data``.

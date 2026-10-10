@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.1.0",
+  "name": "campus",
+  "solver": "highs",
+  "elements": [
+    {"kind": "objective", "name": "objective", "expression": "cost", "sense": "minimize"},
+    {
+      "kind": "dispatch",
+      "unit": "campus.north.pump",
+      "variable": "power_electrical",
+      "values": [2.5, 2.5, 2.5, 2.5],
+      "fix": true
+    },
+    {
+      "kind": "surrogate",
+      "unit": "campus.north.pump",
+      "relation": "power_electrical_relation",
+      "surrogate_type": "multilinear",
+      "data": {
+        "input_variables": {"flow_out": "m^3/hr"},
+        "output_variables": {"power_electrical": "kW"},
+        "coefficients": {"flow_out": 0.8, "intercept": 0.0}
+      },
+      "provenance": {"r2": 0.98}
+    },
+    {
+      "kind": "unit",
+      "name": "campus.north.pump",
+      "unit_model_class": "ConstantEnergyIntensityModel",
+      "construction_options": {"energy_intensity": {"value": 0.5, "units": "kWh/m^3"}},
+      "io_variables": [{"name": "flow_out", "role": "output", "units": "m^3/hr"}]
+    },
+    {
+      "kind": "unit",
+      "name": "campus.north.tank",
+      "unit_model_class": "Tank",
+      "connections": [
+        {"port": "outlet", "to": "campus.north.pump.inlet", "name": "tank_to_pump"}
+      ]
+    },
+    {"kind": "set", "name": "campus.north.trains", "values": ["a", "b"]},
+    {
+      "kind": "unit",
+      "name": "campus.north.battery",
+      "unit_model_class": "BatteryModel",
+      "construction_options": {"capacity": {"value": 10.0, "units": "kWh"}},
+      "property_package": null,
+      "costing_package": "costing"
+    },
+    {"kind": "plant", "name": "campus.north"},
+    {"kind": "plant", "name": "campus.south"},
+    {"kind": "network", "name": "campus"},
+    {
+      "kind": "costing",
+      "name": "costing",
+      "tariff_source": "tariff.json",
+      "energy_prices": {"natural_gas": {"value": 0.3, "units": "USD/m^3"}},
+      "dr": {"events_source": "dr_events.json"}
+    },
+    {
+      "kind": "property_package",
+      "name": "properties",
+      "property_class": "SimpleAqueousFlow",
+      "options": {"has_pressure": true}
+    },
+    {"kind": "time", "start_date": "2025-01-01", "end_date": "2025-01-30", "time_step": "15 min"}
+  ]
+}

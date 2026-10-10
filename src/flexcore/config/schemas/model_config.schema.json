@@ -367,6 +367,28 @@
       "title": "PriceSpec",
       "type": "object"
     },
+    "PropertyPackageSpec": {
+      "additionalProperties": false,
+      "description": "A property package the model builds, by class name and options.",
+      "properties": {
+        "options": {
+          "additionalProperties": true,
+          "description": "Keyword options passed to the property-package constructor, e.g. {'has_pressure': true}.",
+          "title": "Options",
+          "type": "object"
+        },
+        "property_class": {
+          "description": "Name of a flexops property-package class, e.g. 'SimpleAqueousFlow' or 'SimpleGasFlow'.",
+          "title": "Property Class",
+          "type": "string"
+        }
+      },
+      "required": [
+        "property_class"
+      ],
+      "title": "PropertyPackageSpec",
+      "type": "object"
+    },
     "SurrogateSpec": {
       "additionalProperties": false,
       "description": "A fitted (or default) energy/IO relationship for a unit.",
@@ -463,7 +485,7 @@
             }
           ],
           "default": null,
-          "description": "Conditional status implications between units.",
+          "description": "Not yet built from config; must be left at its default. Conditional status implications between units.",
           "title": "Conditional"
         },
         "delays": {
@@ -477,12 +499,12 @@
             }
           ],
           "default": null,
-          "description": "Upstream-linked startup-delay specification.",
+          "description": "Not yet built from config; must be left at its default. Upstream-linked startup-delay specification.",
           "title": "Delays"
         },
         "dwell": {
           "default": false,
-          "description": "Whether to build minimum up/down-time (dwell) constraints.",
+          "description": "Not yet built from config; must be left at its default. Whether to build minimum up/down-time (dwell) constraints.",
           "title": "Dwell",
           "type": "boolean"
         },
@@ -496,7 +518,7 @@
             }
           ],
           "default": null,
-          "description": "Minimum number of steps the unit must stay down once stopped.",
+          "description": "Not yet built from config; must be left at its default. Minimum number of steps the unit must stay down once stopped.",
           "title": "Min Down"
         },
         "min_up": {
@@ -509,12 +531,12 @@
             }
           ],
           "default": null,
-          "description": "Minimum number of steps the unit must stay up once started.",
+          "description": "Not yet built from config; must be left at its default. Minimum number of steps the unit must stay up once started.",
           "title": "Min Up"
         },
         "startup_shutdown": {
           "default": false,
-          "description": "Whether to build startup/shutdown transition logic.",
+          "description": "Not yet built from config; must be left at its default. Whether to build startup/shutdown transition logic.",
           "title": "Startup Shutdown",
           "type": "boolean"
         },
@@ -538,6 +560,12 @@
           "title": "Construction Options",
           "type": "object"
         },
+        "costing": {
+          "default": true,
+          "description": "Whether this unit is attached to the model's costing block. False builds it with no costing package, so none of its power or prices are costed.",
+          "title": "Costing",
+          "type": "boolean"
+        },
         "external_dispatch": {
           "anyOf": [
             {
@@ -558,6 +586,19 @@
           "title": "Io Variables",
           "type": "array"
         },
+        "property_package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "auto",
+          "description": "Which entry of ModelConfig.properties this unit uses. 'auto' means the model's only property package (an error if it has several); null means the unit gets no property package.",
+          "title": "Property Package"
+        },
         "surrogate": {
           "anyOf": [
             {
@@ -571,8 +612,16 @@
           "description": "Optional fitted energy/IO relationship for the unit."
         },
         "unit_commitment": {
-          "$ref": "#/$defs/UnitCommitmentConfig",
-          "description": "Per-unit unit-commitment configuration."
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnitCommitmentConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Per-unit unit-commitment configuration. Unset (null) leaves the unit model's own default in force (a battery or tank has no status binary unless asked for one)."
         },
         "unit_model_class": {
           "description": "Name of the flexops unit-model class to construct.",
@@ -588,7 +637,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "The top-level config artifact the whole model and run are built from.",
+  "description": "Legacy nested format; new specs use flexcore.config.spec.FlowsheetSpec.",
   "properties": {
     "costing": {
       "$ref": "#/$defs/CostingConfig",
@@ -619,8 +668,10 @@
       "description": "A single plant of units; mutually exclusive with 'network'."
     },
     "properties": {
-      "additionalProperties": true,
-      "description": "Property-package specification (kept loose at schema version 0.0.1).",
+      "additionalProperties": {
+        "$ref": "#/$defs/PropertyPackageSpec"
+      },
+      "description": "Property packages the model builds, keyed by the attribute name each gets on the model. Units pick one with property_package.",
       "title": "Properties",
       "type": "object"
     },
