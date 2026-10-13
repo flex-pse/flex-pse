@@ -255,6 +255,47 @@ disposal) and negative is revenue (potable water sold).
 Generic surrogate
 -----------------
 
+.. currentmodule:: flexops.unit_models.reactor.base
+
+Reactors share one abstract base, which owns the named inlet and outlet ports,
+the intensive state treatment, the electrical power relation, and an optional
+lumped thermal lag. Two extensions write their own accumulation. See
+:doc:`/explanation/reactor_models` for when to use which.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   ReactorBase
+
+.. currentmodule:: flexops.unit_models.reactor.species
+
+A series of well-mixed compartments with side feeds, for reactors whose
+species are all observable. The side-feed split is the residence-time
+distribution, and both it and the per-compartment reaction rates are
+swappable relations.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   SpeciesReactor
+
+.. currentmodule:: flexops.unit_models.reactor.lumped
+
+A volume holdup with constant, swappable outlet composition relations, for
+reactors where only flows, level, temperature, and outlet compositions are
+measured.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   LumpedReactor
+
 .. currentmodule:: flexops.unit_models.constant_intensity
 
 The default building block for anything without a bespoke physical topology,
