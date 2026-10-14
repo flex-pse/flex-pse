@@ -9,6 +9,7 @@ if/else. Importing this package never imports scikit-learn -- only
 
 from flexcore.config.schema import SurrogateType
 from flexcore.exceptions import FlexConfigError
+from flexparameterize.regression.arima import ArimaRegressor
 from flexparameterize.regression.base import FitResult, Regressor
 from flexparameterize.regression.constant import (
     COEFFICIENT_NAME,
@@ -20,15 +21,12 @@ from flexparameterize.regression.linear import LinearRegressor
 _REGRESSORS: dict[SurrogateType, type] = {
     SurrogateType.CONSTANT_INTENSITY: ConstantIntensityRegressor,
     SurrogateType.MULTILINEAR: LinearRegressor,
+    SurrogateType.ARIMA: ArimaRegressor,
 }
-"""dict: SurrogateType -> the regressor class that fits it. The extension
-point for a new regressor: add the member to
-:class:`~flexcore.config.schema.SurrogateType`, a class here, and an entry."""
 
 _RESERVED = {
     SurrogateType.QUADRATIC: "QuadraticSurrogate",
     SurrogateType.EXPONENTIAL: "ExponentialSurrogate",
-    SurrogateType.ARIMA: "ArimaSurrogate",
     SurrogateType.NEURAL_NETWORK: "NeuralNetworkSurrogate",
 }
 """dict: SurrogateType -> the reserved (not yet implemented) surrogate class
@@ -71,6 +69,7 @@ def get_regressor(name: SurrogateType | str) -> type:
 
 
 __all__ = [
+    "ArimaRegressor",
     "COEFFICIENT_NAME",
     "ConstantIntensityRegressor",
     "FitResult",

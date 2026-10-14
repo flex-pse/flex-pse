@@ -20,12 +20,11 @@ from flexcore.nomenclature import PowerKind
 
 
 class CoefficientRegistry:
-    """A dict-like container for a surrogate block's coefficient Vars.
+    """A dict-like ``name -> Var`` container for a surrogate block's coefficients.
 
-    Supports both scalar ``pyo.Var`` objects and indexed ``pyo.Var`` objects.
-    For indexed Vars, the registry yields individual index entries in
-    ``items()``, ``__iter__``, and ``__getitem__`` so callers see a flat
-    ``name -> Var`` view regardless of how the underlying Var is stored.
+    Every entry is one scalar Var or one entry of an indexed Var. To register
+    all entries of an indexed Var at once, pass it to
+    :meth:`register_coefficients`, which names each entry by its index.
 
     The registry dynamically expands as coefficients are registered. It is
     attached to every surrogate block as ``block.coefficients`` before
@@ -33,26 +32,10 @@ class CoefficientRegistry:
     multiple times in a single ``build()`` method — useful when coefficients
     come from several independent Var groups (e.g. separate low-flow and
     high-flow regimes).
-
-    Attributes:
-        _scalar_vars: Mapping of coefficient name -> scalar pyo.Var.
-        _indexed_vars: Mapping of coefficient name -> indexed pyo.Var whose
-            index set holds the individual coefficient entries.
     """
 
     def __init__(self) -> None:
-        self._scalar_vars: dict[str, Any] = {}
-        self._indexed_vars: dict[str, Any] = {}
-
-    def _check_var(self, var: Any) -> None:
-        import pyomo.environ as pyo
-        from pyomo.core.base.var import VarData
-
-        if not isinstance(var, (pyo.Var, VarData)):
-            raise FlexConfigError(
-                f"Coefficient must be a pyo.Var or pyo.VarData, "
-                f"got {type(var).__name__}."
-            )
+        self._vars: dict[Any, Any] = {}
 
     def register_coefficient(self, name: str, var: Any) -> None:
         """Add a single named coefficient Var.
@@ -60,23 +43,30 @@ class CoefficientRegistry:
         Args:
             name: The coefficient name used by ``body(t)`` and
                 ``register_surrogate_coefficients``.
-            var: The Pyomo Var carrying this coefficient's value. May be a
-                scalar Var or an indexed Var; in the latter case the
-                individual index entries are surfaced through this registry.
+            var: A scalar Pyomo Var, or one entry of an indexed Var.
 
         Raises:
-            FlexConfigError: If ``name`` is already registered or ``var``
-                is not a ``pyo.Var``.
+            FlexConfigError: If ``name`` is already registered, ``var`` is
+                not a Pyomo Var, or ``var`` is a whole indexed Var.
         """
-        if name in self._scalar_vars or name in self._indexed_vars:
+        import pyomo.environ as pyo
+        from pyomo.core.base.var import VarData
+
+        if name in self._vars:
             raise FlexConfigError(
                 f"Coefficient {name!r} is already registered on this block."
             )
-        self._check_var(var)
+        if not isinstance(var, (pyo.Var, VarData)):
+            raise FlexConfigError(
+                f"Coefficient must be a pyo.Var or pyo.VarData, "
+                f"got {type(var).__name__}."
+            )
         if var.is_indexed():
-            self._indexed_vars[name] = var
-        else:
-            self._scalar_vars[name] = var
+            raise FlexConfigError(
+                f"Coefficient {name!r} is an indexed Var; register its "
+                "entries individually or pass it to register_coefficients()."
+            )
+        self._vars[name] = var
 
     def register_coefficients(self, mapping) -> None:
         """Bulk-add coefficients from a name->Var mapping or a single indexed Var.
@@ -88,7 +78,7 @@ class CoefficientRegistry:
 
         Raises:
             FlexConfigError: If any name is already registered or any value
-                is not a ``pyo.Var``.
+                is not a scalar Pyomo Var or Var entry.
         """
         if hasattr(mapping, "is_indexed") and mapping.is_indexed():
             for idx in mapping.index_set():
@@ -99,55 +89,29 @@ class CoefficientRegistry:
 
     def items(self):
         """Return the registered (name, Var) pairs."""
-        yield from self._scalar_vars.items()
-        for _parent_name, indexed_var in self._indexed_vars.items():
-            for idx in indexed_var.index_set():
-                yield idx, indexed_var[idx]
+        return self._vars.items()
 
     def __getitem__(self, name: str) -> Any:
-        if name in self._scalar_vars:
-            return self._scalar_vars[name]
-        for indexed_var in self._indexed_vars.values():
-            if name in indexed_var.index_set():
-                return indexed_var[name]
-        raise KeyError(name)
+        return self._vars[name]
 
     def __contains__(self, name: str) -> bool:
-        if name in self._scalar_vars:
-            return True
-        return any(name in iv.index_set() for iv in self._indexed_vars.values())
+        return name in self._vars
 
     def __iter__(self):
-        yield from self._scalar_vars
-        for indexed_var in self._indexed_vars.values():
-            yield from indexed_var.index_set()
+        return iter(self._vars)
 
     def __len__(self) -> int:
-        return len(self._scalar_vars) + sum(
-            len(iv.index_set()) for iv in self._indexed_vars.values()
-        )
+        return len(self._vars)
 
     def unfix(self) -> None:
         """Unfix every registered coefficient Var."""
-        for var in self._scalar_vars.values():
-            if var.is_variable_type() and var.is_fixed():
-                var.unfix()
-        for indexed_var in self._indexed_vars.values():
-            for idx in indexed_var.index_set():
-                entry = indexed_var[idx]
-                if entry.is_variable_type() and entry.is_fixed():
-                    entry.unfix()
+        for var in self._vars.values():
+            var.unfix()
 
     def fix(self) -> None:
         """Fix every registered coefficient Var at its current value."""
-        for var in self._scalar_vars.values():
-            if var.is_variable_type():
-                var.fix()
-        for indexed_var in self._indexed_vars.values():
-            for idx in indexed_var.index_set():
-                entry = indexed_var[idx]
-                if entry.is_variable_type():
-                    entry.fix()
+        for var in self._vars.values():
+            var.fix()
 
 
 class BoundaryKind(enum.StrEnum):
@@ -262,6 +226,16 @@ class RelationRecord:
         surrogate_blocks: Every surrogate block ever built for this relation,
             oldest first. The list is append-only; deactivated blocks remain
             here so ``switch_surrogate_block`` can reactivate them.
+        surrogate_instances: The :class:`~flexops.surrogates.base.Surrogate`
+            that built each entry of ``surrogate_blocks``, index-aligned with
+            it, so ``switch_surrogate_block`` can restore the matching
+            ``surrogate_instance``.
+        surrogate_instance: The :class:`~flexops.surrogates.base.Surrogate`
+            instance currently active for this relation, or ``None`` when
+            ``surrogate_block`` is ``None`` (no swap yet, or the active
+            surrogate built no block). Used by
+            :meth:`~flexops.core.ops_block.OpsBlockData.get_surrogate_spec`
+            to delegate spec extraction without depending on block attributes.
     """
 
     constraint: Any
@@ -273,6 +247,8 @@ class RelationRecord:
     swap_count: int = 0
     surrogate_block: Any = None
     surrogate_blocks: list = field(default_factory=list)
+    surrogate_instances: list = field(default_factory=list)
+    surrogate_instance: Any = None
 
 
 @dataclass

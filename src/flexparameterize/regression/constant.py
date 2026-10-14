@@ -7,7 +7,7 @@ import pandas as pd
 from flexcore import nomenclature as nm
 from flexcore.config.schema import SurrogateSpec, SurrogateType
 from flexcore.exceptions import FlexConfigError, FlexDataError
-from flexparameterize.regression.base import FitResult
+from flexparameterize.regression.base import FitResult, single_column
 
 COEFFICIENT_NAME = nm.INTENSITY_VARS[nm.PowerKind.ELECTRICAL]
 """str: key the fitted coefficient is stored under in a ``SurrogateSpec``'s
@@ -42,32 +42,6 @@ def constant_intensity_coefficient(surrogate: SurrogateSpec) -> float:
             value=sorted(coefficients),
         )
     return coefficients[COEFFICIENT_NAME]
-
-
-def _single_column(frame, role: str) -> pd.Series:
-    """Return the one column of ``frame`` as a Series.
-
-    Args:
-        frame: A one-column ``DataFrame`` (or a ``Series``).
-        role: ``"X"`` or ``"y"``, for the error message.
-
-    Returns:
-        The column as a named Series.
-
-    Raises:
-        FlexDataError: If ``frame`` does not hold exactly one column.
-    """
-    if isinstance(frame, pd.Series):
-        return frame
-    if frame.shape[1] != 1:
-        raise FlexDataError(
-            f"ConstantIntensityRegressor fits one column against one column; "
-            f"{role} has {frame.shape[1]} ({list(frame.columns)}). Select the "
-            "single flow (X) and power (y) column, or use a multi-input "
-            "regressor.",
-            field=role,
-        )
-    return frame.iloc[:, 0]
 
 
 class ConstantIntensityRegressor:
@@ -114,18 +88,27 @@ class ConstantIntensityRegressor:
         """Fit the mean energy intensity of ``y`` against ``X``.
 
         Args:
-            X: One flow column (a one-column ``DataFrame`` or a ``Series``).
-            y: One power column, sharing ``X``'s index.
+            X: A one-column ``DataFrame`` holding the flow.
+            y: A one-column ``DataFrame`` holding the power, sharing
+                ``X``'s index.
 
         Returns:
             ``self``, fitted.
 
         Raises:
-            FlexDataError: If either side does not hold exactly one column, or
+            FlexDataError: If either side is not a ``DataFrame`` or does not
+                hold exactly one column, or
                 no row survives dropping nulls and zero-flow rows.
         """
-        flow = _single_column(X, "X")
-        power = _single_column(y, "y")
+        name = type(self).__name__
+        flow = single_column(
+            X,
+            regressor=name,
+            role="X",
+            what="flow",
+            hint=", or use a multi-input regressor",
+        )
+        power = single_column(y, regressor=name, role="y", what="power")
         paired = pd.concat([flow.rename("flow"), power.rename("power")], axis=1)
         usable = paired.dropna()
         usable = usable[usable["flow"] != 0]

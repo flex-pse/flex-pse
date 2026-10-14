@@ -47,7 +47,9 @@ VERSIONED_PACKAGES = ("flex-pse", "pyomo", "pandas")
 """tuple: distributions whose versions every emitted provenance records."""
 
 
-def _surrogate_and_fit_provenance(fit_result) -> tuple[SurrogateSpec, dict]:
+def _surrogate_and_fit_provenance(
+    fit_result, spec_options: dict | None = None
+) -> tuple[SurrogateSpec, dict]:
     """Split ``fit_result`` into its spec and the provenance of its fit.
 
     Args:
@@ -55,19 +57,27 @@ def _surrogate_and_fit_provenance(fit_result) -> tuple[SurrogateSpec, dict]:
             ``to_surrogate_spec()`` plus the fit attributes), or an already
             built :class:`~flexcore.config.schema.SurrogateSpec` — a vendor
             curve or datasheet coefficient that was never fitted.
+        spec_options: Keyword arguments for ``to_surrogate_spec()``.
 
     Returns:
         ``(surrogate, provenance)``; the provenance is empty for a
         hand-built spec, which has no metrics or data window to record.
     """
     if isinstance(fit_result, SurrogateSpec):
+        if spec_options:
+            raise FlexConfigError(
+                "spec_options only apply to a fitted regressor; a hand-built "
+                "SurrogateSpec is emitted as given.",
+                field="spec_options",
+                value=sorted(spec_options),
+            )
         return fit_result, {}
     result = fit_result.to_fit_result()
     window = [
         value.isoformat() if hasattr(value, "isoformat") else value
         for value in result.data_window
     ]
-    return fit_result.to_surrogate_spec(), {
+    return fit_result.to_surrogate_spec(**(spec_options or {})), {
         "n_samples": result.n_samples,
         **result.metrics,
         "data_window": window,
@@ -202,6 +212,7 @@ def emit_model_config(
     construction_options: dict | None = None,
     plant_name: str | None = None,
     unit_name: str | None = None,
+    spec_options: dict | None = None,
 ) -> ModelConfig:
     """Assemble the config that rebuilds a parameterized unit.
 
@@ -238,6 +249,9 @@ def emit_model_config(
             parent block name, else ``"plant"``.
         unit_name: Key the unit is stored under; defaults to the built unit's
             own name, else ``"unit"``.
+        spec_options: Keyword arguments forwarded to the regressor's
+            ``to_surrogate_spec()``, e.g. ``{"history_length": 0}`` to emit
+            an ARIMA fit with only its terminal state.
 
     Returns:
         The :class:`~flexcore.config.schema.ModelConfig`. Persist it with
@@ -245,9 +259,10 @@ def emit_model_config(
 
     Raises:
         FlexConfigError: If ``unit_or_class`` is not a flexops unit model, or
-            is a class and no ``time`` was given.
+            is a class and no ``time`` was given, or ``spec_options`` is
+            given with a hand-built ``SurrogateSpec``.
     """
-    surrogate, fit_provenance = _surrogate_and_fit_provenance(fit_result)
+    surrogate, fit_provenance = _surrogate_and_fit_provenance(fit_result, spec_options)
     surrogate = surrogate.model_copy(
         update={
             "provenance": {
