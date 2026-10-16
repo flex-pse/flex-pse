@@ -13,10 +13,9 @@ import pytest
 
 pytest.importorskip("sklearn")
 
-from flexcore.config.io import dump_model_config, load_model_config  # noqa: E402
-from flexops.core.build import build_model  # noqa: E402
+from flexcore.config.io import dump_spec, load_spec  # noqa: E402
+from flexops import build_model, emit_model  # noqa: E402
 from flexparameterize.apply import apply_to_model  # noqa: E402
-from flexparameterize.emit import emit_model_config  # noqa: E402
 from flexparameterize.regression.linear import LinearRegressor  # noqa: E402
 from flexparameterize.tags import TagMap  # noqa: E402
 from flexparameterize.tests.helpers import build_plant, evaluate_data  # noqa: E402
@@ -67,15 +66,15 @@ def _predicted(regressor, flow: float, pressure: float) -> float:
 
 @pytest.mark.component
 def test_linear_fit_emit_rebuild_predictions(tmp_path):
-    """A fitted spec, emitted and rebuilt, reproduces the fit's own predictions."""
+    """A fitted spec, applied, emitted and rebuilt, reproduces the fit's predictions."""
     m, unit = build_plant(has_pressure=True)
+    data = evaluate_data(unit)
     regressor, spec = _fit_linear_spec(unit)
+    apply_to_model(m, data, ALIASED, surrogates={unit.name: spec})
 
-    cfg = emit_model_config(unit, spec, {"data_source": "linear roundtrip test"})
-    cfg = cfg.model_copy(update={"properties": {"has_pressure": True}})
     path = tmp_path / "linear.json"
-    dump_model_config(cfg, path)
-    rebuilt = build_model(load_model_config(path)).facility.plant
+    dump_spec(emit_model(m), path)
+    rebuilt = build_model(load_spec(path)).facility.plant
 
     for flow, pressure in PROBES:
         rebuilt.flow_out[0].set_value(flow)

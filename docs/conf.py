@@ -52,6 +52,10 @@ nitpick_ignore = [
     # pydantic's NonNegativeFloat is Annotated[float, annotated_types.Ge(0)],
     # and annotated_types has no intersphinx target.
     ("py:class", "annotated_types.Ge"),
+    # A Field(pattern=...) renders its pydantic metadata, which has no target.
+    ("py:class", "_PydanticGeneralMetadata"),
+    ("py:class", "FieldInfo"),
+    ("py:class", "NoneType"),
 ]
 
 # autodoc renders the subscripted generics in a pydantic model's constructor

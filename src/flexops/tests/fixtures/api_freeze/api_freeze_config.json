@@ -1,36 +1,49 @@
 {
-  "schema_version": "0.0.1",
-  "time": {
-    "start_date": "2025-01-01",
-    "end_date": "2025-01-30",
-    "time_step": "15 min"
-  },
-  "properties": {},
-  "costing": {
-    "tariff_source": "tariff.json",
-    "dr": {"events_source": "dr_events.json"}
-  },
-  "plant": {
-    "name": "waterfacility",
-    "units": {
-      "tank": {
-        "unit_model_class": "Tank"
-      },
-      "plant": {
-        "unit_model_class": "ConstantEnergyIntensityModel",
-        "construction_options": {
-          "energy_intensity": {"value": 0.5, "units": "kWh/m^3"}
-        }
-      },
-      "battery": {
-        "unit_model_class": "BatteryModel",
-        "construction_options": {
-          "capacity": {"value": 1.0, "units": "kWh"}
-        }
+  "schema_version": "0.1.0",
+  "name": "waterfacility",
+  "elements": [
+    {
+      "kind": "time",
+      "start_date": "2025-01-01",
+      "end_date": "2025-01-30",
+      "time_step": "15 min"
+    },
+    {
+      "kind": "property_package",
+      "name": "properties",
+      "property_class": "SimpleAqueousFlow"
+    },
+    {
+      "kind": "costing",
+      "name": "costing",
+      "tariff_source": "data/tariff.json",
+      "dr": {"events_source": "data/dr_events.json"}
+    },
+    {"kind": "plant", "name": "waterfacility"},
+    {
+      "kind": "unit",
+      "name": "waterfacility.tank",
+      "unit_model_class": "Tank",
+      "costing_package": null,
+      "connections": [
+        {"port": "outlet", "to": "waterfacility.plant.inlet", "name": "tank_to_plant"}
+      ]
+    },
+    {
+      "kind": "unit",
+      "name": "waterfacility.plant",
+      "unit_model_class": "ConstantEnergyIntensityModel",
+      "construction_options": {
+        "energy_intensity": {"value": 0.5, "units": "kWh/m^3"}
       }
     },
-    "arcs": [
-      {"source": "tank.outlet", "destination": "plant.inlet"}
-    ]
-  }
+    {
+      "kind": "unit",
+      "name": "waterfacility.battery",
+      "unit_model_class": "BatteryModel",
+      "property_package": null,
+      "construction_options": {"capacity": {"value": 1.0, "units": "kWh"}}
+    },
+    {"kind": "objective", "name": "objective"}
+  ]
 }

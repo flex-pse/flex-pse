@@ -52,43 +52,90 @@ calling :func:`get_solver`.
 Config schema
 -------------
 
-.. currentmodule:: flexcore.config.schema
+.. currentmodule:: flexcore.config.spec
 
-The versioned, canonical JSON config that the whole model and run get built
-from (see :doc:`../../explanation/config_schema`). Pydantic is the schema
-authority, and :data:`CURRENT_SCHEMA_VERSION` tags what this build writes.
+The versioned, canonical JSON spec that the whole model and run get built from
+(see :doc:`../../explanation/config_schema`): a flowsheet as one flat list of
+elements, in any order. Pydantic is the schema authority, and
+:data:`SCHEMA_VERSION` tags what this build writes.
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
 
-   ModelConfig
-   NetworkConfig
-   PlantConfig
+   FlowsheetSpec
+   TimeElement
+   PropertyPackageElement
+   CostingElement
+   NetworkElement
+   PlantElement
+   SetElement
+   UnitElement
+   Connection
+   SurrogateElement
+   RampElement
+   StatusElement
+   StartupShutdownElement
+   DwellElement
+   BypassElement
+   StartupDelayElement
+   ConditionalElement
+   ParallelGroupElement
+   DispatchElement
+   FixElement
+   UnfixElement
+   ExtensionElement
+   ObjectiveElement
+   Quantity
+   SourceRef
+   SourcedPrice
+
+.. autodata:: SCHEMA_VERSION
+
+.. autodata:: PACKAGE_REF
+
+.. autodata:: KINDS
+   :no-value:
+
+.. autodata:: LOGIC_KINDS
+
+.. autodata:: SELF_STATUS_CLASSES
+
+.. autodata:: NO_STATUS_CLASSES
+
+Shared building blocks
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. currentmodule:: flexcore.config.schema
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
    UnitConfig
+   PropertyPackageSpec
    IOVariableSpec
    SurrogateSpec
    SurrogateType
    ExternalDispatchSpec
    UnitCommitmentConfig
-   ArcSpec
    TimeConfig
    CostingConfig
    PriceSpec
    DRConfig
-
-.. autodata:: CURRENT_SCHEMA_VERSION
 
 Config I/O
 ~~~~~~~~~~
 
 .. currentmodule:: flexcore.config.io
 
-.. autofunction:: load_model_config
+.. autofunction:: load_spec
 
-.. autofunction:: dump_model_config
+.. autofunction:: dump_spec
 
-.. autofunction:: load_surrogate_source
+.. autofunction:: read_source
+
+.. autofunction:: resolve_sources
 
 .. autodata:: MIGRATIONS
 
@@ -123,6 +170,10 @@ Exceptions
 .. autoexception:: FlexSolverError
 
 .. autoexception:: FlexDataError
+
+.. autoexception:: FlexEmitWarning
+
+.. autoexception:: FlexFixWarning
 
 Logging
 -------

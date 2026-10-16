@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flexcore.config.schema import ModelConfig
+from flexcore.config.spec import FlowsheetSpec
 from flexops.unit_models.pump import Pump
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -43,9 +43,9 @@ def test_unit_tables_pump():
 
 
 @pytest.mark.unit
-def test_config_table_model_config():
-    """ModelConfig's field rows include schema_version and its description."""
-    rows = flexdoc.collect_config_table(ModelConfig)
+def test_config_table_flowsheet_spec():
+    """FlowsheetSpec's field rows include schema_version and its description."""
+    rows = flexdoc.collect_config_table(FlowsheetSpec)
 
     fields = {row[0]: row for row in rows[1:]}
     assert "schema_version" in fields

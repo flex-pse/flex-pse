@@ -103,9 +103,7 @@ JSON config file, `api_freeze_config.json`, and it solves to the same
 objective.
 
 ```python
-from flexcore.config.io import load_model_config
-
-m = fo.build_model(load_model_config("api_freeze_config.json"))
+m = fo.build_model("api_freeze_config.json")
 ```
 
 ## Where next

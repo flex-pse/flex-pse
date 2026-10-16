@@ -1,92 +1,251 @@
 # The config schema
 
-flex-pse is **config-driven**. The entire model and run, the TimeBlock, the
-property package, costing, and the network/plant/unit tree, get built from
-a single version controlled config artifact. Hand written Python (like the
-API-freeze script) stays a supported thin path, but nothing that matters
-lives only in imperative code. If it can be configured, it's in the file.
+flex-pse is **config-driven**. A whole model, its time horizon, property
+packages, costing, plants, units, operating logic and fixed variables, can be
+written as one version-controlled JSON file, the **spec**, and built from it.
+Building in Python stays fully supported, and the two meet in a loop:
 
-## Pydantic is the authority, JSON is canonical on disk
+```text
+code ──emit_model──► spec (JSON) ──build_model──► model
+  ▲                                                 │
+  └──────────── same model, compared ───────────────┘
+```
 
-The schema **authority** is the set of pydantic v2 models in
-`flexcore.config.schema`. They define every field, its type, and its one
-line description (which renders into these docs), and they reject
-undocumented keys (`extra="forbid"`, so an undocumented key simply doesn't
-get to exist).
+{func}`~flexops.core.emit.emit_model` reads the spec a live model was, or
+could have been, built from. {func}`~flexops.core.build.build_model` turns a
+spec back into a model. A model that survives the loop unchanged is fully
+described by its file: it can be reviewed, diffed, rebuilt somewhere else and
+changed without touching code. {doc}`../how_to/round_trip_a_model` walks
+through the loop end to end.
 
-The **canonical on disk format is JSON**. It round trips losslessly,
-matches the exported JSON Schema that external writers validate against,
-and parses without surprises. You can pass an already parsed `dict` to the
-loader directly. {func}`flexcore.config.io.load_model_config` and
-{func}`~flexcore.config.io.dump_model_config` are the entry points.
+## The spec
 
-## Versioning and migrations
+A spec ({class}`~flexcore.config.spec.FlowsheetSpec`) is a header (the
+`schema_version`, the model `name`, and the fix policy described below) and one
+**flat list of elements**. Each element has a `kind`. The rules:
 
-Every persisted config carries a mandatory `schema_version`, a semantic
-version string like `"0.0.2"` (`CURRENT_SCHEMA_VERSION`). On load, a
-missing, malformed, or too new version raises a `FlexConfigError`. Older
-versions step through the `MIGRATIONS` table (each hook stamps the version
-it upgrades to) before validation. A JSON Schema exported from
-`ModelConfig.model_json_schema()` gets checked in under
-`src/flexcore/config/schemas/` (with `sort_keys=True, indent=2` for stable
-diffs, and descriptions collapsed to plain single line text, since
-wrapping is the doc builder's job), so schema drift shows up in review and
-external writers can validate against it. `export_json_schemas` takes an
-optional `filename` so schemas for several versions can sit side by side.
+- **Names are full component paths.** A unit named `"waterfacility.tank"` is
+  built as `model.waterfacility.tank`, so its parent, the plant
+  `"waterfacility"`, must be an element too.
+- **Elements refer to each other by name.** A connection goes to
+  `"waterfacility.plant.inlet"`; a `status` element names the unit
+  `"plant.ro"` (every member of an indexed unit) or `"plant.ro[0]"` (one).
+- **File order is irrelevant.** The build sorts elements by kind, depth and
+  name. Shuffling the list builds the same model, component for component.
 
-## The model set
-
-The schema shrinks from the top level
-{class}`~flexcore.config.schema.ModelConfig` down to individual variables.
-
-- {class}`~flexcore.config.schema.ModelConfig` is the top level artifact.
-  It holds `schema_version`, a
-  {class}`~flexcore.config.schema.TimeConfig`, a `properties` spec, a
-  {class}`~flexcore.config.schema.CostingConfig`, and **exactly one** of a
-  {class}`~flexcore.config.schema.NetworkConfig` **or** a
-  {class}`~flexcore.config.schema.PlantConfig` (a validator enforces the
-  exactly one of rule with a clear field path message).
-- {class}`~flexcore.config.schema.NetworkConfig` is a named collection of
-  plants plus the arcs between them.
-- {class}`~flexcore.config.schema.PlantConfig` is a named collection of
-  units plus the arcs between them.
-- {class}`~flexcore.config.schema.UnitConfig` describes one unit model.
-  Its class name, construction options, declared IO variables, an optional
-  {class}`~flexcore.config.schema.SurrogateSpec`, a
-  {class}`~flexcore.config.schema.UnitCommitmentConfig`, and an optional
-  {class}`~flexcore.config.schema.ExternalDispatchSpec`.
-- {class}`~flexcore.config.schema.IOVariableSpec`,
-  {class}`~flexcore.config.schema.SurrogateSpec`,
-  {class}`~flexcore.config.schema.CostingConfig` (carrying a
-  {class}`~flexcore.config.schema.DRConfig` container slot), and
-  {class}`~flexcore.config.schema.TimeConfig` fill in the leaves.
-
-`flexops.build_model(config)` constructs the whole Pyomo model from a
-validated `ModelConfig`.
-
-## How a surrogate describes its function
-
-{class}`~flexcore.config.schema.SurrogateSpec` names a **predefined
-surrogate class**, one of {class}`~flexcore.config.schema.SurrogateType`'s
-members, and carries an opaque `data` mapping in the shape that class
-defines. The class (`flexops.surrogates`) validates `data` and builds the
-Pyomo relationship. A type not yet implemented raises `NotImplementedError`
-when the model gets built, not when the config gets validated
-(`quadratic`, `exponential`, `arima`, and `neural_network` are reserved
-names today with no implementation yet, see
-{doc}`../reference/flexops/surrogates`).
-
-The only implemented class, `multilinear`
-({class}`~flexops.surrogates.multilinear.MultilinearSurrogate`), is a
-constant plus a sum of `coefficient * (product of distinct declared
-inputs)`. That expanded form covers a linear relationship (no cross terms)
-and a bilinear one (one cross term) alike. A coefficient key is a `*`
-separated product of names from `input_variables`, each appearing at most
-once (no `^` exponent, no repeated factor). The reserved key `intercept`
-is the constant term.
+So this scrambled spec is valid. It is the frozen API example, with the
+objective listed before the units it optimizes and the plant after the units
+inside it:
 
 ```json
 {
+  "schema_version": "0.1.0",
+  "name": "waterfacility",
+  "elements": [
+    {"kind": "unit", "name": "waterfacility.plant",
+     "unit_model_class": "ConstantEnergyIntensityModel",
+     "construction_options": {"energy_intensity": {"value": 0.5, "units": "kWh/m^3"}}},
+    {"kind": "objective", "name": "objective", "expression": "cost"},
+    {"kind": "unit", "name": "waterfacility.tank", "unit_model_class": "Tank",
+     "connections": [{"port": "outlet", "to": "waterfacility.plant.inlet"}]},
+    {"kind": "costing", "name": "costing", "tariff_source": "tariff.json",
+     "dr": {"events_source": "dr_events.json"}},
+    {"kind": "plant", "name": "waterfacility"},
+    {"kind": "time", "start_date": "2025-01-01", "end_date": "2025-01-30",
+     "time_step": "15 min"},
+    {"kind": "property_package", "name": "properties",
+     "property_class": "SimpleAqueousFlow"}
+  ]
+}
+```
+
+A quantity with units is data, not code: `{"value": 0.5, "units": "kWh/m^3"}`,
+or the string `"15 min"` for the time step. Units are written as Pyomo prints
+them, with `**` changed to `^`.
+
+## Assembly order
+
+`build_model` runs eight stages in a fixed order
+({data}`~flexops.core.stages.STAGES`): declare, topology, surrogates,
+ramping, logic, state, extensions, costing. Each kind belongs to one
+stage, and is either **mutable** (it can be changed on a built model) or not:
+
+| Kind | Stage | Mutable |
+| --- | --- | --- |
+| `time` | declare | no |
+| `property_package` | declare | no |
+| `costing` | declare | no |
+| `network` | topology | no |
+| `plant` | topology | no |
+| `set` | topology | no |
+| `unit` | topology | no |
+| `surrogate` | surrogates | yes |
+| `ramp` | ramping | no |
+| `status` | logic | no |
+| `startup_shutdown` | logic | no |
+| `dwell` | logic | no |
+| `bypass` | logic | no |
+| `startup_delay` | logic | no |
+| `conditional` | logic | no |
+| `parallel_group` | logic | no |
+| `dispatch` | state | yes |
+| `fix` | state | yes |
+| `unfix` | state | yes |
+| `extension` | extensions | no |
+| `objective` | costing | no |
+
+Within the logic stage, kinds build in {data}`~flexops.core.stages.LOGIC_ORDER`:
+status first, because startup, conditional and parallel logic hang off a
+status binary, and logic between units last. **Costing is processed last
+because `cost_process` aggregates whatever is registered when it runs**: every
+power term a unit, a surrogate or an extension registers has to exist by then.
+
+## Mutable and immutable kinds
+
+A kind is mutable when changing it on a solved, costed model leaves the
+costing and the objective valid. Swapping a surrogate replaces a relation in
+place, and fixing, unfixing or dispatching a variable changes only its value or
+fixed flag. {func}`~flexops.core.stages.apply_spec` applies mutable elements to a
+built model, and refuses an immutable one before changing anything.
+
+Everything else changes the model's structure, so it is changed in the spec and
+rebuilt. Swapping a unit, for example, means editing its `unit_model_class` and
+calling `build_model` again. flex-pse never deletes a component from a built
+model, since anything that captured it would keep a stale reference.
+
+A new element kind is classified the same way: it gets a stage and a mutability
+flag in {data}`~flexcore.config.spec.KINDS`.
+
+## Data
+
+Short lists sit inline. A long one, such as a year of prices, a dispatch series
+or a fixed demand profile, can live beside the spec:
+
+```json
+{"kind": "fix", "variable": "plant.product.outlet_state.flow_vol_phase[*,Liq]",
+ "value": {"$source": "data/demand.json.gz"}}
+```
+
+A `$source` path is relative to the spec file and names a `.json` or gzipped
+`.json.gz` file. `emit_model(data_dir=..., inline_limit=2000)` writes every list
+longer than `inline_limit` this way, and `relative_to=` writes paths relative to
+where the spec will be saved.
+
+A unit that takes several property packages receives them as
+`{"$package": "biogas"}` construction options, which name a `property_package`
+element.
+
+## Fixing variables
+
+A `fix` element names **any** variable by its path from the model root and
+gives its values. An `unfix` element frees one, such as a parameter a unit
+fixes by default:
+
+```json
+{"kind": "fix", "variable": "plant.battery.soc[0]", "value": 0.5},
+{"kind": "fix", "variable": "plant.pretreatment[*].status", "value": 1},
+{"kind": "fix", "variable": "plant.intake.flow_in", "value": [120, 120, 95, 80], "units": "m^3/hr"},
+{"kind": "unfix", "variable": "plant.ro[*].recovery"}
+```
+
+**Paths** are Pyomo `ComponentUID` strings. `plant.x` is a whole variable,
+`plant.x[3]` one point, `plant.ro[*].x` the variable on every member of `ro`,
+and `plant.u.flow_vol_phase[*,Liq]` every time point of the `Liq` phase. A
+path that matches nothing is an error that suggests the closest variable names;
+a path that matches a `Param` is an error too, since parameters are set, not
+fixed.
+
+**Values** come in four forms: one number for every matched point; a list with
+one number per time point (or per entry of `at`); a `{time index: value}`
+mapping; or a `$source` file holding a list or mapping. `at` restricts the fix
+to some time indices. `units` converts the values into each variable's own
+units. The time index is the variable's first index, when that is the
+TimeBlock's.
+
+**Conflicts are errors.** Since file order is irrelevant, there is no "the later
+fix wins". Two `fix` or `dispatch` elements that set one point to different
+values, or a `fix` and an `unfix` of the same point, stop the build and name the
+elements involved. Two elements writing the same value are fine.
+
+**Bounds and domain.** Pyomo itself only logs a warning when a variable is fixed
+outside its bounds, or a binary to 0.5. The state stage checks every value
+first, and what happens next is the **policy**: the element's `on_violation`,
+or the spec's `fix_on_violation` when the element sets none.
+
+| Policy | Outside bounds | Outside domain (e.g. a binary to 0.5) | Valid points |
+| --- | --- | --- | --- |
+| `"error"` (default) | Error | Error | Not fixed: nothing in the stage is applied |
+| `"warn"` | Fixed anyway, with a `FlexFixWarning` | Error | Fixed |
+| `"skip"` | Left free, with a `FlexFixWarning` | Left free, with a `FlexFixWarning` | Fixed |
+
+A bound check passes within an absolute tolerance: the element's `tolerance`,
+or the spec's `fix_tolerance` (`1e-9`). A skipped point is left free for the
+solver, never clamped to its bound, since a clamped value is one nobody wrote.
+The state stage is all or nothing: every fix, unfix and dispatch is planned and
+checked before any of them changes the model. Every warned or skipped point is
+also logged at `WARNING`, and listed in the model's `_flex_fix_report`
+({class}`~flexops.core.fixing.FixReport`).
+
+`"warn"` and `"skip"` let a run go on with commands that differ from what the
+spec says. A spec that drives equipment with nobody reading the log should keep
+the default `"error"`, or escalate the warning so it stops the run:
+`warnings.simplefilter("error", FlexFixWarning)`.
+
+`emit_model` writes `.fix()` and `.unfix()` calls made in code as these
+elements. A variable fixed to one value over the whole horizon becomes one
+number, the same fix on every member of an indexed unit becomes one `[*]`
+element, and a fix on some time points uses `at`. Bounds changed in code
+(`setlb`, `setub`) can't be written yet and raise a `FlexEmitWarning`.
+
+## Logic, ramps and extensions
+
+Each `flexops.logic` helper (except `relax` and `unrelax`, which are solve
+strategy) has one element kind: `status`, `startup_shutdown`, `dwell`, `bypass`,
+`ramp`, `startup_delay`, `conditional` and `parallel_group`. An element names
+its unit and never sits inside it. The spec checks that every unit named exists,
+that logic needing an on/off status has one (a battery with
+`unit_commitment.status` builds its own), and that nothing is set twice on the
+same unit.
+
+An `extension` element names a user function, as `"package.module:function"` or
+an entry point in the `flexpse.extensions` group, with JSON options. Decorating a
+function with `@flexops.extension` makes calling it record the element. Logic
+helpers called inside an extension record nothing, because rebuilding re-runs
+the extension. An objective with `"expression": "extension"` means an extension
+adds the objective. A spec that uses an extension builds only where its package
+is installed.
+
+## What emit_model checks
+
+`emit_model` rebuilds the spec it wrote and compares the two models. Anything the
+spec can't express yet, such as a constraint added by hand, an objective no
+extension made, or a surrogate object built without a spec, raises a
+`FlexEmitWarning` that names it. Nothing is dropped silently. Things that would
+change the model if left out (an option with no spec form, indexed members
+configured differently, an arc no `{i}` template fits) raise a
+`FlexConfigError`.
+
+## Surrogates
+
+A {class}`~flexcore.config.schema.SurrogateSpec`, carried by a `surrogate`
+element, names a **predefined surrogate class**, one of
+{class}`~flexcore.config.schema.SurrogateType`'s members, and an opaque `data`
+mapping in the shape that class defines. The class (`flexops.surrogates`)
+validates `data` and builds the Pyomo relationship. A type not yet implemented
+raises `NotImplementedError` when the model is built (`quadratic`,
+`exponential`, `arima` and `neural_network` are reserved names, see
+{doc}`../reference/flexops/surrogates`).
+
+The only implemented class, `multilinear`
+({class}`~flexops.surrogates.multilinear.MultilinearSurrogate`), is a constant
+plus a sum of `coefficient * (product of distinct declared inputs)`. A
+coefficient key is a `*`-separated product of names from `input_variables`,
+each at most once. The reserved key `intercept` is the constant term.
+
+```json
+{
+  "kind": "surrogate",
+  "unit": "plant.pump",
   "surrogate_type": "multilinear",
   "data": {
     "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
@@ -101,89 +260,129 @@ is the constant term.
 }
 ```
 
-`input_variables` and `output_variables` are `{name: units}` mappings,
-each name resolved on the unit (dotted paths into a state block work). The
-declared units are **the basis the relationship was fitted or written
-in**, not whatever units the model happens to carry. So each factor
-converts from its actual unit into its declared one before the coefficient
-multiplies it, and the whole body converts from its declared output units
-into the registered target's own units. Both conversions double as
-validation. A declared unit that's dimensionally incompatible with the
-model's variable raises a `FlexConfigError` naming the mismatch, instead
-of silently rescaling.
+The declared units are the basis the relationship was fitted in. Each input
+converts from the model's units into its declared ones before the coefficient
+multiplies it, and the result converts into the target's units. A dimensionally
+incompatible declaration raises a `FlexConfigError` instead of silently
+rescaling.
 
-Registering another surrogate class means adding a new class in
-`flexops.surrogates`, never a config schema change. See
-{doc}`../reference/flexops/surrogates` for the base class every one
-implements. The other half of that extension point is a *regressor* that
-can produce the class's `SurrogateSpec` from data.
-{class}`~flexparameterize.regression.base.Regressor` is the matching
-Protocol, and `flexparameterize.regression`'s registry names the same
-reserved `SurrogateType` members (`quadratic`, `exponential`, `arima`,
-`neural_network`) as `flexops.surrogates`. So building a future regressor
-for one of them means implementing the protocol and registering the name,
-on both sides at once.
+Only relationships a unit registered with
+{meth}`~flexops.core.ops_block.OpsBlockData.register_relation` can be swapped:
+every constant-intensity energy relation, an RO skid's `split_definition`, a
+tank's `level_definition`. Conservation constraints are never registered, so
+they can never be swapped. {func}`~flexops.core.registration.iter_swapped_relations`
+reports which registered relations have been swapped.
 
-When a relationship is too large to inline, `source` names a JSON sidecar
-that supplies `data`. A relative path resolves against the config file's
-own directory, and {func}`~flexcore.config.io.load_model_config` fills it
-in at the boundary, so nothing downstream ever sees a half loaded
-relationship.
+## Versioning
 
-## Which relationships are swappable
-
-Not every constraint a unit builds can be swapped. Only the ones it
-explicitly registered as swappable, through
-{meth}`~flexops.core.ops_block.OpsBlockData.register_relation`, qualify. A
-unit's mass or energy balance is never registered, so it can never be
-swapped. There's no naming convention to accidentally satisfy, and
-{meth}`~flexops.core.ops_block.OpsBlockData.swap_relation` refuses an
-unregistered name outright, listing what *is* registered. Every
-constant intensity unit registers its own energy relation this way. An RO
-skid also registers its `split_definition` (recovery/flux), and a tank its
-`level_definition` (fill geometry). Conservation (`split_mass_balance`,
-the holdup difference equation) is never registered on either.
-{func}`~flexops.core.registration.iter_swapped_relations` walks a whole
-model and reports which registered relations have actually been swapped.
-It's a debugging aid, not a required step on any build or apply path.
+Every spec carries a mandatory `schema_version`, a semantic version string
+({data}`~flexcore.config.spec.SCHEMA_VERSION`). On load, a missing, malformed
+or too-new version raises a `FlexConfigError`, and an older one steps through
+{data}`~flexcore.config.io.MIGRATIONS` before validation. Pydantic models in
+`flexcore.config.spec` are the schema authority and reject undocumented keys.
+Their exported JSON Schema is checked in under `src/flexcore/config/schemas/`,
+so schema changes show up in review and other tools can validate against it.
+Changing the default fix policy is a breaking change and needs a new version.
 
 ## The FlexParameterize and FlexOps seam
 
-The config is also the **durable contract** between FlexParameterize and
-FlexOps. FlexParameterize can either mutate a live FlexOps model in place
-*or* emit a config that rebuilds the parameterized model. The round trip
-invariant is that both produce equivalent behavior. The schema is
-versioned and serializable, and that's what makes this seam the place the
-monorepo splits into separate repositories later.
+The spec is also the contract between FlexParameterize and FlexOps.
+FlexParameterize changes a live FlexOps model in place, and
+{func}`~flexops.core.emit.emit_model` writes that model out as a spec that
+rebuilds it.
 
 ## Field reference
 
 ```{eval-rst}
-.. flexops-config-table:: flexcore.config.schema.ModelConfig
+.. flexops-config-table:: flexcore.config.spec.FlowsheetSpec
 ```
 
 ```{eval-rst}
-.. flexops-config-table:: flexcore.config.schema.TimeConfig
+.. flexops-config-table:: flexcore.config.spec.TimeElement
 ```
 
 ```{eval-rst}
-.. flexops-config-table:: flexcore.config.schema.CostingConfig
+.. flexops-config-table:: flexcore.config.spec.PropertyPackageElement
 ```
 
 ```{eval-rst}
-.. flexops-config-table:: flexcore.config.schema.NetworkConfig
+.. flexops-config-table:: flexcore.config.spec.CostingElement
 ```
 
 ```{eval-rst}
-.. flexops-config-table:: flexcore.config.schema.PlantConfig
+.. flexops-config-table:: flexcore.config.spec.NetworkElement
 ```
 
 ```{eval-rst}
-.. flexops-config-table:: flexcore.config.schema.UnitConfig
+.. flexops-config-table:: flexcore.config.spec.PlantElement
 ```
 
 ```{eval-rst}
-.. flexops-config-table:: flexcore.config.schema.IOVariableSpec
+.. flexops-config-table:: flexcore.config.spec.SetElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.UnitElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.Connection
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.SurrogateElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.RampElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.StatusElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.StartupShutdownElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.DwellElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.BypassElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.StartupDelayElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.ConditionalElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.ParallelGroupElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.DispatchElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.FixElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.UnfixElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.ExtensionElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.ObjectiveElement
 ```
 
 ```{eval-rst}

@@ -14,6 +14,7 @@ from typing import Any
 import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexConfigError
+from flexops.logic._records import record
 from flexops.logic.status import RollingStateKind, _register_rolling_state
 
 
@@ -42,10 +43,11 @@ def add_dwell(var: pyo.Var, k: int) -> Any:
         raise FlexConfigError(
             f"add_dwell requires k >= 1, got {k}.", field="k", value=k
         )
+    unit = var.parent_block()
+    record(unit, "dwell", variable=var.local_name, k=k)
     if k == 1:
         return None
 
-    unit = var.parent_block()
     tb = unit._find_time_block()
     idx = [t for t in tb.time_index if t % k != 0]
     name = f"{var.local_name}_dwell"

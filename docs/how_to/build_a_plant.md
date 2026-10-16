@@ -176,14 +176,13 @@ script above is `api_freeze_config.json`, and a component test holds the two
 to the same solved objective.
 
 ```python
-from flexcore.config.io import load_model_config
-
-m = fo.build_model(load_model_config("api_freeze_config.json"))
+m = fo.build_model("api_freeze_config.json")
 ```
 
-`build_model` constructs the TimeBlock, the property package, the
+`build_model` constructs the TimeBlock, the property packages, the
 `FlexCosting` block, the plant and unit tree, its arcs, any declared
-external (DERMS) dispatch, and the objective. Two conventions matter when
+external (DERMS) dispatch, and the objective, from one flat list of elements
+(see {doc}`../explanation/config_schema`). Two conventions matter when
 you write one of these files.
 
 - **Units are data.** A config can't carry a Pyomo expression, so you write

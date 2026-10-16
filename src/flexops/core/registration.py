@@ -15,6 +15,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError
 from flexcore.nomenclature import PowerKind
 
@@ -262,6 +263,8 @@ class RelationRecord:
         surrogate_blocks: Every surrogate block ever built for this relation,
             oldest first. The list is append-only; deactivated blocks remain
             here so ``switch_surrogate_block`` can reactivate them.
+        spec: The spec the current surrogate was built from, or ``None`` for a
+            surrogate built by hand (which a spec can't describe).
     """
 
     constraint: Any
@@ -273,6 +276,7 @@ class RelationRecord:
     swap_count: int = 0
     surrogate_block: Any = None
     surrogate_blocks: list = field(default_factory=list)
+    spec: SurrogateSpec | None = None
 
 
 @dataclass

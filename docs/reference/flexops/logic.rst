@@ -84,3 +84,20 @@ have no on/off state at all, such as a tank) is registered with
 ``order_status=False``, which orders the named ``variables`` alone.
 
 .. autofunction:: register_parallel_group
+
+Spec records
+------------
+
+.. currentmodule:: flexops.logic._records
+
+Every helper above except ``relax`` and ``unrelax`` records the spec element
+that rebuilds it: unit-level helpers on the unit, cross-unit helpers on the
+model. ``emit_model`` writes those records back. A helper called inside another
+(``register_parallel_group``'s conditionals, ``BatteryModel``'s own status)
+runs under :func:`suppress_logic_records`, so only the outer call is written.
+
+.. autoclass:: LogicRecord
+
+.. autofunction:: record
+
+.. autofunction:: suppress_logic_records

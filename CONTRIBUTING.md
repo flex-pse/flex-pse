@@ -10,6 +10,7 @@ Thanks for your interest in contributing! This project welcomes issues, pull req
 - [Contributor Responsibility](#contributor-responsibility)
 - [Use of AI Tools](#use-of-ai-tools)
 - [Submitting a Pull Request](#submitting-a-pull-request)
+- [Config schema versioning](#config-schema-versioning)
 - [Review & Verification by Maintainers](#review--verification-by-maintainers)
 - [Code of Conduct](#code-of-conduct)
 - [Reporting Bugs & Security Issues](#reporting-bugs--security-issues)
@@ -68,6 +69,12 @@ AI-assisted contributions (code, docs, or issue text) are welcome, but the same 
 3. Link any related issue(s).
 4. Make sure CI passes before requesting review.
 5. Keep the scope of the PR narrow — one concern per PR.
+6. If the PR adds or changes a unit option, logic helper, element kind or spec field, add a case to the round-trip corpus (`src/flexops/tests/fixtures/roundtrip_corpus.py`) or the unit contract test, or explain in the PR why not. A new element kind is classified in `KINDS` (stage and mutability).
+
+## Config schema versioning
+
+- Any change to the flat `FlowsheetSpec` bumps `SCHEMA_VERSION` and regenerates `schemas/flowsheet_spec.schema.json` in the same PR.
+- Once a spec version has been released, a breaking change also adds a `MIGRATIONS` hook from the old version; a migration that cannot translate raises `FlexConfigError` naming the field and how to fix it.
 
 ## Review & Verification by Maintainers
 

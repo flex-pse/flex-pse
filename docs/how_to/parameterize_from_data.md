@@ -4,7 +4,7 @@ FlexParameterize turns plant data into a parameterized FlexOps model. The
 pipeline has one shape and two endings.
 
 **tabular data → tag aliasing → sufficiency validation → regression →
-{apply to a live model | emit a config}**
+apply to a live model -> save as a spec**
 
 The data source doesn't matter. A historian export, a spreadsheet saved as
 CSV, a database query. Anything that becomes a `pandas.DataFrame` works,
@@ -131,33 +131,21 @@ from the fitted `SurrogateSpec`, on the same unit object, reusing the same
 registered IO variables. Ports and arcs stay untouched. There's nothing to
 reconnect.
 
-## 4b. Or emit a config
+## 4b. Save the fitted model as a spec
 
 ```python
-from flexcore.config.io import dump_model_config
-from flexops.core.build import build_model
-from flexparameterize import emit_model_config
+from flexcore.config.io import dump_spec
+from flexops import build_model, emit_model
 
-cfg = emit_model_config(m.facility.pump, regressor, {"data_source": "2025 export"})
-dump_model_config(cfg, "pump_fitted.json")
-rebuilt = build_model(cfg)
+dump_spec(emit_model(m), "pump_fitted.json")
+rebuilt = build_model("pump_fitted.json")
 ```
 
-The emitted config carries the unit's class name, its construction options
-(the fitted coefficient among them), its IO variable specs, the
-`SurrogateSpec`, and provenance. That provenance includes the fit's
-`n_samples`/`r2`/`rmse`, its `data_window`, and the versions of `flex-pse`,
-`pyomo`, and `pandas` read at emit time. Pass `costing=` a real
-{py:class}`~flexcore.config.schema.CostingConfig` if you plan to solve the
-emitted config. The default is a 0 USD/kWh placeholder, since a unit
-carries no tariff of its own.
-
-## The two directions agree
-
-Both endings consume the same `SurrogateSpec` from the same fit. The model
-`apply_to_model` mutated and the model rebuilt from the emitted config
-describe the same behavior. `test_apply_and_emit_agree` checks that
-invariant directly.
+{func}`~flexops.core.emit.emit_model` writes the model `apply_to_model`
+mutated as a flat spec: a fitted intensity becomes a `fix` element, and a
+swapped relationship becomes a `surrogate` element carrying its
+`SurrogateSpec` and provenance. The rebuilt model describes the same behavior
+as the mutated one.
 
 ## Supplying a relationship you already know
 
@@ -181,7 +169,6 @@ vendor = SurrogateSpec(
 )
 
 apply_to_model(m, raw, tagmap, surrogates={"facility.skid": vendor})
-emit_model_config(m.facility.skid, vendor, {"source": "vendor_datasheet"})
 ```
 
 `surrogate_type` names a predefined surrogate class

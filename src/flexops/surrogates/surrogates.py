@@ -66,4 +66,6 @@ def surrogate_from_spec(spec: SurrogateSpec) -> Surrogate:
             field="surrogate_type",
             value=spec.surrogate_type,
         )
-    return surrogate_class(spec.data)
+    surrogate = surrogate_class(spec.data)
+    surrogate.spec = spec
+    return surrogate

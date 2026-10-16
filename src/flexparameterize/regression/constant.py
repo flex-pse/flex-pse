@@ -6,42 +6,13 @@ import pandas as pd
 
 from flexcore import nomenclature as nm
 from flexcore.config.schema import SurrogateSpec, SurrogateType
-from flexcore.exceptions import FlexConfigError, FlexDataError
+from flexcore.exceptions import FlexDataError
 from flexparameterize.regression.base import FitResult
 
 COEFFICIENT_NAME = nm.INTENSITY_VARS[nm.PowerKind.ELECTRICAL]
 """str: key the fitted coefficient is stored under in a ``SurrogateSpec``'s
 ``data['coefficients']``; it is also the name of the process parameter the fit
 determines on a unit."""
-
-
-def constant_intensity_coefficient(surrogate: SurrogateSpec) -> float:
-    """Read the intensity out of a ``constant_intensity`` relationship.
-
-    The one place either FlexParameterize direction gets the coefficient from,
-    so a spec that a fit did not produce is rejected the same way in both.
-
-    Args:
-        surrogate: A ``SurrogateType.CONSTANT_INTENSITY``
-            :class:`~flexcore.config.schema.SurrogateSpec`.
-
-    Returns:
-        The intensity, in kWh/m^3.
-
-    Raises:
-        FlexConfigError: If the spec carries no coefficient under
-            :data:`COEFFICIENT_NAME`.
-    """
-    coefficients = surrogate.data.get("coefficients", {})
-    if COEFFICIENT_NAME not in coefficients:
-        raise FlexConfigError(
-            f"A 'constant_intensity' relationship must carry its coefficient "
-            f"under data['coefficients'][{COEFFICIENT_NAME!r}]; got "
-            f"{sorted(coefficients)}.",
-            field="data",
-            value=sorted(coefficients),
-        )
-    return coefficients[COEFFICIENT_NAME]
 
 
 def _single_column(frame, role: str) -> pd.Series:
@@ -187,11 +158,8 @@ class ConstantIntensityRegressor:
     ) -> SurrogateSpec:
         """Return the fit as a persistable ``SurrogateSpec``.
 
-        The one place a constant-intensity fit becomes a spec: both
-        FlexParameterize directions
-        (:func:`~flexparameterize.apply.apply_to_model` and
-        :func:`~flexparameterize.emit.emit_model_config`) consume this, so the
-        two can never disagree about what was fitted. ``constant_intensity``
+        The one place a constant-intensity fit becomes a spec, which
+        :func:`~flexparameterize.apply.apply_to_model` consumes. ``constant_intensity``
         has no surrogate class (it fixes a process parameter rather than
         swapping a Constraint), so unlike a real surrogate's declared units,
         these are recorded for documentation, not enforced by a build.

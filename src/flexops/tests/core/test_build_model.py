@@ -1,4 +1,4 @@
-"""build_model: the config-driven path equals the imperative one (§2.3, R3)."""
+"""build_model: the config-driven path equals the imperative one."""
 
 import json
 from pathlib import Path
@@ -6,11 +6,11 @@ from pathlib import Path
 import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
-from pyomo.network import Arc, Port
+from pyomo.network import Arc
 from pyomo.opt import assert_optimal_termination
 
-from flexcore.config.io import load_model_config
-from flexcore.config.schema import ArcSpec, ExternalDispatchSpec, UnitConfig
+from flexcore.config.io import load_spec
+from flexcore.config.spec import DispatchElement, UnfixElement
 from flexcore.exceptions import FlexConfigError
 from flexcore.solvers import get_solver
 from flexops import (
@@ -19,17 +19,17 @@ from flexops import (
     FlexCosting,
     PlantBlock,
     SimpleAqueousFlow,
+    SimpleGasFlow,
     Tank,
     TimeBlock,
     build_model,
 )
-from flexops.core.build import (
-    _apply_external_dispatch,
-    _build_arcs,
-    parse_quantity,
-    parse_units,
-)
+from flexops.core import stages as stages_module
+from flexops.core.build import parse_quantity, parse_units
+from flexops.core.fixing import apply_state
 from flexops.core.ops_block import OpsBlock
+from flexops.core.stages import BuildContext
+from flexops.properties import PROPERTY_PACKAGES
 
 _FIXTURES = Path(__file__).parent.parent / "fixtures"
 _CONFIG = _FIXTURES / "plant_config_demo.json"
@@ -75,10 +75,9 @@ def _solve(model) -> float:
 
 @pytest.mark.component
 @pytest.mark.needs_highs
-def test_build_model_matches_hand_built(monkeypatch):
+def test_build_model_matches_hand_built():
     """Config-driven and imperative builds solve to the same objective."""
-    monkeypatch.chdir(_FIXTURES)
-    from_config = build_model(load_model_config(_CONFIG))
+    from_config = build_model(_CONFIG)
     assert from_config.demo.tank.find_component("holdup") is not None
     assert from_config.demo.surrogate.find_component("power_electrical") is not None
 
@@ -88,66 +87,23 @@ def test_build_model_matches_hand_built(monkeypatch):
 @pytest.mark.unit
 def test_build_model_export_prices_split_electrical_power():
     """Config export_prices reach FlexCosting and build the import/export split."""
-    cfg = json.loads(_CONFIG.read_text())
-    del cfg["costing"]["tariff_source"]
-    cfg["costing"]["energy_prices"] = {"electrical": {"value": 0.1, "units": "USD/kWh"}}
-    cfg["costing"]["export_prices"] = {
-        "electrical": {"value": 0.05, "units": "USD/kWh"}
-    }
+    cfg = _demo_dict()
+    costing = _element(cfg, "costing")
+    del costing["tariff_source"]
+    costing["energy_prices"] = {"electrical": {"value": 0.1, "units": "USD/kWh"}}
+    costing["export_prices"] = {"electrical": {"value": 0.05, "units": "USD/kWh"}}
     m = build_model(cfg)
     assert m.costing.opex.find_component("export_electrical") is not None
 
 
 @pytest.mark.unit
 def test_build_model_bad_config_raises():
-    """A malformed unit config errors with the offending field path in the message."""
-    bad = {
-        "schema_version": "0.0.1",
-        "time": {
-            "start_date": "2025-07-08",
-            "end_date": "2025-07-09",
-            "time_step": "1 hr",
-        },
-        "costing": {
-            "energy_prices": {"electrical": {"value": 0.1, "units": "USD/kWh"}}
-        },
-        "plant": {
-            "name": "demo",
-            "units": {"surrogate": {"construction_options": {}}},
-        },
-    }
+    """A malformed unit element errors with the offending field path in the message."""
+    bad = _demo_dict()
+    del _element(bad, "unit")["unit_model_class"]
     with pytest.raises(FlexConfigError) as excinfo:
         build_model(bad)
-    assert "plant.units.surrogate.unit_model_class" in str(excinfo.value)
-
-
-@pytest.mark.unit
-def test_build_model_network_branch(monkeypatch):
-    """A config with 'network' instead of 'plant' builds a NetworkBlock of plants."""
-    monkeypatch.chdir(_FIXTURES)
-    cfg = json.loads(_CONFIG.read_text())
-    plant = cfg.pop("plant")
-    cfg["network"] = {"name": "net", "plants": {"demo": plant}}
-
-    model = build_model(cfg)
-
-    assert model.net.demo.tank.find_component("holdup") is not None
-    assert model.net.demo.surrogate.find_component("power_electrical") is not None
-
-
-@pytest.mark.unit
-def test_build_arcs_bad_port_raises():
-    """An arc endpoint that does not resolve to a port is a config error."""
-    m = pyo.ConcreteModel()
-    m.time_block = TimeBlock(
-        start_date="2025-01-01", end_date="2025-01-01T01:00", time_step=15 * pyunits.min
-    )
-    m.unit = OpsBlock()
-    m.unit.outlet = pyo.Var()
-    m.unit.outlet_port = Port(initialize={"x": m.unit.outlet})
-
-    with pytest.raises(FlexConfigError, match="is not a port on"):
-        _build_arcs(m, [ArcSpec(source="unit.outlet_port", destination="unit.nope")])
+    assert "unit.unit_model_class" in str(excinfo.value)
 
 
 @pytest.mark.unit
@@ -162,6 +118,23 @@ def test_parse_units_multi_factor_and_exponent():
     assert pyo.value(
         pyunits.convert(1 * parse_units("kWh*/hr"), pyunits.kWh / pyunits.hr)
     ) == pytest.approx(1.0)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("kg/m^2/s", pyunits.kg / pyunits.m**2 / pyunits.s),
+        ("J/K/kg", pyunits.J / pyunits.K / pyunits.kg),
+        ("1/s", 1 / pyunits.s),
+        ("1/m^3", 1 / pyunits.m**3),
+    ],
+)
+def test_parse_units_reads_chained_division_and_unit_numerator(text, expected):
+    """Every '/' after the first divides again, and a bare '1' is dimensionless."""
+    assert pyo.value(pyunits.convert(1 * parse_units(text), expected)) == (
+        pytest.approx(1.0)
+    )
 
 
 @pytest.mark.unit
@@ -192,6 +165,18 @@ def test_parse_quantity_mapping_and_string_forms():
 
 
 @pytest.mark.unit
+def test_parse_quantity_list_of_mappings_gives_a_list_of_quantities():
+    """A list of {value, units} mappings (a per-period series) parses item-wise."""
+    parsed = parse_quantity(
+        [{"value": 1.0, "units": "kW"}, {"value": 2, "units": "MW"}]
+    )
+    assert [pyo.value(pyunits.convert(q, pyunits.kW)) for q in parsed] == [
+        pytest.approx(1.0),
+        pytest.approx(2000.0),
+    ]
+
+
+@pytest.mark.unit
 def test_parse_quantity_non_numeric_string_strict_raises():
     """strict=True (the default) rejects a string with no numeric magnitude."""
     with pytest.raises(FlexConfigError, match="Could not read"):
@@ -212,55 +197,35 @@ def test_parse_quantity_passes_through_non_dict_non_string_values():
 
 
 @pytest.mark.unit
-def test_apply_external_dispatch_noop_when_none():
-    """A unit config with no external_dispatch spec is a no-op."""
+def test_apply_dispatch_noop_without_dispatch_elements():
+    """A spec with no dispatch elements leaves every variable free."""
     m = pyo.ConcreteModel()
     m.time_block = TimeBlock(
         start_date="2025-01-01", end_date="2025-01-01T01:00", time_step=15 * pyunits.min
     )
     m.unit = OpsBlock()
     m.unit.power_electrical = pyo.Var(m.time_block.time_index, units=pyunits.kW)
-    _apply_external_dispatch(m.unit, UnitConfig(unit_model_class="OpsBlock"))
+    stages_module.stage_state(m, load_spec(_demo_dict()), BuildContext(base_dir=None))
     assert not m.unit.power_electrical[0].fixed
 
 
 @pytest.mark.unit
-def test_apply_external_dispatch_unknown_variable_raises():
+def test_apply_dispatch_unknown_variable_raises():
     """A dispatched variable that is not on the unit is a config error."""
     m = pyo.ConcreteModel()
     m.time_block = TimeBlock(
         start_date="2025-01-01", end_date="2025-01-01T01:00", time_step=15 * pyunits.min
     )
     m.unit = OpsBlock()
-    cfg = UnitConfig(
-        unit_model_class="OpsBlock",
-        external_dispatch=ExternalDispatchSpec(variable="nope", source="x.json"),
+    element = DispatchElement(
+        kind="dispatch", unit="unit", variable="nope", values=[1.0]
     )
     with pytest.raises(FlexConfigError, match="not on"):
-        _apply_external_dispatch(m.unit, cfg)
+        apply_state(m, [element])
 
 
 @pytest.mark.unit
-def test_apply_external_dispatch_missing_file_raises(tmp_path):
-    """An unreadable external-dispatch source file is a config error."""
-    m = pyo.ConcreteModel()
-    m.time_block = TimeBlock(
-        start_date="2025-01-01", end_date="2025-01-01T01:00", time_step=15 * pyunits.min
-    )
-    m.unit = OpsBlock()
-    m.unit.power_electrical = pyo.Var(m.time_block.time_index, units=pyunits.kW)
-    cfg = UnitConfig(
-        unit_model_class="OpsBlock",
-        external_dispatch=ExternalDispatchSpec(
-            variable="power_electrical", source=str(tmp_path / "missing.json")
-        ),
-    )
-    with pytest.raises(FlexConfigError, match="Could not read"):
-        _apply_external_dispatch(m.unit, cfg)
-
-
-@pytest.mark.unit
-def test_apply_external_dispatch_applies_series(tmp_path):
+def test_apply_dispatch_applies_series(tmp_path):
     """A JSON dispatch series fixes the named var, coercing string keys to ints."""
     m = pyo.ConcreteModel()
     m.time_block = TimeBlock(
@@ -271,15 +236,124 @@ def test_apply_external_dispatch_applies_series(tmp_path):
 
     series_file = tmp_path / "series.json"
     series_file.write_text(json.dumps({"0": 1.0, "1": 2.0, "2": 3.0, "3": 4.0}))
-    cfg = UnitConfig(
-        unit_model_class="OpsBlock",
-        external_dispatch=ExternalDispatchSpec(
-            variable="power_electrical", source=str(series_file)
-        ),
+    element = DispatchElement(
+        kind="dispatch",
+        unit="unit",
+        variable="power_electrical",
+        values=json.loads(series_file.read_text()),
     )
 
-    _apply_external_dispatch(m.unit, cfg)
+    apply_state(m, [element])
 
     for t in m.time_block.time_index:
         assert m.unit.power_electrical[t].fixed
         assert pyo.value(m.unit.power_electrical[t]) == pytest.approx(t + 1.0)
+
+
+@pytest.mark.unit
+def test_build_keeps_fix_report():
+    """build_model keeps the state stage's FixReport on the model."""
+    spec = load_spec(_CONFIG)
+    spec.elements.append(
+        UnfixElement(kind="unfix", variable="demo.surrogate.energy_intensity")
+    )
+
+    model = build_model(spec)
+
+    report = model._flex_fix_report
+    assert report.unfixed == ["demo.surrogate.energy_intensity"]
+    assert report.skipped == []
+    assert not model.demo.surrogate.energy_intensity.fixed
+
+
+def _demo_dict() -> dict:
+    """The demo spec as a dict, its tariff path made absolute."""
+    spec = json.loads(_CONFIG.read_text())
+    _element(spec, "costing")["tariff_source"] = str(_FIXTURES / "tariff_tou_demo.json")
+    return spec
+
+
+def _element(spec: dict, kind: str) -> dict:
+    """Return the first element of ``kind`` in a spec dict."""
+    return next(el for el in spec["elements"] if el["kind"] == kind)
+
+
+@pytest.mark.unit
+def test_build_model_gas_package():
+    """A SimpleGasFlow property_package element builds as a named gas block."""
+    cfg = _demo_dict()
+    cfg["elements"].append(
+        {"kind": "property_package", "name": "gas", "property_class": "SimpleGasFlow"}
+    )
+    for unit in cfg["elements"]:
+        if unit["kind"] == "unit" and unit.get("property_package", "auto") == "auto":
+            unit["property_package"] = "properties"
+
+    model = build_model(cfg)
+
+    assert isinstance(model.gas, SimpleGasFlow)
+
+
+@pytest.mark.unit
+def test_build_model_unknown_property_class():
+    """An unknown property_class lists the registered package names."""
+    cfg = _demo_dict()
+    _element(cfg, "property_package")["property_class"] = "Nope"
+
+    with pytest.raises(FlexConfigError) as excinfo:
+        build_model(cfg)
+    assert all(name in str(excinfo.value) for name in PROPERTY_PACKAGES)
+
+
+@pytest.mark.unit
+def test_unit_without_package_or_costing():
+    """A null property_package or costing_package leaves that unit without one."""
+    model = build_model(_CONFIG)
+
+    assert model.demo.battery.config.property_package is None
+    assert model.demo.tank.config.costing_package is None
+    assert model.demo.battery.config.costing_package is model.costing
+
+
+def _write_demo_in(directory: Path) -> Path:
+    """Write the demo spec and its tariff into ``directory``; return the spec."""
+    directory.mkdir()
+    (directory / "tariff_tou_demo.json").write_text(
+        (_FIXTURES / "tariff_tou_demo.json").read_text()
+    )
+    path = directory / "config.json"
+    path.write_text(_CONFIG.read_text())
+    return path
+
+
+@pytest.mark.unit
+def test_tariff_path_resolves_against_config_dir(tmp_path, monkeypatch):
+    """A tariff beside the config loads even when the working directory is elsewhere."""
+    path = _write_demo_in(tmp_path / "sub")
+    monkeypatch.chdir(tmp_path)
+
+    model = build_model(path)
+
+    assert model.costing is not None
+
+
+@pytest.mark.unit
+def test_dispatch_source_resolves_against_config_dir(tmp_path, monkeypatch):
+    """A dispatch series in a $source file beside the config loads from another cwd."""
+    path = _write_demo_in(tmp_path / "sub")
+    spec = json.loads(path.read_text())
+    spec["elements"].append(
+        {
+            "kind": "dispatch",
+            "unit": "demo.surrogate",
+            "variable": "power_electrical",
+            "values": {"$source": "series.json"},
+        }
+    )
+    path.write_text(json.dumps(spec))
+    (tmp_path / "sub" / "series.json").write_text(json.dumps([1.0] * 24))
+    monkeypatch.chdir(tmp_path)
+
+    model = build_model(path)
+
+    assert model.demo.surrogate.power_electrical[0].fixed

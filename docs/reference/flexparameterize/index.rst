@@ -3,7 +3,7 @@ flexparameterize
 
 Parameterizes a FlexOps model from tabular plant data. The pipeline is
 **tabular data → tag aliasing → sufficiency validation → regression →
-{apply to model | emit config}**. See :doc:`../../how_to/parameterize_from_data`.
+apply to model** (then {func}`flexops.emit_model` to save it). See :doc:`../../how_to/parameterize_from_data`.
 
 Any tabular source works, whether that's a historian export, a spreadsheet, a CSV, or a database query.
 Nothing here requires a historian connection. The only requirement is that a
@@ -101,17 +101,6 @@ object and the same ports and arcs.
    ApplyReport
 
 .. autofunction:: apply_to_model
-
-Emitting a config
------------------
-
-.. currentmodule:: flexparameterize.emit
-
-This is the serializable direction. The same fit becomes a
-:class:`~flexcore.config.schema.ModelConfig` that
-:func:`flexops.core.build.build_model` rebuilds the parameterized model from.
-
-.. autofunction:: emit_model_config
 
 Native-constraint NLP estimation (not yet implemented)
 --------------------------------------------------------

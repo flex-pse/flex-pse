@@ -18,6 +18,7 @@ from typing import Any
 import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexConfigError
+from flexops.logic._records import record
 from flexops.logic.status import (
     RollingStateKind,
     _register_rolling_state,
@@ -85,6 +86,7 @@ def add_startup_shutdown(
             field="min_downtime",
             value=min_downtime,
         )
+    record(unit, "startup_shutdown", min_up=min_uptime, min_down=min_downtime)
 
     tb = unit._find_time_block()
     active_index = [t for t in tb.time_index if t >= 1]

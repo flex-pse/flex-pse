@@ -17,6 +17,8 @@ from pyomo.environ import units as pyunits
 
 from flexcore.exceptions import FlexConfigError
 from flexcore.logger import get_logger
+from flexops.core.serialize import units_to_str
+from flexops.logic._records import record
 
 _log = get_logger(__name__)
 _RAMP_VARS_ATTR = "_flexops_ramp_vars"
@@ -103,6 +105,19 @@ def add_ramp_rate(
             )
 
     unit = var.parent_block()
+    record(
+        unit,
+        "ramp",
+        variable=var.local_name,
+        ramp_up=ramp_up,
+        ramp_down=ramp_down,
+        # get_units writes kW/h where parse_units' result prints kW*h**(-1).
+        units=units_to_str(
+            pyunits.get_units(ramp_rate_units), where="add_ramp_rate.ramp_rate_units"
+        ),
+        window=window,
+        component_name=name,
+    )
     tb = unit._find_time_block()
     var_units = pyunits.get_units(var)
     if name is None:

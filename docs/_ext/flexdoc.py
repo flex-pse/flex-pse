@@ -270,7 +270,7 @@ def collect_config_table(cls: type) -> list[list[str]]:
 
     Args:
         cls: A pydantic ``BaseModel`` subclass, e.g.
-            :class:`~flexcore.config.schema.ModelConfig`.
+            :class:`~flexcore.config.spec.FlowsheetSpec`.
 
     Returns:
         A list of rows (a header row, then one row per field): name, type,

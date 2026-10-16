@@ -23,6 +23,9 @@ from typing import Any
 
 import pyomo.environ as pyo
 
+from flexops.core.serialize import to_jsonable
+from flexops.logic._records import record, variable_path
+
 _BINARIES_ATTR = "_flexops_logic_binaries"
 _ROLLING_STATE_ATTR = "_flexops_rolling_state"
 
@@ -114,6 +117,13 @@ def add_status(
     Returns:
         The attached Binary ``status`` Var.
     """
+    record(
+        unit,
+        "status",
+        variable=variable_path(output_var, unit),
+        min_output=to_jsonable(min_output, where="add_status.min_output"),
+        max_output=to_jsonable(max_output, where="add_status.max_output"),
+    )
     tb = unit._find_time_block()
     unit.status = pyo.Var(
         tb.time_index, domain=pyo.Binary, doc="On/off status binary (1 = on)."

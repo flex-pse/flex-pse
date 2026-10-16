@@ -12,6 +12,9 @@ from typing import Any
 import pyomo.environ as pyo
 from pyomo.environ import units as pyunits
 
+from flexops.core.serialize import to_jsonable
+from flexops.logic._records import record, variable_path
+
 
 def add_bypass(unit: Any, flow_var: pyo.Var, bypass_max: Any) -> pyo.Var:
     """Attach ``bypass_flow[t]`` and the ``treated_flow[t]`` it defines.
@@ -34,6 +37,12 @@ def add_bypass(unit: Any, flow_var: pyo.Var, bypass_max: Any) -> pyo.Var:
     Returns:
         The attached ``treated_flow`` Var.
     """
+    record(
+        unit,
+        "bypass",
+        variable=variable_path(flow_var, unit),
+        max=to_jsonable(bypass_max, where="add_bypass.bypass_max"),
+    )
     tb = unit._find_time_block()
     ref = next(iter(flow_var.values())) if flow_var.is_indexed() else flow_var
     units = pyunits.get_units(ref)

@@ -1,39 +1,46 @@
 {
-  "schema_version": "0.0.1",
-  "time": {
-    "start_date": "2025-07-08",
-    "end_date": "2025-07-09",
-    "time_step": "1 hr"
-  },
-  "properties": {},
-  "costing": {
-    "tariff_source": "tariff_tou_demo.json"
-  },
-  "plant": {
-    "name": "demo",
-    "units": {
-      "tank": {
-        "unit_model_class": "Tank",
-        "construction_options": {
-          "max_volume": {"value": 1000.0, "units": "m^3"},
-          "initial_volume": {"value": 500.0, "units": "m^3"}
-        }
+  "schema_version": "0.1.0",
+  "name": "demo",
+  "elements": [
+    {
+      "kind": "time",
+      "start_date": "2025-07-08",
+      "end_date": "2025-07-09",
+      "time_step": "1 hr"
+    },
+    {
+      "kind": "property_package",
+      "name": "properties",
+      "property_class": "SimpleAqueousFlow"
+    },
+    {"kind": "costing", "name": "costing", "tariff_source": "tariff_tou_demo.json"},
+    {"kind": "plant", "name": "demo"},
+    {
+      "kind": "unit",
+      "name": "demo.tank",
+      "unit_model_class": "Tank",
+      "costing_package": null,
+      "construction_options": {
+        "max_volume": {"value": 1000.0, "units": "m^3"},
+        "initial_volume": {"value": 500.0, "units": "m^3"}
       },
-      "surrogate": {
-        "unit_model_class": "ConstantEnergyIntensityModel",
-        "construction_options": {
-          "energy_intensity": {"value": 0.5, "units": "kWh/m^3"}
-        }
-      },
-      "battery": {
-        "unit_model_class": "BatteryModel",
-        "construction_options": {
-          "capacity": {"value": 10.0, "units": "kWh"}
-        }
+      "connections": [{"port": "outlet", "to": "demo.surrogate.inlet", "name": "arc_0"}]
+    },
+    {
+      "kind": "unit",
+      "name": "demo.surrogate",
+      "unit_model_class": "ConstantEnergyIntensityModel",
+      "construction_options": {
+        "energy_intensity": {"value": 0.5, "units": "kWh/m^3"}
       }
     },
-    "arcs": [
-      {"source": "tank.outlet", "destination": "surrogate.inlet"}
-    ]
-  }
+    {
+      "kind": "unit",
+      "name": "demo.battery",
+      "unit_model_class": "BatteryModel",
+      "property_package": null,
+      "construction_options": {"capacity": {"value": 10.0, "units": "kWh"}}
+    },
+    {"kind": "objective", "name": "objective"}
+  ]
 }

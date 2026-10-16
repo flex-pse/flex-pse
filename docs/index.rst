@@ -28,6 +28,7 @@ schedule flexible industrial energy operations.
    :caption: How-to
 
    how_to/build_a_plant
+   how_to/round_trip_a_model
    how_to/parameterize_from_data
 
 .. toctree::

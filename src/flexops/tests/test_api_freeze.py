@@ -15,9 +15,9 @@ import pyomo.environ as pyo
 import pytest
 from pyomo.opt import assert_optimal_termination
 
-from flexcore.config.io import load_model_config
 from flexcore.solvers import get_solver
 from flexops import build_model
+from flexops.core.compare import assert_models_equivalent
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "api_freeze"
 _SCRIPT = _FIXTURES / "api_freeze.py"
@@ -64,7 +64,7 @@ def test_api_freeze_config_matches_imperative(tmp_path, monkeypatch):
     """The config-driven twin solves to the same objective as the script."""
     _in_fixture_dir(tmp_path, monkeypatch)
     imperative = _solve(runpy.run_path(str(_SCRIPT))["m"])
-    from_config = _solve(build_model(load_model_config(_CONFIG)))
+    from_config = _solve(build_model(_CONFIG))
     assert from_config == pytest.approx(imperative, rel=1e-6)
 
 
@@ -78,5 +78,16 @@ def test_api_freeze_config_is_schema_valid():
     from flexcore import config as flexcore_config
 
     schemas = Path(flexcore_config.__file__).parent / "schemas"
-    schema = json.loads((schemas / "model_config.schema.json").read_text())
+    schema = json.loads((schemas / "flowsheet_spec.schema.json").read_text())
     jsonschema.validate(json.loads(_CONFIG.read_text()), schema)
+
+
+@pytest.mark.component
+def test_api_freeze_script_and_config_are_equivalent(tmp_path, monkeypatch):
+    """The frozen script and its config twin build structurally equal models."""
+    _in_fixture_dir(tmp_path, monkeypatch)
+    script = runpy.run_path(str(_SCRIPT))["m"]
+    twin = build_model(_CONFIG)
+    pyo.TransformationFactory("network.expand_arcs").apply_to(script)
+
+    assert_models_equivalent(script, twin)

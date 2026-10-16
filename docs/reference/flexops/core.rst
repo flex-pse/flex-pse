@@ -78,7 +78,7 @@ Config-driven build
 .. currentmodule:: flexops.core.build
 
 ``build_model`` is the single config driven entry point. One validated
-:class:`~flexcore.config.schema.ModelConfig` yields the whole Pyomo model. See
+:class:`~flexcore.config.spec.FlowsheetSpec` yields the whole Pyomo model. See
 :doc:`../../how_to/build_a_plant` for the imperative and config driven paths
 side by side.
 
@@ -87,6 +87,93 @@ side by side.
 .. autofunction:: parse_quantity
 
 .. autofunction:: parse_units
+
+Emitting a spec
+---------------
+
+.. currentmodule:: flexops.core.emit
+
+``emit_model`` is ``build_model`` in reverse: it reads the flat spec a live
+model was, or could have been, built from (see
+:doc:`../../explanation/config_schema`).
+
+.. autofunction:: emit_model
+
+.. autofunction:: unit_model_class_name
+
+.. currentmodule:: flexops.core.serialize
+
+.. autofunction:: to_jsonable
+
+.. autofunction:: units_to_str
+
+.. currentmodule:: flexops.core.compare
+
+.. autofunction:: model_differences
+
+.. autofunction:: assert_models_equivalent
+
+Extensions
+----------
+
+.. currentmodule:: flexops.core.extensions
+
+An extension is a user function that adds constraints or an objective. Decorate
+it with :func:`extension` (exported as ``flexops.extension``) and calling it
+records an ``extension`` element, so ``emit_model`` writes it back. The spec only
+names the function, so it builds only where the defining package is installed.
+
+.. autofunction:: extension
+
+.. autofunction:: resolve_extension
+
+Build stages
+------------
+
+.. currentmodule:: flexops.core.stages
+
+``build_model`` runs the stages in :data:`STAGES` in order. Costing is last
+because ``cost_process()`` aggregates only the terms registered when it runs.
+The logic stage builds its kinds in :data:`LOGIC_ORDER`, status first and
+cross-unit logic last. :func:`apply_spec` applies the mutable spec elements
+(surrogates, dispatches, fixes and unfixes) to a model that already exists.
+
+.. autodata:: STAGES
+   :no-value:
+
+.. autodata:: LOGIC_ORDER
+   :no-value:
+
+.. autoclass:: BuildContext
+
+.. autofunction:: apply_spec
+
+.. autofunction:: elements_of
+
+.. autofunction:: apply_relation_spec
+
+Fixing variables
+----------------
+
+.. currentmodule:: flexops.core.fixing
+
+The state stage applies ``fix``, ``unfix`` and ``dispatch`` elements as one
+batch: it plans every point, checks conflicts, bounds and domain, and only then
+changes the model (see :doc:`../../explanation/config_schema`).
+
+.. autofunction:: apply_state
+
+.. autoclass:: FixReport
+
+.. autoclass:: FixViolation
+
+.. autofunction:: element_points
+
+.. autofunction:: variable_points
+
+.. autofunction:: time_of
+
+.. autofunction:: element_label
 
 Registration
 ------------

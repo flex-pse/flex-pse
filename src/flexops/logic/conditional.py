@@ -9,6 +9,7 @@ from typing import Any
 import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexConfigError
+from flexops.logic._records import record
 
 _ALLOWED_THEN = ("on", "off")
 
@@ -48,6 +49,13 @@ def add_conditional(x_unit: Any, y_unit: Any, *, then: str = "on") -> pyo.Constr
                 field=label,
                 value=unit.name,
             )
+    record(
+        x_unit.model(),
+        "conditional",
+        unit=x_unit.getname(fully_qualified=True),
+        implies=y_unit.getname(fully_qualified=True),
+        state=then,
+    )
     x_status, y_status = x_unit.status, y_unit.status
     tb = x_unit._find_time_block()
 

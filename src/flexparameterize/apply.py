@@ -3,10 +3,8 @@
 The FlexParameterize -> FlexOps half of the two-way coupling: given a
 **built** FlexOps model, tabular data and a
 :class:`~flexparameterize.tags.TagMap`, :func:`apply_to_model` fits each unit's
-registered parameters and writes the result straight into the model. No config
-file is produced; its twin :func:`~flexparameterize.emit.emit_model_config`
-covers that direction, and both consume the same ``SurrogateSpec``, so they
-cannot disagree about what was fitted.
+registered parameters and writes the result straight into the model. To persist
+the result, write the model out with :func:`flexops.emit_model`.
 
 Two things happen per unit, and both are in-place — flex-pse never deletes a
 built component:
@@ -33,16 +31,13 @@ from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.environ import units as pyunits
 
 from flexcore import nomenclature as nm
-from flexcore.config.schema import SurrogateSpec, SurrogateType
-from flexcore.exceptions import FlexConfigError, FlexDataError
+from flexcore.config.schema import SurrogateSpec
+from flexcore.exceptions import FlexDataError
 from flexops.core.registration import iter_io_registry
+from flexops.core.stages import ENERGY_RELATION, apply_relation_spec
 from flexops.core.time_block import find_time_block
 from flexops.surrogates import surrogate_from_spec
-from flexparameterize.regression import (
-    COEFFICIENT_NAME,
-    ConstantIntensityRegressor,
-    constant_intensity_coefficient,
-)
+from flexparameterize.regression import ConstantIntensityRegressor
 from flexparameterize.tags import TagMap, model_alias
 from flexparameterize.validate import DEFAULT_MIN_ROWS, check_sufficiency
 
@@ -177,76 +172,6 @@ def _fit_unit(unit, registry, data: pd.DataFrame) -> SurrogateSpec:
     )
 
 
-POWER_ELECTRICAL_RELATION = f"{nm.POWER_ELECTRICAL}_relation"
-"""str: name of the relation the fit-from-data path swaps -- the unit's own
-energy relationship. A unit's other relations are only reachable by naming
-them explicitly through ``surrogates={unit: {relation_name: spec}}``."""
-
-
-def _attach_surrogate(unit, registry, surrogate) -> tuple[bool, dict[str, float]]:
-    """Write ``surrogate`` into the live ``unit`` as its energy relationship.
-
-    The single attachment path, taken by a fitted and a hand-supplied spec
-    alike: the unit's default ``constant_intensity`` form is expressed by fixing
-    its intensity parameter, and any richer form by swapping
-    :data:`POWER_ELECTRICAL_RELATION`.
-
-    Args:
-        unit: The built unit to mutate.
-        registry: Its :class:`~flexops.core.registration.IORegistry`.
-        surrogate: The :class:`~flexcore.config.schema.SurrogateSpec` to attach.
-
-    Returns:
-        ``(swapped, fixed values)`` — whether the Constraint was swapped, and
-        the parameters that were fixed (empty when it was).
-
-    Raises:
-        FlexConfigError: If a ``constant_intensity`` spec carries no
-            coefficient under that name, or the unit does not register one as a
-            regressable process parameter.
-    """
-    if surrogate.surrogate_type is not SurrogateType.CONSTANT_INTENSITY:
-        surrogate_obj = surrogate_from_spec(surrogate)
-        surrogate_block = unit.swap_relation(POWER_ELECTRICAL_RELATION, surrogate_obj)
-        coefficients = getattr(surrogate_block, "coefficients", None)
-        if coefficients is not None and hasattr(coefficients, "items"):
-            coef_names = {name for name, _ in coefficients.items()}
-            already_registered = any(
-                p.relation_name == POWER_ELECTRICAL_RELATION and p.name in coef_names
-                for p in unit._io_registry.parameters
-            )
-            if not already_registered:
-                unit.register_surrogate_coefficients(POWER_ELECTRICAL_RELATION)
-            for coef_name, coef_value in surrogate.data["coefficients"].items():
-                var = coefficients[coef_name]
-                var.set_value(coef_value)
-                var.fix()
-        return True, dict(surrogate.data.get("coefficients", {}))
-
-    coefficient = constant_intensity_coefficient(surrogate)
-    regressable = {
-        record.name: record.param
-        for record in registry.parameters
-        if record.regressable
-    }
-    if COEFFICIENT_NAME not in regressable:
-        raise FlexConfigError(
-            f"A 'constant_intensity' relationship determines "
-            f"{COEFFICIENT_NAME!r}, which {unit.name!r} does not register as a "
-            f"regressable process parameter (it registers "
-            f"{sorted(regressable)}). Supply this unit's relationship through "
-            "surrogates= instead.",
-            field=COEFFICIENT_NAME,
-            value=unit.name,
-        )
-
-    unit.update_parameters({COEFFICIENT_NAME: coefficient})
-    parameter = regressable[COEFFICIENT_NAME]
-    if parameter.is_variable_type():
-        parameter.fix()
-    return False, {COEFFICIENT_NAME: coefficient}
-
-
 def _require_sufficient_data(model, data, unit_names, min_rows: int) -> None:
     """Raise unless ``data`` determines the fit for every unit in ``unit_names``.
 
@@ -349,11 +274,9 @@ def apply_to_model(
         surrogate = supplied_for_unit
         if surrogate is None:
             surrogate = _fit_unit(unit, registry, aliased)
-        swapped, fixed = _attach_surrogate(unit, registry, surrogate)
+        swapped, fixed = apply_relation_spec(unit, surrogate)
         if swapped:
-            report.swapped_relations.setdefault(unit.name, []).append(
-                POWER_ELECTRICAL_RELATION
-            )
+            report.swapped_relations.setdefault(unit.name, []).append(ENERGY_RELATION)
         if fixed:
             report.fixed_parameters[unit.name] = fixed
     report.dof_after = degrees_of_freedom(model)

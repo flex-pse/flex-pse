@@ -11,6 +11,7 @@ from typing import Any
 import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexConfigError
+from flexops.logic._records import record
 from flexops.logic.status import RollingStateKind, _register_rolling_state
 
 
@@ -58,6 +59,14 @@ def add_startup_delay(
             field="upstream",
             value=upstream.name,
         )
+    record(
+        unit.model(),
+        "startup_delay",
+        unit=unit.getname(fully_qualified=True),
+        upstream=upstream.getname(fully_qualified=True),
+        k=k,
+        initially_on=initially_on,
+    )
     down_status = unit.status
     up_status = upstream.status
     tb = unit._find_time_block()

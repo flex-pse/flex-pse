@@ -245,6 +245,7 @@ class OpsBlockData(UnitModelBlockData):
         if self.config.unit_commitment is None:
             self.config.unit_commitment = UnitCommitmentConfig()
         self._io_registry = IORegistry()
+        self._flex_dispatch: dict[str, dict] = {}
 
     # -- time access ------------------------------------------------------
 
@@ -995,6 +996,7 @@ class OpsBlockData(UnitModelBlockData):
             ]
 
         record.swap_count += 1
+        record.spec = getattr(surrogate, "spec", None)
         fitted_name = (
             "fitted" if record.swap_count == 1 else f"fitted_{record.swap_count}"
         )
@@ -1505,11 +1507,15 @@ class OpsBlockData(UnitModelBlockData):
             var[t].set_value(resolved[t])
             if fix:
                 var[t].fix()
+        self._flex_dispatch[var.local_name] = {
+            "values": [resolved[t] for t in tb.time_index],
+            "fix": fix,
+        }
 
     # -- config-driven construction ---------------------------------
 
     @classmethod
-    def build_from_config(cls, cfg: UnitConfig, **kwargs):
+    def build_from_config(cls, cfg: UnitConfig, *, index_set=None, **kwargs):
         """Construct a unit from a validated ``UnitConfig``.
 
         The per-unit primitive behind
@@ -1532,6 +1538,8 @@ class OpsBlockData(UnitModelBlockData):
 
         Args:
             cfg: A ``UnitConfig``, or a mapping/path to validate into one.
+            index_set: A Pyomo Set to build one unit per member over; omitted
+                builds a single unit.
             **kwargs: Extra runtime construction options.
 
         Returns:
@@ -1563,9 +1571,11 @@ class OpsBlockData(UnitModelBlockData):
             name: parse_quantity(value, strict=False)
             for name, value in cfg.construction_options.items()
         }
+        if cfg.unit_commitment is not None:
+            options["unit_commitment"] = cfg.unit_commitment
         return block_class(
+            *(() if index_set is None else (index_set,)),
             **options,
-            unit_commitment=cfg.unit_commitment,
             external_dispatch=cfg.external_dispatch,
             flexops_config=cfg,
             **kwargs,

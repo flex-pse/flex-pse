@@ -92,6 +92,7 @@ from flexcore import nomenclature as nm
 from flexcore.config.schema import UnitCommitmentConfig
 from flexcore.exceptions import FlexConfigError
 from flexops.core.ops_block import OpsBlockData
+from flexops.logic._records import suppress_logic_records
 from flexops.logic.status import add_status
 
 
@@ -419,12 +420,14 @@ class BatteryModelData(OpsBlockData):
             return b.charge[t] <= b.soh * b.capacity
 
         if self.config.unit_commitment.status:
-            status = add_status(
-                self,
-                self.power_charge,
-                0.0 * pyunits.kW,
-                charge_max_val * pyunits.kW,
-            )
+            # unit_commitment.status rebuilds this status; it is not a spec element.
+            with suppress_logic_records():
+                status = add_status(
+                    self,
+                    self.power_charge,
+                    0.0 * pyunits.kW,
+                    charge_max_val * pyunits.kW,
+                )
 
             @self.Constraint(
                 tb.time_index,

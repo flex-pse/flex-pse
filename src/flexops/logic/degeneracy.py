@@ -33,6 +33,7 @@ from typing import Any
 import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexConfigError
+from flexops.logic._records import record, suppress_logic_records
 from flexops.logic.conditional import add_conditional
 
 
@@ -200,16 +201,22 @@ def register_parallel_group(
                 value=name,
             )
 
+    record(
+        units[0].model(),
+        "parallel_group",
+        units=[unit.getname(fully_qualified=True) for unit in units],
+        variables=list(variables),
+        order_status=order_status,
+    )
     for name in variables:
         for upper_unit, lower_unit in zip(units, units[1:], strict=False):
             _attach_variable_ordering(name, upper_unit, lower_unit)
 
-    constraints = (
-        [
+    if not order_status:
+        return []
+    # The group is recorded above; its pairwise conditionals are not.
+    with suppress_logic_records():
+        return [
             add_conditional(units[i + 1], units[i], then="on")
             for i in range(len(units) - 1)
         ]
-        if order_status
-        else []
-    )
-    return constraints

@@ -259,13 +259,13 @@ def test_apply_surrogate_without_coefficients_skips_registry():
             return _NoCoefSurrogate(spec.data)
         return original_surrogate_from_spec(spec)
 
-    import flexparameterize.apply as apply_module
+    import flexops.core.stages as stages_module
 
-    apply_module.surrogate_from_spec = _fake_surrogate_from_spec
+    stages_module.surrogate_from_spec = _fake_surrogate_from_spec
     try:
         report = apply_to_model(m, data, ALIASED, surrogates={unit.name: no_coef_spec})
     finally:
-        apply_module.surrogate_from_spec = original_surrogate_from_spec
+        stages_module.surrogate_from_spec = original_surrogate_from_spec
 
     assert report.swapped_relations == {unit.name: ["power_electrical_relation"]}
     assert unit.surrogate_power_electrical.fitted is not None
