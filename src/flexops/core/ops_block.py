@@ -1529,12 +1529,14 @@ class OpsBlockData(UnitModelBlockData):
         resolved against ``flexops.unit_models``. Persisted construction
         options carry their units as data: a value written
         ``{"value": 0.5, "units": "kWh/m^3"}`` becomes a units-carrying Pyomo
-        expression, anything else passes through unchanged -- including a plain
-        string naming an enum member (``"detail": "polarization"``), which the
-        receiving ``ConfigValue``'s own domain then validates. Runtime-only
-        options that cannot be serialized (``property_package``,
-        ``costing_package``) are supplied by the caller through ``kwargs``,
-        which wins over the config on a key collision.
+        expression, as does each such value inside a mapping option
+        (``heating_values``); anything else passes through unchanged --
+        including a plain string naming an enum member
+        (``"detail": "polarization"``), which the receiving ``ConfigValue``'s
+        own domain then validates. Runtime-only options that cannot be
+        serialized (``property_package``, ``costing_package``) are supplied by
+        the caller through ``kwargs``, which wins over the config on a key
+        collision.
 
         Args:
             cfg: A ``UnitConfig``, or a mapping/path to validate into one.
@@ -1567,10 +1569,12 @@ class OpsBlockData(UnitModelBlockData):
                 field="unit_model_class",
                 value=cfg.unit_model_class,
             )
-        options = {
-            name: parse_quantity(value, strict=False)
-            for name, value in cfg.construction_options.items()
-        }
+        options = {}
+        for name, value in cfg.construction_options.items():
+            if isinstance(value, dict) and set(value) != {"value", "units"}:
+                # A mapping option (e.g. heating_values) holds quantities as values.
+                value = {k: parse_quantity(v, strict=False) for k, v in value.items()}
+            options[name] = parse_quantity(value, strict=False)
         if cfg.unit_commitment is not None:
             options["unit_commitment"] = cfg.unit_commitment
         return block_class(

@@ -45,6 +45,19 @@ def build_battery():
     return m
 
 
+def build_boiler():
+    m = plant_model(gas=True)
+    m.water = fo.SimpleAqueousFlow()
+    m.plant.unit = fo.Boiler(
+        feedwater_property_package=m.water,
+        steam_property_package=m.properties,
+        utility_fuel_source="natural_gas",
+        heating_values={"natural_gas": 10.5 * pyunits.kWh / pyunits.m**3},
+        unit_commitment=UnitCommitmentConfig(status=False),
+    )
+    return m
+
+
 def build_combustor():
     m = plant_model(gas=True)
     m.plant.unit = fo.Combustor(property_package=m.properties, inlet_names=("fuel",))
@@ -99,6 +112,7 @@ def electrolyzer(unit_class, **options):
 CONTRACT_BUILDERS = {
     "CO2Electrolyzer": electrolyzer(fo.CO2Electrolyzer),
     "BatteryModel": build_battery,
+    "Boiler": build_boiler,
     "Combustor": build_combustor,
     "ConstantEnergyIntensityModel": simple(fo.ConstantEnergyIntensityModel),
     "DIDOBlock": simple(fo.DIDOBlock),
