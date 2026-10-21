@@ -237,7 +237,6 @@ def _costing_element(block, relative_to) -> CostingElement:
         tariff = {k: _relative_path(v, relative_to) for k, v in tariff.items()}
     else:
         tariff = _relative_path(tariff, relative_to)
-    events = _relative_path(config.dr_event_file, relative_to)
     return CostingElement(
         kind="costing",
         name=block.local_name,
@@ -246,7 +245,11 @@ def _costing_element(block, relative_to) -> CostingElement:
         export_prices=prices["export_prices"] or None,
         decomposition_type=config.decomposition_type,
         currency=config.currency,
-        dr=None if events is None else {"events_source": events},
+        dr=(
+            None
+            if config.demand_response is None
+            else config.demand_response.model_dump(mode="json")
+        ),
         consumption_estimate=config.consumption_estimate,
         fixed_operating_cost=config.fixed_operating_cost,
         prorate_monthly_charges=config.prorate_monthly_charges,
@@ -943,6 +946,11 @@ def _offload(elements: list, data_dir, inline_limit: int, base_dir) -> None:
                         source = write(element.name, f"{field}.{carrier}", price.value)
                         if source is not None:
                             price.value = SourceRef(source=source)
+            history = None if element.dr is None else element.dr.historical_power
+            if history is not None and isinstance(history.values_kW, list):
+                source = write(element.name, "dr.historical_power", history.values_kW)
+                if source is not None:
+                    history.values_kW = SourceRef(source=source)
         elif element.kind == "fix" and isinstance(element.value, list):
             source = write(element.variable, "value", element.value)
             if source is not None:

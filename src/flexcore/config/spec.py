@@ -24,6 +24,7 @@ from flexcore.config.schema import (
     CostingConfig,
     DegradationSpec,
     DRConfig,
+    HistoricalPower,
     IOVariableSpec,
     PriceSpec,
     PropertyPackageSpec,
@@ -101,6 +102,22 @@ class SourcedPrice(PriceSpec):
     )
 
 
+class SourcedHistoricalPower(HistoricalPower):
+    """Meter history whose values may sit in a file beside the spec."""
+
+    values_kW: list[float] | SourceRef = Field(
+        description="Site power in kW, or a $source reference to a file holding it."
+    )
+
+
+class SourcedDRConfig(DRConfig):
+    """A demand-response program whose meter history may sit in a file."""
+
+    historical_power: SourcedHistoricalPower = Field(
+        description="Meter history the baseline is computed from."
+    )
+
+
 class TimeElement(TimeConfig):
     """The discrete-time horizon; builds the model's time_block."""
 
@@ -130,7 +147,7 @@ class CostingElement(_StrictModel):
     )
     decomposition_type: str | None = _like(CostingConfig, "decomposition_type")
     currency: str = _like(CostingConfig, "currency")
-    dr: DRConfig | None = _like(CostingConfig, "dr")
+    dr: SourcedDRConfig | None = _like(CostingConfig, "dr")
     consumption_estimate: dict[Literal["electric", "gas"], float] | None = _like(
         CostingConfig, "consumption_estimate"
     )

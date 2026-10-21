@@ -8,6 +8,14 @@ from pydantic import BaseModel, ValidationError
 from flexcore.config.io import export_json_schemas
 from flexcore.config.schema import (
     CostingConfig,
+    DRBaseline,
+    DRBaselineMethod,
+    DRConfig,
+    DREvent,
+    DRPayment,
+    DRPaymentKind,
+    DRPaymentRegion,
+    HistoricalPower,
     IOVariableSpec,
     PriceSpec,
     SurrogateSpec,
@@ -123,3 +131,82 @@ def test_exported_descriptions_are_plain_text(tmp_path):
         assert "\n" not in desc, f"newline in description: {desc!r}"
         assert "§" not in desc, f"section sign in description: {desc!r}"
         assert "``" not in desc, f"RST literal in description: {desc!r}"
+
+
+def _dr_event(**changes) -> dict:
+    """Return one valid demand-response event as plain data."""
+    event = {
+        "event_date": "2025-07-08",
+        "start_hour": 16,
+        "duration_hours": 3,
+        "baseline_days": ["2025-07-07"],
+        "bid_capacity_kW": 100.0,
+        "capacity_price": 10.0,
+    }
+    return event | changes
+
+
+def _dr_config(**changes) -> dict:
+    """Return one valid demand-response config as plain data."""
+    config = {
+        "events": [_dr_event()],
+        "historical_power": {
+            "start": "2025-07-07T00:00",
+            "time_step_minutes": 60,
+            "values_kW": [100.0] * 24,
+        },
+        "baseline": {"method": "fixed_level", "firm_level_kW": 150.0},
+        "payment": {"kind": "capacity", "regions": [{"x1": 0.0, "y1": 0.0, "y2": 0.0}]},
+    }
+    return config | changes
+
+
+@pytest.mark.unit
+def test_dr_config_parses_events_baseline_and_payment():
+    """A demand-response config parses into typed events, baseline and payment."""
+    dr = DRConfig.model_validate(_dr_config())
+    assert isinstance(dr.events[0], DREvent)
+    assert dr.events[0].notification_hours == 0.0
+    assert dr.events[0].region_x1 is None
+    assert isinstance(dr.historical_power, HistoricalPower)
+    assert dr.baseline.method is DRBaselineMethod.FIXED_LEVEL
+    assert dr.payment.kind is DRPaymentKind.CAPACITY
+    assert dr.payment.settlement == "interval"
+
+
+@pytest.mark.unit
+def test_dr_payment_region_none_bound_means_unbounded():
+    """A missing region bound means unbounded, since JSON cannot hold infinity."""
+    region = DRPaymentRegion(x1=1.0, y1=1.0, y2=1.0)
+    assert region.x1 == 1.0
+    assert region.x2 is None
+
+
+@pytest.mark.unit
+def test_dr_fixed_level_baseline_needs_a_firm_level():
+    """A fixed-level baseline without its contracted level is rejected."""
+    with pytest.raises(ValidationError, match="firm_level_kW"):
+        DRBaseline(method="fixed_level")
+
+
+@pytest.mark.unit
+def test_dr_capacity_energy_payment_needs_an_energy_price():
+    """A capacity-plus-energy payment without an energy price is rejected."""
+    with pytest.raises(ValidationError, match="energy_price"):
+        DRPayment(kind="capacity_energy", regions=None)
+
+
+@pytest.mark.unit
+def test_dr_rejects_empty_baseline_days_and_history():
+    """An event with no baseline days, or an empty meter history, is rejected."""
+    with pytest.raises(ValidationError):
+        DREvent.model_validate(_dr_event(baseline_days=[]))
+    with pytest.raises(ValidationError):
+        HistoricalPower(start="2025-07-07", time_step_minutes=60, values_kW=[])
+
+
+@pytest.mark.unit
+def test_costing_config_takes_a_dr_config():
+    """CostingConfig.dr holds the full demand-response config."""
+    cfg = CostingConfig(tariff_source="tariff.json", dr=_dr_config())
+    assert isinstance(cfg.dr, DRConfig)

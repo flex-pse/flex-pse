@@ -56,9 +56,11 @@ nitpick_ignore = [
     ("py:class", "pandas.core.series.Series"),
     ("py:class", "pandas._libs.tslibs.timestamps.Timestamp"),
     ("py:class", "pandas._libs.tslibs.timedeltas.Timedelta"),
-    # pydantic's NonNegativeFloat is Annotated[float, annotated_types.Ge(0)],
-    # and annotated_types has no intersphinx target.
+    # pydantic's NonNegativeFloat is Annotated[float, annotated_types.Ge(0)], and
+    # Field(gt=..., min_length=...) adds Gt/MinLen; annotated_types has no target.
     ("py:class", "annotated_types.Ge"),
+    ("py:class", "annotated_types.Gt"),
+    ("py:class", "annotated_types.MinLen"),
     # Pyomo's TerminationCondition enum has no intersphinx target.
     ("py:class", "pyomo.opt.results.solver.TerminationCondition"),
     # A Field(pattern=...) renders its pydantic metadata, which has no target.
@@ -73,10 +75,9 @@ nitpick_ignore = [
 # resolve fine; ignore only these signature-parsing fragments.
 nitpick_ignore_regex = [
     ("py:class", r"dict\[.*"),
-    # pydantic Field constraints (ge=, gt=, min_length=) render as annotated_types
-    # metadata classes, which have no intersphinx target.
-    ("py:class", r"annotated_types\..*"),
-]
+    ("py:class", r"tuple\[.*"),
+    ("py:obj", r"typing\.Annotated\[.*"),
+]   
 
 html_theme = "furo"
 html_static_path = ["_static"]

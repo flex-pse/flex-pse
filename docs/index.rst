@@ -22,6 +22,7 @@ schedule flexible industrial energy operations.
    explanation/config_schema
    explanation/energy_nomenclature
    explanation/reported_cost
+   explanation/demand_response
    explanation/pass_through_and_bypass
    explanation/degradation
    explanation/design_annualization

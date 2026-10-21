@@ -98,7 +98,6 @@ def freeze_spec(directory: Path) -> Path:
             "kind": "costing",
             "name": "costing",
             "tariff_source": "tariff.json",
-            "dr": {"events_source": "dr_events.json"},
         },
         {"kind": "plant", "name": "waterfacility"},
         {

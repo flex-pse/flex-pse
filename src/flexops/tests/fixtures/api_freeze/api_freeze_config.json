@@ -16,8 +16,7 @@
     {
       "kind": "costing",
       "name": "costing",
-      "tariff_source": "data/tariff.json",
-      "dr": {"events_source": "data/dr_events.json"}
+      "tariff_source": "data/tariff.json"
     },
     {"kind": "plant", "name": "waterfacility"},
     {
