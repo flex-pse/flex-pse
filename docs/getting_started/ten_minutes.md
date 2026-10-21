@@ -17,9 +17,8 @@ See [Installation](installation.md) for the IPOPT solver setup step.
 
 ## 2. Build the model
 
-Run this from a directory holding the two data files it loads by name.
-`tariff.json` is a time of use price sheet. `dr_events.json` is a
-demand response program, and it can be empty.
+Run this from a directory holding `tariff.json`, the time of use price sheet
+it loads by name.
 
 ```python
 import pyomo.environ as pyo
@@ -35,7 +34,6 @@ m.properties = fo.SimpleAqueousFlow()
 m.costing = fo.FlexCosting(
     time_block=m.time_block,
     tariff_file="tariff.json",
-    dr_event_file="dr_events.json",
 )
 m.waterfacility = fo.PlantBlock(time_block=m.time_block)
 m.waterfacility.tank = fo.Tank(property_package=m.properties)

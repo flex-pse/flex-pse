@@ -3,7 +3,7 @@
 These tests exercise the wrapper — indexed per-carrier power aggregation, the
 ``opex`` block (electricity + fuel + fixed + scalar operating cost), the empty
 ``capex`` placeholder, annualization, the capex-in-objective-only-in-design-mode
-rule, ``report_cost``'s categorized breakdown, the DR container no-op, modes, and
+rule, ``report_cost``'s categorized breakdown, modes, and
 the construction-order invariant. None of them invoke a solver (that is
 ``test_load_shifting_component.py``); derived Vars are propagated through their
 defining equality constraints via :func:`_propagate`. The tariff *math* itself is
@@ -45,7 +45,6 @@ from flexops.unit_models import Pump, Tank
 
 _FIXTURES = Path(__file__).parent.parent / "fixtures"
 _TARIFF_JSON = _FIXTURES / "tariff_tou_demo.json"
-_DR_JSON = _FIXTURES / "dr_events_demo.json"
 
 
 def _two_utility_tariff():
@@ -98,7 +97,6 @@ def _pump_tank_costing(
     costing_first: bool = True,
     pump_first: bool = True,
     fixed_operating_cost: float = 0.0,
-    dr_event_file=None,
     tariff=None,
     run_cost_process: bool = True,
     energy_prices=None,
@@ -123,7 +121,6 @@ def _pump_tank_costing(
         kwargs = dict(
             time_block=m.time_block,
             fixed_operating_cost=fixed_operating_cost,
-            dr_event_file=dr_event_file,
             **costing_kwargs,
         )
         if energy_prices is not None:
@@ -266,7 +263,7 @@ def test_config_exclusivity():
         time_block=m3.time_block,
         energy_prices={"electrical": 0.12 * currency_units("USD") / pyunits.kWh},
     )
-    assert m3.costing.find_component("dr") is not None
+    assert m3.costing.config.demand_response is None
 
 
 @pytest.mark.unit
@@ -718,7 +715,7 @@ def test_register_scalar_cost_unit_attribution():
 @pytest.mark.unit
 def test_report_cost_breakdown_shape():
     """report_cost returns a categorized CostReport with v0 zero placeholders."""
-    m = _pump_tank_costing(fixed_operating_cost=500.0, dr_event_file=str(_DR_JSON))
+    m = _pump_tank_costing(fixed_operating_cost=500.0)
     profile = {t: 100.0 for t in range(24)}
     _set_power(m, profile)
     _propagate(m.costing)
@@ -733,7 +730,7 @@ def test_report_cost_breakdown_shape():
     assert report.operating.fuel == pytest.approx(0.0)
     assert report.operating.fixed == pytest.approx(500.0)
     assert report.operating.scalar == pytest.approx(0.0)
-    # DR is containers-only: a loaded DR file produces no credit.
+    # No demand-response program, so no credit.
     assert report.operating.dr_revenue == pytest.approx(0.0)
     assert report.capital.by_component == {}
     assert report.capital.total == pytest.approx(0.0)
@@ -778,23 +775,6 @@ def test_construction_order_permutation():
 
     for v in values[1:]:
         assert v == pytest.approx(values[0], rel=1e-12)
-
-
-@pytest.mark.unit
-def test_dr_container_loads_noop():
-    """A loaded DR file populates the container and builds no DR constraints."""
-    from flexops.costing import DRConfig
-
-    m_dr = _pump_tank_costing(dr_event_file=str(_DR_JSON))
-    assert isinstance(m_dr.costing.dr, DRConfig)
-    assert m_dr.costing.dr.program is not None
-
-    m_no = _pump_tank_costing()
-    # No DR constraints: the active-constraint count is unchanged, LP both.
-    n_dr = len(list(m_dr.component_data_objects(pyo.Constraint, active=True)))
-    n_no = len(list(m_no.component_data_objects(pyo.Constraint, active=True)))
-    assert n_dr == n_no
-    assert classify(m_dr) is ProblemClass.LP
 
 
 @pytest.mark.unit

@@ -226,14 +226,14 @@
         "dr": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DRConfig"
+              "$ref": "#/$defs/SourcedDRConfig"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Optional demand-response container (containers-only in v0)."
+          "description": "Optional demand-response program, whose revenue is subtracted from the operating cost."
         },
         "energy_prices": {
           "anyOf": [
@@ -341,11 +341,96 @@
       "title": "CostingElement",
       "type": "object"
     },
-    "DRConfig": {
+    "DRBaseline": {
       "additionalProperties": false,
-      "description": "Demand-response container slot, a placeholder in v0: DR containers exist so wiring is stable, but no DR constraints are built. Turning DR on later is additive.",
+      "description": "How the demand-response baseline is computed.",
       "properties": {
-        "events_source": {
+        "adjustment_clip": {
+          "default": [
+            0.8,
+            1.2
+          ],
+          "description": "Similar-days methods: lower and upper bounds on the day-of adjustment factor.",
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Adjustment Clip",
+          "type": "array"
+        },
+        "adjustment_duration_hours": {
+          "default": 3,
+          "description": "Similar-days methods: length of the day-of adjustment window in hours.",
+          "title": "Adjustment Duration Hours",
+          "type": "integer"
+        },
+        "adjustment_offset_hours": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 4,
+          "description": "Similar-days methods: hours before the event start that the day-of adjustment window begins; null turns the adjustment off.",
+          "title": "Adjustment Offset Hours"
+        },
+        "exclude_holidays": {
+          "default": true,
+          "description": "Similar-days methods: drop holidays.",
+          "title": "Exclude Holidays",
+          "type": "boolean"
+        },
+        "exclude_weekends": {
+          "default": true,
+          "description": "Similar-days methods: drop Saturdays and Sundays.",
+          "title": "Exclude Weekends",
+          "type": "boolean"
+        },
+        "firm_level_kW": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "fixed_level method: the contracted firm service level in kW.",
+          "title": "Firm Level Kw"
+        },
+        "holiday_country": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "US",
+          "description": "Similar-days methods: ISO 3166-1 country code of the holiday calendar; null uses holiday_dates only.",
+          "title": "Holiday Country"
+        },
+        "holiday_dates": {
+          "description": "Similar-days methods: extra dates to treat as holidays.",
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "title": "Holiday Dates",
+          "type": "array"
+        },
+        "holiday_subdiv": {
           "anyOf": [
             {
               "type": "string"
@@ -355,12 +440,294 @@
             }
           ],
           "default": null,
-          "description": "Optional file or tag pointing at demand-response events.",
-          "title": "Events Source"
+          "description": "Similar-days methods: holiday-calendar subdivision, e.g. 'CA'.",
+          "title": "Holiday Subdiv"
+        },
+        "interruption_level_kW": {
+          "default": 0.0,
+          "description": "unilateral_interruption method: the level in kW load is held at or below during an event.",
+          "title": "Interruption Level Kw",
+          "type": "number"
+        },
+        "method": {
+          "$ref": "#/$defs/DRBaselineMethod",
+          "description": "The baseline method."
+        },
+        "n_baseline_days": {
+          "default": 10,
+          "description": "Similar-days methods: number of eligible days to average; 0 gives a zero baseline.",
+          "minimum": 0,
+          "title": "N Baseline Days",
+          "type": "integer"
+        },
+        "resolution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Settlement interval width as an EECO resolution string, e.g. '15m' or '1h'; omit to infer it from the data.",
+          "title": "Resolution"
         }
       },
-      "title": "DRConfig",
+      "required": [
+        "method"
+      ],
+      "title": "DRBaseline",
       "type": "object"
+    },
+    "DRBaselineMethod": {
+      "description": "How a demand-response baseline (the load the site would have drawn) is set.",
+      "enum": [
+        "similar_days",
+        "top_usage_days",
+        "fixed_level",
+        "unilateral_interruption"
+      ],
+      "title": "DRBaselineMethod",
+      "type": "string"
+    },
+    "DREvent": {
+      "additionalProperties": false,
+      "description": "One demand-response event, in local wall-clock time.",
+      "properties": {
+        "adjustment_factor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Day-of adjustment factor to apply as is; omit to compute it from meter history.",
+          "title": "Adjustment Factor"
+        },
+        "baseline_days": {
+          "description": "Candidate days the baseline may average over; exclude other event days.",
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Baseline Days",
+          "type": "array"
+        },
+        "bid_capacity_kW": {
+          "description": "Bid capacity in kW.",
+          "title": "Bid Capacity Kw",
+          "type": "number"
+        },
+        "capacity_price": {
+          "description": "Capacity price in USD/kW, or USD/kW-hour with the per_hour basis, or USD/kW-month with the monthly_share basis.",
+          "title": "Capacity Price",
+          "type": "number"
+        },
+        "duration_hours": {
+          "description": "Length of the event in hours.",
+          "title": "Duration Hours",
+          "type": "number"
+        },
+        "event_date": {
+          "description": "Calendar date of the event.",
+          "format": "date",
+          "title": "Event Date",
+          "type": "string"
+        },
+        "monthly_called_capacity_kWh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Called capacity summed over every event hour in the month, for the monthly_share basis; omit to sum it over the given events.",
+          "title": "Monthly Called Capacity Kwh"
+        },
+        "notification_hours": {
+          "default": 0.0,
+          "description": "Advance notice before the event, in hours.",
+          "title": "Notification Hours",
+          "type": "number"
+        },
+        "region_x1": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lower delivered-ratio bound of the payment region to fix for this event, which removes its region-choice binaries; omit to let the optimizer choose.",
+          "title": "Region X1"
+        },
+        "start_hour": {
+          "description": "Hour of day (0-24) the event begins.",
+          "title": "Start Hour",
+          "type": "number"
+        }
+      },
+      "required": [
+        "event_date",
+        "start_hour",
+        "duration_hours",
+        "baseline_days",
+        "bid_capacity_kW",
+        "capacity_price"
+      ],
+      "title": "DREvent",
+      "type": "object"
+    },
+    "DRPayment": {
+      "additionalProperties": false,
+      "description": "How a demand-response program pays for the delivered reduction.",
+      "properties": {
+        "energy_price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "capacity_energy kind: payment in USD/kWh for energy curtailed.",
+          "title": "Energy Price"
+        },
+        "kind": {
+          "$ref": "#/$defs/DRPaymentKind",
+          "description": "The payment structure."
+        },
+        "payment_basis": {
+          "$ref": "#/$defs/DRPaymentBasis",
+          "default": "per_event",
+          "description": "Basis the capacity price is paid on."
+        },
+        "payout": {
+          "default": 0.0,
+          "description": "Flat participation payment in USD per kW of bid capacity.",
+          "title": "Payout",
+          "type": "number"
+        },
+        "payout_basis": {
+          "$ref": "#/$defs/DRPaymentBasis",
+          "default": "per_event",
+          "description": "Basis the payout is paid on."
+        },
+        "regions": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DRPaymentRegion"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Piecewise-linear payment schedule; omit for a payout-only program. Each region adds binaries to the model unless the event fixes region_x1.",
+          "title": "Regions"
+        },
+        "settlement": {
+          "$ref": "#/$defs/DRSettlement",
+          "default": "interval",
+          "description": "Settle each interval's reduction, or the event-mean reduction."
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DRPayment",
+      "type": "object"
+    },
+    "DRPaymentBasis": {
+      "description": "Whether a price is paid per event, per event hour, or as a monthly share.",
+      "enum": [
+        "per_event",
+        "per_hour",
+        "monthly_share"
+      ],
+      "title": "DRPaymentBasis",
+      "type": "string"
+    },
+    "DRPaymentKind": {
+      "description": "How a demand-response program pays for a delivered reduction.",
+      "enum": [
+        "capacity",
+        "capacity_energy"
+      ],
+      "title": "DRPaymentKind",
+      "type": "string"
+    },
+    "DRPaymentRegion": {
+      "additionalProperties": false,
+      "description": "One region of a payment schedule, mapping delivered ratio to payment ratio.",
+      "properties": {
+        "x1": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lower delivered-ratio bound (reduction over bid capacity); null means unbounded below.",
+          "title": "X1"
+        },
+        "x2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Upper delivered-ratio bound; null means unbounded above, where the region pays a flat y1.",
+          "title": "X2"
+        },
+        "y1": {
+          "description": "Payment ratio at x1.",
+          "title": "Y1",
+          "type": "number"
+        },
+        "y2": {
+          "description": "Payment ratio at x2.",
+          "title": "Y2",
+          "type": "number"
+        }
+      },
+      "required": [
+        "y1",
+        "y2"
+      ],
+      "title": "DRPaymentRegion",
+      "type": "object"
+    },
+    "DRSettlement": {
+      "description": "Whether a payment settles each interval or the event-mean reduction.",
+      "enum": [
+        "interval",
+        "average"
+      ],
+      "title": "DRSettlement",
+      "type": "string"
     },
     "DispatchElement": {
       "additionalProperties": false,
@@ -1033,6 +1400,81 @@
         "$source"
       ],
       "title": "SourceRef",
+      "type": "object"
+    },
+    "SourcedDRConfig": {
+      "additionalProperties": false,
+      "description": "A demand-response program whose meter history may sit in a file.",
+      "properties": {
+        "baseline": {
+          "$ref": "#/$defs/DRBaseline",
+          "description": "How the baseline is computed."
+        },
+        "events": {
+          "description": "The program's events.",
+          "items": {
+            "$ref": "#/$defs/DREvent"
+          },
+          "minItems": 1,
+          "title": "Events",
+          "type": "array"
+        },
+        "historical_power": {
+          "$ref": "#/$defs/SourcedHistoricalPower",
+          "description": "Meter history the baseline is computed from."
+        },
+        "payment": {
+          "$ref": "#/$defs/DRPayment",
+          "description": "How the reduction is paid."
+        }
+      },
+      "required": [
+        "events",
+        "historical_power",
+        "baseline",
+        "payment"
+      ],
+      "title": "SourcedDRConfig",
+      "type": "object"
+    },
+    "SourcedHistoricalPower": {
+      "additionalProperties": false,
+      "description": "Meter history whose values may sit in a file beside the spec.",
+      "properties": {
+        "start": {
+          "description": "Naive local timestamp of the first value.",
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        },
+        "time_step_minutes": {
+          "description": "Spacing between values in minutes.",
+          "exclusiveMinimum": 0,
+          "title": "Time Step Minutes",
+          "type": "number"
+        },
+        "values_kW": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "$ref": "#/$defs/SourceRef"
+            }
+          ],
+          "description": "Site power in kW, or a $source reference to a file holding it.",
+          "title": "Values Kw"
+        }
+      },
+      "required": [
+        "start",
+        "time_step_minutes",
+        "values_kW"
+      ],
+      "title": "SourcedHistoricalPower",
       "type": "object"
     },
     "SourcedPrice": {

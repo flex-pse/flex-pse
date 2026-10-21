@@ -476,6 +476,57 @@ def long_prices() -> pyo.ConcreteModel:
     return m
 
 
+# --- demand_response ---
+
+
+def demand_response() -> pyo.ConcreteModel:
+    """A plant with a demand-response event priced from two weeks of meter history."""
+    m = pyo.ConcreteModel(name="demand_response")
+    m.time_block = fo.TimeBlock(
+        start_date="2025-07-08", end_date="2025-07-09", time_step=1 * pyunits.hr
+    )
+    m.properties = fo.SimpleAqueousFlow()
+    m.costing = fo.FlexCosting(
+        time_block=m.time_block,
+        energy_prices={"electrical": 0.10 * currency_units("USD") / pyunits.kWh},
+        demand_response={
+            "events": [
+                {
+                    "event_date": "2025-07-08",
+                    "start_hour": 16,
+                    "duration_hours": 3,
+                    "baseline_days": ["2025-07-03", "2025-07-07"],
+                    "bid_capacity_kW": 20.0,
+                    "capacity_price": 10.0,
+                    "region_x1": 0.0,
+                }
+            ],
+            "historical_power": {
+                "start": "2025-06-23T00:00",
+                "time_step_minutes": 60,
+                "values_kW": [50.0 + (h % 24 >= 12) * 25.0 for h in range(15 * 24)],
+            },
+            "baseline": {"method": "similar_days", "holiday_country": None},
+            "payment": {
+                "kind": "capacity",
+                "regions": [
+                    {"x1": 0.0, "x2": 1.0, "y1": 0.0, "y2": 1.0},
+                    {"x1": 1.0, "x2": None, "y1": 1.0, "y2": 1.0},
+                ],
+            },
+        },
+    )
+    m.site = fo.PlantBlock(time_block=m.time_block)
+    m.site.plant = fo.ConstantEnergyIntensityModel(
+        property_package=m.properties,
+        energy_intensity=0.5 * pyunits.kWh / pyunits.m**3,
+        costing_package=m.costing,
+    )
+    m.costing.cost_process()
+    m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
+    return m
+
+
 # --- network_two_plants ---
 
 
@@ -769,6 +820,7 @@ def units_on_model() -> pyo.ConcreteModel:
 CASES = {
     "api_freeze_like": (api_freeze_like, True, "unit"),
     "battery_status": (battery_status, False, "unit"),
+    "demand_response": (demand_response, False, "unit"),
     "desalination": (desalination, True, "component"),
     "extension_constraint_objective": (extension_constraint_objective, True, "unit"),
     "indexed_trains": (indexed_trains, True, "unit"),

@@ -89,6 +89,8 @@ elements, in any order. Pydantic is the schema authority, and
    Quantity
    SourceRef
    SourcedPrice
+   SourcedDRConfig
+   SourcedHistoricalPower
 
 .. autodata:: SCHEMA_VERSION
 
@@ -119,6 +121,15 @@ Shared building blocks
    CostingConfig
    PriceSpec
    DRConfig
+   DREvent
+   DRBaseline
+   DRBaselineMethod
+   DRPayment
+   DRPaymentKind
+   DRPaymentRegion
+   DRPaymentBasis
+   DRSettlement
+   HistoricalPower
 
 Config I/O
 ~~~~~~~~~~

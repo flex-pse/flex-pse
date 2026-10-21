@@ -8,8 +8,9 @@ owns:
   delegated to the external EECO package via the :mod:`flexops.costing.opex`
   bridge), a user-defined **fixed operating cost** (maintenance/labor/chemicals),
   and any **scalar operating cost** (non-energy flows/supplies/products priced
-  natively in flex-pse, never through EECO). ``opex.total_operating_cost`` is
-  their sum and is re-exposed as :attr:`aggregate_operating_cost`.
+  natively in flex-pse, never through EECO), less any **demand-response
+  revenue** (EECO's demand-response module). ``opex.total_operating_cost`` is
+  that net and is re-exposed as :attr:`aggregate_operating_cost`.
 * **``capex``** — capital cost. In v0 an **empty placeholder**
   (``total_capital_cost == 0``, re-exposed as :attr:`aggregate_capital_cost`);
   later milestones aggregate per-unit capital costs into it. Capital cost enters
@@ -51,6 +52,7 @@ from collections.abc import Mapping, Sequence, Sized
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import pyomo.environ as pyo
 from idaes.core import FlowsheetCostingBlockData, declare_process_block_class
 from pyomo.common.config import ConfigValue
@@ -59,21 +61,21 @@ from pyomo.environ import units as pyunits
 from pyomo.util.check_units import assert_units_consistent, assert_units_equivalent
 
 from flexcore import nomenclature as nm
+from flexcore.config.schema import DRConfig
 from flexcore.exceptions import FlexConfigError, FlexSolverError
 from flexcore.logger import get_logger
 from flexops.core.registration import iter_io_registry
+from flexops.costing.demand_response import add_dr_revenue, evaluate_dr_revenue
 from flexops.costing.opex import (
     _ELECTRIC,
     _GAS,
     EECO_GAS_USAGE_UNITS,
     EECO_POWER_UNITS,
-    DRConfig,
     add_electricity_cost,
     add_fuel_cost,
     currency_units,
     evaluate_cost,
     evaluate_fuel_cost,
-    load_dr_program,
     load_tariff,
     merge_tariffs,
     tariff_currency_units,
@@ -224,6 +226,29 @@ def _price_in_units(price, per_quantity_units):
     return price * per_quantity_units
 
 
+def _dr_config_domain(value) -> DRConfig | None:
+    """Validate a demand-response program given as a DRConfig or plain data.
+
+    Args:
+        value: A :class:`~flexcore.config.schema.DRConfig`, a mapping, or ``None``.
+
+    Returns:
+        The validated ``DRConfig``, or ``None``.
+
+    Raises:
+        FlexConfigError: If ``value`` does not validate as a ``DRConfig``.
+    """
+    if value is None or isinstance(value, DRConfig):
+        return value
+    try:
+        return DRConfig.model_validate(value)
+    except ValueError as exc:
+        raise FlexConfigError(
+            f"demand_response is not a valid DRConfig: {exc}",
+            field="demand_response",
+        ) from exc
+
+
 def _optional_rate_domain(value):
     """Validate an optional annual rate (a fraction, or ``None`` for unset).
 
@@ -262,8 +287,8 @@ class OperatingCostBreakdown:
         fixed: The configured fixed operating cost (a constant).
         scalar: Non-energy scalar operating cost summed over registered
             scalar-cost entries; ``0`` when none registered.
-        dr_revenue: Demand-response incentive credit (subtracted); ``0`` in v0
-            (DR is containers-only).
+        dr_revenue: Demand-response revenue (subtracted), settled ex post on
+            the realized power; ``0`` without a demand-response program.
         total: ``electricity + fuel + fixed + scalar - dr_revenue``.
         imports: Import cost per natively priced carrier, keyed like
             ``energy_prices``; ``None`` unless
@@ -479,11 +504,15 @@ class FlexCostingData(FlowsheetCostingBlockData):
         ),
     )
     CONFIG.declare(
-        "dr_event_file",
+        "demand_response",
         ConfigValue(
             default=None,
-            description="Optional path to an EECO demand-response program file. "
-            "v0 loads it into a container only (no DR constraints built).",
+            domain=_dr_config_domain,
+            description="Optional demand-response program, as a "
+            "flexcore.config.schema.DRConfig or the equivalent plain data. Its "
+            "revenue is built with EECO and subtracted from the operating cost. A "
+            "payment schedule with regions adds binaries unless every event fixes "
+            "region_x1.",
         ),
     )
     CONFIG.declare(
@@ -606,11 +635,11 @@ class FlexCostingData(FlowsheetCostingBlockData):
     # -- build (construction time; no aggregation, no EECO call) ----------
 
     def build(self) -> None:
-        """Validate config, load the tariff + DR container, init empty registries.
+        """Validate config, load the tariff, init empty registries.
 
-        Loads the tariff and the DR program (into the ``dr`` container) but
-        builds **no** aggregation, **no** ``opex``/``capex`` sub-blocks, and
-        **no** DR constraints here — everything is deferred to
+        Loads the tariff but builds **no** aggregation, **no**
+        ``opex``/``capex`` sub-blocks, and **no** DR constraints here — everything
+        is deferred to
         :meth:`cost_process` so the block may be constructed before any units
         exist (the construction-order invariant).
 
@@ -654,8 +683,6 @@ class FlexCostingData(FlowsheetCostingBlockData):
                     field="export_prices",
                     value=name,
                 )
-
-        self.dr = DRConfig(program=load_dr_program(self.config.dr_event_file))
 
         # _registered_power: units that opted into this costing package. Power
         # AGGREGATION does not read this -- it pulls from the model in
@@ -737,21 +764,6 @@ class FlexCostingData(FlowsheetCostingBlockData):
         )
         self._registered_scalar_costs[name] = spec
         return spec
-
-    # -- DR hook (no-op in v0; containers-only) ---------------------------
-
-    def _build_dr(self) -> None:
-        """No-op demand-response hook (v0 is containers-only).
-
-        Exists so later DR work is additive; it builds no DR event, curtailment,
-        incentive, or capacity constraints.
-        """
-        if self.dr is not None and self.dr.program is not None:
-            _log.debug(
-                "DR program present but v0 is containers-only; building no DR "
-                "constraints on %s.",
-                self.name,
-            )
 
     # -- carrier helpers --------------------------------------------------
 
@@ -1078,7 +1090,6 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 time_index=tb.datetime_index,
                 dt_hours=dt_hours,
                 tariff=self._tariff,
-                dr_config=self.dr,
                 prorate=self.config.prorate_monthly_charges,
                 decomposition_type=self.config.decomposition_type,
                 consumption_estimate=self.config.consumption_estimate,
@@ -1123,10 +1134,12 @@ class FlexCostingData(FlowsheetCostingBlockData):
             == sum(getattr(opex, f"scalar_cost_{n}") for n in scalar_names) + 0 * cur
         )
 
+        self._build_dr_revenue(tb, cur)
+
         # --- total operating cost -----------------------------------------
-        # The grand total sums the category sub-totals. Add a new cost category by
-        # building its sub-total Var and appending its local name here; nothing
-        # else changes. (0 * cur seeds the currency and guards an empty list.)
+        # The grand total sums the category sub-totals, less DR revenue. Add a new
+        # cost category by building its sub-total Var and appending its local name
+        # here. (0 * cur seeds the currency and guards an empty list.)
         line_items = [
             "electricity_cost",
             "fuel_cost",
@@ -1136,15 +1149,39 @@ class FlexCostingData(FlowsheetCostingBlockData):
         opex.total_operating_cost = pyo.Var(
             initialize=0.0,
             units=cur,
-            doc="electricity + fuel + fixed + scalar (base currency).",
+            doc="electricity + fuel + fixed + scalar - DR revenue (base currency).",
         )
         opex.eq_total_operating_cost = pyo.Constraint(
             expr=opex.total_operating_cost
-            == sum((getattr(opex, n) for n in line_items), 0 * cur)
+            == sum((getattr(opex, n) for n in line_items), 0 * cur) - opex.dr_revenue
         )
 
-        self._build_dr()  # no-op in v0
         self._assert_cost_units_consistent(fuel_names, scalar_names)
+
+    def _build_dr_revenue(self, tb, cur) -> None:
+        """Build ``opex.dr_revenue``: EECO's DR revenue, or ``0`` without a program."""
+        opex = self.opex
+        opex.dr_revenue = pyo.Var(
+            initialize=0.0, units=cur, doc="Demand-response revenue (base currency)."
+        )
+        program = self.config.demand_response
+        if program is None:
+            opex.eq_dr_revenue = pyo.Constraint(expr=opex.dr_revenue == 0 * cur)
+            return
+
+        # EECO takes bare kW numbers, so normalize the net electrical power first.
+        opex.dr = pyo.Block(doc="EECO demand-response baseline and payment.")
+        opex.dr.power_kW = pyo.Var(
+            tb.time_index, initialize=0.0, doc="Net electrical power as bare kW."
+        )
+        opex.dr.eq_power_kW = pyo.Constraint(
+            tb.time_index,
+            rule=lambda _b, t: opex.dr.power_kW[t]
+            == pyunits.convert(self.aggregate_power[t, "electrical"], pyunits.kW)
+            / pyunits.kW,
+        )
+        revenue = add_dr_revenue(opex.dr, opex.dr.power_kW, tb.datetime_index, program)
+        opex.eq_dr_revenue = pyo.Constraint(expr=opex.dr_revenue == revenue * cur)
 
     def _native_cost(self, series, carrier, per_quantity_units, tb, dt_hours):
         """Return the native cost of one carrier's net series.
@@ -1326,7 +1363,6 @@ class FlexCostingData(FlowsheetCostingBlockData):
             time_index=tb.datetime_index,
             dt_hours=dt_hours,
             tariff=self._tariff,
-            dr_config=self.dr,
             prorate=self.config.prorate_monthly_charges,
             decomposition_type=self.config.decomposition_type,
             consumption_estimate=self.config.consumption_estimate,
@@ -1376,6 +1412,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
             opex.eq_electricity_cost,
             opex.eq_fuel_cost,
             opex.eq_scalar_cost,
+            opex.eq_dr_revenue,
         ]
         constraints += [getattr(opex, f"eq_fuel_cost_{n}") for n in fuel_names]
         constraints += [getattr(opex, f"eq_scalar_cost_{n}") for n in scalar_names]
@@ -1624,7 +1661,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
         The user-facing reported cost. Operating
         electricity/fuel are EECO **post-hoc** evaluations on the realized
         dispatch; fixed is the config constant; scalar costs are recomputed
-        natively; DR revenue is ``0`` in v0 (containers-only); capital is read off
+        natively; DR revenue is EECO's ex-post settlement; capital is read off
         the (empty in v0) capex block. This is an independent recomputation —
         never ``value(model.objective)``, which is a relaxed/scalarized proxy.
 
@@ -1664,7 +1701,6 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 realized_power,
                 self._tariff,
                 dt_hours,
-                dr_config=self.dr,
                 time_index=tb.datetime_index,
                 prorate=self.config.prorate_monthly_charges,
                 prev_demand_dict=prev_demand_dict,
@@ -1690,7 +1726,6 @@ class FlexCostingData(FlowsheetCostingBlockData):
                     realized_usage,
                     self._tariff,
                     dt_hours,
-                    dr_config=self.dr,
                     time_index=tb.datetime_index,
                     prorate=self.config.prorate_monthly_charges,
                     prev_demand_dict=prev_demand_dict,
@@ -1710,7 +1745,10 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 )
             )
 
-        dr_revenue = 0.0  # DR containers-only (do not fabricate a credit)
+        dr_revenue = 0.0
+        if self.config.demand_response is not None:
+            realized = pd.Series(realized_power, index=tb.datetime_index)
+            _, dr_revenue = evaluate_dr_revenue(realized, self.config.demand_response)
         operating = OperatingCostBreakdown(
             electricity=electricity,
             fuel=fuel,

@@ -4,7 +4,7 @@
 hand-computed PG&E-B-20-flavored bill on a fixed realized load, no solve. The
 remaining tests are ``component`` tier: they build the convex-relaxed
 in-objective cost on a toy model, solve the trivial LP with HiGHS, and check the
-relaxed proxy against the post-hoc bill, the DR no-op, and LP classification.
+relaxed proxy against the post-hoc bill and LP classification.
 """
 
 import logging
@@ -20,12 +20,10 @@ from flexcore.exceptions import FlexConfigError
 from flexcore.solvers import ProblemClass, classify
 from flexops.core.time_block import TimeBlock
 from flexops.costing import (
-    DRConfig,
     add_electricity_cost,
     add_operating_cost,
     evaluate_cost,
     evaluate_fuel_cost,
-    load_dr_program,
     load_tariff,
     opex,
 )
@@ -33,7 +31,6 @@ from flexops.costing.opex import _itemized_electricity_cost
 
 _FIXTURES = Path(__file__).parent.parent / "fixtures"
 _TARIFF_JSON = _FIXTURES / "tariff_tou_demo.json"
-_DR_JSON = _FIXTURES / "dr_events_demo.json"
 
 _N = 744  # hours in July 2025
 
@@ -147,37 +144,6 @@ def test_relaxed_leq_or_approx_true():
     true_cost = evaluate_cost(load, tariff, dt_hours=1.0, time_index=index)
     assert relaxed <= true_cost + 1e-3
     assert true_cost - relaxed == pytest.approx(0.0, abs=0.01)
-
-
-@pytest.mark.component
-@pytest.mark.needs_highs
-def test_dr_container_is_noop_on_objective():
-    """Supplying a loaded DRConfig leaves the in-objective cost unchanged."""
-    from flexcore.solvers import get_solver
-
-    tariff = load_tariff(_TARIFF_JSON)
-    load = _reference_load()
-    index = _july_index()
-
-    def _solve(dr_config):
-        m = _build_toy_model(load)
-        handles = add_operating_cost(
-            block=m,
-            electrical_power=m.agg,
-            time_index=index,
-            dt_hours=1.0,
-            tariff=tariff,
-            dr_config=dr_config,
-        )
-        m.objective = pyo.Objective(
-            expr=handles.total_operating_cost, sense=pyo.minimize
-        )
-        get_solver(model=m, prefer="highs").solve(m)
-        return pyo.value(handles.total_operating_cost)
-
-    without_dr = _solve(None)
-    with_dr = _solve(DRConfig(program=load_dr_program(_DR_JSON)))
-    assert with_dr == pytest.approx(without_dr, abs=1e-6)
 
 
 @pytest.mark.component

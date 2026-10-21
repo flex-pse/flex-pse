@@ -10,9 +10,10 @@ flex-pse does **not** build its own tariff/cost engine. Tariffs, demand
 charges, tiered and fixed charges, and both the cost computations at
 optimization time and after optimization come from the external **EECO**
 package (``eeco`` on PyPI), a core runtime dependency. ``flexops.costing.opex``
-is the thin flex-pse interface around it, and by convention it's the **only**
-module in the codebase that imports ``eeco``, so there's just one file to fix
-when EECO's API moves.
+is the thin flex-pse interface around its tariff engine and
+``flexops.costing.demand_response`` around its demand-response module. By
+convention they are the **only** modules in the codebase that import ``eeco``,
+so there are just two files to fix when EECO's API moves.
 
 EECO owns all cost math. These wrappers are glue. They marshal inputs, rename
 EECO's outputs to stable flex-pse names, and translate EECO/pandas errors into
@@ -36,7 +37,6 @@ Loaders and CSV conversion
 
    load_tariff
    merge_tariffs
-   load_dr_program
    tariff_csv_to_dict
    tariff_currency_units
    currency_units
@@ -142,23 +142,37 @@ Post-optimization evaluators
    evaluate_cost
    evaluate_fuel_cost
 
-Demand response (containers-only in v0)
----------------------------------------
+Demand response
+---------------
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
 
-   DRConfig
+   add_dr_revenue
+   evaluate_dr_revenue
+   dr_baseline_method
+   dr_payment_structure
+   historical_power_series
 
-.. note::
+``FlexCosting(demand_response=...)`` takes a
+:class:`~flexcore.config.schema.DRConfig` (or the same data as a dict). Its
+revenue is built with EECO's demand-response module on ``opex.dr`` and
+subtracted from ``opex.total_operating_cost`` as ``opex.dr_revenue``::
 
-   Demand response is **containers only** in v0. A
-   :class:`DRConfig` holds a loaded DR program so the wiring exists, and the
-   internal DR hook is a no-op. Supplying a DR file never changes the
-   objective. Building DR event, curtailment, incentive, and capacity
-   constraints comes after v0. EECO 0.4.2 exposes no DR API, so the DR file
-   format is a flex-pse placeholder loaded into the container only.
+    m.costing = fo.FlexCosting(
+        time_block=m.time_block,
+        tariff_file="tariff.json",
+        demand_response=dr_program,  # a DRConfig, or the same data as a dict
+    )
+
+.. note:: A payment schedule with regions adds binary variables, so the model
+   becomes a MILP. Setting ``region_x1`` on every event fixes them and keeps the
+   model an LP. See :doc:`../../explanation/demand_response`.
+
+The demand-response functions need an ``eeco`` release that ships
+``eeco.demandresponse`` (newer than 0.4.2); they raise
+:class:`~flexcore.exceptions.FlexConfigError` otherwise.
 
 In-objective vs. reported cost
 ------------------------------
@@ -478,9 +492,9 @@ Every cost lives in one of two sub-blocks built by
    scalarized proxy). Operating electricity and fuel are EECO evaluations
    computed after the fact on the realized dispatch (fuel on the realized
    ``aggregate_fuel_usage``, ``0`` when the model burns none), and fixed is
-   the config constant. In v0 ``dr_revenue`` and the whole ``capital``
-   breakdown are zero placeholders, so the structure is stable as those
-   features land. Pass ``split_imports_exports=True`` to ``report_cost`` to
+   the config constant. ``dr_revenue`` is EECO's demand-response settlement
+   on the realized power plus the meter history (``0`` without a program). The
+   ``capital`` breakdown is still a zero placeholder. Pass ``split_imports_exports=True`` to ``report_cost`` to
    also get ``operating.imports`` (import cost) and ``operating.exports``
    (export revenue, a positive magnitude), each keyed by carrier like
    ``energy_prices``, alongside the net ``electricity`` and ``fuel``. Only

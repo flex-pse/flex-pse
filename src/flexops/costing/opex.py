@@ -407,38 +407,6 @@ def merge_tariffs(sources: Any) -> pd.DataFrame:
     return _validate_rate_data(merged, source="<merged tariffs>")
 
 
-def load_dr_program(source: str | Path | dict | None) -> dict | None:
-    """Load a demand-response program (v0: containers-only; None-safe).
-
-    EECO 0.4.2 exposes no DR API, so a DR program is a plain records structure
-    (a flex-pse placeholder) loaded into a :class:`DRConfig` container. No DR
-    constraints are built from it in v0.
-
-    Args:
-        source: A JSON DR-program file path, an in-memory dict, or ``None``.
-
-    Returns:
-        The loaded DR program object, or ``None`` when ``source`` is ``None``.
-
-    Raises:
-        FlexDataError: If the file cannot be read or parsed; the message names
-            the file.
-    """
-    if source is None:
-        return None
-    if isinstance(source, dict):
-        return source
-    path = Path(source)
-    try:
-        return json.loads(path.read_text())
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise FlexDataError(
-            f"Could not load demand-response file {path}: {exc}. Provide a valid "
-            "DR-program JSON file.",
-            field="dr.events_source",
-        ) from exc
-
-
 def tariff_csv_to_dict(
     source: str | Path | pd.DataFrame,
     *,
@@ -704,42 +672,6 @@ def price_gradient(tariff: pd.DataFrame, index: pd.DatetimeIndex) -> pd.Series:
 
 
 # --------------------------------------------------------------------------- #
-# Demand-response container (v0: containers-only, no constraints)
-# --------------------------------------------------------------------------- #
-@dataclasses.dataclass
-class DRConfig:
-    """A container/config slot for a demand-response program (v0 no-op).
-
-    Holds the loaded DR program object (or ``None``) so the wiring exists;
-    building actual DR constraints is planned future work, not yet built.
-
-    Attributes:
-        program: The loaded DR program object, or ``None``.
-    """
-
-    program: object | None = None
-
-
-def _build_dr(block: pyo.Block, dr_config: "DRConfig | None") -> None:
-    """No-op demand-response hook (v0 is containers-only).
-
-    Exists so FlexCosting wiring and later DR work are additive: it only
-    stores/verifies the container and builds **no** DR event, curtailment,
-    incentive, or capacity constraints.
-
-    Args:
-        block: The Pyomo block the operating cost is being built on.
-        dr_config: The DR container, or ``None``.
-    """
-    if dr_config is not None and dr_config.program is not None:
-        _log.debug(
-            "DR program present but v0 is containers-only; building no DR "
-            "constraints on %s.",
-            block.name,
-        )
-
-
-# --------------------------------------------------------------------------- #
 # In-objective Pyomo bridge
 # --------------------------------------------------------------------------- #
 @dataclasses.dataclass
@@ -801,7 +733,6 @@ def _add_utility_cost(
     dt_hours: float,
     tariff: pd.DataFrame,
     utility: str,
-    dr_config: "DRConfig | None",
     prorate: bool = True,
     decomposition_type: str | None = None,
     consumption_estimate: "dict[str, float] | None" = None,
@@ -824,7 +755,6 @@ def _add_utility_cost(
         dt_hours: Timestep length in hours (EECO does the kW→kWh conversion).
         tariff: An EECO rate_data DataFrame, covering ``utility``.
         utility: ``"electric"`` or ``"gas"``.
-        dr_config: DR container (v0: stored via the no-op hook only).
         prorate: Prorate monthly-assessed demand and fixed charges to the horizon
             (see :func:`monthly_scale_factor`).
         decomposition_type: EECO's net-power decomposition, e.g.
@@ -849,8 +779,6 @@ def _add_utility_cost(
     # `model.t`; provide it as the block's 0..N-1 step set if absent.
     if not hasattr(block, "t"):
         block.t = pyo.RangeSet(0, n - 1)
-
-    _build_dr(block, dr_config)
 
     consumption_estimate = consumption_estimate or {}
     unknown = sorted(set(consumption_estimate) - {_ELECTRIC, _GAS})
@@ -934,7 +862,6 @@ def add_electricity_cost(
     time_index: pd.DatetimeIndex,
     dt_hours: float,
     tariff: pd.DataFrame,
-    dr_config: "DRConfig | None" = None,
     prorate: bool = True,
     decomposition_type: str | None = None,
     consumption_estimate: "dict[str, float] | None" = None,
@@ -948,9 +875,7 @@ def add_electricity_cost(
     Hands EECO the kW magnitudes, tariff, and timestep; EECO owns the math (energy
     cost, demand-charge epigraphs, kWh conversion). The returned
     ``total_operating_cost`` is a RELAXED proxy for the objective, **not** the
-    reported bill — use :func:`evaluate_cost` post-solve for that. DR is
-    containers-only in v0: ``dr_config`` is accepted and stored but builds NO DR
-    constraints.
+    reported bill — use :func:`evaluate_cost` post-solve for that.
 
     Args:
         block: The Pyomo block to build cost expressions on.
@@ -960,7 +885,6 @@ def add_electricity_cost(
         time_index: Naive ``pd.DatetimeIndex`` aligning to ``electrical_power``.
         dt_hours: Timestep length in hours; passed to EECO once for kW→kWh.
         tariff: An EECO rate_data DataFrame (electric utility).
-        dr_config: Optional DR container (v0: no constraints built).
         prorate: Prorate monthly demand and fixed charges to the horizon length
             (see :func:`monthly_scale_factor`).
         decomposition_type: EECO's net-power decomposition, e.g.
@@ -984,7 +908,6 @@ def add_electricity_cost(
         dt_hours=dt_hours,
         tariff=tariff,
         utility=_ELECTRIC,
-        dr_config=dr_config,
         prorate=prorate,
         decomposition_type=decomposition_type,
         consumption_estimate=consumption_estimate,
@@ -999,7 +922,6 @@ def add_fuel_cost(
     dt_hours: float,
     tariff: pd.DataFrame,
     fuel_type: str = "gas",
-    dr_config: "DRConfig | None" = None,
     prorate: bool = True,
     decomposition_type: str | None = None,
     consumption_estimate: "dict[str, float] | None" = None,
@@ -1007,7 +929,7 @@ def add_fuel_cost(
     """Build EECO's convex-relaxed in-objective fuel cost on ``block``.
 
     Mirrors :func:`add_electricity_cost` for a fuel utility: same rules (EECO
-    owns the math, no cost math here, DR is a no-op container in v0), same
+    owns the math, no cost math here), same
     :class:`OperatingCostHandles` shape (fuel-flavored). ``tariff`` is the same
     rate_data object; EECO selects the underlying utility's rows.
 
@@ -1021,7 +943,6 @@ def add_fuel_cost(
         fuel_type: The fuel's EECO utility. ``"gas"`` (the default) is the only
             value EECO 0.4.2 supports; every registered fuel (natural gas,
             biogas, ...) bills through it today.
-        dr_config: Optional DR container (v0: no constraints built).
         prorate: Prorate monthly demand and fixed charges to the horizon length
             (see :func:`monthly_scale_factor`).
         decomposition_type: See :func:`add_electricity_cost`; splits fuel usage
@@ -1051,7 +972,6 @@ def add_fuel_cost(
         dt_hours=dt_hours,
         tariff=tariff,
         utility=_FUEL_UTILITY[fuel_type],
-        dr_config=dr_config,
         prorate=prorate,
         decomposition_type=decomposition_type,
         consumption_estimate=consumption_estimate,
@@ -1066,7 +986,6 @@ def add_operating_cost(
     tariff: pd.DataFrame,
     electrical_power=None,
     fuel_power=None,
-    dr_config: "DRConfig | None" = None,
     prorate: bool = True,
     consumption_estimate: "dict[str, float] | None" = None,
 ) -> OperatingCostHandles:
@@ -1101,7 +1020,6 @@ def add_operating_cost(
         fuel_power: Time-indexed fuel-usage series of bare m³/hr magnitudes (no
             units); defaults to ``block.fuel_usage`` if present, else the fuel leg
             is skipped.
-        dr_config: Optional DR container (v0: no constraints built).
         consumption_estimate: Estimated total consumption over the horizon,
             keyed by EECO utility (``"electric"``/``"gas"``; kWh / m³). EECO
             needs it to price any tier other than a flat top tier.
@@ -1137,7 +1055,6 @@ def add_operating_cost(
             time_index=time_index,
             dt_hours=dt_hours,
             tariff=tariff,
-            dr_config=dr_config,
             prorate=prorate,
             consumption_estimate=consumption_estimate,
         )
@@ -1148,7 +1065,6 @@ def add_operating_cost(
             time_index=time_index,
             dt_hours=dt_hours,
             tariff=tariff,
-            dr_config=dr_config,
             prorate=prorate,
             consumption_estimate=consumption_estimate,
         )
@@ -1290,7 +1206,6 @@ def evaluate_cost(
     tariff: pd.DataFrame,
     dt_hours: float,
     *,
-    dr_config: "DRConfig | None" = None,
     time_index: "pd.DatetimeIndex | None" = None,
     prorate: bool = True,
     prev_demand_dict: "dict | None" = None,
@@ -1307,7 +1222,6 @@ def evaluate_cost(
         aggregate_power_kw: Realized aggregate power per timestep, kW.
         tariff: An EECO rate_data DataFrame.
         dt_hours: Timestep length in hours; passed to EECO once for kW→kWh.
-        dr_config: Ignored in v0 (DR is containers-only).
         time_index: The load's naive datetime index, aligning it to the tariff's
             month/weekday/hour windows. Omit only for a calendar-independent
             (flat) tariff. EECO's charge windows are calendar-dependent, so a
@@ -1347,7 +1261,6 @@ def evaluate_fuel_cost(
     dt_hours: float,
     *,
     fuel_type: str = "gas",
-    dr_config: "DRConfig | None" = None,
     time_index: "pd.DatetimeIndex | None" = None,
     prorate: bool = True,
     prev_demand_dict: "dict | None" = None,
@@ -1363,7 +1276,6 @@ def evaluate_fuel_cost(
         tariff: An EECO rate_data DataFrame (the utility's rows).
         dt_hours: Timestep length in hours; passed to EECO once.
         fuel_type: The fuel's EECO utility; see :func:`add_fuel_cost`.
-        dr_config: Ignored in v0 (DR is containers-only).
         time_index: The usage array's naive datetime index (see
             :func:`evaluate_cost`); omit only for a flat tariff.
         prorate: Prorate monthly demand and fixed charges to the horizon length

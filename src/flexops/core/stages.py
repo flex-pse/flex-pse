@@ -10,7 +10,7 @@ from pyomo.network import Arc, Port
 
 from flexcore import nomenclature as nm
 from flexcore.config.io import resolve_source_path, resolve_sources
-from flexcore.config.schema import SurrogateSpec, SurrogateType, UnitConfig
+from flexcore.config.schema import DRConfig, SurrogateSpec, SurrogateType, UnitConfig
 from flexcore.config.spec import (
     AUTO,
     KINDS,
@@ -593,6 +593,10 @@ def _build_costing(model, element: CostingElement, ctx: BuildContext):
 
     import_prices = quantities(element.energy_prices)
     export_prices = quantities(element.export_prices)
+    demand_response = None
+    if element.dr is not None:
+        dr_data = resolve_sources(element.dr.model_dump(by_alias=True), ctx.base_dir)
+        demand_response = DRConfig.model_validate(dr_data)
     return FlexCosting(
         time_block=model.time_block,
         tariff_file=_resolve_source(element.tariff_source, ctx.base_dir),
@@ -600,9 +604,7 @@ def _build_costing(model, element: CostingElement, ctx: BuildContext):
         export_prices=export_prices or None,
         decomposition_type=element.decomposition_type,
         currency=element.currency,
-        dr_event_file=_resolve_source(
-            None if element.dr is None else element.dr.events_source, ctx.base_dir
-        ),
+        demand_response=demand_response,
         consumption_estimate=element.consumption_estimate,
         fixed_operating_cost=element.fixed_operating_cost,
         prorate_monthly_charges=element.prorate_monthly_charges,

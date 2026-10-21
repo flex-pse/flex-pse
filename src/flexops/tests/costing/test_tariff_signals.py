@@ -12,7 +12,6 @@ import pytest
 from flexcore.exceptions import FlexDataError
 from flexops.costing import (
     is_peak,
-    load_dr_program,
     load_tariff,
     peak_windows,
     price_gradient,
@@ -23,7 +22,6 @@ from flexops.costing import (
 _FIXTURES = Path(__file__).parent.parent / "fixtures"
 _TARIFF_JSON = _FIXTURES / "tariff_tou_demo.json"
 _TARIFF_CSV = _FIXTURES / "tariff_tou_demo.csv"
-_DR_JSON = _FIXTURES / "dr_events_demo.json"
 
 
 def _july_index() -> pd.DatetimeIndex:
@@ -97,16 +95,6 @@ def test_loaders_wrap_errors(tmp_path):
 
 
 @pytest.mark.unit
-def test_dr_load_errors(tmp_path):
-    """A malformed DR file raises FlexDataError naming the file."""
-    bad = tmp_path / "bad_dr.json"
-    bad.write_text("{ this is not valid json ")
-    with pytest.raises(FlexDataError) as exc:
-        load_dr_program(bad)
-    assert str(bad) in str(exc.value)
-
-
-@pytest.mark.unit
 def test_tariff_csv_to_dict_accepts_path_or_dataframe():
     """CSV path and pre-loaded DataFrame convert to the same dict, and that
     dict round-trips through load_tariff to the JSON tariff object."""
@@ -130,12 +118,3 @@ def test_tariff_csv_to_dict_write_to(tmp_path):
 
     # the written file loads to the same tariff object as the CSV conversion
     assert load_tariff(out).equals(load_tariff(with_write))
-
-
-@pytest.mark.unit
-def test_dr_container_loads_noop():
-    """`load_dr_program` returns the loaded program; None-safe on None input."""
-    program = load_dr_program(_DR_JSON)
-    assert program is not None
-    assert program["events"][0]["incentive"] == pytest.approx(0.5)
-    assert load_dr_program(None) is None

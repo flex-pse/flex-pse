@@ -14,6 +14,7 @@ JSON Schema, so keep them plain text: no section signs, RST markup, or manual
 line-break art — rendering is the documentation builder's job.
 """
 
+import datetime
 import enum
 from typing import Any, Literal
 
@@ -169,16 +170,218 @@ class TimeConfig(_StrictModel):
     )
 
 
-# Architecture references: demand response is plan/01_architecture.md §2.4/§3.6.
-class DRConfig(_StrictModel):
-    """Demand-response container slot, a placeholder in v0: DR containers exist
-    so wiring is stable, but no DR constraints are built. Turning DR on later
-    is additive."""
+class DRBaselineMethod(enum.StrEnum):
+    """How a demand-response baseline (the load the site would have drawn) is set."""
 
-    events_source: str | None = Field(
-        default=None,
-        description="Optional file or tag pointing at demand-response events.",
+    SIMILAR_DAYS = "similar_days"
+    TOP_USAGE_DAYS = "top_usage_days"
+    FIXED_LEVEL = "fixed_level"
+    UNILATERAL_INTERRUPTION = "unilateral_interruption"
+
+
+class DRPaymentKind(enum.StrEnum):
+    """How a demand-response program pays for a delivered reduction."""
+
+    CAPACITY = "capacity"
+    CAPACITY_ENERGY = "capacity_energy"
+
+
+class DRSettlement(enum.StrEnum):
+    """Whether a payment settles each interval or the event-mean reduction."""
+
+    INTERVAL = "interval"
+    AVERAGE = "average"
+
+
+class DRPaymentBasis(enum.StrEnum):
+    """Whether a price is paid per event, per event hour, or as a monthly share."""
+
+    PER_EVENT = "per_event"
+    PER_HOUR = "per_hour"
+    MONTHLY_SHARE = "monthly_share"
+
+
+class DREvent(_StrictModel):
+    """One demand-response event, in local wall-clock time."""
+
+    event_date: datetime.date = Field(description="Calendar date of the event.")
+    start_hour: float = Field(description="Hour of day (0-24) the event begins.")
+    duration_hours: float = Field(description="Length of the event in hours.")
+    notification_hours: float = Field(
+        default=0.0, description="Advance notice before the event, in hours."
     )
+    baseline_days: list[datetime.date] = Field(
+        min_length=1,
+        description="Candidate days the baseline may average over; exclude other "
+        "event days.",
+    )
+    bid_capacity_kW: float = Field(description="Bid capacity in kW.")
+    capacity_price: float = Field(
+        description="Capacity price in USD/kW, or USD/kW-hour with the per_hour "
+        "basis, or USD/kW-month with the monthly_share basis."
+    )
+    adjustment_factor: float | None = Field(
+        default=None,
+        description="Day-of adjustment factor to apply as is; omit to compute it "
+        "from meter history.",
+    )
+    monthly_called_capacity_kWh: float | None = Field(
+        default=None,
+        description="Called capacity summed over every event hour in the month, for "
+        "the monthly_share basis; omit to sum it over the given events.",
+    )
+    region_x1: float | None = Field(
+        default=None,
+        description="Lower delivered-ratio bound of the payment region to fix for "
+        "this event, which removes its region-choice binaries; omit to let the "
+        "optimizer choose.",
+    )
+
+
+class DRBaseline(_StrictModel):
+    """How the demand-response baseline is computed."""
+
+    method: DRBaselineMethod = Field(description="The baseline method.")
+    resolution: str | None = Field(
+        default=None,
+        description="Settlement interval width as an EECO resolution string, e.g. "
+        "'15m' or '1h'; omit to infer it from the data.",
+    )
+    n_baseline_days: int = Field(
+        default=10,
+        ge=0,
+        description="Similar-days methods: number of eligible days to average; 0 "
+        "gives a zero baseline.",
+    )
+    adjustment_offset_hours: int | None = Field(
+        default=4,
+        description="Similar-days methods: hours before the event start that the "
+        "day-of adjustment window begins; null turns the adjustment off.",
+    )
+    adjustment_duration_hours: int = Field(
+        default=3,
+        description="Similar-days methods: length of the day-of adjustment window "
+        "in hours.",
+    )
+    adjustment_clip: tuple[float, float] = Field(
+        default=(0.8, 1.2),
+        description="Similar-days methods: lower and upper bounds on the day-of "
+        "adjustment factor.",
+    )
+    exclude_weekends: bool = Field(
+        default=True, description="Similar-days methods: drop Saturdays and Sundays."
+    )
+    exclude_holidays: bool = Field(
+        default=True, description="Similar-days methods: drop holidays."
+    )
+    holiday_country: str | None = Field(
+        default="US",
+        description="Similar-days methods: ISO 3166-1 country code of the holiday "
+        "calendar; null uses holiday_dates only.",
+    )
+    holiday_subdiv: str | None = Field(
+        default=None,
+        description="Similar-days methods: holiday-calendar subdivision, e.g. 'CA'.",
+    )
+    holiday_dates: list[datetime.date] = Field(
+        default_factory=list,
+        description="Similar-days methods: extra dates to treat as holidays.",
+    )
+    firm_level_kW: float | None = Field(
+        default=None,
+        description="fixed_level method: the contracted firm service level in kW.",
+    )
+    interruption_level_kW: float = Field(
+        default=0.0,
+        description="unilateral_interruption method: the level in kW load is held "
+        "at or below during an event.",
+    )
+
+    @model_validator(mode="after")
+    def _fixed_level_has_a_level(self) -> "DRBaseline":
+        """Require firm_level_kW for the fixed_level method."""
+        if self.method is DRBaselineMethod.FIXED_LEVEL and self.firm_level_kW is None:
+            raise ValueError("the fixed_level baseline needs firm_level_kW.")
+        return self
+
+
+class DRPaymentRegion(_StrictModel):
+    """One region of a payment schedule, mapping delivered ratio to payment ratio."""
+
+    x1: float | None = Field(
+        default=None,
+        description="Lower delivered-ratio bound (reduction over bid capacity); "
+        "null means unbounded below.",
+    )
+    x2: float | None = Field(
+        default=None,
+        description="Upper delivered-ratio bound; null means unbounded above, where "
+        "the region pays a flat y1.",
+    )
+    y1: float = Field(description="Payment ratio at x1.")
+    y2: float = Field(description="Payment ratio at x2.")
+
+
+class DRPayment(_StrictModel):
+    """How a demand-response program pays for the delivered reduction."""
+
+    kind: DRPaymentKind = Field(description="The payment structure.")
+    regions: list[DRPaymentRegion] | None = Field(
+        default=None,
+        description="Piecewise-linear payment schedule; omit for a payout-only "
+        "program. Each region adds binaries to the model unless the event fixes "
+        "region_x1.",
+    )
+    settlement: DRSettlement = Field(
+        default=DRSettlement.INTERVAL,
+        description="Settle each interval's reduction, or the event-mean reduction.",
+    )
+    payment_basis: DRPaymentBasis = Field(
+        default=DRPaymentBasis.PER_EVENT,
+        description="Basis the capacity price is paid on.",
+    )
+    payout: float = Field(
+        default=0.0,
+        description="Flat participation payment in USD per kW of bid capacity.",
+    )
+    payout_basis: DRPaymentBasis = Field(
+        default=DRPaymentBasis.PER_EVENT,
+        description="Basis the payout is paid on.",
+    )
+    energy_price: float | None = Field(
+        default=None,
+        description="capacity_energy kind: payment in USD/kWh for energy curtailed.",
+    )
+
+    @model_validator(mode="after")
+    def _energy_payment_has_a_price(self) -> "DRPayment":
+        """Require energy_price for the capacity_energy kind."""
+        if self.kind is DRPaymentKind.CAPACITY_ENERGY and self.energy_price is None:
+            raise ValueError("the capacity_energy payment needs energy_price.")
+        return self
+
+
+class HistoricalPower(_StrictModel):
+    """Evenly spaced meter history the baseline is computed from."""
+
+    start: datetime.datetime = Field(
+        description="Naive local timestamp of the first value."
+    )
+    time_step_minutes: float = Field(
+        gt=0, description="Spacing between values in minutes."
+    )
+    values_kW: list[float] = Field(min_length=1, description="Site power in kW.")
+
+
+class DRConfig(_StrictModel):
+    """A demand-response program: its events, baseline, payment, and meter history."""
+
+    events: list[DREvent] = Field(min_length=1, description="The program's events.")
+    historical_power: HistoricalPower = Field(
+        description="Meter history the baseline is computed from."
+    )
+    baseline: DRBaseline = Field(description="How the baseline is computed.")
+    payment: DRPayment = Field(description="How the reduction is paid.")
 
 
 class PriceSpec(_StrictModel):
@@ -241,7 +444,8 @@ class CostingConfig(_StrictModel):
     )
     dr: DRConfig | None = Field(
         default=None,
-        description="Optional demand-response container (containers-only in v0).",
+        description="Optional demand-response program, whose revenue is "
+        "subtracted from the operating cost.",
     )
     consumption_estimate: dict[Literal["electric", "gas"], NonNegativeFloat] | None = (
         Field(

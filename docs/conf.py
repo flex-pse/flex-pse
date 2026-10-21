@@ -49,9 +49,11 @@ nitpick_ignore = [
     # pydantic documents its validation error under pydantic_core, so the name
     # config-facing Raises: entries use has no intersphinx target.
     ("py:exc", "pydantic.ValidationError"),
-    # pydantic's NonNegativeFloat is Annotated[float, annotated_types.Ge(0)],
-    # and annotated_types has no intersphinx target.
+    # pydantic's NonNegativeFloat is Annotated[float, annotated_types.Ge(0)], and
+    # Field(gt=..., min_length=...) adds Gt/MinLen; annotated_types has no target.
     ("py:class", "annotated_types.Ge"),
+    ("py:class", "annotated_types.Gt"),
+    ("py:class", "annotated_types.MinLen"),
     # A Field(pattern=...) renders its pydantic metadata, which has no target.
     ("py:class", "_PydanticGeneralMetadata"),
     ("py:class", "FieldInfo"),
@@ -64,6 +66,8 @@ nitpick_ignore = [
 # resolve fine; ignore only these signature-parsing fragments.
 nitpick_ignore_regex = [
     ("py:class", r"dict\[.*"),
+    ("py:class", r"tuple\[.*"),
+    ("py:obj", r"typing\.Annotated\[.*"),
 ]
 
 html_theme = "furo"

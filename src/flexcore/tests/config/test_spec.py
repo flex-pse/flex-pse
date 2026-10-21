@@ -339,3 +339,33 @@ def test_spec_roundtrips_through_json():
     )
 
     assert reloaded == spec
+
+
+@pytest.mark.unit
+def test_costing_dr_history_may_come_from_a_source_file():
+    """A costing element's DR meter history may be a $source file reference."""
+    from flexcore.config.spec import SourceRef
+
+    dr = {
+        "events": [
+            {
+                "event_date": "2025-01-01",
+                "start_hour": 16,
+                "duration_hours": 2,
+                "baseline_days": ["2024-12-31"],
+                "bid_capacity_kW": 10.0,
+                "capacity_price": 5.0,
+            }
+        ],
+        "historical_power": {
+            "start": "2024-12-31T00:00",
+            "time_step_minutes": 60,
+            "values_kW": {"$source": "history.json.gz"},
+        },
+        "baseline": {"method": "fixed_level", "firm_level_kW": 20.0},
+        "payment": {"kind": "capacity", "payout": 1.0},
+    }
+    spec = FlowsheetSpec.model_validate(spec_dict(base=(TIME, COSTING | {"dr": dr})))
+    values = spec.of_kind("costing")[0].dr.historical_power.values_kW
+    assert isinstance(values, SourceRef)
+    assert values.source == "history.json.gz"

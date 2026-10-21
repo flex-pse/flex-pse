@@ -26,7 +26,6 @@ m.properties = fo.SimpleAqueousFlow()
 m.costing = fo.FlexCosting(
     time_block=m.time_block,
     tariff_file="tariff.json",
-    dr_event_file="dr_events.json",
 )
 
 # A PlantBlock is a collection of UNITS. It takes the TimeBlock explicitly.
