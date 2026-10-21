@@ -6,6 +6,8 @@ actually installed, probing Pyomo once per solver and caching the result (a
 probe can take ~1 s). This module is the single source of truth for the pytest
 ``needs_*`` availability markers (see the root ``conftest.py``).
 
+``WARMSTART_SOLVERS`` names the solvers the facade will hand a warm start to.
+
 ``CAPABILITIES`` is a plain module constant on purpose: a user can register a
 new solver entry (e.g. a MINLP-capable solver) before calling ``get_solver``.
 """
@@ -25,6 +27,9 @@ CAPABILITIES: dict[str, set[ProblemClass]] = {
     "scip": {ProblemClass.MILP, ProblemClass.MINLP},
     "gurobi": {ProblemClass.LP, ProblemClass.QP, ProblemClass.MILP},
 }
+
+# Solvers that accept a warm start; ``highs`` is routed via ``appsi_highs`` to do so.
+WARMSTART_SOLVERS: set[str] = {"gurobi", "highs", "cbc"}
 
 
 @contextlib.contextmanager

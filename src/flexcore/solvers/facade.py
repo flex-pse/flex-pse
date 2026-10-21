@@ -12,17 +12,35 @@ default linear solver is ``ma27``) when idaes is importable, rather than the
 MUMPS-linked stock IPOPT — an order of magnitude faster and more robust on stiff
 NLPs. It falls back to ``pyo.SolverFactory`` when idaes is unavailable, keeping
 idaes an optional dependency (see :func:`_idaes_ipopt`).
+
+How a facade solves is set by its strategy (:mod:`flexcore.solvers.strategies`),
+and its options by a profile plus solver-neutral keywords
+(:mod:`flexcore.solvers.options`).
 """
 
 import dataclasses
 import os
+import time
+from typing import Any
 
 import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexSolverError
 from flexcore.logger import get_logger
 from flexcore.solvers.classify import ProblemClass, classify
-from flexcore.solvers.registry import _solver_runtime_env, available_solvers
+from flexcore.solvers.options import SolverProfile, solver_options
+from flexcore.solvers.registry import (
+    WARMSTART_SOLVERS,
+    _solver_runtime_env,
+    available_solvers,
+)
+from flexcore.solvers.strategies import (
+    Direct,
+    SolveReport,
+    SolveStrategy,
+    StepResult,
+    _is_infeasible,
+)
 
 _log = get_logger(__name__)
 
@@ -66,19 +84,23 @@ def _idaes_ipopt():
     return solver
 
 
-def _pyomo_solver(name: str):
+def _pyomo_solver(name: str, warmstart: bool = False):
     """Construct the Pyomo solver object for a solver name.
 
     IPOPT is routed through idaes (see :func:`_idaes_ipopt`) when available so
-    the faster HSL ``ma27`` build is used; every other solver — and IPOPT when
-    idaes is unavailable — is constructed with ``pyo.SolverFactory``.
+    the faster HSL ``ma27`` build is used. A warm-started ``highs`` uses the
+    ``appsi_highs`` interface, the one HiGHS interface that accepts a warm
+    start. Every other solver is constructed with ``pyo.SolverFactory``.
 
     Args:
         name: The Pyomo solver name.
+        warmstart: Whether the solve will pass ``warmstart=True``.
 
     Returns:
         The constructed Pyomo solver object.
     """
+    if warmstart and name == "highs":
+        return pyo.SolverFactory("appsi_highs")
     if name == "ipopt":
         solver = _idaes_ipopt()
         if solver is not None:
@@ -88,38 +110,114 @@ def _pyomo_solver(name: str):
 
 @dataclasses.dataclass
 class SolverFacade:
-    """A thin wrapper around a selected Pyomo solver.
+    """A selected solver plus how to tune it and how to solve with it.
 
     Attributes:
         name: The Pyomo solver name (e.g. ``"highs"``).
         problem_class: The class this solver was selected for.
+        profile: The tuning profile applied to every solver call.
+        strategy: How one ``solve`` call is turned into solver calls.
+        last_report: The :class:`SolveReport` of the most recent ``solve``.
     """
 
     name: str
     problem_class: ProblemClass
+    profile: SolverProfile = SolverProfile.DEFAULT
+    strategy: SolveStrategy = dataclasses.field(default_factory=Direct)
+    last_report: SolveReport | None = dataclasses.field(default=None, init=False)
 
-    def solve(self, model: pyo.ConcreteModel, **kwargs):
-        """Solve ``model`` with the selected solver.
+    def solve(
+        self,
+        model: pyo.ConcreteModel,
+        *,
+        tee: bool = False,
+        warmstart: bool = False,
+        mip_gap: float | None = None,
+        time_limit: float | None = None,
+        options: dict[str, Any] | None = None,
+    ):
+        """Solve ``model`` with the facade's strategy, solver and profile.
 
-        No option translation is performed in v0; keyword arguments are passed
-        straight through to Pyomo's ``solve``, defaulting ``tee`` to ``False``.
+        The solution is loaded into the model only when the solver found one;
+        an infeasible model returns its results without raising. The step-by-step
+        record is kept on :attr:`last_report`.
 
         Args:
             model: The Pyomo model to solve.
-            **kwargs: Forwarded to the underlying Pyomo solver's ``solve``.
+            tee: Stream the solver's log to stdout.
+            warmstart: Start from the model's current values. A solver that
+                cannot warm start logs a warning and solves cold.
+            mip_gap: Relative MIP gap at which to stop, applied to every step.
+            time_limit: Time limit in seconds, applied to every step.
+            options: Native solver options; each must not also be set elsewhere.
 
         Returns:
-            The Pyomo results object returned by the solver.
+            The Pyomo results object of the step that produced the solution.
         """
-        kwargs.setdefault("tee", False)
-        with _solver_runtime_env(self.name):
-            return _pyomo_solver(self.name).solve(model, **kwargs)
+
+        def run_step(
+            problem_class: ProblemClass, label: str, step_warmstart: bool
+        ) -> tuple[Any, StepResult]:
+            name = self.name
+            if problem_class not in available_solvers().get(name, set()):
+                name = get_solver(problem_class=problem_class).name
+            if step_warmstart and name not in WARMSTART_SOLVERS:
+                _log.warning("Solver %r cannot warm start; solving cold.", name)
+                step_warmstart = False
+            native = solver_options(name, self.profile, mip_gap, time_limit, options)
+            extra = {"warmstart": True} if step_warmstart else {}
+            active = next(
+                model.component_data_objects(
+                    pyo.Objective, active=True, descend_into=True
+                ),
+                None,
+            )
+            start = time.perf_counter()
+            with _solver_runtime_env(name):
+                # HiGHS keeps no solution to load later when there is no objective.
+                results = _pyomo_solver(name, step_warmstart).solve(
+                    model,
+                    tee=tee,
+                    options=native,
+                    load_solutions=active is None,
+                    **extra,
+                )
+            wall_time = time.perf_counter() - start
+            termination = results.solver.termination_condition
+            objective = None
+            if (
+                active is not None
+                and len(results.solution) > 0
+                and not _is_infeasible(termination)
+            ):
+                model.solutions.load_from(results)
+                objective = pyo.value(active)
+            solver_time = getattr(results.solver, "wall_time", None)
+            step = StepResult(
+                label=label,
+                solver=name,
+                termination=termination,
+                objective=objective,
+                wall_time=wall_time,
+                solver_time=None if solver_time is None else float(solver_time),
+            )
+            _log.info(
+                "%s solve with %s: %s in %.2f s.", label, name, termination, wall_time
+            )
+            return results, step
+
+        results, self.last_report = self.strategy.solve(
+            model, self.problem_class, run_step, warmstart
+        )
+        return results
 
 
 def get_solver(
     model: pyo.ConcreteModel | None = None,
     problem_class: ProblemClass | None = None,
     prefer: str | None = None,
+    profile: SolverProfile = SolverProfile.DEFAULT,
+    strategy: SolveStrategy | None = None,
 ) -> SolverFacade:
     """Select the best available solver for a problem class.
 
@@ -141,6 +239,8 @@ def get_solver(
         problem_class: The :class:`ProblemClass` to solve; mutually exclusive
             with ``model``.
         prefer: A solver name to try first.
+        profile: The tuning profile applied to every solver call.
+        strategy: How to solve, e.g. :class:`RelaxAndFix`; defaults to :class:`Direct`.
 
     Returns:
         A :class:`SolverFacade` bound to the chosen solver.
@@ -168,6 +268,12 @@ def get_solver(
         problem_class = ProblemClass.LP
 
     available = available_solvers()
+    strategy = Direct() if strategy is None else strategy
+
+    def _facade(name: str) -> SolverFacade:
+        return SolverFacade(
+            name=name, problem_class=problem_class, profile=profile, strategy=strategy
+        )
 
     def _capable(name: str) -> bool:
         caps = available.get(name)
@@ -175,7 +281,7 @@ def get_solver(
 
     if prefer is not None:
         if _capable(prefer):
-            return SolverFacade(name=prefer, problem_class=problem_class)
+            return _facade(prefer)
         _log.warning(
             "Preferred solver %r cannot solve %s (unavailable or incapable); "
             "falling back to the default priority list.",
@@ -185,7 +291,7 @@ def get_solver(
 
     for name in _PRIORITY:
         if _capable(name):
-            return SolverFacade(name=name, problem_class=problem_class)
+            return _facade(name)
 
     if problem_class is ProblemClass.MINLP:
         raise FlexSolverError(

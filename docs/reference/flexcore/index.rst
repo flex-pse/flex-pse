@@ -49,6 +49,96 @@ calling :func:`get_solver`.
    * - ``gurobi``
      - LP, QP, MILP
 
+Solve strategies
+~~~~~~~~~~~~~~~~
+
+A facade's strategy decides how one ``solve`` call becomes solver calls. The
+default, :class:`Direct`, solves once. :class:`RelaxAndFix` is an opt-in MIP
+heuristic (see :doc:`../../explanation/solve_strategies`). Every ``solve``
+leaves a :class:`SolveReport` on ``SolverFacade.last_report``.
+
+.. code-block:: python
+
+   from flexcore.solvers import RelaxAndFix, SolverProfile, get_solver
+
+   solver = get_solver(
+       model=m,
+       profile=SolverProfile.UNIT_COMMITMENT,
+       strategy=RelaxAndFix(fix_tol=0.1),
+   )
+   results = solver.solve(m, mip_gap=0.002, time_limit=1800)
+   solver.last_report.gap  # distance from the relaxation's bound
+
+.. autoclass:: Direct
+   :members:
+
+.. autoclass:: RelaxAndFix
+   :members:
+
+.. autoclass:: SolveStrategy
+   :members:
+
+.. autoclass:: SolveReport
+   :members:
+
+.. autoclass:: StepResult
+
+Options and profiles
+~~~~~~~~~~~~~~~~~~~~
+
+``solve`` takes the solver-neutral keywords ``mip_gap`` and ``time_limit``
+and translates them to each solver's own option name
+(``flexcore.solvers.options.OPTION_NAMES``). A :class:`SolverProfile` adds
+tuning options per solver (``flexcore.solvers.options.PROFILE_OPTIONS``).
+Native ``options`` add anything else. No setting may come from two of these
+sources: ``mip_gap=0.01`` with ``options={"MIPGap": 0.05}``, or the
+``UNIT_COMMITMENT`` profile with ``options={"MIPFocus": 1}``, raises
+``ValueError``. Use ``SolverProfile.DEFAULT`` to tune those options
+yourself. A neutral option that a solver has no name for is dropped with a
+warning.
+
+.. autoclass:: SolverOption
+   :members:
+
+.. autoclass:: SolverProfile
+   :members:
+
+.. list-table:: ``SolverProfile.UNIT_COMMITMENT``
+   :header-rows: 1
+
+   * - Solver
+     - Options
+   * - ``gurobi``
+     - ``MIPFocus=3`` (push the bound), ``Symmetry=2`` (parallel identical
+       units), ``Cuts=2``
+   * - others
+     - none; their defaults already suit unit commitment
+
+Warm starting
+~~~~~~~~~~~~~
+
+``solve(m, warmstart=True)`` starts the search from the model's current
+values. It helps a re-solve after a small change, such as a parameter
+retarget, not a first solve. A solver that can't warm start logs a warning
+and solves cold instead of raising (``flexcore.solvers.registry.WARMSTART_SOLVERS``).
+
+.. list-table::
+   :header-rows: 1
+
+   * - Solver
+     - ``warmstart=True``
+   * - ``gurobi``
+     - passed through
+   * - ``highs``
+     - solved through the ``appsi_highs`` interface, which accepts it
+   * - ``cbc``
+     - passed through
+   * - ``scip``, ``ipopt``
+     - warning, solved cold
+
+An infeasible model returns its results with an ``infeasible`` termination
+condition on every solver; no solution is loaded.
+
 Config schema
 -------------
 

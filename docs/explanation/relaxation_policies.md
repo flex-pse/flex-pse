@@ -23,10 +23,16 @@ solver is installed (SCIP absent and none registered), `get_solver` raises
 > this model is MINLP; compose a `flexschedule.SolveSequence` (relax -> MIP ->
 > fix -> NLP) or install a MINLP-capable solver.
 
-When a MINLP capable solver *is* available, it gets used directly. For
-cases where a direct MINLP solve is intractable, an explicit relax, solve
-MIP, fix, solve NLP pipeline is planned as part of the rolling horizon
-scheduling engine, which doesn't exist yet. The `ProblemClass.MINLP_OA`
-(outer approximation) and `ProblemClass.MINLP_TR` (trust region) enum
-members are reserved strategy slots for that pipeline. They're documented
-but deliberately unimplemented today, and `classify` never returns them.
+When a MINLP capable solver *is* available, it gets used directly.
+
+Relaxing integrality is something you ask for, never a default. The
+`RelaxAndFix` strategy (`get_solver(..., strategy=RelaxAndFix())`) solves the
+relaxation, fixes the binaries it already decided, then **restores integrality**
+and solves the rest exactly. What it returns is an integer-feasible schedule,
+not a relaxed one, along with its distance from the relaxation's lower bound.
+See [Solve strategies](solve_strategies.md).
+
+The `ProblemClass.MINLP_OA` (outer approximation) and `ProblemClass.MINLP_TR`
+(trust region) enum members are reserved slots for future strategies. They're
+documented but deliberately unimplemented today, and `classify` never returns
+them.
