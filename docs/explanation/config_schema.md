@@ -235,11 +235,14 @@ element, names a **predefined surrogate class**, one of
 mapping in the shape that class defines. The class (`flexops.surrogates`)
 validates `data` and builds the Pyomo relationship. A type not yet implemented
 raises `NotImplementedError` when the model is built (`quadratic`,
-`exponential`, `arima` and `neural_network` are reserved names, see
+`exponential` and `neural_network` are reserved names, see
 {doc}`../reference/flexops/surrogates`).
 
-The only implemented class, `multilinear`
-({class}`~flexops.surrogates.multilinear.MultilinearSurrogate`), is a constant
+`arima` is implemented by {class}`~flexops.surrogates.arima.ArimaSurrogate`
+and fitted by {class}`~flexparameterize.regression.arima.ArimaRegressor`.
+
+The `multilinear` class
+({class}`~flexops.surrogates.multilinear.MultilinearSurrogate`) is a constant
 plus a sum of `coefficient * (product of distinct declared inputs)`. A
 coefficient key is a `*`-separated product of names from `input_variables`,
 each at most once. The reserved key `intercept` is the constant term.
