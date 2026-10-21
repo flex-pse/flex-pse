@@ -7,6 +7,7 @@ from pyomo.network import Arc
 import flexops as fo
 from flexcore.config.schema import UnitCommitmentConfig
 from flexops import logic
+from flexops.core.resources import add_resource_balance
 from flexops.costing import currency_units
 from flexops.logic import (
     add_conditional,
@@ -448,6 +449,77 @@ def logic_status_startup() -> pyo.ConcreteModel:
     return m
 
 
+# --- counted_trains ---
+
+
+def counted_trains() -> pyo.ConcreteModel:
+    """One pump unit standing for three identical trains, at least two when on."""
+    m = pyo.ConcreteModel(name="counted_trains")
+    m.time_block = fo.TimeBlock(
+        start_date="2025-01-01", end_date="2025-01-01T08:00", time_step=1 * pyunits.hr
+    )
+    m.properties = fo.SimpleAqueousFlow()
+    m.costing = fo.FlexCosting(
+        time_block=m.time_block,
+        energy_prices={"electrical": 0.1 * currency_units("USD") / pyunits.kWh},
+    )
+    m.site = fo.PlantBlock(time_block=m.time_block)
+    pump = m.site.pump = fo.Pump(
+        property_package=m.properties, costing_package=m.costing
+    )
+    status = logic.add_status(
+        pump,
+        pump.power_electrical,
+        1 * pyunits.kW,
+        20 * pyunits.kW,
+        max_count=3,
+        min_count_on=2,
+    )
+    logic.add_startup_shutdown(pump, status, min_uptime=2, min_downtime=2)
+    m.costing.cost_process()
+    m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
+    return m
+
+
+# --- resource_balances ---
+
+
+def resource_balances() -> pyo.ConcreteModel:
+    """A water stock and an electricity import cap on a feed, pump and product."""
+    m = pyo.ConcreteModel(name="resource_balances")
+    m.time_block = fo.TimeBlock(
+        start_date="2025-01-01", end_date="2025-01-01T08:00", time_step=1 * pyunits.hr
+    )
+    m.properties = fo.SimpleAqueousFlow()
+    m.site = fo.PlantBlock(time_block=m.time_block)
+    m.site.well = fo.Feed(property_package=m.properties, resource_name="water")
+    m.site.pump = fo.Pump(
+        property_package=m.properties,
+        energy_intensity=0.5 * pyunits.kWh / pyunits.m**3,
+    )
+    m.site.supply = fo.Product(property_package=m.properties, resource_name="water")
+    # A stock: what the well gives minus what the supply takes accumulates.
+    add_resource_balance(
+        m.site,
+        "water",
+        resource="water",
+        units="m^3",
+        stock=True,
+        lower=0.0,
+        upper=500.0 * pyunits.m**3,
+        initial=120.0,
+    )
+    # A flow: net electricity is capped at a 50 kW import.
+    add_resource_balance(
+        m.site,
+        "grid_cap",
+        resource="electricity",
+        units="kW",
+        lower=-50.0 * pyunits.kW,
+    )
+    return m
+
+
 # --- long_prices ---
 
 N_POINTS = 3000
@@ -769,6 +841,7 @@ def units_on_model() -> pyo.ConcreteModel:
 CASES = {
     "api_freeze_like": (api_freeze_like, True, "unit"),
     "battery_status": (battery_status, False, "unit"),
+    "counted_trains": (counted_trains, False, "unit"),
     "desalination": (desalination, True, "component"),
     "extension_constraint_objective": (extension_constraint_objective, True, "unit"),
     "indexed_trains": (indexed_trains, True, "unit"),
@@ -779,6 +852,7 @@ CASES = {
     "network_two_plants": (network_two_plants, False, "unit"),
     "pump_scheduling": (pump_scheduling, True, "unit"),
     "ramp_and_bypass": (ramp_and_bypass, False, "unit"),
+    "resource_balances": (resource_balances, False, "unit"),
     "surrogate_and_dispatch": (surrogate_and_dispatch, False, "unit"),
     "two_property_packages": (two_property_packages, False, "unit"),
     "units_on_model": (units_on_model, True, "unit"),

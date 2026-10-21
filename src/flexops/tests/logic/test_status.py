@@ -4,6 +4,7 @@ import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
 
+from flexcore.exceptions import FlexConfigError
 from flexops.logic import add_status, relax, unrelax
 from flexops.testing import dummy_time_block
 from flexops.unit_models import Pump
@@ -85,3 +86,128 @@ def test_relax_unrelax_round_trip():
     unrelax(unit)
     for t in m.time_block.time_index:
         assert status[t].domain is pyo.Binary
+
+
+def _counted_pump(max_count: int = 3, min_count_on: int | None = None):
+    """Build a 4-step Pump whose status counts up to ``max_count`` trains."""
+    m = dummy_time_block(4)
+    m.unit = Pump(property_package=m.properties)
+    status = add_status(
+        m.unit,
+        m.unit.power_electrical,
+        10.0 * pyunits.kW,
+        100.0 * pyunits.kW,
+        max_count=max_count,
+        min_count_on=min_count_on,
+    )
+    return m, m.unit, status
+
+
+@pytest.mark.unit
+def test_counted_status_is_a_bounded_integer():
+    """max_count = 3 builds status[t] as an integer in 0..3, not a Binary."""
+    m, _unit, status = _counted_pump(max_count=3)
+    for t in m.time_block.time_index:
+        assert status[t].domain is pyo.NonNegativeIntegers
+        assert status[t].bounds == (0, 3)
+
+
+@pytest.mark.unit
+def test_default_max_count_builds_the_binary_structure():
+    """With the defaults the unit has no status_on and a Binary status."""
+    _m, unit, status = _pump_with_status()
+    assert all(status[t].domain is pyo.Binary for t in status)
+    assert not hasattr(unit, "status_on")
+    assert not hasattr(unit, "status_on_min")
+
+
+@pytest.mark.unit
+def test_counted_links_scale_the_output_limits_by_the_count():
+    """Two of three trains running may deliver between 2 * min and 2 * max."""
+    _m, unit, status = _counted_pump(max_count=3)
+    power = unit.power_electrical
+
+    status[0].set_value(2)
+    power[0].set_value(200.0)
+    assert _con_satisfied(unit.status_min_link[0])
+    assert _con_satisfied(unit.status_max_link[0])
+
+    power[0].set_value(201.0)
+    assert not _con_satisfied(unit.status_max_link[0])
+
+    power[0].set_value(19.0)
+    assert not _con_satisfied(unit.status_min_link[0])
+
+
+@pytest.mark.unit
+def test_status_on_is_built_only_when_min_count_on_is_given():
+    """min_count_on adds status_on and the two constraints that tie it to status."""
+    _m, unit, _status = _counted_pump(max_count=3)
+    assert not hasattr(unit, "status_on")
+
+    _m, unit, status = _counted_pump(max_count=3, min_count_on=2)
+    assert unit.status_on[0].domain is pyo.Binary
+
+    # One train alone is not allowed; two or three are.
+    for count, status_on, allowed in [(1, 1, False), (2, 1, True), (3, 1, True)]:
+        status[0].set_value(count)
+        unit.status_on[0].set_value(status_on)
+        assert (
+            _con_satisfied(unit.status_on_min[0])
+            and _con_satisfied(unit.status_on_max[0])
+        ) is allowed
+    # Off needs status_on = 0; on needs status_on = 1.
+    status[0].set_value(0)
+    unit.status_on[0].set_value(0)
+    assert _con_satisfied(unit.status_on_min[0])
+    assert _con_satisfied(unit.status_on_max[0])
+    status[0].set_value(2)
+    unit.status_on[0].set_value(0)
+    assert not _con_satisfied(unit.status_on_max[0])
+
+
+@pytest.mark.unit
+def test_relax_and_unrelax_round_trip_a_count_to_reals_up_to_n():
+    """A relaxed count is a real in [0, n]; unrelax restores the integers."""
+    m, unit, status = _counted_pump(max_count=3, min_count_on=2)
+    time_index = m.time_block.time_index
+
+    relax(unit)
+    for t in time_index:
+        assert status[t].domain is pyo.NonNegativeReals
+        assert status[t].bounds == (0, 3)
+        assert unit.status_on[t].domain is pyo.UnitInterval
+
+    unrelax(unit)
+    for t in time_index:
+        assert status[t].domain is pyo.NonNegativeIntegers
+        assert status[t].bounds == (0, 3)
+        assert unit.status_on[t].domain is pyo.Binary
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("kwargs", "field"),
+    [
+        ({"max_count": 0}, "max_count"),
+        ({"max_count": 3, "min_count_on": 1}, "min_count_on"),
+        ({"max_count": 3, "min_count_on": 4}, "min_count_on"),
+        ({"max_count": 1, "min_count_on": 2}, "min_count_on"),
+    ],
+)
+def test_bad_counts_raise_naming_the_field(kwargs, field):
+    """Out-of-range counts raise FlexConfigError and attach no components."""
+    m = dummy_time_block(4)
+    m.unit = Pump(property_package=m.properties)
+
+    with pytest.raises(FlexConfigError) as excinfo:
+        add_status(
+            m.unit,
+            m.unit.power_electrical,
+            0.0 * pyunits.kW,
+            1.0 * pyunits.kW,
+            **kwargs,
+        )
+
+    assert excinfo.value.field == field
+    assert not hasattr(m.unit, "status")

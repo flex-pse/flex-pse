@@ -20,6 +20,7 @@ schedule flexible industrial energy operations.
    explanation/relaxation_policies
    explanation/config_schema
    explanation/energy_nomenclature
+   explanation/resources
    explanation/reported_cost
    explanation/pass_through_and_bypass
    explanation/electrolyzer_model

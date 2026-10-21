@@ -187,3 +187,12 @@ def test_dump_spec_does_not_reorder_the_spec(tmp_path):
     dump_spec(spec, tmp_path / "spec.json")
 
     assert [el.kind for el in spec.elements] == [e["kind"] for e in FLAT["elements"]]
+
+
+@pytest.mark.unit
+def test_spec_saved_at_0_1_0_still_loads():
+    """0.1.1 only added optional fields, so a 0.1.0 spec loads unchanged."""
+    spec = load_spec({**FLAT, "schema_version": "0.1.0"})
+
+    assert spec.schema_version == "0.1.1"
+    assert spec.elements == load_spec(FLAT).elements

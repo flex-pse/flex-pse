@@ -39,7 +39,7 @@ inside it:
 
 ```json
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.1.1",
   "name": "waterfacility",
   "elements": [
     {"kind": "unit", "name": "waterfacility.plant",
@@ -88,6 +88,7 @@ stage, and is either **mutable** (it can be changed on a built model) or not:
 | `startup_delay` | logic | no |
 | `conditional` | logic | no |
 | `parallel_group` | logic | no |
+| `resource` | resources | no |
 | `dispatch` | state | yes |
 | `fix` | state | yes |
 | `unfix` | state | yes |
@@ -96,9 +97,12 @@ stage, and is either **mutable** (it can be changed on a built model) or not:
 
 Within the logic stage, kinds build in {data}`~flexops.core.stages.LOGIC_ORDER`:
 status first, because startup, conditional and parallel logic hang off a
-status binary, and logic between units last. **Costing is processed last
-because `cost_process` aggregates whatever is registered when it runs**: every
-power term a unit, a surrogate or an extension registers has to exist by then.
+status binary, and logic between units last. The `resources` stage runs after
+`logic`, since a balance sums what units and their logic registered, and
+before `state`, so a `fix` can name a balance's variables.
+**Costing is processed last because `cost_process` aggregates whatever is
+registered when it runs**: every power term a unit, a surrogate or an extension
+registers has to exist by then.
 
 ## Mutable and immutable kinds
 
@@ -365,6 +369,10 @@ rebuilds it.
 
 ```{eval-rst}
 .. flexops-config-table:: flexcore.config.spec.ParallelGroupElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.ResourceElement
 ```
 
 ```{eval-rst}

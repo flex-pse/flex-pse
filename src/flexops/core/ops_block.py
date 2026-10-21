@@ -51,6 +51,7 @@ from flexops.core.registration import (
     ParameterRecord,
     PowerRecord,
     RelationRecord,
+    ResourceRecord,
 )
 from flexops.core.time_block import TimeBlockData, find_time_block
 from flexops.surrogates import Surrogate, surrogate_from_spec
@@ -569,6 +570,64 @@ class OpsBlockData(UnitModelBlockData):
             )
         self._io_registry.boundary.append(
             BoundaryRecord(var=var, name=var.local_name, resource=resource, kind=kind)
+        )
+
+    def register_resource(
+        self, var, *, resource: str, coeff: float = 1.0, offset: int = 0
+    ) -> None:
+        """Register a variable's signed contribution to a named resource.
+
+        Args:
+            var: Time-indexed Pyomo ``Var`` or ``Reference`` over this unit's
+                time points.
+            resource: Name the term is collected under (e.g. ``"brine"``).
+            coeff: Signed coefficient in resource units per ``var`` unit.
+                Positive supplies the resource, negative consumes it.
+            offset: Delay in steps, ``>= 0``. The term at ``t`` is
+                ``coeff * var[t - offset]``.
+
+        Raises:
+            FlexConfigError: If ``resource`` is empty, ``coeff`` is not a
+                number, ``offset`` is not a non-negative integer, or ``var``
+                is not indexed over this unit's time points.
+        """
+        if not resource:
+            raise FlexConfigError(
+                "register_resource requires a non-empty resource (e.g. "
+                "'brine'); it is the key the terms are collected under.",
+                field="resource",
+                value=resource,
+            )
+        if isinstance(coeff, bool) or not isinstance(coeff, numbers.Real):
+            raise FlexConfigError(
+                f"register_resource requires a numeric coeff, got {coeff!r}.",
+                field="coeff",
+                value=coeff,
+            )
+        if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+            raise FlexConfigError(
+                f"register_resource requires offset to be an integer >= 0, "
+                f"got {offset!r}.",
+                field="offset",
+                value=offset,
+            )
+        time_index = set(self._find_time_block().time_index)
+        if not var.is_indexed() or set(var.keys()) != time_index:
+            raise FlexConfigError(
+                f"register_resource requires {var.name!r} to be indexed over "
+                "this unit's time points. Pass a time-indexed Var, or a "
+                "pyo.Reference that slices out the time index.",
+                field="var",
+                value=var.name,
+            )
+        self._io_registry.resources.append(
+            ResourceRecord(
+                var=var,
+                name=var.local_name,
+                resource=resource,
+                coeff=float(coeff),
+                offset=offset,
+            )
         )
 
     # -- stream state blocks + ports (property package) --------------------

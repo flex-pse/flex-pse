@@ -27,7 +27,10 @@ from flexcore.config.spec import (
 )
 from flexcore.exceptions import FlexConfigError
 
-MIGRATIONS: dict[str, Callable[[dict], dict]] = {}
+MIGRATIONS: dict[str, Callable[[dict], dict]] = {
+    # 0.1.1 only added optional fields, so a 0.1.0 spec is already valid
+    "0.1.0": lambda data: {**data, "schema_version": "0.1.1"},
+}
 """Source version -> upgrade hook, applied in sequence on load. Each hook must
 set the new ``schema_version`` on the dict it returns."""
 

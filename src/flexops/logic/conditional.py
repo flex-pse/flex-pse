@@ -10,6 +10,7 @@ import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexConfigError
 from flexops.logic._records import record
+from flexops.logic.status import require_binary_status
 
 _ALLOWED_THEN = ("on", "off")
 
@@ -33,7 +34,8 @@ def add_conditional(x_unit: Any, y_unit: Any, *, then: str = "on") -> pyo.Constr
 
     Raises:
         FlexConfigError: If ``then`` is not ``"on"``/``"off"``, or either unit
-            lacks a ``status`` Var.
+            lacks a ``status`` Var, or either counts more than one train
+            (``max_count > 1``).
     """
     if then not in _ALLOWED_THEN:
         raise FlexConfigError(
@@ -49,6 +51,8 @@ def add_conditional(x_unit: Any, y_unit: Any, *, then: str = "on") -> pyo.Constr
                 field=label,
                 value=unit.name,
             )
+    for unit in (x_unit, y_unit):
+        require_binary_status(unit, used_by="add_conditional")
     record(
         x_unit.model(),
         "conditional",

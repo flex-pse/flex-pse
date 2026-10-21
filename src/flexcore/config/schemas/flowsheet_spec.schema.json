@@ -981,6 +981,101 @@
       "title": "RampElement",
       "type": "object"
     },
+    "ResourceElement": {
+      "additionalProperties": false,
+      "description": "A balance on one named resource over a plant or network.",
+      "properties": {
+        "initial": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Level at the first time point. Required for a stock, not allowed for a flow. A bare number is in units.",
+          "title": "Initial"
+        },
+        "kind": {
+          "const": "resource",
+          "title": "Kind",
+          "type": "string"
+        },
+        "lower": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lower bound on the net contribution for a flow, or on the level for a stock. A bare number is in units.",
+          "title": "Lower"
+        },
+        "name": {
+          "description": "Dotted path of the balance block. Its parent has to be a plant or network.",
+          "title": "Name",
+          "type": "string"
+        },
+        "resource": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Resource to balance, as units register it. Defaults to the last part of name.",
+          "title": "Resource"
+        },
+        "stock": {
+          "default": false,
+          "description": "True if the resource's level accumulates over time.",
+          "title": "Stock",
+          "type": "boolean"
+        },
+        "units": {
+          "description": "Units of the balance, a rate for a flow resource or a quantity for a stock.",
+          "title": "Units",
+          "type": "string"
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Upper bound on the net contribution for a flow, or on the level for a stock. A bare number is in units.",
+          "title": "Upper"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "units"
+      ],
+      "title": "ResourceElement",
+      "type": "object"
+    },
     "SetElement": {
       "additionalProperties": false,
       "description": "A set of members that units and connections can be indexed over.",
@@ -1182,6 +1277,13 @@
           "title": "Kind",
           "type": "string"
         },
+        "max_count": {
+          "default": 1,
+          "description": "Number of identical trains this unit represents. Above 1, status is an integer count and output limits apply per train.",
+          "minimum": 1,
+          "title": "Max Count",
+          "type": "integer"
+        },
         "max_output": {
           "anyOf": [
             {
@@ -1193,6 +1295,19 @@
           ],
           "description": "Output when on, upper limit: a number or a quantity.",
           "title": "Max Output"
+        },
+        "min_count_on": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fewest trains that can run when any are running, from 2 to max_count. Leave out to allow any count from 0 to max_count.",
+          "title": "Min Count On"
         },
         "min_output": {
           "anyOf": [
@@ -1517,6 +1632,7 @@
             "plant": "#/$defs/PlantElement",
             "property_package": "#/$defs/PropertyPackageElement",
             "ramp": "#/$defs/RampElement",
+            "resource": "#/$defs/ResourceElement",
             "set": "#/$defs/SetElement",
             "startup_delay": "#/$defs/StartupDelayElement",
             "startup_shutdown": "#/$defs/StartupShutdownElement",
@@ -1576,6 +1692,9 @@
           },
           {
             "$ref": "#/$defs/ParallelGroupElement"
+          },
+          {
+            "$ref": "#/$defs/ResourceElement"
           },
           {
             "$ref": "#/$defs/DispatchElement"

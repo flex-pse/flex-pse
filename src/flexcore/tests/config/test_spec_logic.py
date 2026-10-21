@@ -232,3 +232,110 @@ def test_a_0_1_0_spec_migrates_to_the_current_version():
     data["schema_version"] = "0.1.0"
 
     assert load_spec(data).schema_version == SCHEMA_VERSION
+
+
+@pytest.mark.unit
+def test_status_counts_default_to_a_single_binary():
+    spec = accepts(pump(), status())
+
+    element = next(e for e in spec.elements if e.kind == "status")
+    assert (element.max_count, element.min_count_on) == (1, None)
+
+
+@pytest.mark.unit
+def test_status_accepts_a_count_with_a_minimum():
+    accepts(pump(), status(max_count=3, min_count_on=2))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("fields", "fragments"),
+    [
+        ({"max_count": 0}, ("greater than or equal to 1",)),
+        ({"max_count": 3, "min_count_on": 1}, ("min_count_on", "between 2 and")),
+        ({"max_count": 3, "min_count_on": 4}, ("min_count_on", "max_count (3)")),
+        ({"min_count_on": 2}, ("min_count_on", "max_count (1)")),
+    ],
+    ids=["zero", "minimum_of_one", "above_max", "needs_max_count"],
+)
+def test_status_rejects_inconsistent_counts(fields, fragments):
+    rejects(spec_dict(plant(), pump(), status(**fields)), *fragments)
+
+
+def resource(name="p.gas", **fields):
+    """Return a resource element dict."""
+    return {"kind": "resource", "name": name, "units": "m^3/hr", **fields}
+
+
+@pytest.mark.unit
+def test_resource_kind_builds_between_logic_and_state():
+    from flexcore.config.spec import STAGE_ORDER
+
+    assert KINDS["resource"] == ("resources", False)
+    assert STAGE_ORDER.index("logic") + 1 == STAGE_ORDER.index("resources")
+    assert STAGE_ORDER.index("resources") + 1 == STAGE_ORDER.index("state")
+
+
+@pytest.mark.unit
+def test_resource_defaults_leave_bounds_and_initial_unset():
+    spec = FlowsheetSpec.model_validate(spec_dict(plant(), resource()))
+
+    element = next(e for e in spec.elements if e.kind == "resource")
+    assert (element.stock, element.lower, element.upper, element.initial) == (
+        False,
+        None,
+        None,
+        None,
+    )
+    assert element.resource is None
+
+
+@pytest.mark.unit
+def test_resource_accepts_a_stock_and_quantities():
+    accepts(
+        resource(
+            stock=True,
+            units="m^3",
+            initial=5.0,
+            lower=0.0,
+            upper={"value": 10.0, "units": "m^3"},
+        )
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("fields", "fragments"),
+    [
+        ({"stock": True}, ("needs an initial level",)),
+        ({"initial": 1.0}, ("a flow has no initial level",)),
+        ({"lower": 5.0, "upper": 1.0}, ("lower (5.0) is above upper (1.0)",)),
+    ],
+    ids=["stock_needs_initial", "flow_has_no_initial", "bad_bounds"],
+)
+def test_resource_rejects_inconsistent_fields(fields, fragments):
+    rejects(spec_dict(plant(), resource(**fields)), *fragments)
+
+
+@pytest.mark.unit
+def test_resource_needs_a_parent():
+    rejects(spec_dict(resource("gas")), "under a plant or network")
+
+
+@pytest.mark.unit
+def test_resource_parent_must_be_a_plant_or_network():
+    rejects(spec_dict(plant(), pump(), resource("p.a.gas")), "allowed parent kinds")
+
+
+@pytest.mark.unit
+def test_resource_may_sit_under_a_network():
+    accepts_network = spec_dict({"kind": "network", "name": "n"}, resource("n.gas"))
+    FlowsheetSpec.model_validate(accepts_network)
+
+
+@pytest.mark.unit
+def test_resource_names_are_unique():
+    rejects(
+        spec_dict(plant(), resource(), resource()),
+        "already used by another element",
+    )

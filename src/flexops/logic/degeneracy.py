@@ -35,6 +35,7 @@ import pyomo.environ as pyo
 from flexcore.exceptions import FlexConfigError
 from flexops.logic._records import record, suppress_logic_records
 from flexops.logic.conditional import add_conditional
+from flexops.logic.status import require_binary_status
 
 
 def _ordered_variable(unit: Any, name: str) -> Any:
@@ -165,7 +166,9 @@ def register_parallel_group(
             call would order nothing), if a variable name does not resolve to a
             Var on every unit or resolves to differently-indexed Vars across the
             group, or -- on the default path only, raised by
-            ``add_conditional`` -- if a unit lacks a ``status`` Var.
+            ``add_conditional`` -- if a unit lacks a ``status`` Var, or if
+            ``order_status`` is True and a unit counts more than one train
+            (``max_count > 1``).
     """
     if len(units) < 2:
         raise FlexConfigError(
@@ -188,6 +191,11 @@ def register_parallel_group(
             field="order_status",
             value=order_status,
         )
+
+    if order_status:
+        for unit in units:
+            if hasattr(unit, "status"):
+                require_binary_status(unit, used_by="register_parallel_group")
 
     # Every named Var must resolve on every unit, and carry one shared index set.
     for name in variables:

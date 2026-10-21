@@ -194,10 +194,14 @@ This registry holds the records that FlexParameterize and the docs generator con
    RelationRecord
    BoundaryRecord
    BoundaryKind
+   ResourceRecord
+   ResourceTerm
 
 .. autofunction:: iter_io_registry
 
 .. autofunction:: iter_swapped_relations
+
+.. autofunction:: iter_resource_terms
 
 A boundary flow is registered with
 :meth:`~flexops.core.ops_block.OpsBlockData.register_boundary_flow`, and the
@@ -205,3 +209,15 @@ enclosing plant discovers it from this registry rather than by importing the
 :class:`~flexops.unit_models.feed.Feed`/
 :class:`~flexops.unit_models.product.Product` classes. ``flexops.unit_models``
 imports ``flexops.core``, so the reverse would be circular.
+
+Resource balances
+-----------------
+
+.. currentmodule:: flexops.core.resources
+
+:func:`add_resource_balance` adds a balance on one named resource to a plant or
+network, using the terms :func:`~flexops.core.registration.iter_resource_terms`
+collects. A ``resource`` element calls it during the build. See
+:doc:`/explanation/resources`.
+
+.. autofunction:: add_resource_balance
