@@ -166,23 +166,32 @@ class SolverFacade:
                 step_warmstart = False
             native = solver_options(name, self.profile, mip_gap, time_limit, options)
             extra = {"warmstart": True} if step_warmstart else {}
+            active = next(
+                model.component_data_objects(
+                    pyo.Objective, active=True, descend_into=True
+                ),
+                None,
+            )
             start = time.perf_counter()
             with _solver_runtime_env(name):
+                # HiGHS keeps no solution to load later when there is no objective.
                 results = _pyomo_solver(name, step_warmstart).solve(
-                    model, tee=tee, options=native, load_solutions=False, **extra
+                    model,
+                    tee=tee,
+                    options=native,
+                    load_solutions=active is None,
+                    **extra,
                 )
             wall_time = time.perf_counter() - start
             termination = results.solver.termination_condition
             objective = None
-            if len(results.solution) > 0 and not _is_infeasible(termination):
+            if (
+                active is not None
+                and len(results.solution) > 0
+                and not _is_infeasible(termination)
+            ):
                 model.solutions.load_from(results)
-                active = next(
-                    model.component_data_objects(
-                        pyo.Objective, active=True, descend_into=True
-                    ),
-                    None,
-                )
-                objective = None if active is None else pyo.value(active)
+                objective = pyo.value(active)
             solver_time = getattr(results.solver, "wall_time", None)
             step = StepResult(
                 label=label,

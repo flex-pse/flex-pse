@@ -183,3 +183,18 @@ def test_generic_options_are_accepted_by_each_solver(solver_name):
     assert solver.name == solver_name
     results = solver.solve(m, mip_gap=0.01, time_limit=30)
     assert pyo.check_optimal_termination(results)
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_feasibility_model_without_objective_loads_solution_on_highs():
+    m = pyo.ConcreteModel()
+    m.x = pyo.Var()
+    m.y = pyo.Var()
+    m.c1 = pyo.Constraint(expr=m.x + m.y == 5)
+    m.c2 = pyo.Constraint(expr=m.x - m.y == 1)
+    solver = get_solver(model=m, prefer="highs")
+    assert pyo.check_optimal_termination(solver.solve(m))
+    assert pyo.value(m.x) == pytest.approx(3.0)
+    assert pyo.value(m.y) == pytest.approx(2.0)
+    assert solver.last_report.objective is None
