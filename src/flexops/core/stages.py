@@ -224,6 +224,26 @@ def stage_topology(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
         pyo.TransformationFactory("network.expand_arcs").apply_to(model)
 
 
+def stage_degradation(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
+    """Add each degradation penalty to every member of its unit, before surrogates.
+
+    Args:
+        model: The model with built units.
+        spec: The validated spec.
+        ctx: The shared build context.
+
+    Raises:
+        FlexConfigError: If a term's variable is not on its unit.
+    """
+    for element in elements_of(spec, "degradation"):
+        choice = element.costing_package
+        if choice == AUTO:
+            choice = spec.of_kind("costing")[0].name
+        costing = None if choice is None else model.find_component(choice)
+        for member in _members(model, ctx, element.unit):
+            logic.add_degradation(member, element, costing=costing)
+
+
 def stage_surrogates(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
     """Swap each surrogate element's relation into its unit.
 
@@ -465,6 +485,7 @@ def stage_costing(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
 STAGES = (
     stage_declare,
     stage_topology,
+    stage_degradation,
     stage_surrogates,
     stage_ramping,
     stage_logic,
