@@ -12,8 +12,8 @@ from flexops import apply_spec, build_model
 from flexops.core.compare import model_differences
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.stages import LOGIC_ORDER
-from flexops.unit_models.storage.battery import BatteryModelData
-from flexops.unit_models.storage.tank import TankData
+from flexops.unit_models.general.battery import BatteryModelData
+from flexops.unit_models.general.tank import TankData
 
 KW = {"value": 0.0, "units": "kW"}
 KW_MAX = {"value": 10.0, "units": "kW"}

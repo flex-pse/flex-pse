@@ -9,7 +9,7 @@ topology base fits (its port count is a config option, and picking a base
 class asks whether every port shares one property_package -- here they
 don't). It subclasses :class:`~flexops.core.ops_block.OpsBlockData` directly instead,
 hand-writing its ports and balances, the way
-:class:`~flexops.unit_models.storage.battery.BatteryModel` does.
+:class:`~flexops.unit_models.general.battery.BatteryModel` does.
 
 Two flow-to-power relations, selected automatically (never configured
 directly) from whether every fuel source was given a heating value. Both determine
@@ -81,7 +81,7 @@ which this volumetric balance does not track.
    ``efficiency * heating_value_i`` is a product of fixed scalar Vars: linear
    while both factors stay fixed, **NLP** once a design mode or regression
    unfixes one -- the same caveat
-   :class:`~flexops.unit_models.storage.tank.Tank` documents for
+   :class:`~flexops.unit_models.general.tank.Tank` documents for
    ``capacity * level``.
 """
 

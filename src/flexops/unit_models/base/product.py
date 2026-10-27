@@ -1,6 +1,6 @@
 r"""Product(OpsBlockData): a boundary sink with N named inlets and no outlets.
 
-This is the mirror image of :class:`~flexops.unit_models.feed.Feed`, and it
+This is the mirror image of :class:`~flexops.unit_models.base.feed.Feed`, and it
 models the delivery side of the facility. A ``Product`` adds up everything
 arriving through its inlets, can limit that delivery over time, and can
 optionally price it — a positive price is a cost (like paying to dispose of
@@ -24,7 +24,7 @@ Two things are deliberately different from ``Feed``:
 whatever's connected upstream and is left as-is — there's no constraint
 tying the inlets' states together. A ``Product`` only adds up *flow*.
 Blending composition, temperature, or pressure together is
-:class:`~flexops.unit_models.mixer.Mixer`'s job, and that blending math is
+:class:`~flexops.unit_models.base.mixer.Mixer`'s job, and that blending math is
 bilinear (harder for the solver). If you want one blended stream, put a
 ``Mixer`` upstream of the ``Product``.
 
@@ -32,7 +32,7 @@ bilinear (harder for the solver). If you want one blended stream, put a
 about what arrives (like pressure), you limit one specific inlet's state —
 there's no blended stream to limit::
 
-    from flexops.unit_models._boundary import add_time_limits
+    from flexops.unit_models.base._boundary import add_time_limits
 
     add_time_limits(
         product, product.inlet_a_state.pressure, "inlet_a_pressure",
@@ -55,13 +55,16 @@ from pyomo.environ import units as pyunits
 from flexcore.exceptions import FlexConfigError
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.registration import BoundaryKind
-from flexops.unit_models._boundary import (
+from flexops.unit_models.base._boundary import (
     LimitBasis,
     add_horizon_limits,
     add_time_limits,
     resolve_basis,
 )
-from flexops.unit_models._multiport import single_flow_phase, validate_port_names
+from flexops.unit_models.base._multiport import (
+    single_flow_phase,
+    validate_port_names,
+)
 
 
 def _inlet_names_domain(value) -> tuple[str, ...]:
@@ -69,7 +72,7 @@ def _inlet_names_domain(value) -> tuple[str, ...]:
 
     This only fixes the type. Checks like "not empty," "no duplicate
     names," or "no blank names" happen later in ``build()``, through
-    :func:`~flexops.unit_models._multiport.validate_port_names`. Doing it
+    :func:`~flexops.unit_models.base._multiport.validate_port_names`. Doing it
     there means those checks can raise
     :class:`~flexcore.exceptions.FlexConfigError` directly, instead of the
     plain ``ValueError`` that Pyomo's ``ConfigValue`` wraps every domain
@@ -83,7 +86,7 @@ class ProductData(OpsBlockData):
     r"""A boundary sink: N named inlets, no outlets, one delivery total.
 
     See the module docstring above for the balance equation and the two
-    deliberate differences from :class:`~flexops.unit_models.feed.Feed`: no
+    deliberate differences from :class:`~flexops.unit_models.base.feed.Feed`: no
     blending, and composition limits set per inlet. ``inlet_names`` decides
     how many inlets there are and what their port names will be
     (``f"inlet_{name}"``).

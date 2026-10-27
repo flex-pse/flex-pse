@@ -33,27 +33,29 @@ from flexcore.config.schema import UnitCommitmentConfig
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.properties.simple_gas import SimpleGasFlow
 from flexops.testing import dummy_gas_time_block, dummy_time_block
+from flexops.unit_models.base.constant_intensity import ConstantEnergyIntensityModel
 from flexops.unit_models.base.dido import DIDOBlock
+from flexops.unit_models.base.exchanger import Exchanger
+from flexops.unit_models.base.feed import Feed
+from flexops.unit_models.base.mixer import Mixer
+from flexops.unit_models.base.product import Product
 from flexops.unit_models.base.sido import SIDOBlock
 from flexops.unit_models.base.siso import SISOBlock
-from flexops.unit_models.constant_intensity import ConstantEnergyIntensityModel
-from flexops.unit_models.electrolyzer import (
+from flexops.unit_models.base.splitter import Splitter
+from flexops.unit_models.cooling import Chiller, SpaceCooling
+from flexops.unit_models.datacenter import Server
+from flexops.unit_models.general.battery import BatteryModel
+from flexops.unit_models.general.pump import Pump
+from flexops.unit_models.general.tank import Tank
+from flexops.unit_models.powergeneration.combustor import Combustor
+from flexops.unit_models.powergeneration.generic_renewables import GenericRenewables
+from flexops.unit_models.watertreatment.digestor import Digestor
+from flexops.unit_models.watertreatment.electrolyzer import (
     CO2Electrolyzer,
     Electrolyzer,
     WaterElectrolyzer,
 )
-from flexops.unit_models.exchanger import Exchanger
-from flexops.unit_models.feed import Feed
-from flexops.unit_models.mixer import Mixer
-from flexops.unit_models.powergeneration.combustor import Combustor
-from flexops.unit_models.powergeneration.generic_renewables import GenericRenewables
-from flexops.unit_models.product import Product
-from flexops.unit_models.pump import Pump
-from flexops.unit_models.reverseosmosis import ReverseOsmosis
-from flexops.unit_models.splitter import Splitter
-from flexops.unit_models.storage.battery import BatteryModel
-from flexops.unit_models.storage.tank import Tank
-from flexops.unit_models.wastewater.digestor import Digestor
+from flexops.unit_models.watertreatment.reverseosmosis import ReverseOsmosis
 
 
 def _build_siso():
@@ -163,6 +165,25 @@ def _build_digestor():
     return m, m.unit
 
 
+def _build_server():
+    m = dummy_time_block(3)
+    m.unit = Server(
+        utilization=[0.5, 0.6, 0.7],
+        idle_power=4 * pyunits.kW,
+        peak_power=12 * pyunits.kW,
+        fan_rated_power=0.3 * pyunits.kW,
+        rated_airflow=1.0 * pyunits.kg / pyunits.s,
+        airflow=[0.9, 0.9, 0.9],
+    )
+    return m, m.unit
+
+
+def _build_cooling(cls):
+    m = dummy_time_block(3)
+    m.unit = cls()
+    return m, m.unit
+
+
 def _build_electrolyzer(cls):
     m = dummy_time_block(3)
     m._gas_pkg = SimpleGasFlow()
@@ -190,6 +211,9 @@ _BUILDERS: dict[type, Callable[[], tuple[Any, Any]]] = {
     Electrolyzer: lambda: _build_electrolyzer(Electrolyzer),
     WaterElectrolyzer: lambda: _build_electrolyzer(WaterElectrolyzer),
     CO2Electrolyzer: lambda: _build_electrolyzer(CO2Electrolyzer),
+    Server: _build_server,
+    SpaceCooling: lambda: _build_cooling(SpaceCooling),
+    Chiller: lambda: _build_cooling(Chiller),
 }
 
 
@@ -197,7 +221,7 @@ def _import_object(dotted_path: str) -> Any:
     """Import an object from its dotted ``module.attribute`` path.
 
     Args:
-        dotted_path: e.g. ``"flexops.unit_models.pump.Pump"``.
+        dotted_path: e.g. ``"flexops.unit_models.general.pump.Pump"``.
 
     Returns:
         The imported object.
@@ -227,7 +251,7 @@ def collect_unit_tables(cls: type) -> dict[str, list[list[str]]]:
 
     Args:
         cls: The unit-model class, e.g.
-            :class:`~flexops.unit_models.pump.Pump`.
+            :class:`~flexops.unit_models.general.pump.Pump`.
 
     Returns:
         A dict with keys ``"variables"``, ``"constraints"``, ``"dof"``, each a

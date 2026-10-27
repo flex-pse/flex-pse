@@ -14,7 +14,7 @@ from flexops.surrogates import MultilinearSurrogate
 from flexops.testing import UnitModelTestHarness, dummy_time_block
 from flexops.testing.harness import _solve_with_inputs_fixed
 from flexops.unit_models import CO2Electrolyzer, Electrolyzer, WaterElectrolyzer
-from flexops.unit_models.electrolyzer import (
+from flexops.unit_models.watertreatment.electrolyzer import (
     OXYGEN,
     ElectrochemicalProduct,
     ElectrolyzerTechnology,
@@ -489,7 +489,9 @@ def test_ohmic_loss_adds_asr_times_current_density_to_cell_voltage():
 
 @pytest.mark.unit
 def test_ohmic_loss_warns_about_solve_complexity(caplog):
-    with caplog.at_level(logging.WARNING, logger="flexops.unit_models.electrolyzer"):
+    with caplog.at_level(
+        logging.WARNING, logger="flexops.unit_models.watertreatment.electrolyzer"
+    ):
         _water(ohmic_loss=True)
     assert "quadratic" in caplog.text.lower()
 

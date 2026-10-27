@@ -292,7 +292,7 @@ reaction at the anode carry its own, different water balance.
 
 ## Water electrolyzer
 
-{class}`~flexops.unit_models.electrolyzer.WaterElectrolyzer` fixes the products
+{class}`~flexops.unit_models.watertreatment.electrolyzer.WaterElectrolyzer` fixes the products
 to hydrogen at the cathode and oxygen at the anode. Its `technology` sets the
 defaults below, and any option given explicitly overrides them:
 
@@ -306,7 +306,7 @@ An AEM stack's KOH bleed is modeled with `has_liquid_outlet` and
 
 ## CO2 electrolyzer
 
-{class}`~flexops.unit_models.electrolyzer.CO2Electrolyzer` takes a configurable
+{class}`~flexops.unit_models.watertreatment.electrolyzer.CO2Electrolyzer` takes a configurable
 product table (default CO at a Faradaic efficiency of 0.9 plus hydrogen at 0.1,
 {math}`V_{cell} = 3.0` V, 25 °C) and adds a CO2 feed inlet. The cell reactions
 consume

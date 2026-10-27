@@ -3,8 +3,8 @@
 The first of the IO-topology base classes: owns port construction (via the
 inherited :meth:`~flexops.core.ops_block.OpsBlockData.add_stream_ports`) and
 the per-stream mass balance, so physical subclasses
-(:class:`~flexops.unit_models.pump.Pump`,
-:class:`~flexops.unit_models.storage.tank.Tank`) only add the
+(:class:`~flexops.unit_models.general.pump.Pump`,
+:class:`~flexops.unit_models.general.tank.Tank`) only add the
 flow<->energy relationship (or, when their flows genuinely differ, replace
 the mass balance -- see :meth:`SISOBlockData._build_mass_balance`). Registers
 no power itself; a bare ``SISOBlock`` declares neither ``power_electrical``

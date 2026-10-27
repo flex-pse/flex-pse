@@ -230,7 +230,7 @@ def test_product_limit_bodies_and_mutable_params():
 @pytest.mark.unit
 def test_product_composition_limits_are_per_inlet():
     """``add_time_limits`` bounds one named inlet's state, not a blend."""
-    from flexops.unit_models._boundary import add_time_limits
+    from flexops.unit_models.base._boundary import add_time_limits
 
     _, unit = _gas_product(3, inlet_names=("a", "b"))
     # On-demand properties are built lazily through StateBlockData.__getattr__,

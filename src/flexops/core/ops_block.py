@@ -542,8 +542,8 @@ class OpsBlockData(UnitModelBlockData):
         through this registry rather than by importing the unit-model classes,
         summing them into ``total_feed[resource, t]`` /
         ``total_product[resource, t]``. Any unit may call it, not only
-        :class:`~flexops.unit_models.feed.Feed` and
-        :class:`~flexops.unit_models.product.Product`.
+        :class:`~flexops.unit_models.base.feed.Feed` and
+        :class:`~flexops.unit_models.base.product.Product`.
 
         ``resource`` is the aggregation key and is independent of the Pyomo
         block name: two blocks sharing one ``resource`` sum into a single row

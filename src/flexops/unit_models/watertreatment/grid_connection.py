@@ -10,7 +10,7 @@ from flexcore.config.schema import UnitCommitmentConfig
 from flexcore.exceptions import FlexConfigError
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.plant_block import PlantBlockData
-from flexops.unit_models._boundary import add_time_limits
+from flexops.unit_models.base._boundary import add_time_limits
 
 
 @declare_process_block_class("GridConnection")

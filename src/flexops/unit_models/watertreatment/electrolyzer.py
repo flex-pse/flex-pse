@@ -14,7 +14,7 @@ from flexcore.exceptions import FlexConfigError
 from flexcore.logger import get_logger
 from flexops.core.ops_block import OpsBlockData
 from flexops.surrogates import surrogate_from_spec
-from flexops.unit_models._multiport import single_flow_phase
+from flexops.unit_models.base._multiport import single_flow_phase
 
 FARADAY = 96485.33212 * pyunits.C / pyunits.mol
 WATER_MOLAR_MASS = 18.015 * pyunits.g / pyunits.mol

@@ -13,7 +13,7 @@ stream a's feed that crosses over into stream b:
 balances stay linear and the coupling is the natural regression target. Setting
 it to zero makes the two streams independent pass-throughs (a pure heat
 exchanger); leaving it free of a physical interpretation is the point — physical
-subclasses (:class:`~flexops.unit_models.exchanger.Exchanger` and what derives
+subclasses (:class:`~flexops.unit_models.base.exchanger.Exchanger` and what derives
 from it) add the flow-to-energy relationship on top. Registers no power itself.
 """
 

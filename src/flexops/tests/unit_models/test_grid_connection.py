@@ -8,7 +8,7 @@ from flexcore.exceptions import FlexConfigError
 from flexops import PlantBlock
 from flexops.testing import dummy_time_block
 from flexops.unit_models import ConstantEnergyIntensityModel, GenericRenewables
-from flexops.unit_models.grid_connection import GridConnection
+from flexops.unit_models.watertreatment.grid_connection import GridConnection
 
 
 def _plant_with_grid(n: int = 3, **kwargs):

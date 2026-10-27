@@ -23,6 +23,7 @@ schedule flexible industrial energy operations.
    explanation/reported_cost
    explanation/pass_through_and_bypass
    explanation/electrolyzer_model
+   explanation/datacenter_model
 
 .. toctree::
    :maxdepth: 2

@@ -202,6 +202,6 @@ This registry holds the records that FlexParameterize and the docs generator con
 A boundary flow is registered with
 :meth:`~flexops.core.ops_block.OpsBlockData.register_boundary_flow`, and the
 enclosing plant discovers it from this registry rather than by importing the
-:class:`~flexops.unit_models.feed.Feed`/
-:class:`~flexops.unit_models.product.Product` classes. ``flexops.unit_models``
+:class:`~flexops.unit_models.base.feed.Feed`/
+:class:`~flexops.unit_models.base.product.Product` classes. ``flexops.unit_models``
 imports ``flexops.core``, so the reverse would be circular.

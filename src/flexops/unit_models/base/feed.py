@@ -10,7 +10,7 @@ The number of outlets is a config option, so ``Feed`` can't reuse one of the
 fixed-inlet/fixed-outlet base classes — it subclasses
 :class:`~flexops.core.ops_block.OpsBlockData` directly and builds its own
 ports and balance equation, the same way
-:class:`~flexops.unit_models.splitter.Splitter` does.
+:class:`~flexops.unit_models.base.splitter.Splitter` does.
 
 The metered withdrawal is just the sum of the flow leaving through every
 outlet:
@@ -47,13 +47,16 @@ from pyomo.environ import units as pyunits
 from flexcore.exceptions import FlexConfigError
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.registration import BoundaryKind
-from flexops.unit_models._boundary import (
+from flexops.unit_models.base._boundary import (
     LimitBasis,
     add_horizon_limits,
     add_time_limits,
     resolve_basis,
 )
-from flexops.unit_models._multiport import single_flow_phase, validate_port_names
+from flexops.unit_models.base._multiport import (
+    single_flow_phase,
+    validate_port_names,
+)
 
 
 def _outlet_names_domain(value) -> tuple[str, ...]:
@@ -61,7 +64,7 @@ def _outlet_names_domain(value) -> tuple[str, ...]:
 
     This only fixes the type. Checks like "not empty," "no duplicate
     names," or "no blank names" happen later in ``build()``, through
-    :func:`~flexops.unit_models._multiport.validate_port_names`. Doing it
+    :func:`~flexops.unit_models.base._multiport.validate_port_names`. Doing it
     there means those checks can raise
     :class:`~flexcore.exceptions.FlexConfigError` directly, instead of the
     plain ``ValueError`` that Pyomo's ``ConfigValue`` wraps every domain

@@ -76,6 +76,51 @@ def battery_status() -> pyo.ConcreteModel:
     return m
 
 
+# --- datacenter ---
+
+
+def datacenter() -> pyo.ConcreteModel:
+    """Two servers, one with its own status, plus costed space cooling and chiller."""
+    m = pyo.ConcreteModel(name="datacenter")
+    m.time_block = fo.TimeBlock(
+        start_date="2025-07-01", end_date="2025-07-01T01:00", time_step=15 * pyunits.min
+    )
+    m.costing = fo.FlexCosting(
+        time_block=m.time_block,
+        energy_prices={"electrical": 0.1 * currency_units("USD") / pyunits.kWh},
+    )
+    m.site = fo.PlantBlock(time_block=m.time_block)
+    m.site.r1 = fo.Server(
+        utilization=[0.4, 0.6, 0.8, 0.5],
+        utilization_exponent=1.4,
+        idle_power=4 * pyunits.kW,
+        peak_power=12 * pyunits.kW,
+        fan_rated_power=0.3 * pyunits.kW,
+        rated_airflow=1.0 * pyunits.kg / pyunits.s,
+        airflow=[0.9, 0.9, 1.0, 0.9],
+        costing_package=m.costing,
+    )
+    m.site.r2 = fo.Server(
+        utilization=[0.7, 0.7, 0.7, 0.7],
+        idle_power=5 * pyunits.kW,
+        peak_power=15 * pyunits.kW,
+        liquid_fraction=0.5,
+        pdu_loss_fraction=0.03,
+        unit_commitment=UnitCommitmentConfig(status=True),
+        rated_power=20 * pyunits.kW,
+        costing_package=m.costing,
+    )
+    m.site.crah = fo.SpaceCooling(
+        cop=4.0, ancillary_intensity=0.08, costing_package=m.costing
+    )
+    m.site.chiller = fo.Chiller(cop=5.5, costing_package=m.costing)
+    m.site.crah.cooling_load.fix(25.0)
+    m.site.chiller.cooling_load.fix(32.0)
+    m.costing.cost_process()
+    m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
+    return m
+
+
 # --- desalination ---
 
 RATED_FEED = 337.67
@@ -769,6 +814,7 @@ def units_on_model() -> pyo.ConcreteModel:
 CASES = {
     "api_freeze_like": (api_freeze_like, True, "unit"),
     "battery_status": (battery_status, False, "unit"),
+    "datacenter": (datacenter, False, "unit"),
     "desalination": (desalination, True, "component"),
     "extension_constraint_objective": (extension_constraint_objective, True, "unit"),
     "indexed_trains": (indexed_trains, True, "unit"),

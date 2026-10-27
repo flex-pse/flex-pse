@@ -52,7 +52,7 @@ Config:
 
 Example:
     >>> from flexops.testing import dummy_time_block
-    >>> from flexops.unit_models.wastewater import Digestor
+    >>> from flexops.unit_models.watertreatment import Digestor
     >>> from flexops.properties.simple_gas import SimpleGasFlow
     >>> m = dummy_time_block(3)
     >>> m.unit = Digestor(  # doctest: +SKIP

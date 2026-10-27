@@ -1,7 +1,7 @@
 r"""GenericRenewables(OpsBlockData): capacity_factor-driven electrical export.
 
 Like :class:`~flexops.unit_models.powergeneration.combustor.Combustor` and
-:class:`~flexops.unit_models.storage.battery.BatteryModel`, this unit has no
+:class:`~flexops.unit_models.general.battery.BatteryModel`, this unit has no
 fluid ports (no ``property_package``): it turns an exogenous production
 profile -- solar irradiance, a wind-speed-derived output curve, or any other
 precomputed capacity-factor series -- into an electrical export, scaled by a
@@ -222,7 +222,7 @@ class GenericRenewablesData(OpsBlockData):
     Config:
         ``capacity`` (required, kW): the nameplate design capacity -- a fixed,
         regressable=False sizing ``Var``, matching
-        :attr:`~flexops.unit_models.storage.battery.BatteryModel.capacity`'s
+        :attr:`~flexops.unit_models.general.battery.BatteryModel.capacity`'s
         pattern (fixed at the constructor value; a ``costing_package``
         associates it with design/operations mode toggling).
         ``capacity_factor`` (required): the timeseries production profile, an

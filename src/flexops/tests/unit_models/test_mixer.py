@@ -19,12 +19,12 @@ from flexops.testing import (
 )
 from flexops.testing.harness import _fix_registered_inputs
 from flexops.unit_models import Mixer
-from flexops.unit_models.mixer import MixerTemperatureRule
+from flexops.unit_models.base.mixer import MixerTemperatureRule
 
 
 @pytest.fixture(autouse=True)
 def _reset_mixer_logger_dedup():
-    logger = logging.getLogger("flexops.unit_models.mixer")
+    logger = logging.getLogger("flexops.unit_models.base.mixer")
     for handler in logger.handlers:
         if isinstance(handler, DedupHandler):
             handler._deque.clear()
@@ -406,7 +406,7 @@ def _warning_messages(build, capture) -> list[str]:
     Recorded via a direct handler so an unrelated Pyomo or IDAES warning
     raised during construction cannot masquerade as one of the mixer's.
     """
-    logger = logging.getLogger("flexops.unit_models.mixer")
+    logger = logging.getLogger("flexops.unit_models.base.mixer")
     logger.addHandler(capture)
     old_level = logger.level
     logger.setLevel(logging.DEBUG)

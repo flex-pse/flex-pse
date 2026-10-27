@@ -44,9 +44,10 @@ fixed at the constructor value by default (operations mode); a
   value (default 0.85, mid-life) like ``capacity``.
 * ``eta_charge``/``eta_discharge`` are fixed **Vars** (registered
   ``regressable=True``), not plain floats read from config -- also added at
-  explicit user request, matching :class:`~flexops.unit_models.pump.Pump`'s
-  ``efficiency`` pattern. ``soh`` is registered the same way. FlexParameterize
-  fits all three from SCADA data: ``power_charge``/``power_discharge`` in,
+  explicit user request, matching
+  :class:`~flexops.unit_models.general.pump.Pump`'s ``efficiency``
+  pattern. ``soh`` is registered the same way. FlexParameterize fits all three
+  from SCADA data: ``power_charge``/``power_discharge`` in,
   ``charge`` (the SOC state, registered as the process output) out, ``capacity``
   known.
 * ``charge_leakage_rate`` (self-discharge) is **not** part of the base battery spec;

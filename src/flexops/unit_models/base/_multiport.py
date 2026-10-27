@@ -1,7 +1,7 @@
 """Shared checks for the config-driven-arity flow junctions.
 
-:class:`~flexops.unit_models.mixer.Mixer` and
-:class:`~flexops.unit_models.splitter.Splitter` both take their port count from
+:class:`~flexops.unit_models.base.mixer.Mixer` and
+:class:`~flexops.unit_models.base.splitter.Splitter` both take their port count from
 a config option and both share one property package across every port, so both
 need the same two checks: that the configured port role names are usable, and
 that the package carries exactly one phase for the flow balance to sum over.

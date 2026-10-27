@@ -1,7 +1,7 @@
 """Shared helper code used by the boundary blocks.
 
-:class:`~flexops.unit_models.feed.Feed` and
-:class:`~flexops.unit_models.product.Product` both put a limit on a
+:class:`~flexops.unit_models.base.feed.Feed` and
+:class:`~flexops.unit_models.base.product.Product` both put a limit on a
 time-indexed amount — a withdrawal that must stay under a supply limit, or a
 delivery that must stay under a demand limit. Both need the same pieces: a
 mutable limit ``Param`` and the ``Constraint`` that enforces it.

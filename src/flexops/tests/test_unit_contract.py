@@ -36,6 +36,17 @@ def simple(unit_class, **options):
     return build
 
 
+def no_ports(unit_class, **options):
+    """Return a builder placing a portless ``unit_class(**options)``."""
+
+    def build():
+        m = plant_model()
+        m.plant.unit = unit_class(**options)
+        return m
+
+    return build
+
+
 def build_battery():
     m = plant_model()
     m.plant.unit = fo.BatteryModel(
@@ -80,6 +91,16 @@ def build_digestor():
     return m
 
 
+def build_server():
+    m = plant_model()
+    m.plant.unit = fo.Server(
+        utilization=[0.2, 0.5, 0.8],
+        idle_power=4 * pyunits.kW,
+        peak_power=12 * pyunits.kW,
+    )
+    return m
+
+
 def electrolyzer(unit_class, **options):
     """Return a builder placing ``unit_class`` with liquid and gas packages."""
 
@@ -99,6 +120,7 @@ def electrolyzer(unit_class, **options):
 CONTRACT_BUILDERS = {
     "CO2Electrolyzer": electrolyzer(fo.CO2Electrolyzer),
     "BatteryModel": build_battery,
+    "Chiller": no_ports(fo.Chiller),
     "Combustor": build_combustor,
     "ConstantEnergyIntensityModel": simple(fo.ConstantEnergyIntensityModel),
     "DIDOBlock": simple(fo.DIDOBlock),
@@ -114,6 +136,8 @@ CONTRACT_BUILDERS = {
     "ReverseOsmosis": simple(fo.ReverseOsmosis),
     "SIDOBlock": simple(fo.SIDOBlock),
     "SISOBlock": simple(fo.SISOBlock),
+    "Server": build_server,
+    "SpaceCooling": no_ports(fo.SpaceCooling),
     "Splitter": simple(fo.Splitter, outlet_names=("a", "b")),
     "Tank": simple(fo.Tank),
     "WaterElectrolyzer": electrolyzer(fo.WaterElectrolyzer),

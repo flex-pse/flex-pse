@@ -27,7 +27,7 @@ Rules:
   Always use the `flexcore.nomenclature` constants. A literal name string
   anywhere else blocks review.
 - Storage units (for example
-  {class}`~flexops.unit_models.storage.battery.BatteryModel`) sign
+  {class}`~flexops.unit_models.general.battery.BatteryModel`) sign
   `POWER_ELECTRICAL` from the storage device's own frame. **Charging is
   positive, discharging is negative** (an export). This matches the
   general draw convention above. Charging is a draw, discharging offsets

@@ -1,6 +1,6 @@
 r"""Splitter(OpsBlockData): one inlet fanned out to N named outlets.
 
-The mirror of :class:`~flexops.unit_models.mixer.Mixer`: one stream divided
+The mirror of :class:`~flexops.unit_models.base.mixer.Mixer`: one stream divided
 among an arbitrary number of outlets. Its port count is a config option, so no
 fixed-arity IO-topology base fits — it subclasses
 :class:`~flexops.core.ops_block.OpsBlockData` directly and hand-writes its ports
@@ -23,7 +23,7 @@ over, so the enclosing model's objective (or a caller fixing outlet flows)
 picks the split. A unit whose split is instead *prescribed* is a different
 model: use :class:`~flexops.unit_models.base.sido.SIDOBlock`, whose fixed and
 regressable ``split_fraction`` closes those degrees of freedom, or
-:class:`~flexops.unit_models.reverseosmosis.ReverseOsmosis` on top of it.
+:class:`~flexops.unit_models.watertreatment.reverseosmosis.ReverseOsmosis` on top of it.
 
 Every stream gets its **own port**. Pyomo's ``Port`` members are equalities
 here, not extensive quantities apportioned across several arcs, so N outlets
@@ -40,7 +40,10 @@ from idaes.core import declare_process_block_class
 from pyomo.common.config import ConfigValue
 
 from flexops.core.ops_block import OpsBlockData
-from flexops.unit_models._multiport import single_flow_phase, validate_port_names
+from flexops.unit_models.base._multiport import (
+    single_flow_phase,
+    validate_port_names,
+)
 
 
 def _outlet_names_domain(value) -> tuple[str, ...]:
@@ -48,7 +51,7 @@ def _outlet_names_domain(value) -> tuple[str, ...]:
 
     Only coerces the type; emptiness/uniqueness/non-empty-string checks happen
     in ``build()`` via
-    :func:`~flexops.unit_models._multiport.validate_port_names`, so they raise
+    :func:`~flexops.unit_models.base._multiport.validate_port_names`, so they raise
     :class:`~flexcore.exceptions.FlexConfigError` directly rather than the
     ``ValueError`` Pyomo's ``ConfigValue`` wraps every domain-raised exception
     into.

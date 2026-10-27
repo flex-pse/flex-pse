@@ -25,7 +25,7 @@ shares one ``property_package``.
   relationship between flow and energy in ``build()``. To rename, pass a complete
   ``naming_dict`` up to the base ``build()``. Spread the base's
   ``_component_names`` and override the subset you're renaming, as
-  :class:`~flexops.unit_models.reverseosmosis.ReverseOsmosis` does, and the
+  :class:`~flexops.unit_models.watertreatment.reverseosmosis.ReverseOsmosis` does, and the
   base registers it before building anything named. Ports are never renamed.
 - If the unit needs more than one property package (e.g. a fuel stream and an
   air stream on different flow bases), subclass
@@ -37,8 +37,8 @@ shares one ``property_package``.
   number of gas inlets), no topology base with fixed arity fits either. Subclass
   :class:`~flexops.core.ops_block.OpsBlockData` directly and hand-write the
   ports and balance, as :class:`~flexops.unit_models.powergeneration.combustor.Combustor`,
-  :class:`~flexops.unit_models.mixer.Mixer`, and
-  :class:`~flexops.unit_models.splitter.Splitter` do. Give each stream its own
+  :class:`~flexops.unit_models.base.mixer.Mixer`, and
+  :class:`~flexops.unit_models.base.splitter.Splitter` do. Give each stream its own
   port. Port members are equalities, so one port carries one arc. N streams
   mean N ports, never one port fed by N arcs.
 
@@ -75,7 +75,7 @@ Topology bases
 Physical units
 --------------
 
-.. currentmodule:: flexops.unit_models.pump
+.. currentmodule:: flexops.unit_models.general.pump
 
 .. autosummary::
    :toctree: generated
@@ -84,7 +84,7 @@ Physical units
 
    Pump
 
-.. currentmodule:: flexops.unit_models.storage.tank
+.. currentmodule:: flexops.unit_models.general.tank
 
 .. autosummary::
    :toctree: generated
@@ -93,7 +93,7 @@ Physical units
 
    Tank
 
-.. currentmodule:: flexops.unit_models.storage.battery
+.. currentmodule:: flexops.unit_models.general.battery
 
 .. autosummary::
    :toctree: generated
@@ -102,7 +102,7 @@ Physical units
 
    BatteryModel
 
-.. currentmodule:: flexops.unit_models.exchanger
+.. currentmodule:: flexops.unit_models.base.exchanger
 
 .. autosummary::
    :toctree: generated
@@ -111,7 +111,7 @@ Physical units
 
    Exchanger
 
-.. currentmodule:: flexops.unit_models.reverseosmosis
+.. currentmodule:: flexops.unit_models.watertreatment.reverseosmosis
 
 .. autosummary::
    :toctree: generated
@@ -157,7 +157,7 @@ relation for the magnitude of generation the same way ``Combustor`` splits them.
 
    GenericRenewables
 
-.. currentmodule:: flexops.unit_models.mixer
+.. currentmodule:: flexops.unit_models.base.mixer
 
 An arbitrary number of named inlet streams join into one outlet at constant
 density, so volume is conserved directly and no energy is involved. Pressure
@@ -172,7 +172,7 @@ weighted by volume, depending on ``temperature_mixing``.
 
    Mixer
 
-.. currentmodule:: flexops.unit_models.splitter
+.. currentmodule:: flexops.unit_models.base.splitter
 
 One inlet stream divides among an arbitrary number of named outlets at
 constant density. Conservation is its only flow constraint, so the routing
@@ -187,7 +187,7 @@ you want the split prescribed rather than optimized.
 
    Splitter
 
-.. currentmodule:: flexops.unit_models.wastewater.digestor
+.. currentmodule:: flexops.unit_models.watertreatment.digestor
 
 An anaerobic digester that accepts an arbitrary number of feed streams, each
 carrying its own property package, and converts them into one biogas outlet
@@ -202,7 +202,7 @@ surrogate.
 
    Digestor
 
-.. currentmodule:: flexops.unit_models.electrolyzer
+.. currentmodule:: flexops.unit_models.watertreatment.electrolyzer
 
 An electrolyzer system whose boundary takes in the stack, the gas-liquid
 separators on both electrode sides, and the electrolyte recirculation loop, so
@@ -234,10 +234,43 @@ port builds from ``gas_property_package`` unless it is given its own package
    WaterElectrolyzer
    CO2Electrolyzer
 
+.. currentmodule:: flexops.unit_models.datacenter.server
+
+``Server`` is one server of a data center, with no fluid ports and every
+quantity a mean over the time step (see :doc:`/explanation/datacenter_model`).
+Its IT power rises from idle to peak with utilization, plus fan power, and its
+draw adds a PDU loss. Utilization is data or a live time-indexed component
+built elsewhere, such as a curtailment decision. Its heat leaves to room air
+(``air_heat``) and a liquid loop (``liquid_heat``). A server can carry its own
+on/off status, which gates both its draw and the heat it releases.
+
+.. autosummary::
+   :toctree: generated
+   :template: autosummary/unit_model.rst
+   :nosignatures:
+
+   Server
+
+.. currentmodule:: flexops.unit_models.cooling
+
+Cooling units remove a ``cooling_load`` input at a coefficient of performance,
+plus fan and pump power proportional to the load. They have no ports: a
+flowsheet sets each load, for example to the summed ``air_heat`` of the servers a
+space-cooling unit serves. Both use a constant COP and are LPs;
+``SpaceCooling`` defaults to a COP of 3 and ``Chiller`` to 5.
+
+.. autosummary::
+   :toctree: generated
+   :template: autosummary/unit_model.rst
+   :nosignatures:
+
+   SpaceCooling
+   Chiller
+
 Boundary blocks
 ---------------
 
-.. currentmodule:: flexops.unit_models.feed
+.. currentmodule:: flexops.unit_models.base.feed
 
 A source with zero inlets and an arbitrary number of named outlets. It owns a boundary
 stream (the reference outlet's states other than flow are the boundary conditions,
@@ -269,7 +302,7 @@ Pyomo component), which sets each period's Param value directly.
 
    Feed
 
-.. currentmodule:: flexops.unit_models.product
+.. currentmodule:: flexops.unit_models.base.product
 
 The mirror sink, with an arbitrary number of named inlets and zero outlets, aggregates
 what arrives into ``delivery[t]`` and aggregates into
@@ -286,7 +319,7 @@ disposal) and negative is revenue (potable water sold).
 
    Product
 
-.. currentmodule:: flexops.unit_models.grid_connection
+.. currentmodule:: flexops.unit_models.watertreatment.grid_connection
 
 The plant's point of interconnection with the electric grid. Built directly on a
 ``PlantBlock`` (anywhere else raises ``FlexConfigError``), it splits the plant's
@@ -323,7 +356,7 @@ priced separately.
 Generic surrogate
 -----------------
 
-.. currentmodule:: flexops.unit_models.constant_intensity
+.. currentmodule:: flexops.unit_models.base.constant_intensity
 
 The default building block for anything without a bespoke physical topology,
 such as a whole plant modeled as one surrogate, as in the frozen API script.

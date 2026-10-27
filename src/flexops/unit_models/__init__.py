@@ -6,29 +6,32 @@ vocabularies live on their own modules and on the top-level ``flexops``.
 """
 
 from flexops.unit_models.base import DIDOBlock, SIDOBlock, SISOBlock
-from flexops.unit_models.constant_intensity import ConstantEnergyIntensityModel
-from flexops.unit_models.electrolyzer import (
+from flexops.unit_models.base.constant_intensity import ConstantEnergyIntensityModel
+from flexops.unit_models.base.exchanger import Exchanger
+from flexops.unit_models.base.feed import Feed
+from flexops.unit_models.base.mixer import Mixer
+from flexops.unit_models.base.product import Product
+from flexops.unit_models.base.splitter import Splitter
+from flexops.unit_models.cooling import Chiller, SpaceCooling
+from flexops.unit_models.datacenter import Server
+from flexops.unit_models.general.battery import BatteryModel
+from flexops.unit_models.general.pump import Pump
+from flexops.unit_models.general.tank import Tank
+from flexops.unit_models.powergeneration.combustor import Combustor
+from flexops.unit_models.powergeneration.generic_renewables import GenericRenewables
+from flexops.unit_models.watertreatment.digestor import Digestor
+from flexops.unit_models.watertreatment.electrolyzer import (
     CO2Electrolyzer,
     Electrolyzer,
     WaterElectrolyzer,
 )
-from flexops.unit_models.exchanger import Exchanger
-from flexops.unit_models.feed import Feed
-from flexops.unit_models.grid_connection import GridConnection
-from flexops.unit_models.mixer import Mixer
-from flexops.unit_models.powergeneration.combustor import Combustor
-from flexops.unit_models.powergeneration.generic_renewables import GenericRenewables
-from flexops.unit_models.product import Product
-from flexops.unit_models.pump import Pump
-from flexops.unit_models.reverseosmosis import ReverseOsmosis
-from flexops.unit_models.splitter import Splitter
-from flexops.unit_models.storage.battery import BatteryModel
-from flexops.unit_models.storage.tank import Tank
-from flexops.unit_models.wastewater.digestor import Digestor
+from flexops.unit_models.watertreatment.grid_connection import GridConnection
+from flexops.unit_models.watertreatment.reverseosmosis import ReverseOsmosis
 
 __all__ = [
     "BatteryModel",
     "CO2Electrolyzer",
+    "Chiller",
     "Combustor",
     "ConstantEnergyIntensityModel",
     "DIDOBlock",
@@ -44,6 +47,8 @@ __all__ = [
     "ReverseOsmosis",
     "SIDOBlock",
     "SISOBlock",
+    "Server",
+    "SpaceCooling",
     "Splitter",
     "Tank",
     "WaterElectrolyzer",

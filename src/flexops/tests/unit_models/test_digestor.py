@@ -19,12 +19,12 @@ from flexops.testing import (
     dummy_time_block,
 )
 from flexops.testing.harness import _fix_registered_inputs
-from flexops.unit_models.wastewater import Digestor
+from flexops.unit_models.watertreatment import Digestor
 
 
 @pytest.fixture(autouse=True)
 def _reset_digestor_logger_dedup():
-    logger = logging.getLogger("flexops.unit_models.wastewater.digestor")
+    logger = logging.getLogger("flexops.unit_models.watertreatment.digestor")
     for handler in logger.handlers:
         if isinstance(handler, DedupHandler):
             handler._deque.clear()

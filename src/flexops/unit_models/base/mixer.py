@@ -44,7 +44,7 @@ a choice, ``config.temperature_mixing``:
 .. note::
    ``FLOW_WEIGHTED`` is **bilinear**, so a model containing one is an NLP and
    needs IPOPT rather than HiGHS — the same caveat
-   :class:`~flexops.unit_models.storage.tank.Tank` documents for
+   :class:`~flexops.unit_models.general.tank.Tank` documents for
    ``capacity * level``. It also leaves ``T_out`` undetermined at a time point
    where every inlet flow is zero (the equation degenerates to 0 == 0).
 
@@ -73,7 +73,10 @@ from pyomo.common.config import ConfigValue
 from flexcore.exceptions import FlexConfigError
 from flexcore.logger import get_logger
 from flexops.core.ops_block import OpsBlockData
-from flexops.unit_models._multiport import single_flow_phase, validate_port_names
+from flexops.unit_models.base._multiport import (
+    single_flow_phase,
+    validate_port_names,
+)
 
 _log = get_logger(__name__)
 
@@ -90,7 +93,7 @@ def _inlet_names_domain(value) -> tuple[str, ...]:
 
     Only coerces the type; emptiness/uniqueness/non-empty-string checks happen
     in ``build()`` via
-    :func:`~flexops.unit_models._multiport.validate_port_names`, so they raise
+    :func:`~flexops.unit_models.base._multiport.validate_port_names`, so they raise
     :class:`~flexcore.exceptions.FlexConfigError` directly rather than the
     ``ValueError`` Pyomo's ``ConfigValue`` wraps every domain-raised exception
     into.

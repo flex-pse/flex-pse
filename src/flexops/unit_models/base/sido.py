@@ -79,7 +79,7 @@ class SIDOBlockData(OpsBlockData):
                 passed up by a physical subclass renaming the generic roles
                 (spread ``SIDOBlockData._component_names`` and override the
                 subset it renames, as
-                :class:`~flexops.unit_models.reverseosmosis.ReverseOsmosis`
+                :class:`~flexops.unit_models.watertreatment.reverseosmosis.ReverseOsmosis`
                 does). None uses this topology's own vocabulary.
         """
         super().build()

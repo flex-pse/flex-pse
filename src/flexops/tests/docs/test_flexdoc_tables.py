@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flexcore.config.spec import FlowsheetSpec
-from flexops.unit_models.pump import Pump
+from flexops.unit_models.general.pump import Pump
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 _FLEXDOC_PATH = _REPO_ROOT / "docs" / "_ext" / "flexdoc.py"
