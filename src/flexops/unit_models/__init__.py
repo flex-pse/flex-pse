@@ -21,6 +21,7 @@ from flexops.unit_models.powergeneration.combustor import Combustor
 from flexops.unit_models.powergeneration.generic_renewables import GenericRenewables
 from flexops.unit_models.product import Product
 from flexops.unit_models.pump import Pump
+from flexops.unit_models.reactor import LumpedReactor, SpeciesReactor
 from flexops.unit_models.reverseosmosis import ReverseOsmosis
 from flexops.unit_models.splitter import Splitter
 from flexops.unit_models.storage.battery import BatteryModel
@@ -39,6 +40,7 @@ __all__ = [
     "Exchanger",
     "Feed",
     "GenericRenewables",
+    "LumpedReactor",
     "GridConnection",
     "Mixer",
     "Product",
@@ -46,6 +48,7 @@ __all__ = [
     "ReverseOsmosis",
     "SIDOBlock",
     "SISOBlock",
+    "SpeciesReactor",
     "Splitter",
     "Tank",
     "WaterElectrolyzer",
