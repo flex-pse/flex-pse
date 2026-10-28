@@ -12,6 +12,54 @@ from typing import Protocol, runtime_checkable
 import pandas as pd
 
 from flexcore.config.schema import SurrogateSpec
+from flexcore.exceptions import FlexDataError
+
+
+def require_frame(frame: object, *, regressor: str, role: str) -> pd.DataFrame:
+    """Return ``frame`` if it is a ``DataFrame``, as every ``fit`` requires.
+
+    Args:
+        frame: The ``X`` or ``y`` argument passed to ``fit``.
+        regressor: The regressor's class name, for the error message.
+        role: ``"X"`` or ``"y"``.
+
+    Raises:
+        FlexDataError: If ``frame`` is not a ``DataFrame``.
+    """
+    if not isinstance(frame, pd.DataFrame):
+        raise FlexDataError(
+            f"{regressor}.fit takes {role} as a DataFrame, got "
+            f"{type(frame).__name__}. Wrap a Series with .to_frame().",
+            field=role,
+        )
+    return frame
+
+
+def single_column(
+    frame: object, *, regressor: str, role: str, what: str, hint: str = ""
+) -> pd.Series:
+    """Return the one column of a ``fit`` argument as a named Series.
+
+    Args:
+        frame: The ``X`` or ``y`` argument passed to ``fit``.
+        regressor: The regressor's class name, for the error message.
+        role: ``"X"`` or ``"y"``.
+        what: What the column holds (e.g. ``"output"``), for the message.
+        hint: Optional extra advice appended to the message.
+
+    Raises:
+        FlexDataError: If ``frame`` is not a ``DataFrame`` or does not hold
+            exactly one column.
+    """
+    frame = require_frame(frame, regressor=regressor, role=role)
+    if frame.shape[1] != 1:
+        raise FlexDataError(
+            f"{regressor} fits one {what} column; {role} has {frame.shape[1]} "
+            f"({list(frame.columns)}). Select the single {what} column"
+            f"{hint}.",
+            field=role,
+        )
+    return frame.iloc[:, 0]
 
 
 @dataclass(frozen=True)

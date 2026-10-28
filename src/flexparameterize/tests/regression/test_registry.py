@@ -8,6 +8,7 @@ import pytest
 from flexcore.config.schema import SurrogateType
 from flexcore.exceptions import FlexConfigError
 from flexparameterize.regression import (
+    ArimaRegressor,
     ConstantIntensityRegressor,
     LinearRegressor,
     get_regressor,
@@ -16,7 +17,6 @@ from flexparameterize.regression import (
 RESERVED = (
     SurrogateType.QUADRATIC,
     SurrogateType.EXPONENTIAL,
-    SurrogateType.ARIMA,
     SurrogateType.NEURAL_NETWORK,
 )
 
@@ -28,6 +28,8 @@ def test_get_regressor_known_names():
     assert get_regressor("constant_intensity") is ConstantIntensityRegressor
     assert get_regressor(SurrogateType.MULTILINEAR) is LinearRegressor
     assert get_regressor("multilinear") is LinearRegressor
+    assert get_regressor(SurrogateType.ARIMA) is ArimaRegressor
+    assert get_regressor("arima") is ArimaRegressor
 
 
 @pytest.mark.unit
