@@ -1,7 +1,7 @@
-"""Solver-neutral options and named option profiles, translated per solver.
+"""Solver-neutral options and named option settings, translated per solver.
 
 ``OPTION_NAMES`` maps each generic :class:`SolverOption` to a solver's native
-spelling, and ``PROFILE_OPTIONS`` holds each :class:`SolverProfile`'s native
+spelling, and ``SETTINGS_OPTIONS`` holds each :class:`SolverSettings`'s native
 options per solver. Both are plain module constants so a user can extend them
 for a new solver before calling ``get_solver``.
 """
@@ -21,7 +21,7 @@ class SolverOption(enum.StrEnum):
     TIME_LIMIT = "time_limit"
 
 
-class SolverProfile(enum.StrEnum):
+class SolverSettings(enum.StrEnum):
     """Named sets of solver tuning options for a kind of model."""
 
     DEFAULT = "default"
@@ -46,9 +46,9 @@ OPTION_NAMES: dict[str, dict[SolverOption, str]] = {
     "ipopt": {SolverOption.TIME_LIMIT: "max_cpu_time"},
 }
 
-PROFILE_OPTIONS: dict[SolverProfile, dict[str, dict[str, Any]]] = {
-    SolverProfile.DEFAULT: {},
-    SolverProfile.UNIT_COMMITMENT: {
+SETTINGS_OPTIONS: dict[SolverSettings, dict[str, dict[str, Any]]] = {
+    SolverSettings.DEFAULT: {},
+    SolverSettings.UNIT_COMMITMENT: {
         "gurobi": {"MIPFocus": 3, "Symmetry": 2, "Cuts": 2},
     },
 }
@@ -56,16 +56,16 @@ PROFILE_OPTIONS: dict[SolverProfile, dict[str, dict[str, Any]]] = {
 
 def solver_options(
     name: str,
-    profile: SolverProfile,
+    settings: SolverSettings,
     mip_gap: float | None,
     time_limit: float | None,
     options: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Build the native option dict for one solver from a profile and generic options.
+    """Build the native option dict for one solver from settings and generic options.
 
     Args:
         name: The Pyomo solver name the options are for.
-        profile: The tuning profile to start from.
+        settings: The tuning settings to start from.
         mip_gap: Relative MIP gap at which to stop, or ``None`` for the solver default.
         time_limit: Time limit in seconds, or ``None`` for the solver default.
         options: Native solver options, passed through unchanged.
@@ -78,8 +78,8 @@ def solver_options(
         ValueError: If two sources set the same native option.
     """
     entries = [
-        (key, value, "profile")
-        for key, value in PROFILE_OPTIONS[profile].get(name, {}).items()
+        (key, value, "settings")
+        for key, value in SETTINGS_OPTIONS[settings].get(name, {}).items()
     ]
     spellings = OPTION_NAMES.get(name, {})
     for option, value in (

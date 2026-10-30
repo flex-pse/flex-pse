@@ -5,7 +5,7 @@ import logging
 import pytest
 
 from flexcore.logger import DedupHandler
-from flexcore.solvers import SolverOption, SolverProfile
+from flexcore.solvers import SolverOption, SolverSettings
 from flexcore.solvers.options import OPTION_NAMES, solver_options
 
 
@@ -33,7 +33,7 @@ def options_log():
 @pytest.mark.unit
 def test_generic_options_translate_to_gurobi_spellings():
     native = solver_options(
-        "gurobi", SolverProfile.DEFAULT, mip_gap=0.01, time_limit=60, options=None
+        "gurobi", SolverSettings.DEFAULT, mip_gap=0.01, time_limit=60, options=None
     )
     assert native == {"MIPGap": 0.01, "TimeLimit": 60}
 
@@ -41,7 +41,7 @@ def test_generic_options_translate_to_gurobi_spellings():
 @pytest.mark.unit
 def test_generic_options_translate_to_highs_spellings():
     native = solver_options(
-        "highs", SolverProfile.DEFAULT, mip_gap=0.01, time_limit=60, options=None
+        "highs", SolverSettings.DEFAULT, mip_gap=0.01, time_limit=60, options=None
     )
     assert native == {"mip_rel_gap": 0.01, "time_limit": 60}
 
@@ -54,7 +54,7 @@ def test_appsi_highs_shares_highs_spellings():
 @pytest.mark.unit
 def test_unset_generic_options_are_omitted():
     native = solver_options(
-        "gurobi", SolverProfile.DEFAULT, mip_gap=None, time_limit=None, options=None
+        "gurobi", SolverSettings.DEFAULT, mip_gap=None, time_limit=None, options=None
     )
     assert native == {}
 
@@ -63,14 +63,14 @@ def test_unset_generic_options_are_omitted():
 def test_unit_commitment_profile_is_valid_for_gurobi_and_highs():
     gurobi = solver_options(
         "gurobi",
-        SolverProfile.UNIT_COMMITMENT,
+        SolverSettings.UNIT_COMMITMENT,
         mip_gap=0.01,
         time_limit=None,
         options=None,
     )
     highs = solver_options(
         "highs",
-        SolverProfile.UNIT_COMMITMENT,
+        SolverSettings.UNIT_COMMITMENT,
         mip_gap=0.01,
         time_limit=None,
         options=None,
@@ -83,7 +83,7 @@ def test_unit_commitment_profile_is_valid_for_gurobi_and_highs():
 def test_non_overlapping_sources_are_combined():
     native = solver_options(
         "gurobi",
-        SolverProfile.UNIT_COMMITMENT,
+        SolverSettings.UNIT_COMMITMENT,
         mip_gap=0.01,
         time_limit=None,
         options={"NonConvex": 2},
@@ -102,7 +102,7 @@ def test_generic_option_and_native_option_for_same_setting_raise():
     with pytest.raises(ValueError, match="MIPGap.*mip_gap.*options"):
         solver_options(
             "gurobi",
-            SolverProfile.DEFAULT,
+            SolverSettings.DEFAULT,
             mip_gap=0.01,
             time_limit=None,
             options={"MIPGap": 0.05},
@@ -111,10 +111,10 @@ def test_generic_option_and_native_option_for_same_setting_raise():
 
 @pytest.mark.unit
 def test_native_option_that_profile_sets_raises():
-    with pytest.raises(ValueError, match="MIPFocus.*profile.*options"):
+    with pytest.raises(ValueError, match="MIPFocus.*settings.*options"):
         solver_options(
             "gurobi",
-            SolverProfile.UNIT_COMMITMENT,
+            SolverSettings.UNIT_COMMITMENT,
             mip_gap=None,
             time_limit=None,
             options={"MIPFocus": 1},
@@ -125,7 +125,7 @@ def test_native_option_that_profile_sets_raises():
 def test_profile_conflict_ignored_for_solver_profile_does_not_tune():
     native = solver_options(
         "highs",
-        SolverProfile.UNIT_COMMITMENT,
+        SolverSettings.UNIT_COMMITMENT,
         mip_gap=None,
         time_limit=None,
         options={"MIPFocus": 1},
@@ -136,7 +136,7 @@ def test_profile_conflict_ignored_for_solver_profile_does_not_tune():
 @pytest.mark.unit
 def test_untranslatable_generic_option_warns_and_is_dropped(options_log):
     native = solver_options(
-        "ipopt", SolverProfile.DEFAULT, mip_gap=0.01, time_limit=10, options=None
+        "ipopt", SolverSettings.DEFAULT, mip_gap=0.01, time_limit=10, options=None
     )
     assert native == {"max_cpu_time": 10}
     messages = [record.getMessage() for record in options_log.records]
@@ -146,7 +146,7 @@ def test_untranslatable_generic_option_warns_and_is_dropped(options_log):
 @pytest.mark.unit
 def test_unknown_solver_drops_generic_options_with_warning(options_log):
     native = solver_options(
-        "mystery", SolverProfile.DEFAULT, mip_gap=0.01, time_limit=None, options=None
+        "mystery", SolverSettings.DEFAULT, mip_gap=0.01, time_limit=None, options=None
     )
     assert native == {}
     assert options_log.records

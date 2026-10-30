@@ -57,35 +57,35 @@ def _shape(degree: int | None) -> int:
     return _NONLINEAR
 
 
-def _fingerprint(model: pyo.ConcreteModel) -> tuple[int, int, int, int]:
-    """Count the model features that can change its problem class.
+def _fingerprint(model: pyo.ConcreteModel) -> tuple[frozenset[int], ...]:
+    """Identify the model features that can change its problem class.
 
     Args:
         model: A constructed Pyomo model.
 
     Returns:
-        ``(active constraints, active objectives, fixed vars, unfixed discrete
-        vars)``.
+        The ids of ``(active constraints, active objectives, fixed vars, unfixed
+        discrete vars)``.
     """
-    n_con = sum(
-        1
-        for _ in model.component_data_objects(
+    cons = frozenset(
+        id(c)
+        for c in model.component_data_objects(
             pyo.Constraint, active=True, descend_into=True
         )
     )
-    n_obj = sum(
-        1
-        for _ in model.component_data_objects(
+    objs = frozenset(
+        id(o)
+        for o in model.component_data_objects(
             pyo.Objective, active=True, descend_into=True
         )
     )
-    n_fixed = n_discrete = 0
+    fixed, discrete = set(), set()
     for var in model.component_data_objects(pyo.Var, descend_into=True):
         if var.fixed:
-            n_fixed += 1
+            fixed.add(id(var))
         elif var.is_integer():
-            n_discrete += 1
-    return n_con, n_obj, n_fixed, n_discrete
+            discrete.add(id(var))
+    return cons, objs, frozenset(fixed), frozenset(discrete)
 
 
 def classify(model: pyo.ConcreteModel) -> ProblemClass:
@@ -99,10 +99,10 @@ def classify(model: pyo.ConcreteModel) -> ProblemClass:
     all-linear constraints is ``QP`` (smallest choice consistent with
     the QP capability matrix).
 
-    The result is cached on the model and reused while the counts of active
+    The result is cached on the model and reused while the sets of active
     constraints, active objectives, fixed variables, and unfixed discrete
     variables are unchanged. Replacing a constraint's expression in place
-    without changing those counts is not detected.
+    is not detected.
 
     Args:
         model: A constructed Pyomo model to classify.

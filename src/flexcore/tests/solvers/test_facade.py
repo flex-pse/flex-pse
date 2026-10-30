@@ -179,20 +179,20 @@ def test_highs_warmstart_routes_through_appsi_highs(monkeypatch):
 
 @pytest.mark.unit
 def test_get_solver_defaults_to_direct_strategy_and_default_profile(monkeypatch):
-    from flexcore.solvers import Direct, SolverProfile
+    from flexcore.solvers import Direct, SolverSettings
 
     monkeypatch.setattr(
         facade, "available_solvers", lambda: {"highs": {ProblemClass.LP}}
     )
     chosen = get_solver(problem_class=ProblemClass.LP)
     assert chosen.strategy == Direct()
-    assert chosen.profile is SolverProfile.DEFAULT
+    assert chosen.settings is SolverSettings.DEFAULT
     assert chosen.last_report is None
 
 
 @pytest.mark.unit
 def test_get_solver_passes_strategy_and_profile_through(monkeypatch):
-    from flexcore.solvers import RelaxAndFix, SolverProfile
+    from flexcore.solvers import RelaxAndFix, SolverSettings
 
     monkeypatch.setattr(
         facade, "available_solvers", lambda: {"gurobi": {ProblemClass.MILP}}
@@ -200,8 +200,8 @@ def test_get_solver_passes_strategy_and_profile_through(monkeypatch):
     strategy = RelaxAndFix(fix_tol=0.2)
     chosen = get_solver(
         problem_class=ProblemClass.MILP,
-        profile=SolverProfile.UNIT_COMMITMENT,
+        settings=SolverSettings.UNIT_COMMITMENT,
         strategy=strategy,
     )
     assert chosen.strategy is strategy
-    assert chosen.profile is SolverProfile.UNIT_COMMITMENT
+    assert chosen.settings is SolverSettings.UNIT_COMMITMENT

@@ -170,3 +170,30 @@ def test_classify_cache_invalidated_by_unfixing_a_continuous_var():
     assert classify(m) is ProblemClass.LP
     m.r.unfix()
     assert classify(m) is ProblemClass.NLP
+
+
+@pytest.mark.unit
+def test_classify_cache_invalidated_by_swapping_a_constraint():
+    """Deactivating one constraint and adding another keeps the count equal."""
+    m = _lp_model()
+    assert classify(m) is ProblemClass.LP
+    m.c.deactivate()
+    m.c_nl = pyo.Constraint(expr=pyo.exp(m.x) <= 2)
+    assert classify(m) is ProblemClass.NLP
+
+
+@pytest.mark.unit
+def test_classify_cache_invalidated_by_swapping_which_var_is_fixed():
+    """Fixing one bilinear factor while unfixing the other keeps the count equal."""
+    m = pyo.ConcreteModel()
+    m.x = pyo.Var(initialize=1.0)
+    m.y = pyo.Var(initialize=1.0)
+    m.z = pyo.Var(initialize=1.0)
+    m.x.fix()
+    m.c = pyo.Constraint(expr=m.x * m.y + pyo.exp(m.z) <= 4)
+    m.obj = pyo.Objective(expr=m.y)
+    m.z.fix()
+    assert classify(m) is ProblemClass.LP
+    m.z.unfix()
+    m.y.fix()
+    assert classify(m) is ProblemClass.NLP

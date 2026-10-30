@@ -85,7 +85,7 @@ fractional values, which make a poor starting incumbent.
 
 A strategy is a small frozen dataclass whose `solve` method receives the model,
 its problem class and a `run_step` function. `run_step` solves the model once as
-a given problem class, using the facade's solver, profile and options. The
+a given problem class, using the facade's solver, settings and options. The
 strategy decides what to change between steps and returns the final results
 together with a `SolveReport`. Strategies never choose solvers or options
 themselves, which keeps new ones (rolling horizon, decomposition) short.

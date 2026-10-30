@@ -14,7 +14,7 @@ NLPs. It falls back to ``pyo.SolverFactory`` when idaes is unavailable, keeping
 idaes an optional dependency (see :func:`_idaes_ipopt`).
 
 How a facade solves is set by its strategy (:mod:`flexcore.solvers.strategies`),
-and its options by a profile plus solver-neutral keywords
+and its options by settings plus solver-neutral keywords
 (:mod:`flexcore.solvers.options`).
 """
 
@@ -28,7 +28,7 @@ import pyomo.environ as pyo
 from flexcore.exceptions import FlexSolverError
 from flexcore.logger import get_logger
 from flexcore.solvers.classify import ProblemClass, classify
-from flexcore.solvers.options import SolverProfile, solver_options
+from flexcore.solvers.options import SolverSettings, solver_options
 from flexcore.solvers.registry import (
     WARMSTART_SOLVERS,
     _solver_runtime_env,
@@ -115,14 +115,14 @@ class SolverFacade:
     Attributes:
         name: The Pyomo solver name (e.g. ``"highs"``).
         problem_class: The class this solver was selected for.
-        profile: The tuning profile applied to every solver call.
+        settings: The tuning settings applied to every solver call.
         strategy: How one ``solve`` call is turned into solver calls.
         last_report: The :class:`SolveReport` of the most recent ``solve``.
     """
 
     name: str
     problem_class: ProblemClass
-    profile: SolverProfile = SolverProfile.DEFAULT
+    settings: SolverSettings = SolverSettings.DEFAULT
     strategy: SolveStrategy = dataclasses.field(default_factory=Direct)
     last_report: SolveReport | None = dataclasses.field(default=None, init=False)
 
@@ -136,7 +136,7 @@ class SolverFacade:
         time_limit: float | None = None,
         options: dict[str, Any] | None = None,
     ):
-        """Solve ``model`` with the facade's strategy, solver and profile.
+        """Solve ``model`` with the facade's strategy, solver and settings.
 
         The solution is loaded into the model only when the solver found one;
         an infeasible model returns its results without raising. The step-by-step
@@ -148,12 +148,15 @@ class SolverFacade:
             warmstart: Start from the model's current values. A solver that
                 cannot warm start logs a warning and solves cold.
             mip_gap: Relative MIP gap at which to stop, applied to every step.
-            time_limit: Time limit in seconds, applied to every step.
+            time_limit: Time limit in seconds for the whole solve, across all steps.
             options: Native solver options; each must not also be set elsewhere.
+                A step run on a different solver than the facade's drops them.
 
         Returns:
             The Pyomo results object of the step that produced the solution.
         """
+        self.last_report = None
+        deadline = None if time_limit is None else time.perf_counter() + time_limit
 
         def run_step(
             problem_class: ProblemClass, label: str, step_warmstart: bool
@@ -161,10 +164,25 @@ class SolverFacade:
             name = self.name
             if problem_class not in available_solvers().get(name, set()):
                 name = get_solver(problem_class=problem_class).name
-            if step_warmstart and name not in WARMSTART_SOLVERS:
+            step_options = options
+            if options and name != self.name:
+                _log.warning(
+                    "Native options for %r are not passed to %r.", self.name, name
+                )
+                step_options = None
+            warm_capable = name in WARMSTART_SOLVERS and (
+                name != "highs"
+                or pyo.SolverFactory("appsi_highs").available(exception_flag=False)
+            )
+            if step_warmstart and not warm_capable:
                 _log.warning("Solver %r cannot warm start; solving cold.", name)
                 step_warmstart = False
-            native = solver_options(name, self.profile, mip_gap, time_limit, options)
+            remaining = (
+                None if deadline is None else max(deadline - time.perf_counter(), 0.0)
+            )
+            native = solver_options(
+                name, self.settings, mip_gap, remaining, step_options
+            )
             extra = {"warmstart": True} if step_warmstart else {}
             active = next(
                 model.component_data_objects(
@@ -201,7 +219,13 @@ class SolverFacade:
                 wall_time=wall_time,
                 solver_time=None if solver_time is None else float(solver_time),
             )
-            _log.info(
+            ok = termination in (
+                pyo.TerminationCondition.optimal,
+                pyo.TerminationCondition.locallyOptimal,
+                pyo.TerminationCondition.globallyOptimal,
+                pyo.TerminationCondition.feasible,
+            )
+            (_log.info if ok else _log.warning)(
                 "%s solve with %s: %s in %.2f s.", label, name, termination, wall_time
             )
             return results, step
@@ -216,7 +240,7 @@ def get_solver(
     model: pyo.ConcreteModel | None = None,
     problem_class: ProblemClass | None = None,
     prefer: str | None = None,
-    profile: SolverProfile = SolverProfile.DEFAULT,
+    settings: SolverSettings = SolverSettings.DEFAULT,
     strategy: SolveStrategy | None = None,
 ) -> SolverFacade:
     """Select the best available solver for a problem class.
@@ -239,7 +263,7 @@ def get_solver(
         problem_class: The :class:`ProblemClass` to solve; mutually exclusive
             with ``model``.
         prefer: A solver name to try first.
-        profile: The tuning profile applied to every solver call.
+        settings: The tuning settings applied to every solver call.
         strategy: How to solve, e.g. :class:`RelaxAndFix`; defaults to :class:`Direct`.
 
     Returns:
@@ -272,7 +296,7 @@ def get_solver(
 
     def _facade(name: str) -> SolverFacade:
         return SolverFacade(
-            name=name, problem_class=problem_class, profile=profile, strategy=strategy
+            name=name, problem_class=problem_class, settings=settings, strategy=strategy
         )
 
     def _capable(name: str) -> bool:

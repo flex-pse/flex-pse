@@ -1,12 +1,13 @@
 """Component-tier facade solves: warm starts, strategies, options, reports."""
 
 import logging
+from types import SimpleNamespace
 
 import pyomo.environ as pyo
 import pytest
 
 from flexcore.logger import DedupHandler
-from flexcore.solvers import ProblemClass, RelaxAndFix, get_solver
+from flexcore.solvers import ProblemClass, RelaxAndFix, SolverFacade, get_solver
 
 TC = pyo.TerminationCondition
 
@@ -198,3 +199,109 @@ def test_feasibility_model_without_objective_loads_solution_on_highs():
     assert pyo.value(m.x) == pytest.approx(3.0)
     assert pyo.value(m.y) == pytest.approx(2.0)
     assert solver.last_report.objective is None
+
+
+@pytest.fixture
+def facade_log():
+    logger = logging.getLogger("flexcore.solvers.facade")
+    for handler in logger.handlers:
+        if isinstance(handler, DedupHandler):
+            handler.dedup_enabled[logging.WARNING] = False
+    capture = _LogCapture()
+    logger.addHandler(capture)
+    yield capture
+    logger.removeHandler(capture)
+
+
+class _FakeSolver:
+    """Records each call's options and returns scripted terminations."""
+
+    def __init__(self, terminations, clock=None, step_seconds=0.0):
+        self.terminations = list(terminations)
+        self.clock = clock
+        self.step_seconds = step_seconds
+        self.calls = []
+
+    def solve(self, model, tee, options, load_solutions, **extra):
+        self.calls.append({"options": dict(options), **extra})
+        if self.clock is not None:
+            self.clock.now += self.step_seconds
+        return SimpleNamespace(
+            solver=SimpleNamespace(termination_condition=self.terminations.pop(0)),
+            solution=[],
+        )
+
+
+def _use_fake(monkeypatch, available, fake):
+    from flexcore.solvers import facade
+
+    monkeypatch.setattr(facade, "available_solvers", lambda: available)
+    monkeypatch.setattr(facade, "_pyomo_solver", lambda name, warmstart: fake)
+
+
+@pytest.mark.component
+def test_native_options_are_dropped_on_a_fallback_solver(monkeypatch, facade_log):
+    fake = _FakeSolver([TC.optimal])
+    _use_fake(
+        monkeypatch, {"scip": {ProblemClass.MILP}, "highs": {ProblemClass.LP}}, fake
+    )
+    solver = SolverFacade(name="scip", problem_class=ProblemClass.LP)
+    solver.solve(_knapsack(), options={"limits/nodes": 10})
+    assert fake.calls[0]["options"] == {}
+    assert solver.last_report.steps[0].solver == "highs"
+    assert any("not passed" in r.getMessage() for r in facade_log.records)
+
+
+@pytest.mark.component
+def test_time_limit_is_a_deadline_across_relax_and_fix_steps(monkeypatch):
+    from flexcore.solvers import facade
+
+    clock = SimpleNamespace(now=0.0)
+    monkeypatch.setattr(facade, "time", SimpleNamespace(perf_counter=lambda: clock.now))
+    fake = _FakeSolver(
+        [TC.optimal, TC.infeasible, TC.infeasible, TC.infeasible, TC.optimal],
+        clock=clock,
+        step_seconds=30.0,
+    )
+    _use_fake(monkeypatch, {"highs": {ProblemClass.LP, ProblemClass.MILP}}, fake)
+    solver = SolverFacade(
+        name="highs", problem_class=ProblemClass.MILP, strategy=RelaxAndFix()
+    )
+    solver.solve(_knapsack(), time_limit=100)
+    limits = [call["options"]["time_limit"] for call in fake.calls]
+    assert limits == [100, 70, 40, 10, 0]
+
+
+@pytest.mark.component
+def test_failed_termination_logs_warning_and_resets_report(monkeypatch, facade_log):
+    fake = _FakeSolver([TC.optimal, TC.infeasible])
+    _use_fake(monkeypatch, {"highs": {ProblemClass.MILP}}, fake)
+    solver = SolverFacade(name="highs", problem_class=ProblemClass.MILP)
+    solver.solve(_knapsack())
+    assert solver.last_report is not None
+    solver.solve(_knapsack())
+    warnings = [r for r in facade_log.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1 and "infeasible" in warnings[0].getMessage()
+
+    _use_fake(monkeypatch, {"highs": {ProblemClass.MILP}}, None)
+    with pytest.raises(AttributeError):
+        solver.solve(_knapsack())
+    assert solver.last_report is None
+
+
+@pytest.mark.component
+def test_highs_warmstart_solves_cold_without_appsi_highs(monkeypatch, facade_log):
+    from flexcore.solvers import facade
+
+    fake = _FakeSolver([TC.optimal])
+    _use_fake(monkeypatch, {"highs": {ProblemClass.MILP}}, fake)
+    monkeypatch.setattr(
+        facade.pyo,
+        "SolverFactory",
+        lambda name: SimpleNamespace(available=lambda exception_flag: False),
+    )
+    SolverFacade(name="highs", problem_class=ProblemClass.MILP).solve(
+        _knapsack(), warmstart=True
+    )
+    assert "warmstart" not in fake.calls[0]
+    assert any("warm" in r.getMessage() for r in facade_log.records)
