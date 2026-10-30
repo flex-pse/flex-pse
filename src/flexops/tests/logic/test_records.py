@@ -7,7 +7,7 @@ from pydantic import TypeAdapter
 from pyomo.environ import units as pyunits
 
 import flexops.logic as logic
-from flexcore.config.schema import UnitCommitmentConfig
+from flexcore.config.schema import DegradationSpec, UnitCommitmentConfig
 from flexcore.config.spec import Element
 from flexops.logic._records import LogicRecord, suppress_logic_records
 from flexops.testing import dummy_time_block
@@ -57,6 +57,14 @@ CALLS = {
     "add_startup_delay": lambda m: logic.add_startup_delay(m.y, m.x, 1),
     "add_conditional": lambda m: logic.add_conditional(m.x, m.y, then="off"),
     "register_parallel_group": lambda m: logic.register_parallel_group([m.x, m.y]),
+    "add_degradation": lambda m: logic.add_degradation(
+        m.x,
+        DegradationSpec(
+            name="wear",
+            terms=[{"kind": "variation", "variable": "flow_in", "price": 1.0}],
+            horizon_budget=10.0,
+        ),
+    ),
 }
 KINDS = {
     "add_status": "status",
@@ -67,6 +75,7 @@ KINDS = {
     "add_startup_delay": "startup_delay",
     "add_conditional": "conditional",
     "register_parallel_group": "parallel_group",
+    "add_degradation": "degradation",
 }
 
 

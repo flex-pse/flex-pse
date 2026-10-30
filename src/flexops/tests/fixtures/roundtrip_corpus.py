@@ -5,7 +5,7 @@ from pyomo.environ import units as pyunits
 from pyomo.network import Arc
 
 import flexops as fo
-from flexcore.config.schema import UnitCommitmentConfig
+from flexcore.config.schema import DegradationSpec, UnitCommitmentConfig
 from flexops import logic
 from flexops.costing import currency_units
 from flexops.logic import (
@@ -652,6 +652,38 @@ def ramp_and_bypass() -> pyo.ConcreteModel:
     return m
 
 
+# --- degradation ---
+
+
+def degradation() -> pyo.ConcreteModel:
+    """A priced wear penalty on a pump's power swings and throughput."""
+    m = pyo.ConcreteModel(name="degradation")
+    m.time_block = fo.TimeBlock(
+        start_date="2025-01-01", end_date="2025-01-01T06:00", time_step=1 * pyunits.hr
+    )
+    m.properties = fo.SimpleAqueousFlow()
+    m.costing = fo.FlexCosting(
+        time_block=m.time_block,
+        energy_prices={"electrical": 0.1 * currency_units("USD") / pyunits.kWh},
+    )
+    m.site = fo.PlantBlock(time_block=m.time_block)
+    pump = m.site.pump = fo.Pump(
+        property_package=m.properties, costing_package=m.costing
+    )
+    spec = DegradationSpec(
+        name="wear",
+        terms=[
+            {"kind": "variation", "variable": "power_electrical", "price": 0.2},
+            {"kind": "throughput", "variable": "flow_in", "price": 0.01},
+        ],
+        covered_cost=1.0,
+    )
+    logic.add_degradation(pump, spec, costing=m.costing)
+    m.costing.cost_process()
+    m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
+    return m
+
+
 # --- surrogate_and_dispatch ---
 
 SURROGATE = {
@@ -769,6 +801,7 @@ def units_on_model() -> pyo.ConcreteModel:
 CASES = {
     "api_freeze_like": (api_freeze_like, True, "unit"),
     "battery_status": (battery_status, False, "unit"),
+    "degradation": (degradation, False, "unit"),
     "desalination": (desalination, True, "component"),
     "extension_constraint_objective": (extension_constraint_objective, True, "unit"),
     "indexed_trains": (indexed_trains, True, "unit"),

@@ -140,6 +140,32 @@ swap.
 
    Combustor
 
+.. currentmodule:: flexops.unit_models.powergeneration.boiler
+
+A linear steam boiler with a first-order thermal lag, fired (``BoilerType.FIRED``)
+or heat recovery (``BoilerType.HEAT_RECOVERY``, with optional duct firing). Fuel
+enters through inlet ports (``fuel_inlet_names``), from utilities
+(``utility_fuel_source``), or both. Feedwater enters at ``inlet_feedwater`` and
+steam leaves at ``outlet_steam``. Steam heat is a thermal export
+(``power_thermal`` upper-bounded at 0). See :doc:`/explanation/boiler` for the
+equations and for how to set its parameters from a detailed boiler model.
+
+.. autosummary::
+   :toctree: generated
+   :template: unit_model.rst
+   :nosignatures:
+
+   Boiler
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   BoilerType
+   BoilerInletName
+   FiringOption
+   HeatRecoveryOption
+
 .. currentmodule:: flexops.unit_models.powergeneration.generic_renewables
 
 Like ``Combustor`` and ``BatteryModel``, this unit has no fluid ports (no

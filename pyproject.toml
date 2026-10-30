@@ -48,7 +48,7 @@ solvers = ["highspy"]
 # `flexops.testing` (UnitModelTestHarness) imports pytest at runtime, so users
 # subclassing the harness in their own test suites need this extra.
 testing = ["pytest"]
-dev = ["pytest", "pytest-cov", "import-linter", "ruff", "black", "pre-commit", "diff-cover", "marimo", "matplotlib", "jsonschema"]
+dev = ["pytest", "pytest-cov", "pytest-xdist", "import-linter", "ruff", "black", "pre-commit", "diff-cover", "marimo", "matplotlib", "jsonschema"]
 docs = ["sphinx", "myst-parser", "furo"]
 
 [tool.coverage.run]

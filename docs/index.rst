@@ -23,6 +23,8 @@ schedule flexible industrial energy operations.
    explanation/energy_nomenclature
    explanation/reported_cost
    explanation/pass_through_and_bypass
+   explanation/degradation
+   explanation/boiler
    explanation/electrolyzer_model
 
 .. toctree::

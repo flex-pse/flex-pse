@@ -25,11 +25,14 @@ implemented.
 
 :func:`add_ramp_rate` is a further optional piece: it bounds how fast a
 continuous Var may change, step-to-step or over a multi-step window.
+:func:`add_degradation` is its soft counterpart: it prices wear drivers
+(variation, off-design operation, throughput) instead of forbidding them.
 """
 
 from flexops.logic.bypass import add_bypass
 from flexops.logic.conditional import add_conditional
 from flexops.logic.degeneracy import register_parallel_group
+from flexops.logic.degradation import add_degradation
 from flexops.logic.delays import add_startup_delay
 from flexops.logic.dwell import add_dwell
 from flexops.logic.ramp import add_ramp_rate
@@ -47,4 +50,5 @@ __all__ = [
     "register_parallel_group",
     "add_bypass",
     "add_ramp_rate",
+    "add_degradation",
 ]

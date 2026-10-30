@@ -65,8 +65,8 @@ them, with `**` changed to `^`.
 
 ## Assembly order
 
-`build_model` runs eight stages in a fixed order
-({data}`~flexops.core.stages.STAGES`): declare, topology, surrogates,
+`build_model` runs nine stages in a fixed order
+({data}`~flexops.core.stages.STAGES`): declare, topology, degradation, surrogates,
 ramping, logic, state, extensions, costing. Each kind belongs to one
 stage, and is either **mutable** (it can be changed on a built model) or not:
 
@@ -79,6 +79,7 @@ stage, and is either **mutable** (it can be changed on a built model) or not:
 | `plant` | topology | no |
 | `set` | topology | no |
 | `unit` | topology | no |
+| `degradation` | degradation | no |
 | `surrogate` | surrogates | yes |
 | `ramp` | ramping | no |
 | `status` | logic | no |
@@ -96,7 +97,9 @@ stage, and is either **mutable** (it can be changed on a built model) or not:
 
 Within the logic stage, kinds build in {data}`~flexops.core.stages.LOGIC_ORDER`:
 status first, because startup, conditional and parallel logic hang off a
-status binary, and logic between units last. **Costing is processed last
+status binary, and logic between units last. Degradation builds before
+surrogates, so a `surrogate` element can replace the wear relations it registers.
+**Costing is processed last
 because `cost_process` aggregates whatever is registered when it runs**: every
 power term a unit, a surrogate or an extension registers has to exist by then.
 
@@ -201,7 +204,7 @@ element, and a fix on some time points uses `at`. Bounds changed in code
 
 Each `flexops.logic` helper (except `relax` and `unrelax`, which are solve
 strategy) has one element kind: `status`, `startup_shutdown`, `dwell`, `bypass`,
-`ramp`, `startup_delay`, `conditional` and `parallel_group`. An element names
+`ramp`, `startup_delay`, `conditional`, `parallel_group` and `degradation`. An element names
 its unit and never sits inside it. The spec checks that every unit named exists
 and that nothing is set twice on the same unit. Two status rules are checked
 when the model is built, since only the unit knows them: logic needing an on/off

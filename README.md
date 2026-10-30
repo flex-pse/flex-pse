@@ -67,10 +67,6 @@ Apache 2.0 — see [`LICENSE`](LICENSE).
 
 ## Development
 
-This project is built milestone-by-milestone. See [`PLAN.md`](PLAN.md) for the
-roadmap and [`plan/00_conventions.md`](plan/00_conventions.md) for the rules
-that govern every change.
-
 Contributors use **conda**, not the published wheel: [`environment.yml`](environment.yml)
 pins the optimization stack (Python, `pyomo`, `idaes-pse`, `highspy`, `scip`) and
 installs the editable package through a `pip:` subsection, so

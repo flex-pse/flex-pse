@@ -158,6 +158,21 @@ def test_logic_on_an_indexed_unit_applies_to_every_member():
 
 
 @pytest.mark.unit
+def test_degradation_on_an_indexed_unit_bills_each_member_separately():
+    degradation = {
+        "kind": "degradation",
+        "unit": "p.ro",
+        "name": "wear",
+        "terms": [{"kind": "variation", "variable": "flow_in", "price": 1.0}],
+    }
+    model = build_model(spec(degradation, statuses=(), base=INDEXED))
+
+    assert all(m.find_component("wear_rate") is not None for m in model.p.ro.values())
+    billed = model.costing._registered_scalar_costs
+    assert [billed[f"ro[{i}]_wear"].unit for i in range(3)] == list(model.p.ro.values())
+
+
+@pytest.mark.unit
 def test_logic_on_a_member_applies_to_that_member_only():
     model = build_model(
         spec(

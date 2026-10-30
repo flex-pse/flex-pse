@@ -9,6 +9,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# No job waits on lint; it blocks merges as a required check instead.
 jobs:
   lint:
     name: lint
@@ -18,14 +19,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install -e ".[dev]"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - run: uv pip install --system -e ".[dev]"
       - run: ruff check .
       - run: black --check .
       - run: lint-imports
 
   unit-tests:
     name: unit-tests (${{ matrix.os }}, py${{ matrix.python-version }})
-    needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -33,10 +37,11 @@ jobs:
         # Full Python matrix on Linux; a single representative version on
         # macOS/Windows to confirm cross-OS behavior without paying the 10x
         # (macOS) / 2x (Windows) runner-minute multipliers on every version.
+        # The ubuntu/3.13 entry is the single coverage run.
         include:
           - { os: ubuntu-latest, python-version: "3.11" }
           - { os: ubuntu-latest, python-version: "3.12" }
-          - { os: ubuntu-latest, python-version: "3.13" }
+          - { os: ubuntu-latest, python-version: "3.13", coverage: true }
           - { os: ubuntu-latest, python-version: "3.14" }
           - { os: macos-latest, python-version: "3.13" }
           - { os: windows-latest, python-version: "3.13" }
@@ -45,57 +50,121 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev,solvers]"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      # The coverage run adds the [parameterize] extra (scikit-learn) because
+      # the flexparameterize floor was calibrated with it -- without it,
+      # LinearRegressor's real fit path never executes and flexparameterize
+      # coverage reads ~5pp low (82% -> 77%).
+      - name: Install
+        shell: bash
+        run: |
+          extras="dev,solvers"
+          if [ "${{ matrix.coverage }}" = "true" ]; then extras="$extras,parameterize"; fi
+          uv pip install --system -e ".[$extras]"
       - uses: ./.github/actions/setup-ipopt
-      - run: pytest -m "unit or component" --cov --cov-report=xml
-      - uses: codecov/codecov-action@v4
+
+      - name: Tests (unit + component, no coverage)
+        if: ${{ !matrix.coverage }}
+        run: pytest -n auto -m "unit or component"
+
+      # All tiers combined (unit+component+integration), one run: per-subpackage
+      # floors are actual - 2%, rounded down, from the coverage this suite
+      # reports as of M15 (94/96/82/100 -> 92/94/80/98). Denominator excludes
+      # */tests/* and flexops/testing/ (pyproject.toml [tool.coverage.run]).
+      - name: Tests (all tiers, with coverage)
+        if: ${{ matrix.coverage }}
+        run: >-
+          pytest -n auto
+          --cov=flexcore --cov=flexops --cov=flexparameterize --cov=flexschedule
+          --cov-report=xml --cov-report=term
+      - name: Coverage floors
+        if: ${{ matrix.coverage }}
+        run: |
+          coverage report --include="src/flexcore/*" --fail-under=92
+          coverage report --include="src/flexops/*" --fail-under=94
+          coverage report --include="src/flexparameterize/*" --fail-under=80
+          coverage report --include="src/flexschedule/*" --fail-under=98
+      # The only Codecov upload; keep codecov.yml's after_n_builds in step.
+      - if: ${{ matrix.coverage }}
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: unit
-  coverage-floors:
-    name: coverage-floors
-    needs: lint
+
+  integration:
+    name: integration
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install -e ".[dev,solvers,parameterize]"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - run: uv pip install --system -e ".[dev,solvers]"
       - uses: ./.github/actions/setup-ipopt
-      # All tiers combined (unit+component+integration), one run: per-subpackage
-      # floors are actual - 2%, rounded down, from the coverage this suite
-      # reports as of M15 (94/96/82/100 -> 92/94/80/98). Denominator excludes
-      # */tests/* and flexops/testing/ (pyproject.toml [tool.coverage.run]).
-      # The [parameterize] extra (scikit-learn) must be installed here so this
-      # job's environment matches the one the flexparameterize floor was
-      # calibrated against -- without it, LinearRegressor's real fit path never
-      # executes and flexparameterize coverage reads ~5pp low (82% -> 77%).
-      - run: pytest -q --cov=flexcore --cov=flexops --cov=flexparameterize --cov=flexschedule
-      - run: coverage report --include="src/flexcore/*" --fail-under=92
-      - run: coverage report --include="src/flexops/*" --fail-under=94
-      - run: coverage report --include="src/flexparameterize/*" --fail-under=80
-      - run: coverage report --include="src/flexschedule/*" --fail-under=98
+      # The integration set is empty until M12; pytest exits 5 (no tests
+      # collected) in that case, which is treated as success so this job is
+      # structural from day one rather than aspirational. When M12 lands:
+      # restore the OS/Python matrix, drop integration from the coverage run
+      # above, add --cov and a Codecov upload (flags: integration) here, and
+      # raise codecov.yml's after_n_builds to match.
+      - shell: bash
+        run: |
+          set +e
+          pytest -m integration
+          exit_code=$?
+          set -e
+          if [ "$exit_code" -eq 5 ]; then exit 0; fi
+          exit "$exit_code"
+
+  build-wheel:
+    name: build-wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build
+      - run: python -m build --wheel
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel
+          path: dist/*.whl
 
   standard-install:
     name: standard-install (py${{ matrix.python-version }})
-    needs: lint
+    needs: build-wheel
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13","3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install "git+${{ format('{0}/{1}@{2}', github.server_url, github.repository, github.ref) }}"
+      # No checkout here, so no cache-dependency-glob to key on.
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel
+          path: ${{ runner.temp }}/dist
+      - name: Install the wheel (no extras)
+        shell: bash
+        run: uv pip install --system "$(ls "$RUNNER_TEMP"/dist/*.whl)"
       # Run from a scratch dir (no repo checkout exists) so the *installed*
       # package is exercised.
       - working-directory: ${{ runner.temp }}
         run: |
           python - <<'PY'
           import importlib
-  
+
           modules = [
               "flexcore", "flexcore.config", "flexcore.solvers",
               "flexops", "flexops.core", "flexops.unit_models",
@@ -111,48 +180,9 @@ jobs:
           PY
       # flexops.testing imports pytest, so it needs the `testing` extra; the
       # bare install above deliberately does not carry it.
-      - run: pip install "flex-pse[testing] @ git+${{ format('{0}/{1}@{2}', github.server_url, github.repository, github.ref) }}"
+      - name: Install with the [testing] extra
+        shell: bash
+        run: uv pip install --system "$(ls "$RUNNER_TEMP"/dist/*.whl)[testing]"
       - working-directory: ${{ runner.temp }}
         run: |
           python -c "import flexops.testing; print('OK: flexops.testing with the [testing] extra')"
-
-  integration:
-    name: integration (${{ matrix.os }}, py${{ matrix.python-version }})
-    needs: lint
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # See unit-tests: full Python matrix on Linux, one version elsewhere.
-        include:
-          - { os: ubuntu-latest, python-version: "3.11" }
-          - { os: ubuntu-latest, python-version: "3.12" }
-          - { os: ubuntu-latest, python-version: "3.13" }
-          - { os: ubuntu-latest, python-version: "3.14" }
-          - { os: macos-latest, python-version: "3.13" }
-          - { os: windows-latest, python-version: "3.13" }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev,solvers]"
-      - uses: ./.github/actions/setup-ipopt
-      # The integration set is empty until M12; pytest exits 5 (no tests
-      # collected) in that case, which is treated as success so this job is
-      # structural from day one rather than aspirational. `shell: bash` forces
-      # Git Bash on the Windows runner so this script is identical on all OSes.
-      - shell: bash
-        run: |
-          set +e
-          pytest -m integration --cov --cov-report=xml
-          exit_code=$?
-          set -e
-          if [ "$exit_code" -eq 5 ]; then
-            exit 0
-          fi
-          exit "$exit_code"
-      - uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: integration

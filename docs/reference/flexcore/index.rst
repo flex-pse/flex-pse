@@ -171,6 +171,7 @@ elements, in any order. Pydantic is the schema authority, and
    StartupDelayElement
    ConditionalElement
    ParallelGroupElement
+   DegradationElement
    DispatchElement
    FixElement
    UnfixElement
@@ -205,6 +206,9 @@ Shared building blocks
    SurrogateType
    ExternalDispatchSpec
    UnitCommitmentConfig
+   DegradationSpec
+   DegradationTermSpec
+   DegradationTerm
    TimeConfig
    CostingConfig
    PriceSpec
