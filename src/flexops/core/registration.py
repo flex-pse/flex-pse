@@ -15,9 +15,11 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
+import pyomo.environ as pyo
+
 from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError
-from flexcore.nomenclature import PowerKind
+from flexcore.nomenclature import ELECTRICITY_RESOURCE, PowerKind
 
 
 class CoefficientRegistry:
@@ -265,6 +267,7 @@ class RelationRecord:
             here so ``switch_surrogate_block`` can reactivate them.
         spec: The spec the current surrogate was built from, or ``None`` for a
             surrogate built by hand (which a spec can't describe).
+        surrogate: The current surrogate object, or ``None`` before a swap.
     """
 
     constraint: Any
@@ -277,6 +280,7 @@ class RelationRecord:
     surrogate_block: Any = None
     surrogate_blocks: list = field(default_factory=list)
     spec: SurrogateSpec | None = None
+    surrogate: Any = None
 
 
 @dataclass
@@ -301,6 +305,46 @@ class BoundaryRecord:
 
 
 @dataclass
+class ResourceRecord:
+    """A contribution to a named resource added with ``register_resource``.
+
+    Attributes:
+        var: Time-indexed Pyomo ``Var`` or ``Reference``.
+        name: Local name of the variable on its unit block.
+        resource: Name the term is collected under.
+        coeff: Signed coefficient. Positive supplies the resource, negative
+            consumes it.
+        offset: Delay in steps. The term at ``t`` uses ``var[t - offset]``.
+    """
+
+    var: Any
+    name: str
+    resource: str
+    coeff: float
+    offset: int
+
+
+@dataclass
+class ResourceTerm:
+    """One variable's signed contribution to a resource, as a balance sees it.
+
+    Attributes:
+        resource: Name of the resource.
+        var: Time-indexed Pyomo ``Var`` or ``Reference``.
+        coeff: Signed coefficient. Positive supplies the resource, negative
+            consumes it.
+        offset: Delay in steps.
+        unit: Block that registered the variable, used in error messages.
+    """
+
+    resource: str
+    var: Any
+    coeff: float
+    offset: int
+    unit: Any
+
+
+@dataclass
 class IORegistry:
     """Container for everything a unit block registers.
 
@@ -317,6 +361,9 @@ class IORegistry:
         relations: Registered swappable relationships (see
             :class:`RelationRecord`).
         boundary: Registered boundary flows (feeds and products).
+        resources: Contributions added with ``register_resource``. Power,
+            fuel and boundary terms come from their own registrations (see
+            :func:`iter_resource_terms`).
     """
 
     io_variables: list[IOVariableRecord] = field(default_factory=list)
@@ -326,6 +373,7 @@ class IORegistry:
     intensity_basis: dict[PowerKind, str] = field(default_factory=dict)
     relations: list[RelationRecord] = field(default_factory=list)
     boundary: list[BoundaryRecord] = field(default_factory=list)
+    resources: list[ResourceRecord] = field(default_factory=list)
 
     def is_empty(self) -> bool:
         """Return True if nothing has been registered on this block."""
@@ -336,6 +384,7 @@ class IORegistry:
             or self.fuel
             or self.relations
             or self.boundary
+            or self.resources
         )
 
 
@@ -390,3 +439,46 @@ def iter_swapped_relations(model) -> Iterator[tuple[Any, RelationRecord]]:
         for record in registry.relations:
             if record.fitted is not None:
                 yield block, record
+
+
+def iter_resource_terms(block) -> dict[str, list[ResourceTerm]]:
+    """Collect every unit's signed contribution to each resource under ``block``.
+
+    Args:
+        block: A plant, network, unit (indexed or not) or the whole model.
+            Each registered block below it is read once.
+
+    Returns:
+        ``{resource: [ResourceTerm, ...]}`` with resources sorted by name.
+        Terms are in model order, and a block's ``register_resource`` terms
+        come after the ones from its power, fuel and boundary registrations.
+    """
+    terms: dict[str, list[ResourceTerm]] = {}
+    seen: set[int] = set()
+    blocks = [
+        block,
+        *block.component_data_objects(pyo.Block, descend_into=True, active=True),
+    ]
+    for candidate in blocks:
+        if id(candidate) in seen:
+            continue
+        seen.add(id(candidate))
+        registry = getattr(candidate, "_io_registry", None)
+        if not isinstance(registry, IORegistry):
+            continue
+
+        def add(resource, var, coeff, offset=0, _unit=candidate):
+            terms.setdefault(resource, []).append(
+                ResourceTerm(resource, var, coeff, offset, _unit)
+            )
+
+        for rec in registry.boundary:
+            add(rec.resource, rec.var, 1.0 if rec.kind is BoundaryKind.FEED else -1.0)
+        for rec in registry.power:
+            if rec.kind is PowerKind.ELECTRICAL:
+                add(ELECTRICITY_RESOURCE, rec.var, -1.0)
+        for rec in registry.fuel:
+            add(rec.fuel_name, rec.var, -1.0)
+        for rec in registry.resources:
+            add(rec.resource, rec.var, rec.coeff, rec.offset)
+    return {resource: terms[resource] for resource in sorted(terms)}

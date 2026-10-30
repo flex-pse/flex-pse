@@ -171,6 +171,7 @@ elements, in any order. Pydantic is the schema authority, and
    StartupDelayElement
    ConditionalElement
    ParallelGroupElement
+   ResourceElement
    DegradationElement
    DispatchElement
    FixElement

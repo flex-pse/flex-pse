@@ -65,9 +65,9 @@ them, with `**` changed to `^`.
 
 ## Assembly order
 
-`build_model` runs nine stages in a fixed order
+`build_model` runs ten stages in a fixed order
 ({data}`~flexops.core.stages.STAGES`): declare, topology, degradation, surrogates,
-ramping, logic, state, extensions, costing. Each kind belongs to one
+ramping, logic, resources, state, extensions, costing. Each kind belongs to one
 stage, and is either **mutable** (it can be changed on a built model) or not:
 
 | Kind | Stage | Mutable |
@@ -89,6 +89,7 @@ stage, and is either **mutable** (it can be changed on a built model) or not:
 | `startup_delay` | logic | no |
 | `conditional` | logic | no |
 | `parallel_group` | logic | no |
+| `resource` | resources | no |
 | `dispatch` | state | yes |
 | `fix` | state | yes |
 | `unfix` | state | yes |
@@ -97,11 +98,13 @@ stage, and is either **mutable** (it can be changed on a built model) or not:
 
 Within the logic stage, kinds build in {data}`~flexops.core.stages.LOGIC_ORDER`:
 status first, because startup, conditional and parallel logic hang off a
-status binary, and logic between units last. Degradation builds before
-surrogates, so a `surrogate` element can replace the wear relations it registers.
-**Costing is processed last
-because `cost_process` aggregates whatever is registered when it runs**: every
-power term a unit, a surrogate or an extension registers has to exist by then.
+status binary, and logic between units last. The `resources` stage runs after
+`logic`, since a balance sums what units and their logic registered, and
+before `state`, so a `fix` can name a balance's variables. Degradation builds
+before surrogates, so a `surrogate` element can replace the wear relations it
+registers. **Costing is processed last because `cost_process` aggregates
+whatever is registered when it runs**: every power term a unit, a surrogate or
+an extension registers has to exist by then.
 
 ## Mutable and immutable kinds
 
@@ -368,6 +371,10 @@ rebuilds it.
 
 ```{eval-rst}
 .. flexops-config-table:: flexcore.config.spec.ParallelGroupElement
+```
+
+```{eval-rst}
+.. flexops-config-table:: flexcore.config.spec.ResourceElement
 ```
 
 ```{eval-rst}

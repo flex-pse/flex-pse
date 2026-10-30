@@ -183,6 +183,7 @@ def test_stages_order_is_fixed():
         "surrogates",
         "ramping",
         "logic",
+        "resources",
         "state",
         "extensions",
         "costing",

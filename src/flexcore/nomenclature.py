@@ -30,6 +30,10 @@ POWER_ELECTRICAL = "power_electrical"
 POWER_THERMAL = "power_thermal"
 """str: name of a unit's thermal duty Var (kW), registered at a temperature."""
 
+ELECTRICITY_RESOURCE = "electricity"
+"""str: resource name electrical power is collected under. A draw consumes it,
+an export supplies it."""
+
 FUEL_USAGE = "fuel_usage"
 """str: name of a fuel-usage Var — a volumetric flow in m³/hr, **not** a power.
 A unit burning one named fuel uses ``f"{FUEL_USAGE}_{fuel_name}"`` (e.g.

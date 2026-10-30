@@ -71,6 +71,18 @@ one to three balance constraints as difference equations against
   the property package), and exposes the ports through the inherited IDAES
   `add_inlet_port`/`add_outlet_port` helpers.
 
+### Resource terms, a signed list of what each unit adds or takes
+
+A resource is anything a plant balances, like a water stream, a fuel or
+electricity. {func}`~flexops.core.registration.iter_resource_terms` lists
+which variables add to or take from each resource, and with what sign, for a
+plant, a network, a unit or the whole model. It doesn't build any constraints.
+It reads the power, fuel and boundary registrations units already make, so a
+unit never registers the same variable twice.
+{meth}`~flexops.core.ops_block.OpsBlockData.register_resource` covers anything
+else. See {doc}`resources` for the sign table and how a balance uses these
+terms.
+
 ### Property packages, a parameter block plus state blocks
 
 A property package is an IDAES `PhysicalParameterBlock` (the *parameter
