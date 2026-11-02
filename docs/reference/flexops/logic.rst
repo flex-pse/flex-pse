@@ -43,6 +43,17 @@ Ramp rate
 
 .. autofunction:: add_ramp_rate
 
+Degradation penalty
+-------------------
+
+.. currentmodule:: flexops.logic.degradation
+
+.. autofunction:: add_degradation
+
+``add_degradation`` is the soft counterpart of ``add_ramp_rate``: it prices
+wear drivers instead of forbidding them. See
+:doc:`../../explanation/degradation` for the formulation.
+
 Bypass and implications
 -----------------------
 

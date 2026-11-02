@@ -164,3 +164,44 @@ def test_unit_tier_forbids_solve():
     fac = SolverFacade(name="highs", problem_class=ProblemClass.LP)
     with pytest.raises(RuntimeError, match="forbidden"):
         fac.solve(pyo.ConcreteModel())
+
+
+@pytest.mark.unit
+def test_highs_warmstart_routes_through_appsi_highs(monkeypatch):
+    """The default highs interface rejects warmstart, so it routes via appsi_highs."""
+    made = []
+    monkeypatch.setattr(facade.pyo, "SolverFactory", lambda name: made.append(name))
+    facade._pyomo_solver("highs", warmstart=True)
+    facade._pyomo_solver("highs")
+    facade._pyomo_solver("gurobi", warmstart=True)
+    assert made == ["appsi_highs", "highs", "gurobi"]
+
+
+@pytest.mark.unit
+def test_get_solver_defaults_to_direct_strategy_and_default_profile(monkeypatch):
+    from flexcore.solvers import Direct, SolverSettings
+
+    monkeypatch.setattr(
+        facade, "available_solvers", lambda: {"highs": {ProblemClass.LP}}
+    )
+    chosen = get_solver(problem_class=ProblemClass.LP)
+    assert chosen.strategy == Direct()
+    assert chosen.settings is SolverSettings.DEFAULT
+    assert chosen.last_report is None
+
+
+@pytest.mark.unit
+def test_get_solver_passes_strategy_and_profile_through(monkeypatch):
+    from flexcore.solvers import RelaxAndFix, SolverSettings
+
+    monkeypatch.setattr(
+        facade, "available_solvers", lambda: {"gurobi": {ProblemClass.MILP}}
+    )
+    strategy = RelaxAndFix(fix_tol=0.2)
+    chosen = get_solver(
+        problem_class=ProblemClass.MILP,
+        settings=SolverSettings.UNIT_COMMITMENT,
+        strategy=strategy,
+    )
+    assert chosen.strategy is strategy
+    assert chosen.settings is SolverSettings.UNIT_COMMITMENT

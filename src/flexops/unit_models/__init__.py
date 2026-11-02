@@ -16,6 +16,7 @@ from flexops.unit_models.exchanger import Exchanger
 from flexops.unit_models.feed import Feed
 from flexops.unit_models.grid_connection import GridConnection
 from flexops.unit_models.mixer import Mixer
+from flexops.unit_models.powergeneration.boiler import Boiler
 from flexops.unit_models.powergeneration.combustor import Combustor
 from flexops.unit_models.powergeneration.generic_renewables import GenericRenewables
 from flexops.unit_models.product import Product
@@ -28,6 +29,7 @@ from flexops.unit_models.wastewater.digestor import Digestor
 
 __all__ = [
     "BatteryModel",
+    "Boiler",
     "CO2Electrolyzer",
     "Combustor",
     "ConstantEnergyIntensityModel",

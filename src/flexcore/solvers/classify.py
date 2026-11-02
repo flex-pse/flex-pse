@@ -3,7 +3,8 @@
 The classifier walks a model's *active* constraints and objective, inspects
 each expression's polynomial degree, and inspects which variables are discrete,
 to decide the smallest problem class that describes the model. It never
-transforms the model — it only reports.
+transforms the model — it only reports. The result is cached on the model and
+reused until a cheap structural fingerprint changes.
 """
 
 import enum
@@ -56,6 +57,37 @@ def _shape(degree: int | None) -> int:
     return _NONLINEAR
 
 
+def _fingerprint(model: pyo.ConcreteModel) -> tuple[frozenset[int], ...]:
+    """Identify the model features that can change its problem class.
+
+    Args:
+        model: A constructed Pyomo model.
+
+    Returns:
+        The ids of ``(active constraints, active objectives, fixed vars, unfixed
+        discrete vars)``.
+    """
+    cons = frozenset(
+        id(c)
+        for c in model.component_data_objects(
+            pyo.Constraint, active=True, descend_into=True
+        )
+    )
+    objs = frozenset(
+        id(o)
+        for o in model.component_data_objects(
+            pyo.Objective, active=True, descend_into=True
+        )
+    )
+    fixed, discrete = set(), set()
+    for var in model.component_data_objects(pyo.Var, descend_into=True):
+        if var.fixed:
+            fixed.add(id(var))
+        elif var.is_integer():
+            discrete.add(id(var))
+    return cons, objs, frozenset(fixed), frozenset(discrete)
+
+
 def classify(model: pyo.ConcreteModel) -> ProblemClass:
     """Classify a Pyomo model into a :class:`ProblemClass`.
 
@@ -66,6 +98,11 @@ def classify(model: pyo.ConcreteModel) -> ProblemClass:
     classifies ``NLP``, not ``QP``: only a quadratic *objective* over
     all-linear constraints is ``QP`` (smallest choice consistent with
     the QP capability matrix).
+
+    The result is cached on the model and reused while the sets of active
+    constraints, active objectives, fixed variables, and unfixed discrete
+    variables are unchanged. Replacing a constraint's expression in place
+    is not detected.
 
     Args:
         model: A constructed Pyomo model to classify.
@@ -82,6 +119,24 @@ def classify(model: pyo.ConcreteModel) -> ProblemClass:
         >>> m.obj = pyo.Objective(expr=m.x)
         >>> classify(m) is ProblemClass.LP
         True
+    """
+    fingerprint = _fingerprint(model)
+    cached = getattr(model, "_flexcore_problem_class", None)
+    if cached is not None and cached[0] == fingerprint:
+        return cached[1]
+    problem_class = _classify_uncached(model)
+    model._flexcore_problem_class = (fingerprint, problem_class)
+    return problem_class
+
+
+def _classify_uncached(model: pyo.ConcreteModel) -> ProblemClass:
+    """Walk the model's active constraints and objectives to find its class.
+
+    Args:
+        model: A constructed Pyomo model to classify.
+
+    Returns:
+        The problem class.
     """
     constraint_shape = _LINEAR
     objective_shape = _LINEAR

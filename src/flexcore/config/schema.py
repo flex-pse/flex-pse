@@ -127,6 +127,119 @@ class PropertyPackageSpec(_StrictModel):
     )
 
 
+class DegradationTerm(enum.StrEnum):
+    """Which wear driver a DegradationTermSpec charges for."""
+
+    VARIATION = "variation"
+    DEVIATION = "deviation"
+    EXCEEDANCE = "exceedance"
+    THROUGHPUT = "throughput"
+
+
+class DegradationTermSpec(_StrictModel):
+    """One priced wear driver of a unit variable, valued in that variable's units."""
+
+    kind: DegradationTerm = Field(
+        description="Wear driver: variation (change from window steps earlier), "
+        "deviation (distance from reference), exceedance (excursion outside "
+        "lower/upper), or throughput (the variable itself)."
+    )
+    variable: str = Field(
+        description="Name of the time-indexed variable on the unit (dotted names "
+        "into a sub-block resolve)."
+    )
+    price: float = Field(
+        ge=0,
+        allow_inf_nan=False,
+        description="Cost in the model currency per unit of change for variation, "
+        "or per unit of the variable held for one hour for the other kinds.",
+    )
+    deadband: float = Field(
+        default=0.0,
+        ge=0,
+        allow_inf_nan=False,
+        description="Free amount per step, in the variable's units; only the "
+        "excess beyond it is charged (a deadband). Not used by exceedance.",
+    )
+    window: int = Field(
+        default=1,
+        ge=1,
+        description="Variation only: number of steps back the change is measured. "
+        "Each move falls in window overlapping windows, so the charge is divided "
+        "by window to keep price per unit of change.",
+    )
+    reference: float | None = Field(
+        default=None,
+        allow_inf_nan=False,
+        description="Deviation only (required): the target value.",
+    )
+    lower: float | None = Field(
+        default=None,
+        allow_inf_nan=False,
+        description="Exceedance only: the charge-free lower bound.",
+    )
+    upper: float | None = Field(
+        default=None,
+        allow_inf_nan=False,
+        description="Exceedance only: the charge-free upper bound.",
+    )
+
+    @model_validator(mode="after")
+    def _check_kind_fields(self) -> "DegradationTermSpec":
+        """Require each kind's own fields and reject the fields of other kinds."""
+        is_kind = {
+            "reference": self.kind is DegradationTerm.DEVIATION,
+            "lower": self.kind is DegradationTerm.EXCEEDANCE,
+            "upper": self.kind is DegradationTerm.EXCEEDANCE,
+        }
+        for field, allowed in is_kind.items():
+            if not allowed and getattr(self, field) is not None:
+                raise ValueError(f"{field} is not used by a {self.kind} term.")
+        if self.kind is DegradationTerm.DEVIATION and self.reference is None:
+            raise ValueError("A deviation term requires a reference.")
+        if self.kind is DegradationTerm.EXCEEDANCE:
+            if self.lower is None and self.upper is None:
+                raise ValueError("An exceedance term requires lower and/or upper.")
+            if self.deadband:
+                raise ValueError("An exceedance term's bounds are its deadband.")
+            if None not in (self.lower, self.upper) and self.lower > self.upper:
+                raise ValueError("An exceedance term's lower exceeds its upper.")
+        if self.kind is not DegradationTerm.VARIATION and self.window != 1:
+            raise ValueError("window is only used by a variation term.")
+        return self
+
+
+class DegradationSpec(_StrictModel):
+    """A named, priced degradation penalty on a unit: a sum of wear-driver terms."""
+
+    name: str = Field(description="Name of the penalty, unique on its unit.")
+    terms: list[DegradationTermSpec] = Field(
+        min_length=1, description="The priced wear drivers that are summed."
+    )
+    covered_cost: float = Field(
+        default=0.0,
+        ge=0,
+        allow_inf_nan=False,
+        description="Free wear cost per period, in the model currency; only cost "
+        "beyond it is charged.",
+    )
+    horizon_budget: float | None = Field(
+        default=None,
+        ge=0,
+        allow_inf_nan=False,
+        description="Optional hard cap on wear cost per period, in the model "
+        "currency.",
+    )
+    period_hours: float | None = Field(
+        default=None,
+        gt=0,
+        allow_inf_nan=False,
+        description="Length of the period covered_cost and horizon_budget "
+        "are stated for (e.g. 730 for a month); they are prorated to the modeled "
+        "horizon. None means they are stated for the modeled horizon.",
+    )
+
+
 class UnitConfig(_StrictModel):
     """A single unit model: its class, construction options, and IO/logic."""
 

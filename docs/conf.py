@@ -58,6 +58,8 @@ nitpick_ignore = [
     # pydantic's NonNegativeFloat is Annotated[float, annotated_types.Ge(0)],
     # and annotated_types has no intersphinx target.
     ("py:class", "annotated_types.Ge"),
+    # Pyomo's TerminationCondition enum has no intersphinx target.
+    ("py:class", "pyomo.opt.results.solver.TerminationCondition"),
     # A Field(pattern=...) renders its pydantic metadata, which has no target.
     ("py:class", "_PydanticGeneralMetadata"),
     ("py:class", "FieldInfo"),
@@ -70,6 +72,9 @@ nitpick_ignore = [
 # resolve fine; ignore only these signature-parsing fragments.
 nitpick_ignore_regex = [
     ("py:class", r"dict\[.*"),
+    # pydantic Field constraints (ge=, gt=, min_length=) render as annotated_types
+    # metadata classes, which have no intersphinx target.
+    ("py:class", r"annotated_types\..*"),
 ]
 
 html_theme = "furo"

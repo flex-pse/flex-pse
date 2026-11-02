@@ -107,6 +107,29 @@ def test_build_model_bad_config_raises():
 
 
 @pytest.mark.unit
+def test_build_model_applies_and_prices_configured_degradation():
+    """A degradation element is built on its unit and billed through costing."""
+    cfg = _demo_dict()
+    cfg["elements"].append(
+        {
+            "kind": "degradation",
+            "unit": "demo.surrogate",
+            "name": "wear",
+            "terms": [
+                {"kind": "variation", "variable": "power_electrical", "price": 1.5}
+            ],
+        }
+    )
+
+    model = build_model(cfg)
+
+    unit = model.demo.surrogate
+    assert unit.find_component("wear_rate") is not None
+    assert pyo.value(unit.wear_0_price) == 1.5
+    assert model.costing.opex.find_component("scalar_cost_surrogate_wear") is not None
+
+
+@pytest.mark.unit
 def test_parse_units_multi_factor_and_exponent():
     """Compact unit strings parse into the expected dimensioned quantity."""
     assert pyo.value(

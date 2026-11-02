@@ -22,6 +22,7 @@ from pydantic import (
 
 from flexcore.config.schema import (
     CostingConfig,
+    DegradationSpec,
     DRConfig,
     IOVariableSpec,
     PriceSpec,
@@ -43,6 +44,7 @@ KINDS: dict[str, tuple[str, bool]] = {
     "plant": ("topology", False),
     "set": ("topology", False),
     "unit": ("topology", False),
+    "degradation": ("degradation", False),
     "surrogate": ("surrogates", True),
     "ramp": ("ramping", False),
     "status": ("logic", False),
@@ -543,6 +545,18 @@ class ParallelGroupElement(_StrictModel):
     name: str | None = _label_field()
 
 
+class DegradationElement(DegradationSpec):
+    """A priced degradation (wear) penalty on a unit's variables."""
+
+    kind: Literal["degradation"]
+    unit: str = _unit_field()
+    costing_package: str | None = Field(
+        default=AUTO,
+        description="Name of the costing element the wear cost is billed to. "
+        "'auto' means the model's only one; null leaves it unbilled.",
+    )
+
+
 class ExtensionElement(_StrictModel):
     """A user function that adds constraints or an objective to the model.
 
@@ -598,6 +612,7 @@ Element = Annotated[
     | StartupDelayElement
     | ConditionalElement
     | ParallelGroupElement
+    | DegradationElement
     | DispatchElement
     | FixElement
     | UnfixElement
@@ -636,6 +651,7 @@ LOGIC_KINDS = (
     "startup_delay",
     "conditional",
     "parallel_group",
+    "degradation",
 )
 """Kinds that add operating logic to units they name."""
 
@@ -652,6 +668,7 @@ TARGET_FIELDS: dict[str, tuple[str, ...]] = {
     "startup_delay": ("unit",),
     "conditional": ("unit",),
     "parallel_group": ("units",),
+    "degradation": ("unit", "name"),
 }
 """Kind -> the fields that say what an element sets; two equal targets clash."""
 
@@ -807,10 +824,13 @@ class FlowsheetSpec(_StrictModel):
 
     @model_validator(mode="after")
     def _packages_resolve(self) -> "FlowsheetSpec":
-        """Require each unit's and the objective's packages to resolve."""
+        """Require every unit, degradation and objective package to resolve."""
         for el in self.of_kind("unit"):
             label = f"unit {el.name!r}"
             self._check_package(label, el.property_package, "property_package")
+            self._check_package(label, el.costing_package, "costing")
+        for el in self.of_kind("degradation"):
+            label = f"degradation {el.name!r} on {el.unit!r}"
             self._check_package(label, el.costing_package, "costing")
         for el in self.of_kind("objective"):
             if el.expression == "cost":

@@ -17,6 +17,7 @@ from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.properties.simple_gas import SimpleGasFlow
 from flexops.unit_models import (
     BatteryModel,
+    Boiler,
     CO2Electrolyzer,
     Combustor,
     ConstantEnergyIntensityModel,
@@ -39,12 +40,15 @@ from flexops.unit_models import (
 )
 from flexops.unit_models.electrolyzer import ElectrolyzerTechnology, ProductPhase
 from flexops.unit_models.mixer import MixerTemperatureRule
+from flexops.unit_models.powergeneration.boiler import BoilerType
 from flexops.unit_models.powergeneration.combustor import CombustorPowerRelation
 
 __version__ = _dist_version("flex-pse")
 
 __all__ = [
     "BatteryModel",
+    "Boiler",
+    "BoilerType",
     "BoundaryKind",
     "CO2Electrolyzer",
     "Combustor",

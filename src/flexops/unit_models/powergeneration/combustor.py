@@ -98,6 +98,13 @@ from flexcore.config.schema import SurrogateType
 from flexcore.exceptions import FlexConfigError
 from flexops.core.ops_block import OpsBlockData
 from flexops.surrogates import surrogate_from_spec
+from flexops.unit_models.powergeneration.utils import (
+    heating_value_mismatch,
+    heating_values_domain,
+    inlet_names_domain,
+    utility_fuel_source_domain,
+    validate_fuel_sources,
+)
 
 _HEATING_VALUE_UNITS = pyunits.kWh / pyunits.m**3
 
@@ -111,31 +118,6 @@ class CombustorPowerRelation(enum.StrEnum):
 
     HEATING_VALUE = "heating_value"
     CONSTANT_INTENSITY = "constant_intensity"
-
-
-def _inlet_names_domain(value) -> tuple[str, ...]:
-    """ConfigValue domain: coerce to a tuple, or accept None.
-
-    ``None`` is a valid sentinel meaning "no inlets"; actual validation
-    happens in :meth:`CombustorData._validate_inlet_names`.
-    """
-    if value is None:
-        return None
-    return tuple(value)
-
-
-def _heating_values_domain(value):
-    """ConfigValue domain: ``None``, or a mapping of inlet name to a quantity."""
-    if value is None:
-        return None
-    if not isinstance(value, Mapping):
-        raise FlexConfigError(
-            "heating_values must be a mapping of inlet name to heating "
-            f"value, got {type(value).__name__}.",
-            field="heating_values",
-            value=value,
-        )
-    return dict(value)
 
 
 def _air_to_fuel_ratio_domain(value):
@@ -156,30 +138,6 @@ def _efficiency_domain(value):
     raise FlexConfigError(
         f"efficiency must be a float in (0, 1], got {value!r}.",
         field="efficiency",
-        value=value,
-    )
-
-
-def _utility_fuel_source_domain(value):
-    """ConfigValue domain: None, a single fuel name, or a tuple of fuel names."""
-    if value is None:
-        return None
-    if isinstance(value, str):
-        return (value,)
-    if isinstance(value, (list, tuple)):
-        result = tuple(value)
-        if not all(isinstance(v, str) and v for v in result):
-            raise FlexConfigError(
-                "utility_fuel_source must contain non-empty strings; "
-                f"got {result!r}.",
-                field="utility_fuel_source",
-                value=value,
-            )
-        return result
-    raise FlexConfigError(
-        "utility_fuel_source must be None, a string, or a list/tuple of "
-        f"strings; got {type(value).__name__}.",
-        field="utility_fuel_source",
         value=value,
     )
 
@@ -332,7 +290,7 @@ class CombustorData(OpsBlockData):
         "inlet_names",
         ConfigValue(
             default=None,
-            domain=_inlet_names_domain,
+            domain=inlet_names_domain,
             description="Role names of the combustor's gas inlets; inlet i is "
             "built as port f'inlet_{name}'. Must be unique and non-empty when "
             "given. Defaults to None, meaning no inlet ports are built; "
@@ -343,7 +301,7 @@ class CombustorData(OpsBlockData):
         "heating_values",
         ConfigValue(
             default=None,
-            domain=_heating_values_domain,
+            domain=heating_values_domain,
             description="Mapping of fuel name to its lower heating value per "
             "unit volume (a fixed, regressable Var per fuel once built, "
             "kWh/m^3). A value for every fuel source -- both inlets in "
@@ -396,7 +354,7 @@ class CombustorData(OpsBlockData):
         "utility_fuel_source",
         ConfigValue(
             default=None,
-            domain=_utility_fuel_source_domain,
+            domain=utility_fuel_source_domain,
             description="Fuel names pulled from utilities rather than connected "
             "via inlet ports. Accepts a single name or a list of names; these "
             "names are independent of ``inlet_names`` and must not overlap with "
@@ -453,35 +411,14 @@ class CombustorData(OpsBlockData):
         ``utility_fuel_source`` to be set. An explicit empty tuple has the
         same meaning and requirement.
         """
-        names = self.config.inlet_names
-
-        if names is None:
-            names = ()
-            self.config._data["inlet_names"].set_value(names)
-
-        if not names:
-            if not self.config.utility_fuel_source:
-                raise FlexConfigError(
-                    "inlet_names is empty and no utility_fuel_source is given; "
-                    "pass utility_fuel_source to run without inlet ports, or "
-                    "pass one or more inlet names.",
-                    field="inlet_names",
-                    value=names,
-                )
-            return
-        if not all(isinstance(n, str) and n for n in names):
-            raise FlexConfigError(
-                f"inlet_names must be one or more non-empty strings, got "
-                f"{names!r}.",
-                field="inlet_names",
-                value=names,
-            )
-        if len(set(names)) != len(names):
-            raise FlexConfigError(
-                f"inlet_names must be unique, got {names!r}.",
-                field="inlet_names",
-                value=names,
-            )
+        if self.config.inlet_names is None:
+            self.config._data["inlet_names"].set_value(())
+        validate_fuel_sources(
+            self.config.inlet_names,
+            self.config.utility_fuel_source,
+            inlet_field="inlet_names",
+            require_any=True,
+        )
 
     def _flow_phase(self) -> str:
         """Return the property package's one phase.
@@ -510,20 +447,19 @@ class CombustorData(OpsBlockData):
                 fuel sources (inlets and utility fuel sources), or if an
                 option the resolved relation ignores was explicitly set.
         """
-        heating_values = self.config.heating_values or {}
-        inlet_names = set(self.config.inlet_names)
-        utility_names = set(self.config.utility_fuel_source or [])
-        all_fuel_names = inlet_names | utility_names
-        hv_names = set(heating_values)
+        all_fuel_names = set(self.config.inlet_names) | set(
+            self.config.utility_fuel_source or []
+        )
+        missing, unknown = heating_value_mismatch(
+            self.config.heating_values, all_fuel_names
+        )
         user_set = {v.name() for v in self.config.user_values()}
 
-        if not hv_names:
+        if not self.config.heating_values:
             relation = CombustorPowerRelation.CONSTANT_INTENSITY
-        elif hv_names == all_fuel_names:
+        elif not missing and not unknown:
             relation = CombustorPowerRelation.HEATING_VALUE
         else:
-            missing = sorted(all_fuel_names - hv_names)
-            unknown = sorted(hv_names - all_fuel_names)
             detail = ", ".join(
                 part
                 for part in (
@@ -567,26 +503,9 @@ class CombustorData(OpsBlockData):
     # -- fuel usage and blend ratio -------------------------------------------
 
     def _validate_fuel_config(self) -> None:
-        """Validate utility_fuel_source and blend_ratio."""
+        """Validate blend_ratio against the known fuel sources."""
         utility_fuels = self.config.utility_fuel_source
         blend_ratio = self.config.blend_ratio
-
-        if utility_fuels is not None:
-            if len(set(utility_fuels)) != len(utility_fuels):
-                raise FlexConfigError(
-                    "utility_fuel_source names must be unique, "
-                    f"got {list(utility_fuels)!r}.",
-                    field="utility_fuel_source",
-                    value=self.config.utility_fuel_source,
-                )
-            overlap = set(utility_fuels) & set(self.config.inlet_names)
-            if overlap:
-                raise FlexConfigError(
-                    "utility_fuel_source names must not overlap with "
-                    f"inlet_names; duplicate(s): {sorted(overlap)}.",
-                    field="utility_fuel_source",
-                    value=self.config.utility_fuel_source,
-                )
 
         if blend_ratio is not None:
             all_names = set(self.config.inlet_names) | set(utility_fuels or [])
