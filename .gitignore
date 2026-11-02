@@ -226,3 +226,4 @@ __marimo__/
 
 # Local planning notes (kept on disk, not tracked)
 plan/
+*.zip
