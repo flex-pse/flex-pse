@@ -447,7 +447,7 @@ class ArimaRegressor:
 
     @property
     def forecast_horizon(self) -> int | pd.Timedelta:
-        """The requested free-run window: an int number of steps, or a
+        """The requested free-run window, as an int number of steps or a
         ``pd.Timedelta``.
 
         A duration is converted to steps on each :meth:`fit`, from that fit's
