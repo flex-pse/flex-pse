@@ -9,52 +9,35 @@ The model is regression with ARIMA errors, the same equation
 
 Every function here takes one flat parameter vector ``theta`` laid out as
 ``[c?, ar_1..ar_p, ma_1..ma_q, beta_1..beta_k]``, with the layout described
-by an :class:`ArimaTerms`. Two fitting criteria are supported:
-
-- *equation error*: the one-step innovations ``eps``, computed from actual
-  lagged values (:func:`equation_error_residuals`);
-- *output error*: the error of a free run that feeds its own predictions
-  back as lags with innovations held at zero, which is what the surrogate
-  does when it forecasts (:func:`output_error_residuals`).
+by an :class:`ArimaTerms`. The fit minimizes one criterion, set by the
+forecast horizon ``H``: the error of free runs over consecutive ``H``-step
+windows, each seeded from actual data, that feed their own predictions back
+as lags with innovations held at zero, which is what the surrogate does when
+it forecasts (:func:`output_error_residuals`). At ``H=1`` that is exactly
+the one-step innovations ``eps`` (equation error), computed by the
+vectorized :func:`equation_error_residuals`.
 """
 
 from __future__ import annotations
 
+import datetime
 import math
 from dataclasses import dataclass
-from types import MethodType
 
 import numpy as np
 import pandas as pd
-import pyomo.environ as pyo
-from dateutil.relativedelta import relativedelta
-from pyomo.environ import units as pyunits
 from scipy.optimize import least_squares
 from scipy.signal import lfilter, lfiltic
 
 from flexcore.exceptions import FlexConfigError, FlexDataError
-from flexcore.logger import get_logger
-from flexcore.solvers import ProblemClass, get_solver
-from flexops.core.time_block import TimeBlock
-from flexops.core.units import parse_units
-from flexops.surrogates.arima import ArimaSurrogate
 
-_log = get_logger(__name__)
-
-# Bound applied to every MA coefficient in an output-error fit, under both
-# solvers. The free-run objective barely sees the MA block (it only reaches
+# Bound applied to every MA coefficient in a fit with forecast_horizon > 1.
+# The free-run objective barely sees the MA block (it only reaches
 # the first q steps of each window), so unbounded it trades MA against the
 # bounded AR block and drives the MA roots outside the unit circle. The
 # forecast seeds its MA lags from the one-step residuals, which such a block
 # makes explode: measured first-step forecasts of ~1e6 on biogas data.
 MA_BOUND = 0.99
-
-# Upper bound on the automatically chosen free-run window. The best horizon
-# is the one the caller actually forecasts over, which cannot be inferred, so
-# "auto" spans the data up to this cap. Measured on 5757 rows, an uncapped
-# window left the d=0 objective so flat that least_squares ground to its
-# evaluation limit (120-140 s) while 192 steps took under 8 s, no worse.
-AUTO_MAX_HORIZON = 192
 
 
 @dataclass(frozen=True)
@@ -126,24 +109,6 @@ class ArimaTerms:
         names += [f"ar.L{j}" for j in range(1, self.p + 1)]
         names += [f"ma.L{j}" for j in range(1, self.q + 1)]
         return names + [f"exog.{name}" for name in exog_names]
-
-
-def auto_forecast_horizon(n_rows: int, terms: ArimaTerms) -> int:
-    """Return the default free-run window length for ``n_rows`` of data.
-
-    Prefer an explicit ``forecast_horizon``: the best value is the horizon
-    you intend to forecast over, and no rule here can infer it.
-
-    Args:
-        n_rows: Number of rows the fit will use.
-        terms: The model structure.
-
-    Returns:
-        The usable row count capped at :data:`AUTO_MAX_HORIZON`, raised if
-        needed so a window outlasts the rows seeding it.
-    """
-    usable = max(n_rows - terms.seed, 1)
-    return max(min(usable, AUTO_MAX_HORIZON), terms.seed + 1)
 
 
 def ma_max_root(ma_coefs) -> float:
@@ -295,6 +260,13 @@ def output_error_residuals(
     window is seeded from actual data and then free-runs (:func:`free_run`).
     An error that accumulates over a forecast -- above all the ``d=1`` drift
     -- is charged its accumulated cost here rather than its per-step cost.
+    Restarting from data keeps each run grounded and the objective well
+    conditioned: on 5757 rows, one window over the whole series left the
+    ``d=0`` objective so flat that ``least_squares`` ground to its evaluation
+    limit (120-140 s), while 192-step windows took under 8 s, no worse.
+
+    The first window starts where :func:`equation_error_residuals` does, so
+    at ``horizon=1`` the two return the same residuals.
 
     Args:
         theta: Flat parameter vector.
@@ -304,12 +276,14 @@ def output_error_residuals(
         horizon: Window length in steps, at least 1.
 
     Returns:
-        Level-scale residuals from row ``terms.seed`` onward. The exogenous
-        contribution cancels, so each is ``eta[t]`` less its simulation.
+        Level-scale residuals from row ``max(p, q) + d`` onward. The
+        exogenous contribution cancels, so each is ``eta[t]`` less its
+        simulation.
     """
     eta, eps = one_step_innovations(theta, terms, y, x)
     residuals = [np.zeros(0)]
-    for start in range(terms.seed, len(eta), horizon):
+    first = max(terms.p, terms.q) + terms.d
+    for start in range(first, len(eta), horizon):
         steps = min(horizon, len(eta) - start)
         history = seed_history(terms, eta, eps, start)
         residuals.append(
@@ -536,29 +510,30 @@ def fit_direct(
     terms: ArimaTerms,
     exog_names: list[str],
     *,
-    fit_objective: str,
     forecast_horizon: int,
     max_ar_persistence: float | None,
-    refine=None,
 ) -> DirectResults:
     """Fit ``theta`` by least squares and wrap it in :class:`DirectResults`.
 
-    Always minimizes the equation error first, from :func:`initial_theta`.
-    An ``"output_error"`` fit then refines that solution against
-    :func:`output_error_residuals`, which is cheaper and better behaved than
-    a cold start on the nonconvex free-run objective.
+    Always minimizes the one-step (``horizon=1``) error first, from
+    :func:`initial_theta`. A longer ``forecast_horizon`` then refines that
+    solution against :func:`output_error_residuals`, which is cheaper and
+    better behaved than a cold start on the nonconvex free-run objective.
+    Only the refinement bounds MA: a free run reaches the MA block only in
+    the first ``q`` steps of each window, so unbounded it drifts outside the
+    unit circle (see :data:`MA_BOUND`).
+
+    ``beta`` is estimated at each stage (OLS warm start, joint one-step fit,
+    refinement), and only the last stage that runs is kept.
 
     Args:
         y: Output series on the level scale.
         x: Exogenous matrix, or ``None``.
         terms: The model structure.
         exog_names: Exogenous column names, in fitted order.
-        fit_objective: ``"equation_error"`` or ``"output_error"``.
-        forecast_horizon: Free-run window length in steps.
+        forecast_horizon: Free-run window length in steps; 1 stops after
+            the one-step fit.
         max_ar_persistence: Bound on every AR coefficient, or ``None``.
-        refine: Optional ``theta -> theta`` callable used instead of the
-            scipy output-error refinement; this is how the ipopt backend is
-            injected.
 
     Returns:
         The fitted results.
@@ -572,16 +547,13 @@ def fit_direct(
             (terms, y, x),
             coefficient_bounds(terms, max_ar_persistence),
         )
-    if theta.size and fit_objective == "output_error":
-        if refine is not None:
-            theta = refine(theta)
-        else:
-            theta = _least_squares(
-                output_error_residuals,
-                theta,
-                (terms, y, x, forecast_horizon),
-                coefficient_bounds(terms, max_ar_persistence, MA_BOUND),
-            )
+    if theta.size and forecast_horizon > 1:
+        theta = _least_squares(
+            output_error_residuals,
+            theta,
+            (terms, y, x, forecast_horizon),
+            coefficient_bounds(terms, max_ar_persistence, MA_BOUND),
+        )
     return DirectResults(theta, terms, exog_names, y, x, forecast_horizon)
 
 
@@ -703,6 +675,63 @@ def history_steps(history_length, time_step_seconds: float) -> int | None:
     return math.ceil(duration.total_seconds() / time_step_seconds - 1e-9)
 
 
+def parse_forecast_horizon(forecast_horizon) -> int | pd.Timedelta:
+    """Validate a ``forecast_horizon`` request without converting it to steps.
+
+    Args:
+        forecast_horizon: A positive int number of steps, or a positive
+            duration (a string such as ``"2D"`` or ``"48h"``, a
+            ``pd.Timedelta``, or a ``datetime.timedelta``).
+
+    Returns:
+        The int unchanged, or the duration as a ``pd.Timedelta``.
+
+    Raises:
+        FlexConfigError: If it is neither.
+    """
+    if isinstance(forecast_horizon, int) and not isinstance(forecast_horizon, bool):
+        if forecast_horizon >= 1:
+            return forecast_horizon
+    elif isinstance(forecast_horizon, (str, datetime.timedelta)):
+        try:
+            duration = pd.Timedelta(forecast_horizon)
+        except ValueError:
+            duration = None
+        if (
+            duration is not None
+            and not pd.isna(duration)
+            and duration > pd.Timedelta(0)
+        ):
+            return duration
+    raise FlexConfigError(
+        "ArimaRegressor forecast_horizon must be a positive int number of "
+        'steps or a positive duration such as "2D", "48h" or '
+        f"pd.Timedelta(days=2); got {forecast_horizon!r}.",
+        field="forecast_horizon",
+        value=forecast_horizon,
+    )
+
+
+def horizon_steps(
+    forecast_horizon: int | pd.Timedelta, time_step_seconds: float
+) -> int:
+    """Convert a parsed ``forecast_horizon`` into a window length in steps.
+
+    Args:
+        forecast_horizon: The output of :func:`parse_forecast_horizon`.
+        time_step_seconds: Sampling step of the fitted rows, in seconds.
+
+    Returns:
+        An int horizon unchanged; a duration rounded up to whole steps, and
+        at least one.
+    """
+    if isinstance(forecast_horizon, int):
+        return forecast_horizon
+    # Tolerate float error so an exact multiple of the step does not round up.
+    steps = math.ceil(forecast_horizon.total_seconds() / time_step_seconds - 1e-9)
+    return max(steps, 1)
+
+
 def step_seconds(index) -> float:
     """Return the sampling step of ``index`` in seconds.
 
@@ -721,220 +750,6 @@ def step_seconds(index) -> float:
     return 3600.0
 
 
-def fit_output_error_ipopt(
-    theta0: np.ndarray,
-    terms: ArimaTerms,
-    y: np.ndarray,
-    x: np.ndarray | None,
-    *,
-    exog_names: list[str],
-    input_units: dict[str, str],
-    output_name: str,
-    output_units: str,
-    training_index,
-    max_ar_persistence: float | None,
-) -> np.ndarray:
-    """Minimize output error through the real Pyomo surrogate, with ipopt.
-
-    Builds an :class:`~flexops.surrogates.arima.ArimaSurrogate` over a
-    :class:`~flexops.core.time_block.TimeBlock` spanning the training series,
-    frees the coefficients, holds the innovations at zero so the block
-    free-runs, and minimizes ``sum((y[t] - data[t])**2)``. The coefficients
-    are therefore optimal for the exact equation the surrogate solves.
-
-    One model spans the whole series, so the free run cannot be windowed.
-    The pre-horizon state is seeded from data, ``y - X @ beta`` over the
-    first ``p + d`` rows, and constrained to follow ``beta`` as the solver
-    moves it; a seed fixed at the warm start's ``beta`` would leave a
-    constant level offset across a ``d=1`` free run. Leaving the state free
-    instead lets the solver fit coefficients that suit its own estimated
-    state and transfer poorly (measured 0.087 free-run rmse against 0.005
-    seeded). ``theta0`` is
-    clipped into the same bounds as the scipy backend first. That matters
-    for MA in particular: the single window reaches it only through the
-    zero-padded seed innovations, so MA drops out of the problem ipopt
-    receives and keeps its warm-start value.
-
-    Args:
-        theta0: Equation-error solution, used as the warm start.
-        terms: The model structure.
-        y: Output series on the level scale.
-        x: Exogenous matrix, or ``None``.
-        exog_names: Exogenous column names, in fitted order.
-        input_units: Units of every exogenous column, keyed by name.
-        output_name: Name of the fitted output column.
-        output_units: Units of the fitted output column.
-        training_index: The fitted rows' index; must be a regular
-            ``DatetimeIndex`` so a ``TimeBlock`` grid can be derived.
-        max_ar_persistence: Bound on every AR coefficient, or ``None``.
-
-    Returns:
-        The refined parameter vector.
-
-    Raises:
-        FlexConfigError: If the output or an input carries no units, or
-            ``training_index`` is not a regular ``DatetimeIndex``.
-    """
-    if not output_units:
-        raise FlexConfigError(
-            'ArimaRegressor fit_solver="ipopt" builds a real Pyomo '
-            "surrogate, which needs declared units. Pass output_units to "
-            "fit().",
-            field="output_units",
-            value=output_units,
-        )
-    missing_units = [name for name in exog_names if not input_units.get(name)]
-    if missing_units:
-        raise FlexConfigError(
-            'ArimaRegressor fit_solver="ipopt" needs units for every input; '
-            f"{missing_units} have none. Pass input_units to fit().",
-            field="input_units",
-            value=missing_units,
-        )
-    if output_name in exog_names:
-        raise FlexConfigError(
-            f"ArimaRegressor cannot fit output {output_name!r} against an "
-            "input of the same name.",
-            field="output_variables",
-            value=output_name,
-        )
-    if not isinstance(training_index, pd.DatetimeIndex) or len(training_index) < 2:
-        raise FlexConfigError(
-            'ArimaRegressor fit_solver="ipopt" needs a regular DatetimeIndex '
-            "of at least two rows to build a TimeBlock grid; got "
-            f"{type(training_index).__name__} of length "
-            f'{len(training_index)}. Use fit_solver="scipy".',
-            field="fit_solver",
-            value="ipopt",
-        )
-    step = step_seconds(training_index)
-    if step <= 0:
-        raise FlexConfigError(
-            'ArimaRegressor fit_solver="ipopt" could not derive a positive '
-            f"time step from the training index (got {step} s).",
-            field="fit_solver",
-            value="ipopt",
-        )
-
-    n = len(y)
-    start = training_index[0].to_pydatetime()
-    model = pyo.ConcreteModel()
-    model.time_block = TimeBlock(
-        start_date=start.isoformat(),
-        end_date=(start + pd.Timedelta(seconds=step * n).to_pytimedelta()).isoformat(),
-        time_step=step * pyunits.s,
-        max_length=relativedelta(seconds=int(step * (n + 1))),
-    )
-    time_index = list(model.time_block.time_index)
-    if len(time_index) != n:
-        raise FlexConfigError(
-            'ArimaRegressor fit_solver="ipopt" derived a TimeBlock of '
-            f"{len(time_index)} steps for {n} training rows, so the index is "
-            'not on a regular grid. Use fit_solver="scipy".',
-            field="fit_solver",
-            value="ipopt",
-        )
-
-    unit = pyo.Block(concrete=True)
-    model.unit = unit
-    unit.add_component(
-        output_name,
-        pyo.Var(time_index, initialize=0.0, units=parse_units(output_units)),
-    )
-    target = unit.find_component(output_name)
-    for name in exog_names:
-        unit.add_component(
-            name,
-            pyo.Var(time_index, initialize=0.0, units=parse_units(input_units[name])),
-        )
-
-    def _resolve_variable(self, name, field=None):
-        """Stand in for OpsBlockData.resolve_variable for the surrogate."""
-        component = self.find_component(name)
-        if component is None:
-            raise FlexConfigError(
-                f"ARIMA input {name!r} is not on the fitting block.",
-                field=field,
-                value=name,
-            )
-        return component
-
-    unit.resolve_variable = MethodType(_resolve_variable, unit)
-
-    upper = coefficient_bounds(terms, max_ar_persistence, MA_BOUND)
-    theta0 = np.clip(theta0, -upper, upper)
-    eta, eps = one_step_innovations(theta0, terms, y, x)
-    surrogate = ArimaSurrogate(
-        {
-            "input_variables": {name: input_units[name] for name in exog_names},
-            "output_variables": {output_name: output_units},
-            "coefficients": surrogate_coefficients(theta0, terms),
-            "history": history_payload(
-                eta, eps, terms, training_index[0].isoformat(), step
-            ),
-        },
-        max_ar_coeff=max_ar_persistence,
-    )
-    block, body = surrogate.build(unit, target)
-    unit.arima = block
-    unit.fitted = pyo.Constraint(time_index, rule=lambda _b, t: target[t] == body(t))
-
-    for position, t in enumerate(time_index):
-        for column, name in enumerate(exog_names):
-            unit.find_component(name)[t].fix(float(x[position, column]))
-        target[t].set_value(float(y[position]))
-
-    block.coefficients.unfix()
-    if terms.n_exog:
-        # The history holds eta for rows 0..p+d-1; keep it equal to
-        # y - X @ beta at the solver's beta, not the warm start's.
-        block.initial_eta_history.unfix()
-        unit.history_seed = pyo.Constraint(
-            block.eta_history_index,
-            rule=lambda _b, i: (
-                block.initial_eta_history[i]
-                == (
-                    float(y[i])
-                    - sum(
-                        block.exog_coefs[k + 1] * float(x[i, k])
-                        for k in range(terms.n_exog)
-                    )
-                )
-                * parse_units(output_units)
-            ),
-        )
-    for index in range(1, terms.q + 1):
-        block.ma_coefs[index].setlb(-MA_BOUND)
-        block.ma_coefs[index].setub(MA_BOUND)
-
-    model.objective = pyo.Objective(
-        expr=sum(
-            (target[t] - float(y[position])) ** 2
-            for position, t in enumerate(time_index)
-        )
-    )
-    results = get_solver(problem_class=ProblemClass.NLP, prefer="ipopt").solve(model)
-    if not pyo.check_optimal_termination(results):
-        _log.warning(
-            'ArimaRegressor fit_solver="ipopt" terminated %s rather than '
-            "optimally for order=%s. The returned coefficients are the "
-            "solver's last iterate; check free_run_rmse before using them, "
-            'or refit with fit_solver="scipy".',
-            results.solver.termination_condition,
-            (terms.p, terms.d, terms.q),
-        )
-
-    fitted = surrogate.get_surrogate_spec(block, target)["coefficients"]
-    deterministic = [fitted.get("intercept", fitted.get("drift", 0.0))]
-    return np.array(
-        deterministic[: terms.n_deterministic]
-        + list(fitted.get("ar_coefs", []))
-        + list(fitted.get("ma_coefs", []))
-        + list(fitted.get("exog_coefs", [])),
-        dtype=float,
-    )
-
-
 # Defaults for the ``auto=True`` order search, as in R ``forecast::auto.arima``
 # with ``stepwise=False``, except that ``d`` is capped at 1 because the Pyomo
 # surrogate supports at most one order of differencing.
@@ -950,6 +765,9 @@ AUTO_SEARCH_DEFAULTS: dict[str, object] = {
 # 5% critical value of the KPSS level-stationarity statistic (Kwiatkowski et
 # al. 1992, Table 1), the unit-root test auto.arima uses to choose ``d``.
 KPSS_CRITICAL_5PCT = 0.463
+
+# Significance level of the ADF unit-root test run alongside KPSS.
+ADF_ALPHA = 0.05
 
 # Rows the order search drops after the largest candidate lag before scoring.
 # The innovations start from zero, and a candidate with more MA terms can fit
@@ -1048,10 +866,22 @@ def kpss_statistic(z: np.ndarray) -> float:
 
 
 def select_differencing(y: np.ndarray, x: np.ndarray | None, max_d: int) -> int:
-    """Choose ``d`` by a KPSS test on the regression disturbance.
+    """Choose ``d`` by KPSS and ADF tests on the regression disturbance.
 
     As in auto.arima, ``y`` is first regressed on ``X`` (plus an intercept),
-    so a trend the inputs explain does not count as a unit root.
+    so a trend the inputs explain does not count as a unit root. The two
+    tests take opposite nulls: KPSS that the disturbance is level
+    stationary, ADF that it has a unit root. ``d`` is settled only when
+    exactly one of them rejects at 5%.
+
+    Both use their standard critical values, which assume an observed
+    series. On a residual from a regression on ``X`` the exact ones
+    (Engle-Granger for ADF, Shin 1994 for KPSS) are more extreme, so with
+    exogenous inputs ADF rejects a unit root somewhat too readily.
+
+    ADF comes from statsmodels, imported here rather than at module import
+    so ``import flexparameterize.regression`` works without the
+    ``[parameterize]`` extra.
 
     Args:
         y: Output series on the level scale.
@@ -1059,16 +889,59 @@ def select_differencing(y: np.ndarray, x: np.ndarray | None, max_d: int) -> int:
         max_d: Largest ``d`` allowed, 0 or 1.
 
     Returns:
-        1 if ``max_d`` allows it and the test rejects level stationarity at
-        5%, else 0.
+        0 if ``max_d`` is 0; otherwise 1 when KPSS rejects stationarity and
+        ADF does not reject a unit root, and 0 when ADF rejects and KPSS
+        does not.
+
+    Raises:
+        FlexConfigError: If statsmodels is not installed.
+        FlexDataError: If both tests reject (contradictory), neither does
+            (inconclusive), or the series is too short to run ADF.
     """
-    if max_d == 0 or len(y) < 3:
+    if max_d == 0:
         return 0
+    try:
+        from statsmodels.tsa.stattools import adfuller
+    except ImportError as exc:
+        raise FlexConfigError(
+            "ArimaRegressor auto=True needs statsmodels to test for a unit "
+            "root. Install it with `pip install 'flex-pse[parameterize]'`, "
+            "or pass d=0 or d=1 explicitly."
+        ) from exc
     eta = np.asarray(y, dtype=float)
     if x is not None and x.shape[1]:
         design = np.column_stack([np.ones(len(eta)), x])
         eta = eta - design @ np.linalg.lstsq(design, eta, rcond=None)[0]
-    return int(kpss_statistic(eta) > KPSS_CRITICAL_5PCT)
+    if np.ptp(eta) == 0.0:
+        # A constant disturbance is stationary; neither test can run on it.
+        return 0
+    try:
+        adf_p = float(adfuller(eta, regression="c", autolag="AIC")[1])
+    except ValueError as exc:
+        raise FlexDataError(
+            f"ArimaRegressor auto=True cannot choose d: {len(eta)} row(s) are "
+            "too few for the ADF unit-root test. Pass d=0 or d=1 explicitly.",
+            field="d",
+        ) from exc
+    kpss = kpss_statistic(eta)
+    kpss_rejects = kpss > KPSS_CRITICAL_5PCT
+    adf_rejects = adf_p < ADF_ALPHA
+    if kpss_rejects != adf_rejects:
+        return int(kpss_rejects)
+    verdict = (
+        "contradictory: KPSS rejects stationarity and ADF rejects a unit root"
+        if kpss_rejects
+        else "inconclusive: neither KPSS rejects stationarity nor ADF a unit root"
+    )
+    raise FlexDataError(
+        f"ArimaRegressor auto=True cannot choose d; the unit-root tests are "
+        f"{verdict} (KPSS statistic {kpss:.3f} vs 5% critical value "
+        f"{KPSS_CRITICAL_5PCT}, ADF p-value {adf_p:.3f}). Consider adding "
+        "more exogenous covariates X (e.g. lagged inputs) for missing "
+        "structure, consider removing trends or seasonality and retest, or "
+        "pass d=0 or d=1 explicitly.",
+        field="d",
+    )
 
 
 def auto_select_order(
@@ -1111,9 +984,12 @@ def auto_select_order(
         The selected ``(p, d, q)``.
 
     Raises:
-        FlexDataError: If ``y`` has too few rows to fit any candidate.
+        FlexDataError: If ``y`` has too few rows to fit any candidate, or
+            ``d`` is not given and the unit-root tests cannot settle it (see
+            :func:`select_differencing`).
         FlexConfigError: If every candidate is non-stationary or
-            non-invertible.
+            non-invertible, or ``d`` must be tested and statsmodels is not
+            installed.
     """
     y = np.asarray(y, dtype=float)
     n_exog = 0 if x is None else x.shape[1]

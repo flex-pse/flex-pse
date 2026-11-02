@@ -270,29 +270,51 @@ passes it, but forecasts from it explode.  `fit()` therefore also checks that
 the fitted AR block is stationary, and raises `FlexConfigError` when it is not.
 Lower the AR order or tighten `max_ar_persistence`.
 
-### Choosing the fitting objective
+### Choosing the order automatically
 
-Keep the default, `fit_objective="equation_error"`, unless a held-out
-comparison on your own data shows that `output_error` forecasts better.
+`ArimaRegressor(auto=True)` searches for the order.  It picks `d` first, by
+running two unit-root tests at 5% on the disturbance `y - X @ beta`.  KPSS
+assumes the disturbance is stationary and ADF assumes it has a unit root, so
+together they settle `d` only when exactly one of them rejects: KPSS alone
+gives `d=1`, ADF alone gives `d=0`.  When both reject (contradictory) or
+neither does (inconclusive), `fit()` raises `FlexDataError`.  Short series
+often land here, because neither test has the power to reject.  Add more
+exogenous covariates (for example lagged inputs) for missing structure,
+remove trends or seasonality and retest, or pass `d=0` or `d=1` explicitly
+(`ArimaRegressor(auto=True, d=1)`).  The ADF test comes from statsmodels, so
+testing for `d` needs the `[parameterize]` extra.  Every `(p, q)` within `max_p`, `max_q` and
+`max_order` is then fitted, and the lowest-AIC stationary, invertible
+candidate wins.
+
+### Choosing the forecast horizon
+
+`forecast_horizon` sets the error the fit minimizes.  The series is cut into
+windows of that length: an int number of steps, or a duration such as `"2D"`,
+`"48h"` or `pd.Timedelta(days=2)`, which `fit()` rounds up to whole steps of
+the training data's time step.  Prefer a duration, so the window stays the same
+length of time if you refit on data sampled at a different rate.  Each window is seeded from actual data and then
+simulated forward with innovations at zero, as the surrogate does when it
+forecasts.  The default, `forecast_horizon=1`, is the classical one-step
+(equation-error) fit using actual lagged values.  Keep it unless a held-out
+comparison on your own data shows that a longer horizon forecasts better.
 
 | Configuration | What it minimizes |
 |---------------|-------------------|
-| `fit_objective="equation_error"` (default) | One-step-ahead residuals, using actual lagged values |
-| `fit_objective="output_error"` | Windowed free-run error: the error the surrogate makes when it simulates forward with innovations at zero |
-| `fit_objective="output_error", fit_solver="ipopt"` | The same free-run error, through the real `ArimaSurrogate` over the whole series |
+| `forecast_horizon=1` (default) | One-step-ahead residuals, using actual lagged values |
+| `forecast_horizon=H` | Free-run error over `H`-step windows, each restarted from data |
 
-`output_error` exists because a `d=1` model *integrates* its drift term.  A
+A longer horizon exists because a `d=1` model *integrates* its drift term.  A
 drift error that costs almost nothing per step accumulates linearly over a
 forecast, so the one-step objective barely constrains drift.  On held-out
 biogas data the expected pattern appeared for `d=1` orders and nowhere else.
 The test trained on 384 rows (4 days) and forecast the next 192 steps (2 days),
 repeated from 11 starting points across the series, for 13 orders:
 
-| Held-out 192-step RMSE (mean) | `equation_error` | `output_error` | `output_error` + ipopt |
-|---|---|---|---|
-| `d=0` orders | 0.00573 | 0.00576 | 0.00576 |
-| `d=1` orders | 0.00951 | 0.00653 | 0.00766 |
-| Fits refused (see below), of 143 | 0 | 17 | 8 |
+| Held-out 192-step RMSE (mean) | `forecast_horizon=1` | `forecast_horizon=192` |
+|---|---|---|
+| `d=0` orders | 0.00573 | 0.00576 |
+| `d=1` orders | 0.00951 | 0.00653 |
+| Fits refused (see below), of 143 | 0 | 17 |
 
 The `d=1` gain comes from a few orders. `ARIMA(0,1,1)` and `ARIMA(2,1,2)`
 improved at 91% of starting points.  Other orders were a coin flip.
@@ -300,43 +322,47 @@ improved at 91% of starting points.  Other orders were a coin flip.
 ```python
 regressor = ArimaRegressor(
     order=(2, 1, 2),
-    fit_objective="output_error",
-    forecast_horizon=192,       # set this to the horizon you will forecast over
+    forecast_horizon="2D",      # set this to the horizon you will forecast over
 ).fit(X_train, y_train, input_units=..., output_units=...)
 ```
 
 Before switching, know the following:
 
-- **`output_error` refuses fits it cannot make safe.**  The free-run objective
-  barely constrains the MA block, and left alone it pushes MA outside the unit
-  circle.  The forecast starts its MA lags from one-step residuals, which such a
-  block makes explode: first-step forecasts reached ~1e6 before this was
-  guarded.  So every MA coefficient is bounded to ±0.99.  That bound alone does
-  not guarantee invertibility for `q >= 2`, so a non-invertible fit raises
-  `FlexConfigError`.  `output_error` also tends to push AR toward
+- **A horizon above 1 refuses fits it cannot make safe.**  The free-run
+  objective barely constrains the MA block, since MA reaches only the first `q`
+  steps of each window, and left alone it pushes MA outside the unit circle.
+  The forecast starts its MA lags from one-step residuals, which such a block
+  makes explode: first-step forecasts reached ~1e6 before this was guarded.
+  So every MA coefficient is bounded to ±0.99.  That bound alone does not
+  guarantee invertibility for `q >= 2`, so a non-invertible fit raises
+  `FlexConfigError`.  A long horizon also tends to push AR toward
   non-stationarity, which the stationarity check refuses.  On the biogas data
   that happened at about half the starting points for `(0,0,3)`, `(2,0,0)` and
-  `(3,1,3)`.  The default objective never raised.
+  `(3,1,3)`.  The default never raised.
 - **Under the default, a non-invertible MA block only logs a warning.**  It is
   common (8 of 11 starting points for `(1,0,1)` on biogas data) and harmless for
   forecasting, because the forecast starts from the very residuals the fit
   minimized.  It does make the one-step statistics (`aic`, `bic`, `sigma2`) and
   an in-Pyomo regression with free innovations unreliable.
-- **`output_error` is a forecaster, not an estimator.**  It trades parameter
-  consistency for multi-step accuracy.  Read coefficients off an
-  `equation_error` fit.
-- **Set `forecast_horizon` to your real forecast horizon.**  `"auto"` spans the
-  data up to a 192-step cap, which is a fallback, not an optimum.
-- **Judge on held-out data.**  `metrics["free_run_rmse"]` is reported for both
-  objectives, but it is in-sample, and `output_error` minimizes it directly, so
-  it flatters that objective.  In-sample, `output_error` cut the `ARIMA(3,1,3)`
+- **A long horizon gives a forecaster, not an estimator.**  It trades parameter
+  consistency for multi-step accuracy.  Read coefficients off a
+  `forecast_horizon=1` fit.
+- **Set `forecast_horizon` to your real forecast horizon, within reason.**  The
+  windows exist to speed the fit and keep it grounded in data.  On 5757 rows a
+  single window over the whole series left the `d=0` objective so flat that the
+  solver hit its evaluation limit, while 192-step windows took under 8 s.
+- **Judge on held-out data.**  `metrics["free_run_rmse"]` is the free-run error
+  at the fit's own horizon, so at the default it equals the one-step `rmse`.  It
+  is in-sample, and a longer-horizon fit minimizes it directly, so it flatters
+  that fit.  In-sample, `forecast_horizon=192` cut the `ARIMA(3,1,3)` 192-step
   free-run error by 2.9×.  Held out, it was refused at 6 of 11 starting points
   and beat the default at the other 5.
-
-`fit_solver="ipopt"` requires declared `input_units`/`output_units` and a
-regular `DatetimeIndex`, since it builds a real `TimeBlock` and surrogate.  It
-needs no `forecast_horizon`, because one model spans the series.  It refused
-fewer fits than the scipy backend but improved `d=1` forecasts less.
+- **Which `beta` ends up in the spec.**  The exogenous coefficients are
+  estimated several times along the way: by OLS for the `auto` differencing
+  test and inside each `auto` candidate, by OLS as the warm start, jointly with
+  the ARIMA terms in the one-step fit, and again by the refinement when
+  `forecast_horizon > 1`.  Only the last is kept.  It is the `beta` in
+  `coefficients`, in the spec's `exog_coefs`, and in the spec's history.
 
 ### Build the Pyomo surrogate
 

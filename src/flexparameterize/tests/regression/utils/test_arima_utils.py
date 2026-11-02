@@ -8,6 +8,8 @@ rather than as a drifted fit downstream.
 from __future__ import annotations
 
 import datetime
+import importlib.util
+import sys
 
 import numpy as np
 import pandas as pd
@@ -15,12 +17,10 @@ import pytest
 
 from flexcore.exceptions import FlexConfigError, FlexDataError
 from flexparameterize.regression.utils.arima_utils import (
-    AUTO_MAX_HORIZON,
     KPSS_CRITICAL_5PCT,
     ArimaTerms,
     DirectResults,
     ar_max_root,
-    auto_forecast_horizon,
     auto_search_options,
     auto_select_order,
     coefficient_bounds,
@@ -28,13 +28,21 @@ from flexparameterize.regression.utils.arima_utils import (
     free_run,
     history_payload,
     history_steps,
+    horizon_steps,
     kpss_statistic,
     ma_max_root,
     one_step_innovations,
     output_error_residuals,
+    parse_forecast_horizon,
     seed_history,
     select_differencing,
     surrogate_coefficients,
+)
+
+# select_differencing runs ADF from statsmodels, the [parameterize] extra.
+_needs_statsmodels = pytest.mark.skipif(
+    importlib.util.find_spec("statsmodels") is None,
+    reason="the ADF unit-root test needs statsmodels",
 )
 
 _TERMS = [
@@ -162,13 +170,14 @@ def test_seed_history_zero_pads_innovations_that_do_not_exist():
     [
         ArimaTerms(p=2, d=0, q=1, n_exog=1, has_const=True, has_drift=False),
         ArimaTerms(p=1, d=1, q=1, n_exog=0, has_const=False, has_drift=True),
+        # q > p + 1: the seed max(p + d, q) is one row short of where the
+        # one-step residuals start, so the windows must not start at it.
+        ArimaTerms(p=0, d=1, q=2, n_exog=1, has_const=False, has_drift=True),
     ],
 )
 def test_output_error_at_horizon_one_is_the_one_step_residual(terms):
-    """A one-step window seeded from actual data *is* the one-step residual.
-
-    Holds whenever both residuals start at the same row, i.e. ``q <= p + 1``.
-    """
+    """A one-step window seeded from actual data *is* the one-step residual,
+    which is why ``forecast_horizon=1`` is the equation-error fit."""
     y, x = _series(terms)
     theta = _theta(terms)
 
@@ -207,32 +216,6 @@ def test_ar_max_root_sees_through_the_per_coefficient_bound():
     assert ar_max_root([]) == 0.0
     assert ar_max_root([0.5]) == pytest.approx(0.5)
     assert ar_max_root([0.85, 0.85]) == pytest.approx(1.4402, abs=1e-4)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    ("n_rows", "p", "d", "q", "expected"),
-    [
-        (60, 1, 1, 0, 58),  # 60 rows less the 2 consumed seeding
-        (100, 1, 1, 0, 98),  # below the cap
-        (400, 1, 1, 0, AUTO_MAX_HORIZON),
-        (5000, 1, 1, 0, AUTO_MAX_HORIZON),
-        (30, 3, 1, 3, 26),  # seed = max(p + d, q) = 4
-        (20, 0, 0, 14, 15),  # seed + 1 floor: a window must outlast its seed
-    ],
-)
-def test_auto_forecast_horizon_spans_the_usable_rows(n_rows, p, d, q, expected):
-    """The auto horizon spans the usable rows, capped, and stays seedable.
-
-    Uncapped, a full-series window on several thousand rows left the d=0
-    objective so flat that least_squares ground to its evaluation limit.
-    """
-    terms = ArimaTerms(p=p, d=d, q=q, n_exog=0, has_const=False, has_drift=False)
-
-    horizon = auto_forecast_horizon(n_rows, terms)
-
-    assert horizon == expected
-    assert horizon > terms.seed
 
 
 @pytest.mark.unit
@@ -356,6 +339,23 @@ def test_history_steps_rejects_invalid_lengths(history_length):
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("horizon", "expected"),
+    [
+        (192, 192),  # an int is a step count, used verbatim
+        ("2D", 192),
+        ("48h", 192),
+        (pd.Timedelta(days=2), 192),
+        (datetime.timedelta(hours=48), 192),
+        ("20min", 2),  # rounded up to whole 15-min steps
+        ("5min", 1),  # never below one step: the one-step fit
+    ],
+)
+def test_forecast_horizon_converts_durations_to_whole_steps(horizon, expected):
+    assert horizon_steps(parse_forecast_horizon(horizon), 900.0) == expected
+
+
+@pytest.mark.unit
 def test_surrogate_coefficients_name_the_deterministic_term_by_order():
     """``intercept`` for d=0, ``drift`` for d=1, and nothing without one."""
     with_const = ArimaTerms(p=1, d=0, q=0, n_exog=1, has_const=True, has_drift=False)
@@ -410,6 +410,7 @@ def test_kpss_separates_white_noise_from_a_random_walk():
 
 
 @pytest.mark.unit
+@_needs_statsmodels
 def test_select_differencing_tests_the_disturbance_not_y():
     """A trend the exogenous input explains is not mistaken for a unit root."""
     rng = np.random.default_rng(1)
@@ -421,6 +422,63 @@ def test_select_differencing_tests_the_disturbance_not_y():
 
 
 @pytest.mark.unit
+@_needs_statsmodels
+def test_select_differencing_settles_d_when_exactly_one_test_rejects():
+    """KPSS alone rejecting means a unit root; ADF alone rejecting, none."""
+    noise = np.random.default_rng(0).normal(size=400)
+    assert select_differencing(np.cumsum(noise), None, max_d=1) == 1
+    assert select_differencing(noise, None, max_d=1) == 0
+    assert select_differencing(np.full(50, 3.0), None, max_d=1) == 0
+
+
+@pytest.mark.unit
+@_needs_statsmodels
+@pytest.mark.parametrize(
+    ("phi", "n", "seed", "verdict"),
+    [
+        # Long and near a unit root: KPSS rejects stationarity, ADF a unit root.
+        (0.97, 3000, 1, "contradictory"),
+        # Short and persistent: neither test has the power to reject.
+        (0.8, 40, 0, "inconclusive"),
+    ],
+)
+def test_select_differencing_refuses_when_the_tests_disagree(phi, n, seed, verdict):
+    """Both or neither rejecting leaves d unsettled, so the search refuses and
+    names the fixes, including passing d explicitly."""
+    y = _simulate_arma([phi], [], n=n, seed=seed)
+    with pytest.raises(FlexDataError, match=verdict) as excinfo:
+        select_differencing(y, None, max_d=1)
+    message = str(excinfo.value)
+    assert "exogenous covariates" in message
+    assert "pass d=0 or d=1 explicitly" in message
+    assert _search(y, d=0)[1] == 0
+
+
+@pytest.mark.unit
+@_needs_statsmodels
+def test_select_differencing_refuses_a_series_too_short_for_adf():
+    """Too few rows to run ADF leaves d unsettled, so the search refuses
+    rather than silently choosing d=0."""
+    y = np.random.default_rng(0).normal(size=3)
+    with pytest.raises(FlexDataError, match="too few for the ADF"):
+        select_differencing(y, None, max_d=1)
+    assert select_differencing(y, None, max_d=0) == 0
+
+
+@pytest.mark.unit
+def test_select_differencing_names_the_extra_when_statsmodels_is_missing(
+    monkeypatch,
+):
+    """Without statsmodels the d test cannot run; the error says how to fix it."""
+    monkeypatch.setitem(sys.modules, "statsmodels.tsa.stattools", None)
+    y = np.random.default_rng(0).normal(size=100)
+    with pytest.raises(FlexConfigError, match=r"flex-pse\[parameterize\]"):
+        select_differencing(y, None, max_d=1)
+    assert select_differencing(y, None, max_d=0) == 0
+
+
+@pytest.mark.unit
+@_needs_statsmodels
 @pytest.mark.parametrize(
     ("ar", "ma", "expected"),
     [([0.6, -0.3], [], (2, 0, 0)), ([], [0.7], (0, 0, 1)), ([0.5], [0.4], (1, 0, 1))],
@@ -432,6 +490,7 @@ def test_auto_select_order_recovers_the_generating_order(ar, ma, expected):
 
 
 @pytest.mark.unit
+@_needs_statsmodels
 def test_auto_select_order_differences_a_random_walk():
     """A random walk with AR(1) increments is fitted as d=1."""
     y = np.cumsum(_simulate_arma([0.5], [], n=800, seed=4))
@@ -441,6 +500,7 @@ def test_auto_select_order_differences_a_random_walk():
 
 
 @pytest.mark.unit
+@_needs_statsmodels
 def test_auto_select_order_respects_max_order():
     """No candidate with p + q above max_order is considered."""
     y = _simulate_arma([0.5], [0.4], n=1000, seed=5)
@@ -449,6 +509,7 @@ def test_auto_select_order_respects_max_order():
 
 
 @pytest.mark.unit
+@_needs_statsmodels
 def test_auto_select_order_with_exogenous_input():
     """An exogenous effect is fitted out: the order matches the bare disturbance."""
     rng = np.random.default_rng(6)

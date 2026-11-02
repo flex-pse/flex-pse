@@ -8,10 +8,10 @@ standard :class:`~flexparameterize.regression.base.FitResult` /
 and forecasting machinery lives in
 :mod:`flexparameterize.regression.utils.arima_utils`.
 
-With ``auto=True`` the order is chosen by an in-house search (a KPSS test
-for ``d``, then an AIC grid over ``(p, q)``); the final parameter fit always
-uses the direct least-squares backend, which minimizes the exact residual the
-Pyomo surrogate implements.
+With ``auto=True`` the order is chosen by an in-house search (KPSS and ADF
+tests for ``d``, then an AIC grid over ``(p, q)``); the final parameter fit
+always uses the direct least-squares backend, which minimizes the exact
+residual the Pyomo surrogate implements.
 
 **Restriction**: ``d`` may be ``0`` or ``1``, and the model is
 non-seasonal. The Pyomo surrogate implements the mean ARIMA equation in closed
@@ -53,7 +53,7 @@ Typical usage::
 
 from __future__ import annotations
 
-from functools import partial
+from datetime import timedelta
 
 import pandas as pd
 
@@ -68,22 +68,19 @@ from flexparameterize.regression.base import (
 from flexparameterize.regression.utils.arima_utils import (
     ArimaTerms,
     ar_max_root,
-    auto_forecast_horizon,
     auto_search_options,
     auto_select_order,
     fit_direct,
-    fit_output_error_ipopt,
     history_payload,
     history_steps,
+    horizon_steps,
     ma_max_root,
+    parse_forecast_horizon,
     step_seconds,
     surrogate_coefficients,
 )
 
 _log = get_logger(__name__)
-
-_FIT_OBJECTIVES = ("equation_error", "output_error")
-_FIT_SOLVERS = ("scipy", "ipopt")
 
 
 class ArimaRegressor:
@@ -101,6 +98,14 @@ class ArimaRegressor:
     surrogate implements, so fitted parameters reproduce the surrogate
     one-to-one.
 
+    **Which beta is kept**: the exogenous coefficients are estimated several
+    times: by OLS for the ``auto`` differencing test and inside every
+    ``auto`` candidate fit, by OLS as the warm start, jointly with the ARIMA
+    terms in the one-step fit, and, when ``forecast_horizon > 1``, again by
+    the free-run refinement. Only the last of these is kept. It is the beta
+    in :attr:`coefficients` and in the spec's ``exog_coefs``, and the one
+    the spec's history ``eta = y - X @ beta`` is computed with.
+
     **Stability**: AR coefficients are bounded to
     ``[-max_ar_persistence, max_ar_persistence]`` (default 0.85) during the
     fit itself, and :meth:`fit` rejects a fitted AR block that is not
@@ -114,29 +119,32 @@ class ArimaRegressor:
         include_mean: Whether to include the model's deterministic term.
             This is a level intercept for ``d=0`` and constant drift for
             ``d=1``. Default ``True``.
-        auto: If ``True``, search for the order, then refit it with the
-            configured ``fit_objective``. ``d`` is 1 when a KPSS test (5%)
-            rejects level stationarity of the disturbance ``y - X @ beta``,
-            else 0. Every ``(p, q)`` within the limits is then fitted by
-            equation-error least squares and the lowest-AIC stationary,
-            invertible candidate wins. Use ``auto_kwargs`` to restrict it.
+        auto: If ``True``, search for the order, then refit it at the
+            configured ``forecast_horizon``. ``d`` comes from KPSS (null:
+            stationary) and ADF (null: unit root) tests at 5% on the
+            disturbance ``y - X @ beta``: 1 when only KPSS rejects, 0 when
+            only ADF rejects, and an error when both or neither do, which
+            passing ``d`` in ``auto_kwargs`` avoids. Every ``(p, q)`` within
+            the limits is then fitted by one-step least squares and the
+            lowest-AIC stationary, invertible candidate wins. Use
+            ``auto_kwargs`` to restrict it.
         max_ar_persistence: Bounds every AR coefficient to
             ``[-max_ar_persistence, max_ar_persistence]`` during the fit
             itself (via bounded least squares). Default ``0.85``. Set to
             ``None`` to leave the coefficients unbounded; the stationarity
             check still applies.
-        fit_objective: ``"equation_error"`` (default) minimizes one-step
-            residuals using actual lagged values. ``"output_error"`` then
-            refines that fit against windowed free-run error, the error the
-            surrogate commits when it simulates forward with innovations at
-            zero; its MA coefficients are bounded to ``[-0.99, 0.99]`` and a
-            non-invertible MA block is rejected.
-        forecast_horizon: Free-run window length in steps for an
-            ``output_error`` fit, or ``"auto"`` (default) to span the data
-            up to 192 steps. Set it to the horizon you will forecast over.
-        fit_solver: ``"scipy"`` (default) or ``"ipopt"``, the optimizer
-            behind an ``output_error`` fit. ``"ipopt"`` minimizes the free
-            run through the real ``ArimaSurrogate`` over the whole series.
+        forecast_horizon: Length of the free-run windows whose error the
+            fit minimizes: each window is seeded from actual data, then
+            simulated forward with innovations at zero, as the surrogate
+            forecasts. Either an int number of steps, or a duration (``"2D"``,
+            ``"48h"``, ``pd.Timedelta(days=2)``) that :meth:`fit` rounds up
+            to whole steps of the training index. ``1`` (default) is the
+            one-step (equation-error) fit using actual lagged values, as is
+            any duration of one step or less. A longer horizon refines that
+            fit against multi-step error, bounds the MA coefficients to
+            ``[-0.99, 0.99]``, and rejects a non-invertible MA block. Set it
+            to the horizon you will forecast over; very long windows make
+            the objective flat and slow to solve.
         **auto_kwargs: Order-search limits, only with ``auto=True``:
             ``max_p`` and ``max_q`` (default 5), ``max_order`` (largest
             ``p + q``, default 5), ``max_d`` (0 or 1, default 1), ``d``
@@ -144,11 +152,12 @@ class ArimaRegressor:
             ``stationary`` (``True`` forces ``d=0``).
 
     Raises:
-        FlexConfigError: If ``d > 1``; if ``auto_kwargs`` is given without
+        FlexConfigError: If neither ``order`` nor ``auto=True`` is given; if
+            ``d > 1``; if ``auto_kwargs`` is given without
             ``auto=True``, or holds an unknown or out-of-range option; if
             ``max_ar_persistence`` is not a number in ``(0, 1]`` or ``None``;
-            or if ``fit_objective``, ``forecast_horizon``, or ``fit_solver``
-            is invalid or combined with an option it does not apply to.
+            or if ``forecast_horizon`` is neither a positive int nor a
+            positive duration.
     """
 
     def __init__(
@@ -157,9 +166,7 @@ class ArimaRegressor:
         include_mean: bool = True,
         auto: bool = False,
         max_ar_persistence: float | None = 0.85,
-        fit_objective: str = "equation_error",
-        forecast_horizon: int | str = "auto",
-        fit_solver: str = "scipy",
+        forecast_horizon: int | str | timedelta = 1,
         **auto_kwargs: object,
     ) -> None:
         if order is not None and order[1] != 0:
@@ -182,58 +189,7 @@ class ArimaRegressor:
                 field="max_ar_persistence",
                 value=max_ar_persistence,
             )
-        if fit_objective not in _FIT_OBJECTIVES:
-            raise FlexConfigError(
-                f"ArimaRegressor fit_objective must be one of "
-                f"{list(_FIT_OBJECTIVES)}, got {fit_objective!r}.",
-                field="fit_objective",
-                value=fit_objective,
-            )
-        if forecast_horizon != "auto" and (
-            isinstance(forecast_horizon, bool)
-            or not isinstance(forecast_horizon, int)
-            or forecast_horizon < 1
-        ):
-            raise FlexConfigError(
-                f"ArimaRegressor forecast_horizon must be a positive int or "
-                f'"auto", got {forecast_horizon!r}.',
-                field="forecast_horizon",
-                value=forecast_horizon,
-            )
-        if fit_objective == "equation_error" and forecast_horizon != "auto":
-            raise FlexConfigError(
-                "ArimaRegressor forecast_horizon only affects an "
-                'output_error fit; with fit_objective="equation_error" it '
-                "would be silently ignored. Drop forecast_horizon or set "
-                'fit_objective="output_error".',
-                field="forecast_horizon",
-                value=forecast_horizon,
-            )
-        if fit_solver not in _FIT_SOLVERS:
-            raise FlexConfigError(
-                f"ArimaRegressor fit_solver must be one of "
-                f"{list(_FIT_SOLVERS)}, got {fit_solver!r}.",
-                field="fit_solver",
-                value=fit_solver,
-            )
-        if fit_solver == "ipopt" and fit_objective != "output_error":
-            raise FlexConfigError(
-                'ArimaRegressor fit_solver="ipopt" only applies to an '
-                "output_error fit; the equation-error fit is a direct "
-                "OLS/least-squares solve with no NLP to hand to a solver. "
-                'Set fit_objective="output_error" or fit_solver="scipy".',
-                field="fit_solver",
-                value=fit_solver,
-            )
-        if fit_solver == "ipopt" and forecast_horizon != "auto":
-            raise FlexConfigError(
-                'ArimaRegressor fit_solver="ipopt" builds one Pyomo model '
-                "over the whole training series, so it cannot window the "
-                "free run and forecast_horizon does not apply. Drop "
-                'forecast_horizon or use fit_solver="scipy".',
-                field="forecast_horizon",
-                value=forecast_horizon,
-            )
+        forecast_horizon = parse_forecast_horizon(forecast_horizon)
         if auto_kwargs and not auto:
             raise FlexConfigError(
                 f"ArimaRegressor got unexpected keyword argument(s) "
@@ -248,14 +204,7 @@ class ArimaRegressor:
                 "ArimaRegressor.fit requires either `order=(p,d,q)` or "
                 "`auto=True`. Pass both or set `auto=True`."
             )
-        self._fit_solver = fit_solver
-        self._fit_objective = fit_objective
-        # What the caller asked for (None for "auto"), and what the latest
-        # fit used; "auto" is re-resolved on every fit.
-        self._requested_horizon = (
-            None if forecast_horizon == "auto" else int(forecast_horizon)
-        )
-        self._forecast_horizon = self._requested_horizon
+        self._forecast_horizon = forecast_horizon
         self._order = order
         self._include_mean = include_mean
         self._auto = auto
@@ -286,25 +235,6 @@ class ArimaRegressor:
                 f"ArimaRegressor has no fit yet; call fit(X, y) before {action}."
             )
 
-    def _resolve_horizon(self, n_rows: int, terms: ArimaTerms) -> int:
-        """Resolve and remember the free-run window length for this fit.
-
-        An explicit ``forecast_horizon`` is used verbatim; ``"auto"`` is
-        resolved from this fit's rows and order, so a refit on different data
-        or an auto-selected order gets a matching horizon.
-
-        Args:
-            n_rows: Number of rows the fit is using.
-            terms: The model structure.
-
-        Returns:
-            The resolved window length in steps.
-        """
-        self._forecast_horizon = self._requested_horizon or auto_forecast_horizon(
-            n_rows, terms
-        )
-        return self._forecast_horizon
-
     def fit(
         self,
         X: pd.DataFrame,
@@ -318,7 +248,9 @@ class ArimaRegressor:
         Uses ``scipy.optimize.least_squares`` to minimize the mean-equation
         residual directly, so the fitted parameters exactly match the Pyomo
         surrogate.  When ``auto=True``, the order is searched for first (see
-        the ``auto`` argument), then refitted.
+        the ``auto`` argument), then refitted.  Of the several ``beta``
+        estimates made along the way, only the last is kept (see the class
+        docstring).
 
         ``X`` and ``y`` must be clean: no null values, and a shared
         ``DatetimeIndex`` that strictly increases at one constant step. The
@@ -339,12 +271,13 @@ class ArimaRegressor:
             ``self``, fitted.
 
         Raises:
-            FlexConfigError: If scipy is not installed; if ``auto`` is
-                ``False`` and no ``order`` was supplied; if ``input_units``
-                is missing an entry for one of ``X``'s columns; if ``auto``
-                finds no stationary, invertible candidate; if the fitted AR
-                block is not stationary; or if an ``output_error`` fit's MA block is not
-                invertible.
+            FlexConfigError: If ``auto`` must test for ``d`` and statsmodels
+                (the ``[parameterize]`` extra) is not installed; if
+                ``input_units`` is missing an entry for one of ``X``'s
+                columns; if ``auto`` finds no stationary, invertible
+                candidate; if the fitted AR
+                block is not stationary; or if a ``forecast_horizon > 1``
+                fit's MA block is not invertible.
             FlexDataError: If ``X`` or ``y`` is not a ``DataFrame``; if
                 ``y`` does not hold exactly one column; if
                 ``X`` and ``y`` lack a ``DatetimeIndex``, hold a null value,
@@ -353,7 +286,9 @@ class ArimaRegressor:
                 ``k`` is the number of fitted parameters), which would leave
                 the fit rank-deficient. With ``auto=True``, candidate orders
                 needing more rows are skipped, and the error is raised only
-                if none fits.
+                if none fits. Also if ``auto`` must choose ``d`` and the KPSS
+                and ADF tests both reject or both fail to reject, or the
+                series is too short to run ADF.
         """
         require_frame(X, regressor="ArimaRegressor", role="X")
         output = single_column(y, regressor="ArimaRegressor", role="y", what="output")
@@ -416,33 +351,18 @@ class ArimaRegressor:
             has_const=self._include_mean and d == 0,
             has_drift=d == 1 and self._include_mean,
         )
-        # fit_direct fits once: an equation-error warm start, then (for
-        # output_error) a refinement, then DirectResults, which only evaluates
-        # the final coefficients. With ipopt, `refine` replaces the scipy
-        # refinement step; it does not add a second fit.
-        refine = None
-        if self._fit_solver == "ipopt":
-            refine = partial(
-                fit_output_error_ipopt,
-                terms=terms,
-                y=y_values,
-                x=x_values,
-                exog_names=self.exogenous_variables,
-                input_units=self.input_units,
-                output_name=self.output_variable,
-                output_units=self.output_units,
-                training_index=self._training_index,
-                max_ar_persistence=self._max_ar_persistence,
-            )
+        # fit_direct fits once: a one-step warm start, then (for a horizon
+        # above 1) a refinement, then DirectResults, which only evaluates
+        # the final coefficients.
         self.model = fit_direct(
             y_values,
             x_values,
             terms,
             self.exogenous_variables,
-            fit_objective=self._fit_objective,
-            forecast_horizon=self._resolve_horizon(len(paired), terms),
+            forecast_horizon=horizon_steps(
+                self._forecast_horizon, step_seconds(self._training_index)
+            ),
             max_ar_persistence=self._max_ar_persistence,
-            refine=refine,
         )
         self._fitted = True
         self._check_stability()
@@ -458,8 +378,8 @@ class ArimaRegressor:
         """Reject a fit whose forecasts would diverge; warn on weaker cases.
 
         Raises:
-            FlexConfigError: If the AR block is not stationary, or an
-                ``output_error`` fit's MA block is not invertible.
+            FlexConfigError: If the AR block is not stationary, or a
+                ``forecast_horizon > 1`` fit's MA block is not invertible.
         """
         _c, ar, ma, _beta = self.model.terms.unpack(self.model.params)
         ar_root = ar_max_root(ar)
@@ -475,14 +395,14 @@ class ArimaRegressor:
                 value=ar_root,
             )
         ma_root = ma_max_root(ma)
-        if ma_root >= 1.0 and self._fit_objective == "output_error":
+        if ma_root >= 1.0 and self.model.forecast_horizon > 1:
             raise FlexConfigError(
                 f"ArimaRegressor fitted a non-invertible MA block for "
-                f"order={self._order} under fit_objective='output_error': its "
-                f"largest root magnitude is {ma_root:.4f}. The forecast "
-                f"seeds its MA lags from one-step residuals, which such a block "
-                f"makes explode. Use a lower q or "
-                f'fit_objective="equation_error".',
+                f"order={self._order} at forecast_horizon="
+                f"{self.model.forecast_horizon} steps: its largest root magnitude is "
+                f"{ma_root:.4f}. The forecast seeds its MA lags from one-step "
+                f"residuals, which such a block makes explode. Use a lower q "
+                f"or forecast_horizon=1.",
                 field="ma_coefs",
                 value=ma_root,
             )
@@ -526,34 +446,13 @@ class ArimaRegressor:
         return self._order
 
     @property
-    def fit_objective(self) -> str:
-        """The residual this fit minimizes.
+    def forecast_horizon(self) -> int | pd.Timedelta:
+        """The requested free-run window: an int number of steps, or a
+        ``pd.Timedelta``.
 
-        ``"equation_error"`` (the default) minimizes one-step-ahead residuals
-        using actual lagged values. ``"output_error"`` minimizes windowed
-        free-run error, the criterion the Pyomo surrogate exercises when it
-        simulates forward with its innovations fixed at zero.
-        """
-        return self._fit_objective
-
-    @property
-    def fit_solver(self) -> str:
-        """The optimizer behind an ``output_error`` fit.
-
-        ``"scipy"`` (the default) uses ``scipy.optimize.least_squares`` on
-        the windowed free-run residual. ``"ipopt"`` instead builds the real
-        :class:`~flexops.surrogates.arima.ArimaSurrogate` over the training
-        series and minimizes the squared output error through it.
-        Irrelevant to an ``equation_error`` fit.
-        """
-        return self._fit_solver
-
-    @property
-    def forecast_horizon(self) -> int | None:
-        """The free-run window length in steps.
-
-        An explicit horizon is readable immediately; ``"auto"`` resolves
-        during :meth:`fit`, so this is ``None`` until then.
+        A duration is converted to steps on each :meth:`fit`, from that fit's
+        time step; the steps used are ``fit_diagnostics()["forecast_horizon"]``.
+        ``1`` is the one-step (equation-error) fit.
         """
         return self._forecast_horizon
 
@@ -565,7 +464,8 @@ class ArimaRegressor:
     def to_fit_result(self) -> FitResult:
         """Return this fit as the shared :class:`~.base.FitResult` shape.
 
-        The coefficient map is :attr:`coefficients`.
+        The coefficient map is :attr:`coefficients`, holding the last
+        ``beta`` estimated (see the class docstring).
 
         Returns:
             A :class:`~flexparameterize.regression.base.FitResult` carrying
@@ -594,7 +494,8 @@ class ArimaRegressor:
         - ``coefficients``: ``order``; ``intercept`` (``d=0``) or ``drift``
           (``d=1``) when the fit has a deterministic term, omitted entirely
           when it does not; and ``ar_coefs``, ``ma_coefs``, ``exog_coefs``
-          in lag/column order for each non-empty block.
+          in lag/column order for each non-empty block. ``exog_coefs`` is
+          the last ``beta`` the fit estimated (see the class docstring).
         - ``history``: ``start_date``, ``time_step_seconds``, and the
           disturbance/innovation series the surrogate replays to seed its
           pre-horizon lags, covering the last ``history_length`` of the

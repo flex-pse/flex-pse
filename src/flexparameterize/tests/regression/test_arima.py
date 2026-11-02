@@ -44,6 +44,22 @@ def _capture_arima_warnings(monkeypatch) -> list[str]:
     return messages
 
 
+def _free_run_rmse(regressor, X, y, horizon: int) -> float:
+    """Score a fit by windowed free-run error at ``horizon``, whatever horizon
+    it was fitted at, so fits at different horizons compare on one criterion."""
+    from flexparameterize.regression.utils.arima_utils import output_error_residuals
+
+    x = X.to_numpy(dtype=float) if X.shape[1] else None
+    residuals = output_error_residuals(
+        regressor.model.params,
+        regressor.model.terms,
+        y.to_numpy(dtype=float).ravel(),
+        x,
+        horizon,
+    )
+    return float(np.sqrt(np.mean(residuals**2)))
+
+
 # -- absence tests -----------------------------------------------------------
 @pytest.mark.unit
 def test_no_order_no_auto_raises():
@@ -479,6 +495,7 @@ def test_fit_diagnostics_before_fit_raises():
 @pytest.mark.unit
 def test_auto_arima_selects_order():
     """auto=True runs the order search and stores a valid order."""
+    pytest.importorskip("statsmodels")  # the d test runs ADF
     pytest.importorskip("scipy")
 
     rng = np.random.default_rng(8)
@@ -609,10 +626,10 @@ def test_biogas_surrogate_spec_has_all_keys():
 def test_biogas_matches_statsmodels_insample_and_forecast(order):
     """Direct ARIMA fits and forecasts on real biogas data match statsmodels.
 
-    Pinned to ``fit_objective="equation_error"`` on purpose: statsmodels
-    SARIMAX maximizes the exact Gaussian likelihood, which is an
-    equation-error criterion. Comparing the ``output_error`` default against
-    it would be comparing two different estimators, not validating ours.
+    Uses the default ``forecast_horizon=1`` on purpose: statsmodels SARIMAX
+    maximizes the exact Gaussian likelihood, which is a one-step
+    (equation-error) criterion. Comparing a multi-step fit against it would
+    be comparing two different estimators, not validating ours.
     """
     pytest.importorskip("scipy")
     pytest.importorskip("statsmodels")
@@ -636,9 +653,7 @@ def test_biogas_matches_statsmodels_insample_and_forecast(order):
     X_test = test_df[["feed_volume_kg", "TS_pct"]]
 
     p, d, q = order
-    regressor = ArimaRegressor(
-        order=order, max_ar_persistence=None, fit_objective="equation_error"
-    ).fit(
+    regressor = ArimaRegressor(order=order, max_ar_persistence=None).fit(
         X_train,
         y_train,
         input_units={"feed_volume_kg": "kg", "TS_pct": "%"},
@@ -722,7 +737,6 @@ def test_biogas_auto_arima_matches_statsmodels():
     regressor = ArimaRegressor(
         auto=True,
         max_ar_persistence=None,
-        fit_objective="equation_error",
         max_p=3,
         max_q=3,
         max_d=1,
@@ -796,6 +810,7 @@ def test_d1_default_mean_uses_constant_drift_for_pyomo_contract():
 @pytest.mark.unit
 def test_auto_arima_d_in_zero_or_one():
     """auto=True allows d=0 or d=1, but rejects d>1."""
+    pytest.importorskip("statsmodels")  # the d test runs ADF
     pytest.importorskip("scipy")
 
     rng = np.random.default_rng(42)
@@ -904,7 +919,7 @@ def test_nonstationary_ar_block_is_rejected_even_within_the_coefficient_bound():
 
 @pytest.mark.unit
 def test_output_error_rejects_a_noninvertible_ma_block(monkeypatch):
-    """An output-error fit with MA roots outside the unit circle is refused.
+    """A multi-step fit with MA roots outside the unit circle is refused.
 
     The forecast seeds its MA lags from the one-step residuals, which a
     non-invertible MA makes explode. Each coefficient of ``[-0.99, -0.99]``
@@ -926,14 +941,14 @@ def test_output_error_rejects_a_noninvertible_ma_block(monkeypatch):
     idx = pd.date_range("2024-01-01", periods=n, freq="1h")
     y = pd.DataFrame({"y": np.random.default_rng(4).normal(0, 0.1, size=n)}, index=idx)
     with pytest.raises(FlexConfigError, match="non-invertible"):
-        ArimaRegressor(order=(1, 0, 2), fit_objective="output_error").fit(
+        ArimaRegressor(order=(1, 0, 2), forecast_horizon=24).fit(
             pd.DataFrame(index=idx), y
         )
 
 
 @pytest.mark.unit
 def test_equation_error_keeps_a_noninvertible_ma_block_with_a_warning(monkeypatch):
-    """The default objective only warns about a non-invertible MA block.
+    """The default one-step fit only warns about a non-invertible MA block.
 
     Its forecast seeds from the very residuals it minimized, so they stay
     small; on the biogas data most MA fits land here and forecast fine.
@@ -975,9 +990,7 @@ def test_output_error_ma_block_stays_bounded_on_biogas():
     y = df[["biogas_m3_hour"]]
     train, test = slice(4224 - 384, 4224), slice(4224, 4224 + 192)
 
-    regressor = ArimaRegressor(
-        order=(0, 0, 1), fit_objective="output_error", forecast_horizon=192
-    ).fit(
+    regressor = ArimaRegressor(order=(0, 0, 1), forecast_horizon=192).fit(
         X.iloc[train],
         y.iloc[train],
         input_units={"feed_volume_kg": "kg", "TS_pct": "dimensionless"},
@@ -1206,101 +1219,41 @@ def test_max_ar_persistence_invalid_type_raises():
         ArimaRegressor(order=(1, 0, 0), max_ar_persistence="high")
 
 
-# -- output-error fitting objective -------------------------------------------
+# -- forecast_horizon: the fitting objective ----------------------------------
 
 
 @pytest.mark.unit
-def test_fit_objective_rejects_unknown_value():
-    """An unrecognized fit_objective fails at construction."""
-    with pytest.raises(FlexConfigError, match="fit_objective"):
-        ArimaRegressor(order=(1, 0, 0), fit_objective="least_squares")
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("horizon", [0, -5, 2.5, "none"])
+@pytest.mark.parametrize(
+    "horizon", [0, -5, 2.5, "auto", True, "0D", "-1D", "NaT", None]
+)
 def test_forecast_horizon_rejects_invalid_values(horizon):
-    """forecast_horizon must be a positive int or the string "auto"."""
+    """forecast_horizon must be a positive int or a positive duration."""
     with pytest.raises(FlexConfigError, match="forecast_horizon"):
         ArimaRegressor(order=(1, 0, 0), forecast_horizon=horizon)
 
 
 @pytest.mark.unit
-def test_forecast_horizon_with_equation_error_raises():
-    """forecast_horizon does not affect an equation-error fit, so asking for
-    one is a configuration error rather than a silently ignored argument."""
-    with pytest.raises(FlexConfigError, match="forecast_horizon"):
-        ArimaRegressor(
-            order=(1, 0, 0), fit_objective="equation_error", forecast_horizon=24
-        )
+@pytest.mark.parametrize(
+    "kwargs", [{"fit_objective": "output_error"}, {"fit_solver": "ipopt"}]
+)
+def test_removed_fitting_options_are_rejected(kwargs):
+    """fit_objective was merged into forecast_horizon and the ipopt fitting
+    backend was removed; passing either is an error rather than a silently
+    ignored keyword."""
+    with pytest.raises(FlexConfigError, match=next(iter(kwargs))):
+        ArimaRegressor(order=(1, 0, 0), forecast_horizon=24, **kwargs)
 
 
 @pytest.mark.unit
-def test_default_objective_and_solver():
+def test_default_horizon():
     """Defaults stay on the classical one-step fit.
 
-    ``output_error`` only changes anything when ``d >= 1`` -- it exists to
-    stop a drift error integrating over a free run -- and it costs an order
-    of magnitude more time, so it is opt-in.
+    A longer horizon only changes much when ``d >= 1`` -- it exists to stop
+    a drift error integrating over a free run -- and it costs an order of
+    magnitude more time, so it is opt-in.
     """
     regressor = ArimaRegressor(order=(1, 0, 0))
-    assert regressor.fit_objective == "equation_error"
-    assert regressor.fit_solver == "scipy"
-
-
-@pytest.mark.unit
-def test_auto_horizon_is_resolved_afresh_on_every_fit():
-    """Refitting on a different series re-resolves ``"auto"``.
-
-    The first fit's horizon used to stick: a regressor fitted on 100 rows
-    and then on 60 kept the 98-step window, longer than the new data.
-    An explicit horizon is never touched.
-    """
-    pytest.importorskip("scipy")
-
-    rng = np.random.default_rng(13)
-    values = np.cumsum(rng.normal(0, 0.1, size=100))
-
-    def frames(n):
-        idx = pd.date_range("2024-01-01", periods=n, freq="1h")
-        return pd.DataFrame(index=idx), pd.DataFrame({"y": values[:n]}, index=idx)
-
-    auto = ArimaRegressor(order=(1, 1, 0), fit_objective="output_error")
-    explicit = ArimaRegressor(
-        order=(1, 1, 0), fit_objective="output_error", forecast_horizon=24
-    )
-
-    assert auto.fit(*frames(100)).forecast_horizon == 98  # seed = p + d = 2
-    assert auto.fit(*frames(60)).forecast_horizon == 58
-    assert explicit.fit(*frames(100)).forecast_horizon == 24
-    assert explicit.fit(*frames(60)).forecast_horizon == 24
-
-
-@pytest.mark.unit
-def test_fit_resolves_and_exposes_the_auto_horizon():
-    """Auto's choice is never invisible: it is readable after the fit."""
-    pytest.importorskip("scipy")
-    from flexparameterize.regression.utils.arima_utils import (
-        ArimaTerms,
-        auto_forecast_horizon,
-    )
-
-    n = 200
-    idx = pd.date_range("2024-01-01", periods=n, freq="1h")
-    rng = np.random.default_rng(3)
-    y = pd.DataFrame({"y": np.cumsum(rng.normal(0, 0.1, size=n))}, index=idx)
-
-    regressor = ArimaRegressor(
-        order=(1, 1, 0), max_ar_persistence=None, fit_objective="output_error"
-    )
-    assert regressor.forecast_horizon is None
-
-    regressor.fit(pd.DataFrame(index=idx), y)
-    assert regressor.forecast_horizon == auto_forecast_horizon(
-        n, ArimaTerms(p=1, d=1, q=0, n_exog=0, has_const=False, has_drift=True)
-    )
-    assert regressor.fit_diagnostics()["forecast_horizon"] == float(
-        regressor.forecast_horizon
-    )
+    assert regressor.forecast_horizon == 1
 
 
 @pytest.mark.unit
@@ -1317,16 +1270,45 @@ def test_explicit_forecast_horizon_is_used_verbatim():
         order=(1, 1, 0),
         forecast_horizon=20,
         max_ar_persistence=None,
-        fit_objective="output_error",
     )
     assert regressor.forecast_horizon == 20
     regressor.fit(pd.DataFrame(index=idx), y)
     assert regressor.forecast_horizon == 20
+    assert regressor.fit_diagnostics()["forecast_horizon"] == 20.0
 
 
 @pytest.mark.unit
-def test_free_run_rmse_reported_in_both_modes_and_matches_hand_computation():
-    """metrics["free_run_rmse"] is the windowed free-run error, both modes.
+def test_duration_horizon_fits_the_same_as_its_step_count():
+    """A duration is the same fit as the step count it covers on the
+    training grid, and stays a duration on the regressor across refits."""
+    pytest.importorskip("scipy")
+
+    n = 200
+    rng = np.random.default_rng(4)
+    values = np.cumsum(rng.normal(0, 0.1, size=n))
+
+    def frames(freq):
+        idx = pd.date_range("2024-01-01", periods=n, freq=freq)
+        return pd.DataFrame(index=idx), pd.DataFrame({"y": values}, index=idx)
+
+    by_steps = ArimaRegressor(order=(1, 1, 0), forecast_horizon=8).fit(*frames("15min"))
+    by_duration = ArimaRegressor(order=(1, 1, 0), forecast_horizon="2h")
+    assert by_duration.forecast_horizon == pd.Timedelta(hours=2)
+
+    by_duration.fit(*frames("15min"))
+    assert by_duration.fit_diagnostics()["forecast_horizon"] == 8.0
+    assert by_duration.coefficients == pytest.approx(by_steps.coefficients)
+
+    # Refit on an hourly grid: the same duration is now 2 steps.
+    by_duration.fit(*frames("1h"))
+    assert by_duration.forecast_horizon == pd.Timedelta(hours=2)
+    assert by_duration.fit_diagnostics()["forecast_horizon"] == 2.0
+
+
+@pytest.mark.unit
+def test_free_run_rmse_matches_hand_computation_at_the_fitted_horizon():
+    """metrics["free_run_rmse"] is the windowed free-run error at the fit's
+    own horizon; at ``forecast_horizon=1`` that is the one-step rmse.
 
     This is the diagnostic whose absence let a drifting d=1 fit look good:
     one-step rmse improves with order while the free run degrades.
@@ -1347,9 +1329,11 @@ def test_free_run_rmse_reported_in_both_modes_and_matches_hand_computation():
     y = pd.DataFrame({"y": values}, index=idx)
     X = pd.DataFrame(index=idx)
 
-    for objective in ("equation_error", "output_error"):
-        regressor = ArimaRegressor(order=(1, 1, 0), fit_objective=objective).fit(X, y)
+    for horizon in (1, 24):
+        regressor = ArimaRegressor(order=(1, 1, 0), forecast_horizon=horizon).fit(X, y)
         reported = regressor.metrics["free_run_rmse"]
+        if horizon == 1:
+            assert reported == pytest.approx(regressor.metrics["rmse"], rel=1e-12)
         assert np.isfinite(reported)
 
         coefficients = regressor.coefficients
@@ -1363,52 +1347,13 @@ def test_free_run_rmse_reported_in_both_modes_and_matches_hand_computation():
 
 
 @pytest.mark.unit
-def test_forecast_horizon_one_matches_equation_error_fit():
-    """At a one-step horizon the two objectives are the same criterion.
-
-    A single-step window is seeded from actual levels and actual innovations,
-    which is exactly the one-step residual, so both fits must land in the
-    same place. This pins the windowing indices against an off-by-one.
-    """
-    pytest.importorskip("scipy")
-
-    n = 250
-    idx = pd.date_range("2024-01-01", periods=n, freq="1h")
-    rng = np.random.default_rng(6)
-    values = np.zeros(n)
-    for t in range(2, n):
-        values[t] = (
-            values[t - 1] + 0.5 * (values[t - 1] - values[t - 2]) + rng.normal(0, 0.05)
-        )
-    y = pd.DataFrame({"y": values}, index=idx)
-    X = pd.DataFrame(index=idx)
-
-    equation = ArimaRegressor(
-        order=(1, 1, 0), fit_objective="equation_error", max_ar_persistence=None
-    ).fit(X, y)
-    output = ArimaRegressor(
-        order=(1, 1, 0),
-        fit_objective="output_error",
-        forecast_horizon=1,
-        max_ar_persistence=None,
-    ).fit(X, y)
-
-    assert output.coefficients["ar.L1"] == pytest.approx(
-        equation.coefficients["ar.L1"], abs=1e-4
-    )
-    assert output.coefficients["drift"] == pytest.approx(
-        equation.coefficients["drift"], abs=1e-4
-    )
-
-
-@pytest.mark.unit
 def test_output_error_trades_parameter_recovery_for_forecast_accuracy():
     """Document the estimator trade, so neither half surprises a caller.
 
     On a well-specified series the one-step criterion is consistent and
     recovers the true parameters; the free-run criterion is not consistent
-    and returns whatever forecasts best over its horizon. Each objective
-    wins on its own criterion, and that is the whole choice between them.
+    and returns whatever forecasts best over its horizon. Each horizon wins
+    on its own criterion, and that is the whole choice between them.
     """
     pytest.importorskip("scipy")
 
@@ -1427,18 +1372,16 @@ def test_output_error_trades_parameter_recovery_for_forecast_accuracy():
     y = pd.DataFrame({"y": values}, index=idx)
     X = pd.DataFrame(index=idx)
 
-    equation = ArimaRegressor(
-        order=(1, 1, 0), fit_objective="equation_error", max_ar_persistence=None
-    ).fit(X, y)
+    equation = ArimaRegressor(order=(1, 1, 0), max_ar_persistence=None).fit(X, y)
     output = ArimaRegressor(
-        order=(1, 1, 0), fit_objective="output_error", max_ar_persistence=None
+        order=(1, 1, 0), forecast_horizon=192, max_ar_persistence=None
     ).fit(X, y)
 
-    # Equation error recovers the generating parameters.
+    # The one-step fit recovers the generating parameters.
     assert equation.coefficients["drift"] == pytest.approx(true_drift, rel=0.15)
     assert equation.coefficients["ar.L1"] == pytest.approx(true_phi, rel=0.2)
-    # Output error wins on the criterion it minimizes.
-    assert output.metrics["free_run_rmse"] <= equation.metrics["free_run_rmse"]
+    # The 192-step fit wins on the criterion it minimizes.
+    assert output.metrics["free_run_rmse"] <= _free_run_rmse(equation, X, y, 192)
 
 
 @pytest.mark.unit
@@ -1462,16 +1405,14 @@ def test_output_error_curbs_the_spurious_d1_drift_ramp():
     y = pd.DataFrame({"y": values}, index=idx)
     X = pd.DataFrame(index=idx)
 
-    equation = ArimaRegressor(
-        order=(1, 1, 1), fit_objective="equation_error", max_ar_persistence=None
-    ).fit(X, y)
+    equation = ArimaRegressor(order=(1, 1, 1), max_ar_persistence=None).fit(X, y)
     output = ArimaRegressor(
-        order=(1, 1, 1), fit_objective="output_error", max_ar_persistence=None
+        order=(1, 1, 1), forecast_horizon=192, max_ar_persistence=None
     ).fit(X, y)
 
-    assert (
-        output.metrics["free_run_rmse"] <= equation.metrics["free_run_rmse"]
-    ), "output-error fit must not be worse on the criterion it optimizes"
+    assert output.metrics["free_run_rmse"] <= _free_run_rmse(
+        equation, X, y, 192
+    ), "a 192-step fit must not be worse on the criterion it optimizes"
 
 
 @pytest.mark.unit
@@ -1529,34 +1470,34 @@ def test_output_error_beats_equation_error_on_biogas_high_order():
         "output_units": "m^3/hr",
     }
 
-    equation = ArimaRegressor(
-        order=(3, 1, 3), fit_objective="equation_error", max_ar_persistence=None
-    ).fit(X, y, **units)
+    equation = ArimaRegressor(order=(3, 1, 3), max_ar_persistence=None).fit(
+        X, y, **units
+    )
     output = ArimaRegressor(
-        order=(3, 1, 3), fit_objective="output_error", max_ar_persistence=None
+        order=(3, 1, 3), forecast_horizon=192, max_ar_persistence=None
     ).fit(X, y, **units)
 
-    assert output.metrics["free_run_rmse"] < 0.6 * equation.metrics["free_run_rmse"], (
-        f"output-error free-run rmse {output.metrics['free_run_rmse']:.5f} vs "
-        f"equation-error {equation.metrics['free_run_rmse']:.5f}"
+    baseline = _free_run_rmse(equation, X, y, 192)
+    assert output.metrics["free_run_rmse"] < 0.6 * baseline, (
+        f"192-step free-run rmse {output.metrics['free_run_rmse']:.5f} vs "
+        f"one-step fit {baseline:.5f}"
     )
 
 
 @pytest.mark.unit
-def test_default_horizon_leaves_the_ma_block_at_its_warm_start(monkeypatch):
-    """The default horizon must not disturb the MA coefficients.
+def test_whole_series_horizon_leaves_the_ma_block_at_its_warm_start(monkeypatch):
+    """A window spanning the series must not disturb the MA coefficients.
 
     At a full-series horizon the MA block reaches only the first q of
     several hundred residuals, so its gradient is negligible and the
-    coefficients keep the equation-error warm-start values, where they were
+    coefficients keep the one-step warm-start values, where they were
     identified. An intermediate horizon identifies them weakly instead,
-    which is worse: it drags them out of the unit circle -- so this property
-    holds only while the series is short enough that auto spans it, which is
-    why the guard warning exists for every other case.
+    which is worse: it drags them out of the unit circle -- which is why the
+    MA bound and invertibility guard exist for every other case.
     """
     pytest.importorskip("scipy")
 
-    n = 150  # below AUTO_MAX_HORIZON, so auto spans the whole series
+    n = 150
     idx = pd.date_range("2024-01-01", periods=n, freq="1h")
     rng = np.random.default_rng(11)
     values = np.zeros(n)
@@ -1571,215 +1512,16 @@ def test_default_horizon_leaves_the_ma_block_at_its_warm_start(monkeypatch):
     y = pd.DataFrame({"y": values}, index=idx)
     X = pd.DataFrame(index=idx)
 
-    equation = ArimaRegressor(order=(1, 1, 1), fit_objective="equation_error").fit(X, y)
+    equation = ArimaRegressor(order=(1, 1, 1)).fit(X, y)
     warnings = _capture_arima_warnings(monkeypatch)
-    output = ArimaRegressor(order=(1, 1, 1), fit_objective="output_error").fit(X, y)
+    # Windows start at row max(p, q) + d = 2, so one window spans the rest.
+    output = ArimaRegressor(order=(1, 1, 1), forecast_horizon=n - 2).fit(X, y)
 
     assert output.coefficients["ma.L1"] == pytest.approx(
         equation.coefficients["ma.L1"], rel=1e-3
     )
-    assert output.forecast_horizon == n - 2  # seed = p + d = 2, uncapped here
     assert output.fit_diagnostics()["ma_max_root"] < 1.0
     assert not any("non-invertible" in message for message in warnings)
-
-
-# -- fit_solver: scipy or ipopt ------------------------------------------------
-
-
-@pytest.mark.unit
-def test_fit_solver_rejects_unknown_value():
-    """An unrecognized fit_solver fails at construction."""
-    with pytest.raises(FlexConfigError, match="fit_solver"):
-        ArimaRegressor(order=(1, 0, 0), fit_solver="gurobi")
-
-
-@pytest.mark.unit
-def test_ipopt_solver_requires_output_error():
-    """There is no NLP to hand a solver in an equation-error fit."""
-    with pytest.raises(FlexConfigError, match="fit_solver"):
-        ArimaRegressor(
-            order=(1, 1, 0), fit_objective="equation_error", fit_solver="ipopt"
-        )
-
-
-@pytest.mark.unit
-def test_ipopt_solver_rejects_an_explicit_horizon():
-    """The ipopt backend spans the series in one model, so it cannot window."""
-    with pytest.raises(FlexConfigError, match="forecast_horizon"):
-        ArimaRegressor(
-            order=(1, 1, 0),
-            fit_objective="output_error",
-            fit_solver="ipopt",
-            forecast_horizon=48,
-        )
-
-
-@pytest.mark.unit
-def test_ipopt_solver_requires_declared_units():
-    """The ipopt backend builds a real surrogate, which needs units."""
-    pytest.importorskip("scipy")
-
-    n = 60
-    idx = pd.date_range("2024-01-01", periods=n, freq="1h")
-    rng = np.random.default_rng(21)
-    y = pd.DataFrame({"y": np.cumsum(rng.normal(0, 0.1, size=n))}, index=idx)
-
-    regressor = ArimaRegressor(
-        order=(1, 1, 0),
-        fit_objective="output_error",
-        fit_solver="ipopt",
-        max_ar_persistence=None,
-    )
-    with pytest.raises(FlexConfigError, match="output_units"):
-        regressor.fit(pd.DataFrame(index=idx), y)
-
-
-@pytest.mark.component
-@pytest.mark.needs_ipopt
-def test_ipopt_history_seed_tracks_the_fitted_exog_coefficients(monkeypatch):
-    """The pre-horizon disturbance ``y - X @ beta`` follows ``beta`` as ipopt
-    moves it, instead of staying at the warm start's value.
-
-    A stale seed is not a small error for ``d=1``: the free run integrates
-    from it, so ``x0 @ (beta - beta0)`` becomes a constant offset over the
-    whole series.
-    """
-    pytest.importorskip("scipy")
-    import pyomo.environ as pyo
-
-    from flexparameterize.regression.utils import arima_utils
-
-    n = 250
-    idx = pd.date_range("2024-01-01", periods=n, freq="15min")
-    rng = np.random.default_rng(22)
-    feed = rng.uniform(0.1, 1.0, size=n)
-    eta = np.cumsum(rng.normal(0, 0.02, size=n))
-    y = pd.DataFrame({"biogas": 2.0 * feed + eta}, index=idx)
-    X = pd.DataFrame({"feed": feed}, index=idx)
-
-    solved = []
-    real_get_solver = arima_utils.get_solver
-
-    def spying_get_solver(*args, **kwargs):
-        solver = real_get_solver(*args, **kwargs)
-        real_solve = solver.solve
-
-        def solve(model, **solve_kwargs):
-            result = real_solve(model, **solve_kwargs)
-            solved.append(model)
-            return result
-
-        solver.solve = solve
-        return solver
-
-    monkeypatch.setattr(arima_utils, "get_solver", spying_get_solver)
-    ArimaRegressor(
-        order=(1, 1, 0), fit_objective="output_error", fit_solver="ipopt"
-    ).fit(X, y, input_units={"feed": "dimensionless"}, output_units="m^3/hr")
-
-    block = solved[0].unit.arima
-    beta = pyo.value(block.exog_coefs[1])
-    for index in block.eta_history_index:
-        expected = y["biogas"].iloc[index] - beta * feed[index]
-        assert pyo.value(block.initial_eta_history[index]) == pytest.approx(
-            expected, abs=1e-8
-        )
-
-
-@pytest.mark.component
-@pytest.mark.needs_ipopt
-def test_ipopt_backend_fits_and_emits_a_valid_spec():
-    """The ipopt backend produces a usable fit through the real surrogate."""
-    pytest.importorskip("scipy")
-
-    n = 250
-    idx = pd.date_range("2024-01-01", periods=n, freq="15min")
-    rng = np.random.default_rng(22)
-    feed = pd.Series(rng.uniform(0.1, 1.0, size=n), index=idx, name="feed")
-    eta = np.zeros(n)
-    for t in range(2, n):
-        eta[t] = eta[t - 1] + 0.3 * (eta[t - 1] - eta[t - 2]) + rng.normal(0, 0.02)
-    y = pd.DataFrame({"biogas": 2.0 * feed.values + eta}, index=idx)
-    X = pd.DataFrame({"feed": feed})
-    units = {"input_units": {"feed": "dimensionless"}, "output_units": "m^3/hr"}
-
-    regressor = ArimaRegressor(
-        order=(1, 1, 0), fit_objective="output_error", fit_solver="ipopt"
-    ).fit(X, y, **units)
-
-    assert regressor.fitted is True
-    assert regressor.fit_solver == "ipopt"
-    assert np.isfinite(regressor.metrics["free_run_rmse"])
-    ArimaSurrogate(regressor.to_surrogate_spec().data)
-
-
-@pytest.mark.component
-@pytest.mark.needs_ipopt
-def test_ipopt_backend_clips_an_out_of_bound_ma_warm_start():
-    """The ipopt free run never sees the MA block, so its warm start must
-    already satisfy the MA bound.
-
-    One whole-series window reaches MA only on its first q steps, whose
-    seeded innovations are zero padding, so the MA variable drops out of the
-    problem ipopt receives and keeps its value. On this biogas slice the
-    equation-error warm start has ``ma1 = 1.053``.
-    """
-    pytest.importorskip("scipy")
-
-    if not os.path.exists(_BIO_GAS_PATH):
-        pytest.skip(f"Test data not found at {_BIO_GAS_PATH}")
-
-    df = _bio_gas_dataframe().asfreq("15min").dropna().iloc[1920:2304]
-    regressor = ArimaRegressor(
-        order=(0, 1, 1), fit_objective="output_error", fit_solver="ipopt"
-    ).fit(
-        df[["feed_volume_kg", "TS_pct"]],
-        df[["biogas_m3_hour"]],
-        input_units={"feed_volume_kg": "kg", "TS_pct": "dimensionless"},
-        output_units="m^3/hr",
-    )
-
-    assert abs(regressor.coefficients["ma.L1"]) <= 0.99 + 1e-9
-
-
-@pytest.mark.component
-@pytest.mark.needs_ipopt
-def test_both_output_error_backends_beat_equation_error_on_a_d1_ramp():
-    """Either backend fixes the d=1 drift ramp; neither is far from the other.
-
-    With the AR persistence bound at its default both land within a factor
-    of two of each other. Disabling that bound is what lets either optimizer
-    wander into explosive AR territory.
-    """
-    pytest.importorskip("scipy")
-
-    if not os.path.exists(_BIO_GAS_PATH):
-        pytest.skip(f"Test data not found at {_BIO_GAS_PATH}")
-
-    df = _bio_gas_dataframe().dropna(
-        subset=["biogas_m3_hour", "feed_volume_kg", "TS_pct"]
-    )
-    X = df[["feed_volume_kg", "TS_pct"]].iloc[:384]
-    y = df[["biogas_m3_hour"]].iloc[:384]
-    units = {
-        "input_units": {"feed_volume_kg": "kg", "TS_pct": "dimensionless"},
-        "output_units": "m^3/hr",
-    }
-
-    equation = ArimaRegressor(order=(3, 1, 3)).fit(X, y, **units)
-    scipy_fit = ArimaRegressor(order=(3, 1, 3), fit_objective="output_error").fit(
-        X, y, **units
-    )
-    ipopt_fit = ArimaRegressor(
-        order=(3, 1, 3), fit_objective="output_error", fit_solver="ipopt"
-    ).fit(X, y, **units)
-
-    baseline = equation.metrics["free_run_rmse"]
-    assert scipy_fit.metrics["free_run_rmse"] < baseline
-    assert ipopt_fit.metrics["free_run_rmse"] < baseline
-    assert ipopt_fit.metrics["free_run_rmse"] == pytest.approx(
-        scipy_fit.metrics["free_run_rmse"], rel=1.0
-    )
 
 
 @pytest.mark.unit
