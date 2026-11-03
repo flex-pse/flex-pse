@@ -485,7 +485,7 @@ def counted_trains() -> pyo.ConcreteModel:
 
 
 def resource_balances() -> pyo.ConcreteModel:
-    """A water stock and an electricity import cap on a feed, pump and product."""
+    """A feed, pump and product joined through two resource nodes."""
     m = pyo.ConcreteModel(name="resource_balances")
     m.time_block = fo.TimeBlock(
         start_date="2025-01-01", end_date="2025-01-01T08:00", time_step=1 * pyunits.hr
@@ -498,25 +498,12 @@ def resource_balances() -> pyo.ConcreteModel:
         energy_intensity=0.5 * pyunits.kWh / pyunits.m**3,
     )
     m.site.supply = fo.Product(property_package=m.properties, resource_name="water")
-    # A stock: what the well gives minus what the supply takes accumulates.
-    add_resource_balance(
-        m.site,
-        "water",
-        resource="water",
-        units="m^3",
-        stock=True,
-        lower=0.0,
-        upper=500.0 * pyunits.m**3,
-        initial=120.0,
-    )
-    # A flow: net electricity is capped at a 50 kW import.
-    add_resource_balance(
-        m.site,
-        "grid_cap",
-        resource="electricity",
-        units="kW",
-        lower=-50.0 * pyunits.kW,
-    )
+    m.site.well.attach_port("outlet_a", resource="raw")
+    m.site.pump.attach_port("inlet", resource="raw")
+    m.site.pump.attach_port("outlet", resource="treated")
+    m.site.supply.attach_port("inlet_a", resource="treated")
+    add_resource_balance(m.site, "raw", resource="raw", units="m^3/hr")
+    add_resource_balance(m.site, "treated_node", resource="treated", units="m^3/hr")
     return m
 
 

@@ -277,48 +277,69 @@ def test_resource_kind_builds_between_logic_and_state():
 
 
 @pytest.mark.unit
-def test_resource_defaults_leave_bounds_and_initial_unset():
+def test_resource_defaults_to_the_last_part_of_its_name():
     spec = FlowsheetSpec.model_validate(spec_dict(plant(), resource()))
 
     element = next(e for e in spec.elements if e.kind == "resource")
-    assert (element.stock, element.lower, element.upper, element.initial) == (
-        False,
-        None,
-        None,
-        None,
-    )
     assert element.resource is None
 
 
 @pytest.mark.unit
-def test_resource_accepts_a_stock_and_quantities():
-    accepts(
-        resource(
-            stock=True,
-            units="m^3",
-            initial=5.0,
-            lower=0.0,
-            upper={"value": 10.0, "units": "m^3"},
+@pytest.mark.parametrize("field", ["stock", "lower", "upper", "initial"])
+def test_resource_has_no_bounds_or_level_fields(field):
+    rejects(spec_dict(plant(), resource(**{field: 1.0})), field)
+
+
+def attached(*connections):
+    """Return a pump whose connections are the given (port, to) pairs."""
+    return pump(connections=[{"port": p, "to": to} for p, to in connections])
+
+
+@pytest.mark.unit
+def test_connection_may_name_a_resource_node_shared_by_many_ports():
+    FlowsheetSpec.model_validate(
+        spec_dict(
+            plant(),
+            attached(("inlet", "p.gas"), ("outlet", "p.gas")),
+            pump("p.b", connections=[{"port": "inlet", "to": "p.gas"}]),
+            resource(),
         )
     )
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    ("fields", "fragments"),
-    [
-        ({"stock": True}, ("needs an initial level",)),
-        ({"initial": 1.0}, ("a flow has no initial level",)),
-        ({"lower": 5.0, "upper": 1.0}, ("lower (5.0) is above upper (1.0)",)),
-        (
-            {"stock": True, "initial": 20.0, "upper": 10.0},
-            ("initial (20.0) is outside",),
+def test_a_port_attaches_to_one_node_only():
+    rejects(
+        spec_dict(
+            plant(),
+            attached(("inlet", "p.gas"), ("inlet", "p.oil")),
+            resource(),
+            resource("p.oil"),
         ),
-    ],
-    ids=["stock_needs_initial", "flow_has_no_initial", "bad_bounds", "bad_initial"],
-)
-def test_resource_rejects_inconsistent_fields(fields, fragments):
-    rejects(spec_dict(plant(), resource(**fields)), *fragments)
+        "one arc per port",
+    )
+
+
+@pytest.mark.unit
+def test_connection_to_a_node_must_be_directed_and_unindexed():
+    undirected = pump(connections=[{"port": "inlet", "to": "p.gas", "directed": False}])
+    rejects(spec_dict(plant(), undirected, resource()), "resource node")
+    indexed = pump(connections=[{"port": "inlet", "to": "p.gas", "index": "s"}])
+    rejects(
+        spec_dict(
+            plant(), indexed, resource(), {"kind": "set", "name": "s", "values": [0]}
+        ),
+        "resource node",
+    )
+
+
+@pytest.mark.unit
+def test_connection_to_a_node_must_be_under_the_nodes_parent():
+    other = {"kind": "plant", "name": "q"}
+    rejects(
+        spec_dict(plant(), other, attached(("inlet", "q.gas")), resource("q.gas")),
+        "under the node's parent",
+    )
 
 
 @pytest.mark.unit
