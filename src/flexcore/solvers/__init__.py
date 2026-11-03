@@ -7,9 +7,11 @@ Public API:
     - :class:`SolverSettings` and :class:`SolverOption` -- solver-neutral tuning.
     - :class:`Direct`, :class:`RelaxAndFix`, :class:`SolveStrategy`,
       :class:`SolveReport`, :class:`StepResult` -- solve strategies.
+    - :func:`find_redundant_equalities` -- rows that make a Jacobian rank deficient.
 """
 
 from flexcore.solvers.classify import ProblemClass, classify
+from flexcore.solvers.diagnostics import find_redundant_equalities
 from flexcore.solvers.facade import SolverFacade, get_solver
 from flexcore.solvers.options import SolverOption, SolverSettings
 from flexcore.solvers.registry import available_solvers
@@ -34,4 +36,5 @@ __all__ = [
     "SolveStrategy",
     "SolveReport",
     "StepResult",
+    "find_redundant_equalities",
 ]

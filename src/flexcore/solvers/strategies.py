@@ -49,11 +49,14 @@ class SolveReport:
         strategy: The strategy's name.
         steps: The steps in the order they ran; the last produced the solution.
         bound: A bound on the optimal objective, if the strategy computed one.
+        redundant_equalities: Names of equality rows that earlier rows imply, when
+            the solver is one they can hurt. Empty if it wasn't checked.
     """
 
     strategy: str
     steps: list[StepResult]
     bound: float | None = None
+    redundant_equalities: list[str] = dataclasses.field(default_factory=list)
 
     @property
     def objective(self) -> float | None:

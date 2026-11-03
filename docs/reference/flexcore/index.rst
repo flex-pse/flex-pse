@@ -83,6 +83,22 @@ leaves a :class:`SolveReport` on ``SolverFacade.last_report``.
 
 .. autoclass:: StepResult
 
+Redundant equalities
+~~~~~~~~~~~~~~~~~~~~
+
+An equality that other equalities imply makes the constraint Jacobian rank
+deficient. HiGHS presolve drops such a row, but IPOPT has to regularize around it,
+which can cost accuracy or convergence even when it reports an optimal solve. So
+before an IPOPT solve, the facade logs a warning naming these rows and lists them on
+``SolveReport.redundant_equalities``, then solves anyway. Call
+:func:`find_redundant_equalities` to run the check yourself.
+
+The check uses row reduction, because structural methods such as Dulmage-Mendelsohn
+miss a dependency that keeps the system structurally square, like a closed recycle.
+It only sees linear rows.
+
+.. autofunction:: find_redundant_equalities
+
 Options and settings
 ~~~~~~~~~~~~~~~~~~~~
 

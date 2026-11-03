@@ -28,6 +28,7 @@ import pyomo.environ as pyo
 from flexcore.exceptions import FlexSolverError
 from flexcore.logger import get_logger
 from flexcore.solvers.classify import ProblemClass, classify
+from flexcore.solvers.diagnostics import find_redundant_equalities
 from flexcore.solvers.options import SolverSettings, solver_options
 from flexcore.solvers.registry import (
     WARMSTART_SOLVERS,
@@ -140,7 +141,8 @@ class SolverFacade:
 
         The solution is loaded into the model only when the solver found one;
         an infeasible model returns its results without raising. The step-by-step
-        record is kept on :attr:`last_report`.
+        record is kept on :attr:`last_report`. An IPOPT solve first warns about
+        redundant equality rows and lists them on the report.
 
         Args:
             model: The Pyomo model to solve.
@@ -157,6 +159,15 @@ class SolverFacade:
         """
         self.last_report = None
         deadline = None if time_limit is None else time.perf_counter() + time_limit
+        # IPOPT has to regularize dependent rows; HiGHS presolve drops them
+        redundant = find_redundant_equalities(model) if self.name == "ipopt" else []
+        if redundant:
+            _log.warning(
+                "%d equality rows are implied by others, which can cost IPOPT "
+                "accuracy or convergence. First few: %s.",
+                len(redundant),
+                ", ".join(con.name for con in redundant[:5]),
+            )
 
         def run_step(
             problem_class: ProblemClass, label: str, step_warmstart: bool
@@ -233,6 +244,7 @@ class SolverFacade:
         results, self.last_report = self.strategy.solve(
             model, self.problem_class, run_step, warmstart
         )
+        self.last_report.redundant_equalities = [con.name for con in redundant]
         return results
 
 
