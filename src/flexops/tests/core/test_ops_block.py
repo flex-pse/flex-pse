@@ -1166,6 +1166,19 @@ class _LaggedSurrogate(Surrogate):
 
 
 @pytest.mark.unit
+def test_blockless_swap_clears_previous_surrogate_instance():
+    """A surrogate that builds no block leaves no stale instance behind."""
+    _, unit = _unit_with_relation()
+    unit.swap_relation("power_electrical_relation", _DispatchSurrogate(spec=True))
+
+    unit.swap_relation("power_electrical_relation", _LaggedSurrogate({}))
+
+    record = unit._relation_record("power_electrical_relation")
+    assert record.surrogate_block is None
+    assert record.surrogate_instance is None
+
+
+@pytest.mark.unit
 def test_swap_relation_skips_indices_a_body_declines():
     """A body returning Constraint.Skip omits that index from the fitted relation.
 
@@ -1640,6 +1653,132 @@ class _NoCoefficientsSurrogate(Surrogate):
         block = pyo.Block(concrete=True)
         output_units = pyunits.get_units(target[0])
         return block, lambda t: 1.0 * output_units
+
+
+class _DispatchSurrogate(Surrogate):
+    """Surrogate double exposing configurable OpsBlock dispatch helpers."""
+
+    surrogate_type = SurrogateType.MULTILINEAR
+
+    def _validate(self):
+        pass
+
+    @property
+    def input_variables(self):
+        return {}
+
+    @property
+    def output_variables(self):
+        return {"flow_out": "m^3/hr"}
+
+    def __init__(self, *, spec=False, objective=None):
+        super().__init__({})
+        self._has_spec = spec
+        self._objective = objective
+
+    def build(self, unit, target):
+        block = pyo.Block(concrete=True)
+        output_units = pyunits.get_units(target[0])
+        if self._objective == "regression":
+            block.get_regression_objective = lambda **kwargs: kwargs.get("value", 1.0)
+        elif self._objective == "fallback":
+            block.get_objective = lambda **kwargs: kwargs.get("value", 2.0)
+        if self._has_spec:
+            self.get_surrogate_spec = lambda block, target: {
+                "block": block,
+                "target": target,
+            }
+        return block, lambda t: 1.0 * output_units
+
+
+@pytest.mark.unit
+def test_get_surrogate_spec_dispatches_named_and_default_relation():
+    """get_surrogate_spec delegates for an explicit or the only active relation."""
+    _, unit = _flow_relation_unit()
+    unit.swap_relation("flow_relation", _DispatchSurrogate(spec=True))
+
+    named = unit.get_surrogate_spec("flow_relation")
+    default = unit.get_surrogate_spec()
+
+    assert named["target"] is unit.flow_out
+    assert set(named) == {"block", "target"}
+    assert default["target"] is unit.flow_out
+
+
+@pytest.mark.unit
+def test_get_surrogate_spec_rejects_invalid_or_unsupported_relations():
+    """get_surrogate_spec reports lookup, activation, and capability errors."""
+    _, unit = _flow_relation_unit()
+    with pytest.raises(FlexConfigError, match="not_registered"):
+        unit.get_surrogate_spec("not_registered")
+    with pytest.raises(FlexConfigError, match="no active surrogate blocks"):
+        unit.get_surrogate_spec()
+
+    unit.swap_relation("flow_relation", _NoCoefficientsSurrogate({}))
+    with pytest.raises(FlexConfigError, match="does not implement get_surrogate_spec"):
+        unit.get_surrogate_spec()
+
+
+@pytest.mark.unit
+def test_get_surrogate_spec_rejects_registered_relation_without_surrogate():
+    """An explicitly selected registered relation must have an active surrogate."""
+    _, unit = _flow_relation_unit()
+    with pytest.raises(FlexConfigError, match="has no active surrogate block"):
+        unit.get_surrogate_spec("flow_relation")
+
+
+@pytest.mark.unit
+def test_get_surrogate_objective_dispatches_helpers_and_default_relation():
+    """get_surrogate_objective prefers regression then fallback helpers."""
+    _, unit = _flow_relation_unit()
+    unit.swap_relation("flow_relation", _DispatchSurrogate(objective="regression"))
+    assert unit.get_surrogate_objective(value=3.0) == pytest.approx(3.0)
+
+    _, fallback_unit = _flow_relation_unit()
+    fallback_unit.swap_relation(
+        "flow_relation", _DispatchSurrogate(objective="fallback")
+    )
+    assert fallback_unit.get_surrogate_objective(value=4.0) == pytest.approx(4.0)
+
+
+@pytest.mark.unit
+def test_get_surrogate_objective_rejects_invalid_or_unsupported_relations():
+    """get_surrogate_objective reports lookup, activation, and capability errors."""
+    _, unit = _flow_relation_unit()
+    with pytest.raises(FlexConfigError, match="not_registered"):
+        unit.get_surrogate_objective("not_registered")
+    with pytest.raises(FlexConfigError, match="no active surrogate blocks"):
+        unit.get_surrogate_objective()
+    with pytest.raises(FlexConfigError, match="has no active surrogate block"):
+        unit.get_surrogate_objective("flow_relation")
+
+    unit.swap_relation("flow_relation", _NoCoefficientsSurrogate({}))
+    with pytest.raises(FlexConfigError, match="does not expose a usable objective"):
+        unit.get_surrogate_objective()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("method", ["get_surrogate_spec", "get_surrogate_objective"])
+def test_single_surrogate_queries_require_relation_name_when_ambiguous(method):
+    """With several active surrogates, a default query names them and refuses."""
+    _, unit = _two_flow_relation_unit()
+    unit.swap_relation(
+        "flow_relation", _DispatchSurrogate(spec=True, objective="regression")
+    )
+    unit.swap_relation(
+        "secondary_flow_relation",
+        _DispatchSurrogate(spec=True, objective="regression"),
+    )
+
+    with pytest.raises(
+        FlexConfigError,
+        match=r"2 active surrogate blocks \('flow_relation', "
+        r"'secondary_flow_relation'\); pass relation_name",
+    ):
+        getattr(unit, method)()
+
+    # An explicit name still resolves unambiguously.
+    getattr(unit, method)("secondary_flow_relation")
 
 
 @pytest.mark.unit
