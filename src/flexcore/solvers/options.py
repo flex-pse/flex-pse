@@ -44,6 +44,7 @@ OPTION_NAMES: dict[str, dict[SolverOption, str]] = {
     },
     "cbc": {SolverOption.MIP_GAP: "ratioGap", SolverOption.TIME_LIMIT: "seconds"},
     "ipopt": {SolverOption.TIME_LIMIT: "max_cpu_time"},
+    "cyipopt": {SolverOption.TIME_LIMIT: "max_cpu_time"},
 }
 
 SETTINGS_OPTIONS: dict[SolverSettings, dict[str, dict[str, Any]]] = {

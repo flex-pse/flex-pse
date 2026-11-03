@@ -139,7 +139,7 @@ class OpsBlockData(UnitModelBlockData):
     CONFIG = UnitModelBlockData.CONFIG()
     # A unit lives on a bare ConcreteModel or a dynamic=False flowsheet, never a
     # DAE flowsheet. Fix the inherited defaults to False so build() does not
-    # try to resolve them from a parent flowsheet (pitfall 1).
+    # try to resolve them from a parent flowsheet.
     CONFIG.get("dynamic").set_default_value(False)
     CONFIG.get("has_holdup").set_default_value(False)
     CONFIG.declare(
@@ -260,8 +260,7 @@ class OpsBlockData(UnitModelBlockData):
         Delegates to :func:`~flexops.core.time_block.find_time_block`, the one
         auto-discovery implementation shared with ``PlantBlock``/
         ``NetworkBlock``. The result is not cached on the block — assigning a
-        Pyomo component to an attribute would trip ``Block.__setattr__``
-        (pitfall 2).
+        Pyomo component to an attribute would trip ``Block.__setattr__``.
 
         Returns:
             The model's ``TimeBlockData``.
@@ -889,21 +888,15 @@ class OpsBlockData(UnitModelBlockData):
         )
 
     @staticmethod
-    def _deactivate_nested_grey_boxes(component) -> None:
-        """Deactivate any ``ExternalGreyBoxBlock`` nested inside ``component``.
-
-        ``BlockData.deactivate()`` does not recurse into child components, so
-        a deactivated surrogate block would otherwise leave its grey box (and
-        the multipliers/derivatives PyNumero attaches to it) live in the NLP
-        after a re-swap. Local import: this pynumero module is core Pyomo
-        (importable with neither ``cyipopt`` nor a framework installed), kept
-        function-scope so it is not paid for by a unit that never swaps to a
-        grey-box surrogate.
+    def _set_nested_grey_boxes_active(component, active: bool) -> None:
+        """Activate or deactivate any ``ExternalGreyBoxBlock`` nested in ``component``.
 
         Args:
-            component: A component from a deactivated ``RelationRecord``
-                (a Block, or a bare Constraint with no sub-components).
+            component: A component of a ``RelationRecord`` (a Block, or a bare
+                Constraint with no sub-components).
+            active: Whether the grey boxes should be active.
         """
+        # Local import so a unit that never swaps to a grey box doesn't load PyNumero.
         from pyomo.contrib.pynumero.interfaces.external_grey_box import (
             ExternalGreyBoxBlock,
         )
@@ -912,7 +905,17 @@ class OpsBlockData(UnitModelBlockData):
         if component_objects is None:
             return
         for egb in component_objects(ExternalGreyBoxBlock, descend_into=True):
-            egb.deactivate()
+            egb.activate() if active else egb.deactivate()
+
+    def _drop_relation_coefficients(self, relation_name: str) -> None:
+        """Remove the coefficient parameters registered for a relation's surrogate.
+
+        Args:
+            relation_name: The relation whose coefficient parameters to remove.
+        """
+        self._io_registry.parameters = [
+            p for p in self._io_registry.parameters if p.relation_name != relation_name
+        ]
 
     def swap_relation(
         self,
@@ -1002,10 +1005,11 @@ class OpsBlockData(UnitModelBlockData):
             deactivate = getattr(component, "deactivate", None)
             if deactivate is not None:
                 deactivate()
-            self._deactivate_nested_grey_boxes(component)
+            self._set_nested_grey_boxes_active(component, False)
 
         before = set(self.component_map())
         surrogate_block, body = surrogate.build(self, record.target)
+        self._drop_relation_coefficients(relation_name)
 
         base_name = f"surrogate_{relation_name.replace('_relation', '')}"
         block_name = base_name
@@ -1213,11 +1217,16 @@ class OpsBlockData(UnitModelBlockData):
                 value=block_name,
             )
 
+        coefficients = getattr(block, "coefficients", None)
+        has_coefficients = coefficients is not None and hasattr(coefficients, "items")
+
         (record.fitted if record.fitted is not None else record.constraint).deactivate()
         for component in record.components:
             component.deactivate()
+            self._set_nested_grey_boxes_active(component, False)
 
         block.activate()
+        self._set_nested_grey_boxes_active(block, True)
 
         record.surrogate_block = block
         record.fitted = None
@@ -1233,7 +1242,9 @@ class OpsBlockData(UnitModelBlockData):
         if record.fitted is not None:
             record.fitted.activate()
 
-        self.register_surrogate_coefficients(record.name)
+        self._drop_relation_coefficients(record.name)
+        if has_coefficients:
+            self.register_surrogate_coefficients(record.name)
 
     def register_surrogate_coefficients(
         self,

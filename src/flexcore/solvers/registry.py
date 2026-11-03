@@ -24,6 +24,7 @@ CAPABILITIES: dict[str, set[ProblemClass]] = {
     "highs": {ProblemClass.LP, ProblemClass.MILP},
     "cbc": {ProblemClass.LP, ProblemClass.MILP},
     "ipopt": {ProblemClass.NLP, ProblemClass.QP},
+    "cyipopt": {ProblemClass.NLP, ProblemClass.QP},
     "scip": {ProblemClass.MILP, ProblemClass.MINLP},
     "gurobi": {ProblemClass.LP, ProblemClass.QP, ProblemClass.MILP},
 }

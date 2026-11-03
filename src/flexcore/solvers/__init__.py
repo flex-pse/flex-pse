@@ -7,10 +7,13 @@ Public API:
     - :class:`SolverSettings` and :class:`SolverOption` -- solver-neutral tuning.
     - :class:`Direct`, :class:`RelaxAndFix`, :class:`SolveStrategy`,
       :class:`SolveReport`, :class:`StepResult` -- solve strategies.
+    - :func:`check_training_range` and :class:`TrainingRangeViolation` -- grey-box
+      inputs outside the range their model was trained over.
 """
 
 from flexcore.solvers.classify import ProblemClass, classify
 from flexcore.solvers.facade import SolverFacade, get_solver
+from flexcore.solvers.grey_box import TrainingRangeViolation, check_training_range
 from flexcore.solvers.options import SolverOption, SolverSettings
 from flexcore.solvers.registry import available_solvers
 from flexcore.solvers.strategies import (
@@ -34,4 +37,6 @@ __all__ = [
     "SolveStrategy",
     "SolveReport",
     "StepResult",
+    "check_training_range",
+    "TrainingRangeViolation",
 ]

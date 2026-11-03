@@ -9,11 +9,8 @@ pytest_plugins = ["pytester"]
 TIER_MARKERS = {"unit", "component", "integration"}
 
 OPTIONAL_PACKAGES = {"torch", "cyipopt"}
-"""Non-solver ``needs_<name>`` markers, resolved by import rather than through
-the solver registry (cyipopt is deliberately not in ``CAPABILITIES`` -- see
-``flexcore.solvers.facade``'s grey-box guard). Resolving these here, before the
-solver registry, is what makes ``needs_torch``/``needs_cyipopt`` actually skip
-instead of silently never matching (M17 pitfall)."""
+"""``needs_<name>`` markers resolved by import rather than through the solver
+registry, so ``needs_torch``/``needs_cyipopt`` skip on a bare install."""
 
 
 def _solver_availability():

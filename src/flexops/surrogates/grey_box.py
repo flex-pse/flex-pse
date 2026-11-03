@@ -1,34 +1,4 @@
-"""Wrap an arbitrary external differentiable model as a unit's relation.
-
-The general idea this module implements: some relationships have no closed
-form a modeler can write as a Pyomo expression, but *do* have external code
-that can report a numeric value and its derivatives at a point -- a fitted
-neural network, a linearized CFD or process simulator, a vendor's own
-sensitivity-aware solver, anything with that shape. Rather than deriving a
-closed-form expression, this module wraps that external code opaquely as a
-PyNumero ``ExternalGreyBoxBlock``: only its numeric output and derivatives
-are used, evaluated at whatever point the optimizer asks for. Building a unit
-with this surrogate therefore requires solving with ``SolverFactory("cyipopt")``,
-the one Pyomo-side solver that can call back into such a block; see
-:mod:`flexcore.solvers.facade` for the guard that raises otherwise.
-
-Which tool actually evaluates the wrapped model is a declared ``framework``
-field on the surrogate's data, resolved to a **driver** -- a small object
-evaluating one model and its first two derivatives at a point
-(:class:`ExternalModelDriver`). PyTorch (wrapping a fitted ``nn.Module`` or a
-plain callable, via ``torch.autograd``) is the only driver implemented today,
-but the driver abstraction exists for future non-neural-network cases too --
-e.g. a CFD model that exposes its own adjoint/sensitivity computation would
-be a new driver here, not a new kind of surrogate. Resolving a framework
-(:func:`get_driver`) is the only place a driver's own heavy dependency
-(``torch``, ...) is imported, and that happens lazily, at call time -- this
-is what keeps ``import flexops.surrogates`` clean on a bare install.
-
-``pyomo.contrib.pynumero.interfaces.external_grey_box`` is core Pyomo,
-importable with neither ``cyipopt`` nor a driver's framework (``torch``)
-installed -- only :func:`get_driver` (called from
-:meth:`ExternalModelSurrogate._validate`) imports one.
-"""
+"""Wrap an arbitrary external differentiable model as a unit's relation."""
 
 import enum
 import importlib
@@ -50,17 +20,20 @@ from flexcore.exceptions import FlexConfigError
 from flexops.core.units import parse_units
 from flexops.surrogates.base import Surrogate
 
-_DATA_KEYS = ("framework", "model_path", "input_variables", "output_variables")
-_OPTIONAL_KEYS = ("probe_point",)
+
+class ExternalModelDataKey(enum.StrEnum):
+    """The keys an external-model surrogate's ``data`` may hold."""
+
+    FRAMEWORK = "framework"
+    MODEL_PATH = "model_path"
+    INPUT_VARIABLES = "input_variables"
+    OUTPUT_VARIABLES = "output_variables"
+    PROBE_POINT = "probe_point"
+    TRAINING_RANGE = "training_range"
 
 
 class ExternalFramework(enum.StrEnum):
-    """Which tool a driver evaluates an external model through.
-
-    Only ``PYTORCH`` is implemented; add a member here only when a concrete
-    new driver is actually being built (e.g. a CFD-model driver), not
-    speculatively ahead of one.
-    """
+    """Which tool a driver evaluates an external model through."""
 
     PYTORCH = "pytorch"
 
@@ -101,14 +74,6 @@ class ExternalModelDriver(ABC):
         """Raise FlexConfigError if the model is not differentiable at ``x``."""
 
 
-_DRIVERS: dict[ExternalFramework, str] = {
-    ExternalFramework.PYTORCH: "flexops.surrogates.drivers.torch_driver.TorchDriver",
-}
-"""dict: framework -> dotted path of its driver class. The extension point
-for a new driver: add a member to :class:`ExternalFramework` and an entry
-here -- no other change is needed to resolve it."""
-
-
 def get_driver(framework: ExternalFramework | str) -> type[ExternalModelDriver]:
     """Resolve a framework to its driver class, importing it lazily.
 
@@ -123,7 +88,7 @@ def get_driver(framework: ExternalFramework | str) -> type[ExternalModelDriver]:
             value.
     """
     try:
-        member = ExternalFramework(framework)
+        ExternalFramework(framework)
     except ValueError as exc:
         known = ", ".join(repr(m.value) for m in ExternalFramework)
         raise FlexConfigError(
@@ -131,26 +96,35 @@ def get_driver(framework: ExternalFramework | str) -> type[ExternalModelDriver]:
             field="framework",
             value=framework,
         ) from exc
-    dotted = _DRIVERS[member]
-    module_name, class_name = dotted.rsplit(".", 1)
-    module = importlib.import_module(module_name)
-    return getattr(module, class_name)
+    # Local import: torch is optional and must not load with this module.
+    from flexops.surrogates.drivers.torch_driver import TorchDriver
+
+    return TorchDriver
 
 
 class _ExternalModelGreyBox(ExternalGreyBoxModel):
-    """Adapts an :class:`ExternalModelDriver` into PyNumero's
-    ``ExternalGreyBoxModel`` interface. One instance per time index -- never
-    shared (see ``ExternalModelSurrogate.build`` pitfall 1).
+    """Adapts an :class:`ExternalModelDriver` to PyNumero, one instance per time index.
+
+    Attributes:
+        training_range: ``{input name: (lower, upper)}`` the model was trained over.
     """
 
-    def __init__(self, driver, input_names: list[str], output_name: str, probe: dict):
-        """Store the driver and this instance's own input/probe cache.
+    def __init__(
+        self,
+        driver,
+        input_names: list[str],
+        output_name: str,
+        probe: dict,
+        training_range: dict[str, tuple[float, float]] | None = None,
+    ):
+        """Store the driver and this instance's own input and evaluation cache.
 
         Args:
             driver: The driver evaluating the wrapped model.
             input_names: Ordered input names.
             output_name: The one output name.
-            probe: ``{input name: probe value}``, in declared units.
+            probe: ``{input name: start value}``, in declared units.
+            training_range: ``{input name: (lower, upper)}``, in declared units.
         """
         self._driver = driver
         self._input_names = list(input_names)
@@ -159,6 +133,14 @@ class _ExternalModelGreyBox(ExternalGreyBoxModel):
         self._n = len(self._input_names)
         self._x = np.array([probe[name] for name in self._input_names], dtype=float)
         self._multiplier = 0.0
+        self.training_range = training_range or {}
+        self._clear_cache()
+
+    def _clear_cache(self) -> None:
+        """Forget the evaluations made at the previous input point."""
+        self._value = None
+        self._jacobian = None
+        self._hessian = None
 
     def input_names(self):
         """Return the ordered input names."""
@@ -169,30 +151,36 @@ class _ExternalModelGreyBox(ExternalGreyBoxModel):
         return [self._output_name]
 
     def set_input_values(self, input_values) -> None:
-        """Cache the current input point."""
-        self._x = np.asarray(input_values, dtype=float)
+        """Store a copy of the input point, clearing the cache if it changed."""
+        # A copy, since PyNumero may reuse this buffer for the next point.
+        x = np.array(input_values, dtype=float)
+        if not np.array_equal(x, self._x):
+            self._clear_cache()
+        self._x = x
 
     def evaluate_outputs(self) -> np.ndarray:
         """Return the model's output at the cached input point."""
-        return np.array([self._driver.evaluate(self._x)])
+        if self._value is None:
+            self._value = self._driver.evaluate(self._x)
+        return np.array([self._value])
 
     def evaluate_jacobian_outputs(self) -> coo_matrix:
         """Dense-pattern Jacobian, shape ``(1, n_inputs)``, zeros included."""
         row = np.zeros(self._n, dtype=int)
         col = np.arange(self._n)
-        data = np.asarray(self._driver.jacobian(self._x), dtype=float)
-        return coo_matrix((data, (row, col)), shape=(1, self._n))
+        if self._jacobian is None:
+            self._jacobian = np.asarray(self._driver.jacobian(self._x), dtype=float)
+        return coo_matrix((self._jacobian, (row, col)), shape=(1, self._n))
 
     def set_output_constraint_multipliers(self, output_con_multiplier_values) -> None:
         """Cache the output-constraint multiplier for the Hessian scale."""
         self._multiplier = float(output_con_multiplier_values[0])
 
     def evaluate_hessian_outputs(self) -> coo_matrix:
-        """Lower-triangular Hessian, shape ``(n_inputs, n_inputs)``, scaled by
-        the cached multiplier, zeros included."""
-        hessian = self._multiplier * np.asarray(
-            self._driver.hessian(self._x), dtype=float
-        )
+        """Lower-triangular Hessian scaled by the multiplier, zeros included."""
+        if self._hessian is None:
+            self._hessian = np.asarray(self._driver.hessian(self._x), dtype=float)
+        hessian = self._multiplier * self._hessian
         rows, cols = np.tril_indices(self._n)
         return coo_matrix((hessian[rows, cols], (rows, cols)), shape=(self._n, self._n))
 
@@ -200,67 +188,43 @@ class _ExternalModelGreyBox(ExternalGreyBoxModel):
         """Initialize input/output Vars from the probe point; never fix them."""
         for name in self._input_names:
             pyomo_block.inputs[name].set_value(self._probe[name])
-        probe_vector = np.array(
-            [self._probe[name] for name in self._input_names], dtype=float
-        )
-        pyomo_block.outputs[self._output_name].set_value(
-            self._driver.evaluate(probe_vector)
-        )
+        pyomo_block.outputs[self._output_name].set_value(self.evaluate_outputs()[0])
 
 
 class ExternalModelSurrogate(Surrogate):
-    """Wraps a fitted external differentiable model (e.g. a PyTorch
-    ``nn.Module``) as a unit's registered relation, solved via
-    ``SolverFactory("cyipopt")``.
-
-    ``data`` is::
-
-        {"framework": "pytorch",
-         "model_path": "myproject.models.my_fitted_model",
-         "input_variables": {"flow_in": "m^3/hr", "ambient_temperature": "degK"},
-         "output_variables": {"fouling_rate": "1/hr"},
-         "probe_point": {"flow_in": 1.0, "ambient_temperature": 298.15}}
-
-    ``model_path`` is a dotted import path (``importlib``-resolved) to an
-    already-fitted, callable model; this is trusted-as-code data, the same
-    trade-off every other surrogate's ``data`` makes (see
-    ``plan/00_conventions.md`` §4). ``probe_point`` (optional, defaults to
-    ``1.0`` for every input) is the point the grey-box block's input Vars are
-    initialized to and the point ``check_differentiable`` is smoke-tested at.
-
-    GPU placement (for the PyTorch driver) is controlled entirely by the
-    model object itself -- call ``model.to("cuda")`` before it is ever named
-    by ``model_path`` -- not by any key here; there is no ``"device"`` field.
-
-    Registers no coefficients: a wrapped model's internal weights are not
-    something FlexParameterize can regress.
-    """
+    """Wraps a fitted external differentiable model as a unit's registered relation."""
 
     surrogate_type: ClassVar[SurrogateType] = SurrogateType.EXTERNAL_MODEL
 
     def _validate(self) -> None:
-        """Validate the external-model ``data`` contract (see class docstring).
+        """Validate the external-model ``data`` and check the model at its start point.
 
         Raises:
             FlexConfigError: If a key is missing/unknown, a units string does
                 not parse, ``output_variables`` does not have exactly one
-                entry, ``probe_point`` names a key not in ``input_variables``,
-                ``framework`` is unknown, ``model_path`` does not resolve, or
-                the resolved model fails ``check_differentiable``.
+                entry, ``probe_point`` or ``training_range`` is malformed,
+                ``framework`` is unknown, ``model_path`` does not resolve, the
+                resolved model fails ``check_differentiable``, or its output
+                at the start point is not finite.
         """
-        unknown = sorted(set(self.data) - set(_DATA_KEYS) - set(_OPTIONAL_KEYS))
+        allowed = [str(key) for key in ExternalModelDataKey]
+        required = sorted(
+            set(allowed)
+            - {ExternalModelDataKey.PROBE_POINT, ExternalModelDataKey.TRAINING_RANGE}
+        )
+        unknown = sorted(set(self.data) - set(allowed))
         if unknown:
             raise FlexConfigError(
                 f"external_model surrogate data carries unknown key(s) "
-                f"{unknown}; it may only have {_DATA_KEYS + _OPTIONAL_KEYS}.",
+                f"{unknown}; it may only have {allowed}.",
                 field="data",
                 value=unknown,
             )
-        missing = sorted(set(_DATA_KEYS) - set(self.data))
+        missing = sorted(set(required) - set(self.data))
         if missing:
             raise FlexConfigError(
                 f"external_model surrogate data is missing key(s) {missing}; "
-                f"it must have {_DATA_KEYS}.",
+                f"it must have {required}.",
                 field="data",
                 value=missing,
             )
@@ -324,6 +288,35 @@ class ExternalModelSurrogate(Surrogate):
                     value=name,
                 ) from exc
 
+        training_range = self.data.get("training_range", {})
+        if not isinstance(training_range, dict) or set(training_range) - set(inputs):
+            raise FlexConfigError(
+                "external_model surrogate 'training_range' must be a mapping of "
+                f"names in 'input_variables' ({sorted(inputs)}) to [lower, upper], "
+                f"got {training_range!r}.",
+                field="training_range",
+                value=training_range,
+            )
+        self._training_range = {}
+        for name, bounds in training_range.items():
+            try:
+                lower, upper = (float(bound) for bound in bounds)
+            except (TypeError, ValueError) as exc:
+                raise FlexConfigError(
+                    f"external_model surrogate 'training_range' entry {name!r} "
+                    f"must be [lower, upper], got {bounds!r}.",
+                    field="training_range",
+                    value=name,
+                ) from exc
+            if not lower < upper:
+                raise FlexConfigError(
+                    f"external_model surrogate 'training_range' entry {name!r} "
+                    f"must have lower < upper, got {bounds!r}.",
+                    field="training_range",
+                    value=name,
+                )
+            self._training_range[name] = (lower, upper)
+
         driver_class = get_driver(self.data["framework"])
 
         model_path = self.data["model_path"]
@@ -345,12 +338,24 @@ class ExternalModelSurrogate(Surrogate):
                 value=model_path,
             ) from exc
 
-        self._probe_point = {name: float(probe_point.get(name, 1.0)) for name in inputs}
+        # Start from the probe point, then the range's midpoint, then 1.0.
+        midpoints = {name: sum(pair) / 2 for name, pair in self._training_range.items()}
+        self._probe_point = {
+            name: float(probe_point.get(name, midpoints.get(name, 1.0)))
+            for name in inputs
+        }
         probe_vector = np.array(
             [self._probe_point[name] for name in inputs], dtype=float
         )
         self._driver = driver_class(model, n_inputs=len(inputs))
         self._driver.check_differentiable(probe_vector)
+        if not np.isfinite(self._driver.evaluate(probe_vector)):
+            raise FlexConfigError(
+                f"model {model_path!r} has a non-finite output at {self._probe_point}; "
+                "set 'probe_point' to a point where the model is defined.",
+                field="probe_point",
+                value=self._probe_point,
+            )
 
     @property
     def input_variables(self) -> dict[str, str]:
@@ -390,10 +395,13 @@ class ExternalModelSurrogate(Surrogate):
         }
         driver = self._driver
         probe = self._probe_point
+        training_range = self._training_range
 
         def _make_grey_box(b, t):
             del b, t
-            return _ExternalModelGreyBox(driver, input_names, output_name, probe)
+            return _ExternalModelGreyBox(
+                driver, input_names, output_name, probe, training_range
+            )
 
         block = pyo.Block(concrete=True)
         block.egb = ExternalGreyBoxBlock(index_set, external_model=_make_grey_box)

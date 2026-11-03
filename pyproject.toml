@@ -46,7 +46,7 @@ parameterize = ["scikit-learn>=1.3"]
 # .github/actions/setup-ipopt and docs installation notes).
 solvers = ["highspy"]
 # cyipopt and torch are heavy, optional, and not needed for anything but
-# ExternalModelSurrogate (M17). A CPU-only torch build is an install-time flag
+# ExternalModelSurrogate. A CPU-only torch build is an install-time flag
 # (--extra-index-url https://download.pytorch.org/whl/cpu), not something this
 # list can pin by itself -- see docs installation notes.
 greybox = ["cyipopt", "torch"]

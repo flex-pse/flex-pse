@@ -1,7 +1,6 @@
-"""TorchDriver: an :class:`~flexops.surrogates.grey_box.ExternalModelDriver`
-backed by ``torch.autograd``. The only module in this milestone that imports
-``torch`` at module scope.
-"""
+"""An ``ExternalModelDriver`` that uses ``torch.autograd``."""
+
+import copy
 
 import numpy as np
 import torch
@@ -25,33 +24,22 @@ def _model_device(model) -> torch.device:
 
 
 class TorchDriver(ExternalModelDriver):
-    """Evaluates a PyTorch model and its exact first/second derivatives.
-
-    Uses ``torch.autograd.functional.jacobian``/``hessian`` (not manual
-    ``create_graph=True`` chains), so there is no double-backward footgun to
-    get wrong -- the higher-level API sidesteps it.
-
-    The forward/backward pass runs on whatever device the model's own
-    parameters already live on; call ``model.to("cuda")`` yourself before
-    passing it in via ``model_path`` to run on GPU. The rest of the
-    optimization (CyIpopt, Pyomo) always stays on CPU -- every value handed
-    back crosses to CPU first (see :meth:`jacobian`/:meth:`hessian`).
-    """
+    """Evaluates a PyTorch model and its exact first and second derivatives."""
 
     framework = ExternalFramework.PYTORCH
 
     def __init__(self, model, n_inputs: int) -> None:
-        """Store ``model`` and its device; coerce an ``nn.Module``'s dtype
-        to float64 once.
+        """Store ``model`` and its device, using a float64 eval-mode copy of a module.
 
         Args:
             model: A fitted, callable PyTorch model (an ``nn.Module`` or a
                 plain closure/function).
             n_inputs: Number of scalar inputs the model takes.
         """
-        super().__init__(model, n_inputs)
+        # A copy, so the caller's module keeps its dtype and training mode.
         if isinstance(model, torch.nn.Module):
-            model.double()
+            model = copy.deepcopy(model).double().eval()
+        super().__init__(model, n_inputs)
         self._device = _model_device(model)
 
     def _as_tensor(self, x: np.ndarray) -> torch.Tensor:
@@ -65,7 +53,8 @@ class TorchDriver(ExternalModelDriver):
 
     def evaluate(self, x: np.ndarray) -> float:
         """Return the model's scalar output at ``x``."""
-        return float(self._scalar_fn(self._as_tensor(x)))
+        with torch.no_grad():
+            return float(self._scalar_fn(self._as_tensor(x)))
 
     def jacobian(self, x: np.ndarray) -> np.ndarray:
         """Dense gradient at ``x``, shape ``(n_inputs,)``."""
@@ -80,20 +69,14 @@ class TorchDriver(ExternalModelDriver):
         return hess.reshape(self._n_inputs, self._n_inputs).detach().cpu().numpy()
 
     def check_differentiable(self, x: np.ndarray) -> None:
-        """Raise if the forward pass breaks autograd; warn on a non-finite grad.
-
-        Uses ``torch.autograd.grad`` rather than ``.backward()``, which would
-        accumulate into the caller's own ``model.parameters()[...].grad`` as a
-        side effect. A non-finite gradient is not rejected: ``sqrt``/``log``/
-        ``1/x`` have legitimately infinite derivatives at ordinary points.
+        """Raise if the forward pass fails or breaks autograd; warn on a bad gradient.
 
         Args:
             x: The probe point, in the surrogate's declared input units.
 
         Raises:
-            FlexConfigError: If the forward pass disconnects the autograd
-                graph (an in-place op, ``.detach()``, ``.item()``/``float()``
-                cast, or ``torch.no_grad()`` anywhere inside it).
+            FlexConfigError: If the model can't run on ``n_inputs`` inputs and
+                return one scalar, or its forward pass disconnects autograd.
         """
 
         def _not_differentiable():
@@ -107,10 +90,16 @@ class TorchDriver(ExternalModelDriver):
             )
 
         t = self._as_tensor(x).requires_grad_(True)
-        output = self._scalar_fn(t)
+        try:
+            output = self._scalar_fn(t)
+        except (RuntimeError, IndexError, TypeError, AttributeError) as exc:
+            raise FlexConfigError(
+                f"model {self._model!r} could not run on {self._n_inputs} input(s) "
+                f"and return one scalar tensor: {exc}",
+                field="input_variables",
+            ) from exc
+        # Fully detached output: torch.autograd.grad would raise, not return None.
         if not output.requires_grad:
-            # Fully detached: torch.autograd.grad itself raises here rather
-            # than returning None, since the whole output has no grad_fn.
             _not_differentiable()
         (grad,) = torch.autograd.grad(output, t, allow_unused=True)
         if grad is None:
