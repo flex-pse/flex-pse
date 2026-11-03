@@ -89,3 +89,10 @@ a given problem class, using the facade's solver, settings and options. The
 strategy decides what to change between steps and returns the final results
 together with a `SolveReport`. Strategies never choose solvers or options
 themselves, which keeps new ones (rolling horizon, decomposition) short.
+
+## Grey-box models
+
+cyipopt can't enforce integrality, so `RelaxAndFix` can't finish with a MIP solve
+on a model that holds a grey box. It dives instead, fixing binaries in stages and
+re-solving until all are fixed, and reports no bound. See
+[External models as grey-box surrogates](grey_box_surrogates.md).

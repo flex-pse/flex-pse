@@ -44,10 +44,23 @@ calling :func:`get_solver`.
      - LP, MILP
    * - ``ipopt``
      - NLP (built from idaes with HSL ``ma27`` when available, else stock IPOPT)
+   * - ``cyipopt``
+     - NLP (selected only for a model with a grey box, or by ``prefer``)
    * - ``scip``
      - MILP, MINLP (preferred over HiGHS for MILP, the default open source MINLP solver)
    * - ``gurobi``
      - LP, QP, MILP
+
+Grey-box models
+~~~~~~~~~~~~~~~
+
+A model with a live grey box always solves with cyipopt (see
+:doc:`../../explanation/grey_box_surrogates`). After a solve, the report's
+``out_of_range`` lists inputs outside their model's training range.
+
+.. autofunction:: check_training_range
+
+.. autoclass:: TrainingRangeViolation
 
 Solve strategies
 ~~~~~~~~~~~~~~~~

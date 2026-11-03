@@ -42,9 +42,9 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install "flex-pse[greybox]"
 ```
 
-Building this surrogate requires solving with `SolverFactory("cyipopt")`
-directly — `flexcore.solvers.get_solver` refuses a model containing one
-(it cannot pick an ASL/NL-file solver for it) and names `cyipopt` in the error.
+`flexcore.solvers.get_solver` selects cyipopt for a model containing one, and
+raises an error naming this extra if it isn't installed. See
+[External models as grey-box surrogates](../explanation/grey_box_surrogates.md).
 
 ## Verify the install
 
