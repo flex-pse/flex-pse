@@ -210,14 +210,24 @@ enclosing plant discovers it from this registry rather than by importing the
 :class:`~flexops.unit_models.product.Product` classes. ``flexops.unit_models``
 imports ``flexops.core``, so the reverse would be circular.
 
-Resource balances
------------------
+Resource nodes
+--------------
 
 .. currentmodule:: flexops.core.resources
 
-:func:`add_resource_balance` adds a balance on one named resource to a plant or
-network, using the terms :func:`~flexops.core.registration.iter_resource_terms`
-collects. A ``resource`` element calls it during the build. See
-:doc:`/explanation/resources`.
+:func:`add_resource_balance` adds a strict node on one named resource to a plant
+or network, using the terms
+:func:`~flexops.core.registration.iter_resource_terms` collects. A ``resource``
+element calls it during the build. :func:`resource_graph` returns the tasks,
+resources and edges under a block. See :doc:`/explanation/resources`.
 
 .. autofunction:: add_resource_balance
+
+.. autofunction:: resource_graph
+
+.. autoclass:: ResourceGraph
+
+.. autoclass:: GraphResource
+
+.. autoclass:: ResourceKind
+   :members:

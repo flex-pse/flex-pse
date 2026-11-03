@@ -218,9 +218,16 @@ def stage_topology(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
     units = elements_of(spec, "unit")
     for element in units:
         _build_unit(model, spec, element, ctx)
+    nodes = {node.name: node for node in elements_of(spec, "resource")}
     for element in units:
         for connection in sorted(element.connections, key=lambda c: (c.port, c.to)):
-            _build_connection(model, element.name, connection, ctx)
+            if connection.to not in nodes:
+                _build_connection(model, element.name, connection, ctx)
+                continue
+            for member in ctx.members[element.name]:
+                member.attach_port(
+                    connection.port, resource=_resource_key(nodes[connection.to])
+                )
     if ctx.expand_arcs:
         pyo.TransformationFactory("network.expand_arcs").apply_to(model)
 
@@ -342,11 +349,6 @@ def _limit(value):
     return value if isinstance(value, float) else value.value * parse_units(value.units)
 
 
-def _optional_limit(value):
-    """Return a spec limit as a Pyomo value, or ``None`` if it's unset."""
-    return None if value is None else _limit(value)
-
-
 def _require_status(member, kind: str) -> None:
     """Raise if ``member`` has no status for logic of ``kind`` to use."""
     if member.find_component("status") is None:
@@ -409,6 +411,11 @@ def _pairs(model, ctx: BuildContext, first: str, second: str) -> list[tuple]:
     return list(zip(firsts, seconds, strict=True))
 
 
+def _resource_key(element) -> str:
+    """Return the resource a resource element balances."""
+    return element.resource or element.name.rpartition(".")[2]
+
+
 def stage_resources(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
     """Add a balance for each resource element to its plant or network.
 
@@ -430,16 +437,11 @@ def stage_resources(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
                 field="name",
                 value=element.name,
             )
-        local_name = element.name.rpartition(".")[2]
         add_resource_balance(
             parent,
-            local_name,
-            resource=element.resource or local_name,
+            element.name.rpartition(".")[2],
+            resource=_resource_key(element),
             units=element.units,
-            stock=element.stock,
-            lower=_optional_limit(element.lower),
-            upper=_optional_limit(element.upper),
-            initial=_optional_limit(element.initial),
         )
 
 

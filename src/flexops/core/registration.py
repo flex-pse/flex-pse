@@ -315,6 +315,7 @@ class ResourceRecord:
         coeff: Signed coefficient. Positive supplies the resource, negative
             consumes it.
         offset: Delay in steps. The term at ``t`` uses ``var[t - offset]``.
+        phase: Second index of ``var`` for a port flow, or ``None``.
     """
 
     var: Any
@@ -322,6 +323,7 @@ class ResourceRecord:
     resource: str
     coeff: float
     offset: int
+    phase: str | None = None
 
 
 @dataclass
@@ -335,6 +337,7 @@ class ResourceTerm:
             consumes it.
         offset: Delay in steps.
         unit: Block that registered the variable, used in error messages.
+        phase: Second index of ``var`` for a port flow, or ``None``.
     """
 
     resource: str
@@ -342,6 +345,7 @@ class ResourceTerm:
     coeff: float
     offset: int
     unit: Any
+    phase: str | None = None
 
 
 @dataclass
@@ -364,6 +368,10 @@ class IORegistry:
         resources: Contributions added with ``register_resource``. Power,
             fuel and boundary terms come from their own registrations (see
             :func:`iter_resource_terms`).
+        port_coeffs: Each port's sign as a resource edge, ``-1`` for an inlet
+            and ``+1`` for an outlet.
+        port_states: Each port's state block.
+        attached_ports: Port name to the resource it is attached to.
     """
 
     io_variables: list[IOVariableRecord] = field(default_factory=list)
@@ -374,6 +382,9 @@ class IORegistry:
     relations: list[RelationRecord] = field(default_factory=list)
     boundary: list[BoundaryRecord] = field(default_factory=list)
     resources: list[ResourceRecord] = field(default_factory=list)
+    port_coeffs: dict[str, float] = field(default_factory=dict)
+    port_states: dict[str, Any] = field(default_factory=dict)
+    attached_ports: dict[str, str] = field(default_factory=dict)
 
     def is_empty(self) -> bool:
         """Return True if nothing has been registered on this block."""
@@ -467,12 +478,16 @@ def iter_resource_terms(block) -> dict[str, list[ResourceTerm]]:
         if not isinstance(registry, IORegistry):
             continue
 
-        def add(resource, var, coeff, offset=0, _unit=candidate):
+        def add(resource, var, coeff, offset=0, phase=None, _unit=candidate):
             terms.setdefault(resource, []).append(
-                ResourceTerm(resource, var, coeff, offset, _unit)
+                ResourceTerm(resource, var, coeff, offset, _unit, phase)
             )
 
+        attached = set(registry.attached_ports.values())
         for rec in registry.boundary:
+            # an attached port already carries this unit's boundary flow
+            if rec.resource in attached:
+                continue
             add(rec.resource, rec.var, 1.0 if rec.kind is BoundaryKind.FEED else -1.0)
         for rec in registry.power:
             if rec.kind is PowerKind.ELECTRICAL:
@@ -480,5 +495,5 @@ def iter_resource_terms(block) -> dict[str, list[ResourceTerm]]:
         for rec in registry.fuel:
             add(rec.fuel_name, rec.var, -1.0)
         for rec in registry.resources:
-            add(rec.resource, rec.var, rec.coeff, rec.offset)
+            add(rec.resource, rec.var, rec.coeff, rec.offset, rec.phase)
     return {resource: terms[resource] for resource in sorted(terms)}

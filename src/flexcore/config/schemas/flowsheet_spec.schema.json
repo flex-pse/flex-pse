@@ -107,7 +107,7 @@
     },
     "Connection": {
       "additionalProperties": false,
-      "description": "An arc from a port of the unit that owns it to another unit's port.",
+      "description": "An arc from a unit's port to another unit's port, or its port's resource node.",
       "properties": {
         "directed": {
           "default": true,
@@ -160,7 +160,7 @@
           "type": "string"
         },
         "to": {
-          "description": "Destination as '<unit element name>.<port path>'; may contain '{i}' for an indexed connection.",
+          "description": "Destination as '<unit element name>.<port path>', which may contain '{i}' for an indexed connection, or the name of a resource element to attach this port to. An attached inlet consumes the resource and an attached outlet supplies it, and many ports can share one.",
           "title": "To",
           "type": "string"
         }
@@ -1161,44 +1161,12 @@
     },
     "ResourceElement": {
       "additionalProperties": false,
-      "description": "A balance on one named resource over a plant or network.",
+      "description": "A strict node balance on one named resource over a plant or network.",
       "properties": {
-        "initial": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "$ref": "#/$defs/Quantity"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Level at the first time point. Required for a stock, not allowed for a flow. A bare number is in units.",
-          "title": "Initial"
-        },
         "kind": {
           "const": "resource",
           "title": "Kind",
           "type": "string"
-        },
-        "lower": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "$ref": "#/$defs/Quantity"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Lower bound on the net contribution for a flow, or on the level for a stock. A bare number is in units.",
-          "title": "Lower"
         },
         "name": {
           "description": "Dotted path of the balance block. Its parent has to be a plant or network.",
@@ -1218,32 +1186,10 @@
           "description": "Resource to balance, as units register it. Defaults to the last part of name.",
           "title": "Resource"
         },
-        "stock": {
-          "default": false,
-          "description": "True if the resource's level accumulates over time.",
-          "title": "Stock",
-          "type": "boolean"
-        },
         "units": {
-          "description": "Units of the balance, a rate for a flow resource or a quantity for a stock.",
+          "description": "Rate units of the balance.",
           "title": "Units",
           "type": "string"
-        },
-        "upper": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "$ref": "#/$defs/Quantity"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Upper bound on the net contribution for a flow, or on the level for a stock. A bare number is in units.",
-          "title": "Upper"
         }
       },
       "required": [

@@ -482,7 +482,7 @@ def _template(rest: str, member) -> str:
 
 
 def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
-    """Add a connection to its source unit element for every Arc on the model.
+    """Add a connection to each unit element for every Arc and attached port.
 
     Args:
         model: The model.
@@ -491,8 +491,9 @@ def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
         sets: Set elements by name, filled for arcs over their own set.
 
     Raises:
-        FlexConfigError: If an arc's ends are not unit ports, or no ``{i}``
-            template reproduces every member of an indexed arc.
+        FlexConfigError: If an arc's ends are not unit ports, no ``{i}``
+            template reproduces every member of an indexed arc, or an attached
+            port's resource has no balance.
     """
     for arc in model.component_objects(Arc, active=None, descend_into=True):
         found = set()
@@ -549,6 +550,30 @@ def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
                 directed=next(iter(arc.values())).directed,
             )
         )
+    nodes = [
+        (r.fields["name"], r.fields.get("resource"))
+        for r in model.__dict__.get("_flex_logic", [])
+        if r.kind == "resource"
+    ]
+    for unit, element in unit_elements.items():
+        for port, resource in units[unit][0]._io_registry.attached_ports.items():
+            node = next(
+                (
+                    name
+                    for name, key in nodes
+                    if (key or name.rpartition(".")[2]) == resource
+                    and unit.startswith(f"{name.rpartition('.')[0]}.")
+                ),
+                None,
+            )
+            if node is None:
+                raise FlexConfigError(
+                    f"Port {port!r} on {unit!r} is attached to resource "
+                    f"{resource!r}, which has no balance to write to a spec. Add "
+                    "one with add_resource_balance.",
+                    field=unit,
+                )
+            element.connections.append(Connection(port=port, to=node))
 
 
 def _mutable_elements(model, units: dict) -> list:

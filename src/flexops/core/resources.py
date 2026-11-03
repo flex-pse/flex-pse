@@ -1,4 +1,8 @@
-"""Resource balances on a plant or network, built from registered resource terms."""
+"""Resource nodes on a plant or network, built from registered resource terms."""
+
+import enum
+from collections.abc import Iterator
+from dataclasses import dataclass
 
 import pyomo.environ as pyo
 from pyomo.core.base.units_container import UnitsError
@@ -7,40 +11,56 @@ from pyomo.network import Arc
 
 from flexcore.exceptions import FlexConfigError
 from flexops.core.registration import ResourceTerm, iter_resource_terms
-from flexops.core.serialize import to_jsonable
 from flexops.core.units import parse_units
 from flexops.logic._records import record
 
 
-def _to_level(value, units, *, field: str):
-    """Return ``value`` as a float in ``units``, or ``None``.
+class ResourceKind(enum.StrEnum):
+    """How a resource in the graph is conserved."""
+
+    BALANCED = "balanced"
+    ARC = "arc"
+    OPEN = "open"
+
+
+@dataclass
+class GraphResource:
+    """One resource node of a :class:`ResourceGraph`.
+
+    Attributes:
+        kind: How the resource is conserved.
+        edges: Signed contribution of each task to the resource.
+    """
+
+    kind: ResourceKind
+    edges: list[ResourceTerm]
+
+
+@dataclass
+class ResourceGraph:
+    """The bipartite graph of tasks and resources under a block.
+
+    Attributes:
+        tasks: Unit blocks with at least one edge, in model order.
+        resources: Resources by name. An Arc appears under its own name.
+    """
+
+    tasks: list
+    resources: dict[str, GraphResource]
+
+
+def _live_arcs(block) -> Iterator:
+    """Yield each Arc under ``block`` that conserves its flow.
 
     Args:
-        value: ``None``, a bare number already in ``units``, or a Pyomo
-            expression with units.
-        units: Pyomo units to convert to.
-        field: Name of the argument, used in the error message.
+        block: Block to search.
 
-    Returns:
-        The magnitude in ``units``, or ``None`` if ``value`` is ``None``.
-
-    Raises:
-        FlexConfigError: If a quantity cannot be converted to ``units``.
+    Yields:
+        Arc data objects that are active or already expanded.
     """
-    if value is None:
-        return None
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return float(value)
-    try:
-        return pyo.value(pyunits.convert(value, to_units=units))
-    except UnitsError as exc:
-        raise FlexConfigError(
-            f"{field} has units {pyunits.get_units(value)}, which cannot be "
-            f"converted to the resource's units {units}. Give {field} in "
-            "units of the same dimension.",
-            field=field,
-            value=str(value),
-        ) from exc
+    for arc in block.component_data_objects(Arc, active=None, descend_into=True):
+        if arc.active or arc.expanded_block is not None:
+            yield arc
 
 
 def _arc_connected_ids(scope) -> set[int]:
@@ -53,11 +73,8 @@ def _arc_connected_ids(scope) -> set[int]:
         ``id()`` of each Var data object found on a connected port.
     """
     ids: set[int] = set()
-    for arc in scope.model().component_data_objects(Arc, descend_into=True):
-        # an expanded arc still conserves its flow
-        if not (arc.active or arc.expanded_block is not None):
-            continue
-        for port in (arc.source, arc.destination):
+    for arc in _live_arcs(scope.model()):
+        for port in arc.ports:
             for var in port.vars.values():
                 members = var.values() if var.is_indexed() else (var,)
                 ids.update(id(member) for member in members)
@@ -83,62 +100,84 @@ def _reject_arc_flows(scope, resource: str, terms: list[ResourceTerm]) -> None:
                 f"Resource {resource!r}: {term.var.name!r} (registered by "
                 f"{term.unit.name!r}) is a flow on a port that an Arc "
                 "connects, so the Arc already conserves it and balancing it "
-                "again would count it twice. Register the metered quantity "
-                "instead (a Feed or Product, a power draw, or a variable that "
-                "is not on a connected port).",
+                "again would count it twice. Attach the port to the resource "
+                "instead of the Arc, or register a variable that is not on a "
+                "connected port.",
                 field="resource",
                 value=resource,
             )
 
 
-def add_resource_balance(
-    scope,
-    local_name: str,
-    *,
-    resource: str,
-    units: str,
-    stock: bool = False,
-    lower=None,
-    upper=None,
-    initial=None,
-):
-    """Add a balance on one named resource to a plant or network.
+def _edge_label(term: ResourceTerm) -> str:
+    """Return the name of a term's edge, unique within one resource."""
+    return f"{term.var.name}@{term.offset}" if term.offset else term.var.name
+
+
+def _term_key(term: ResourceTerm, t: int):
+    """Return the index of a term's variable at step ``t``."""
+    index = t - term.offset
+    return (index, term.phase) if term.phase else index
+
+
+def _add_shared_state(block, resource: str, terms: list[ResourceTerm]) -> None:
+    """Hold every attached port's non-flow states equal to one node variable.
+
+    Args:
+        block: The node's block; gets a ``<state>`` Var and ``<state>_equal`` rows.
+        resource: Name of the resource.
+        terms: Terms of the resource.
+    """
+    time_index = block.parent_block().time_block.time_index
+    states: dict[str, dict[str, object]] = {}
+    for unit in dict.fromkeys(term.unit for term in terms):
+        registry = unit._io_registry
+        for port, attached in registry.attached_ports.items():
+            if attached != resource:
+                continue
+            for state, var in registry.port_states[port].define_state_vars().items():
+                if state != "flow_vol_phase":
+                    states.setdefault(state, {})[f"{unit.name}.{port}"] = var
+    for state, members in states.items():
+        first = next(iter(members.values()))
+        start = next(iter(time_index))
+        block.add_component(
+            state,
+            pyo.Var(
+                time_index,
+                initialize=pyo.value(first[start]),
+                units=pyunits.get_units(first[start]),
+                doc=f"The one {state} of resource {resource!r}.",
+            ),
+        )
+        shared = block.find_component(state)
+        block.add_component(
+            f"{state}_equal",
+            pyo.Constraint(
+                list(members),
+                time_index,
+                rule=lambda _, port, t, _m=members, _v=shared: _m[port][t] == _v[t],
+                doc=f"Each attached port's {state} equals the resource's.",
+            ),
+        )
+
+
+def add_resource_balance(scope, local_name: str, *, resource: str, units: str):
+    """Add a strict node balance on one named resource to a plant or network.
 
     Args:
         scope: Plant or network to balance.
         local_name: Name of the sub-block added to ``scope``.
         resource: Resource to collect, as units registered it.
-        units: Units of ``net`` (a rate) or ``level`` (a quantity), in
-            ``parse_units`` syntax.
-        stock: True if the resource accumulates over time.
-        lower: Lower bound on ``net`` or ``level``, a number in ``units`` or a
-            quantity. For a flow with no ``upper`` either, ``None`` means zero.
-            Otherwise ``None`` leaves that side open.
-        upper: Upper bound, same rules as ``lower``.
-        initial: Level at the first time point. Stock only.
+        units: Rate units of the balance, in ``parse_units`` syntax.
 
     Returns:
-        The new sub-block.
+        The new sub-block, with ``edges``, ``flow[edge, t]`` and ``balance[t]``.
 
     Raises:
         FlexConfigError: If no unit registered ``resource`` (the message lists
-            what is registered), a stock has no ``initial`` or a flow has one,
-            ``lower`` is above ``upper``, a stock's ``initial`` is outside
-            them, a term cannot be converted to ``units``, or a term is a flow
-            on a port an Arc connects.
+            what is registered), a term cannot be converted to ``units``, or a
+            term is a flow on a port an Arc connects.
     """
-    if stock and initial is None:
-        raise FlexConfigError(
-            f"Resource {resource!r} is a stock and needs an initial level.",
-            field="initial",
-        )
-    if not stock and initial is not None:
-        raise FlexConfigError(
-            f"Resource {resource!r} is a flow and has no initial level. Remove "
-            "initial, or declare it a stock.",
-            field="initial",
-            value=str(initial),
-        )
     registered = iter_resource_terms(scope)
     terms = registered.get(resource)
     if not terms:
@@ -148,122 +187,100 @@ def add_resource_balance(
             field="resource",
             value=resource,
         )
+    _reject_arc_flows(scope, resource, terms)
 
     tb = scope.time_block
-    level_units = parse_units(units)
-    lower_value = _to_level(lower, level_units, field="lower")
-    upper_value = _to_level(upper, level_units, field="upper")
-    if not stock and lower_value is None and upper_value is None:
-        lower_value = upper_value = 0.0
-    if (
-        lower_value is not None
-        and upper_value is not None
-        and lower_value > upper_value
-    ):
-        raise FlexConfigError(
-            f"Resource {resource!r}: lower ({lower_value}) is above upper "
-            f"({upper_value}).",
-            field="lower",
-            value=lower_value,
-        )
-    initial_value = _to_level(initial, level_units, field="initial")
-    if initial_value is not None and not (
-        (lower_value is None or initial_value >= lower_value)
-        and (upper_value is None or initial_value <= upper_value)
-    ):
-        raise FlexConfigError(
-            f"Resource {resource!r}: initial ({initial_value}) is outside "
-            f"[{lower_value}, {upper_value}], so level[0] is infeasible.",
-            field="initial",
-            value=initial_value,
-        )
-    _reject_arc_flows(scope, resource, terms)
+    rate_units = parse_units(units)
+    edges = {_edge_label(term): term for term in terms}
 
     block = pyo.Block()
     scope.add_component(local_name, block)
+    block._flex_balanced_resource = resource
+    block.edges = pyo.Set(initialize=list(edges), doc="Edges into this resource.")
 
-    def summed(t, *, per_step: bool):
-        """Return the terms at ``t`` as one expression in ``level_units``."""
-        pieces = []
-        for term in terms:
-            index = t - term.offset
-            # skip terms that land before the horizon starts
-            if index not in term.var:
-                continue
-            raw = term.coeff * term.var[index]
-            if per_step:
-                raw = tb.dt * raw
-            # convert each term on its own so an error names its unit
-            try:
-                pieces.append(pyunits.convert(raw, to_units=level_units))
-            except UnitsError as exc:
-                raise FlexConfigError(
-                    f"Resource {resource!r}: {term.var.name!r} (registered by "
-                    f"{term.unit.name!r}) has units {pyunits.get_units(raw)}, "
-                    f"which cannot be converted to the resource's units "
-                    f"{units!r}. Change the resource's units, or register the "
-                    "variable with a coefficient that fixes the dimension.",
-                    field="units",
-                    value=units,
-                ) from exc
-        return sum(pieces) if pieces else 0 * level_units
+    # TODO(#142): make edges Vars so GDP can gate them outside a candidate's disjunct.
+    @block.Expression(block.edges, tb.time_index, doc="Signed flow on each edge.")
+    def flow(_, edge, t):
+        term = edges[edge]
+        key = _term_key(term, t)
+        # a term before the horizon starts adds nothing
+        if key not in term.var:
+            return 0 * rate_units
+        raw = term.coeff * term.var[key]
+        # convert each term on its own so an error names its unit
+        try:
+            return pyunits.convert(raw, to_units=rate_units)
+        except UnitsError as exc:
+            raise FlexConfigError(
+                f"Resource {resource!r}: {term.var.name!r} (registered by "
+                f"{term.unit.name!r}) has units {pyunits.get_units(raw)}, "
+                f"which cannot be converted to the resource's units "
+                f"{units!r}. Change the resource's units, or register the "
+                "variable with a coefficient that fixes the dimension.",
+                field="units",
+                value=units,
+            ) from exc
 
-    if stock:
-        block.level = pyo.Var(
-            tb.time_index,
-            bounds=(lower_value, upper_value),
-            initialize=0.0 if lower_value is None else lower_value,
-            units=level_units,
-            doc=f"Level of resource {resource!r}.",
-        )
-        block.initial = pyo.Param(
-            initialize=initial_value,
-            mutable=True,
-            units=level_units,
-            doc="Initial level, level[0], registered as rolling horizon state.",
-        )
-        tb.register_initial_state(block.initial)
+    @block.Constraint(tb.time_index, doc="The edges at t sum to zero.")
+    def balance(b, t):
+        if all(_term_key(term, t) not in term.var for term in terms):
+            return pyo.Constraint.Skip
+        return sum(b.flow[edge, t] for edge in b.edges) == 0 * rate_units
 
-        @block.Constraint(doc="level[0] equals initial.")
-        def initial_level(b):
-            return b.level[0] == b.initial
-
-        @block.Constraint(
-            list(tb.time_index)[1:],
-            doc="level[t] = level[t-1] + dt * (sum of the terms at t).",
-        )
-        def balance(b, t):
-            return b.level[t] == b.level[t - 1] + summed(t, per_step=True)
-
-    else:
-        block.net = pyo.Var(
-            tb.time_index,
-            bounds=(lower_value, upper_value),
-            initialize=0.0,
-            units=level_units,
-            doc=f"Net contribution to resource {resource!r} (supply minus use).",
-        )
-
-        @block.Constraint(
-            tb.time_index,
-            doc="net[t] equals the sum of the terms at t.",
-        )
-        def balance(b, t):
-            return b.net[t] == summed(t, per_step=False)
-
-    _record_balance(scope, block, resource, units, stock, lower, upper, initial)
+    _add_shared_state(block, resource, terms)
+    _record_balance(scope, block, resource, units)
     return block
 
 
-def _record_balance(scope, block, resource, units, stock, lower, upper, initial):
+def _record_balance(scope, block, resource, units):
     """Record the call so ``emit_model`` can write it back as a resource element."""
     # leave defaults out so a spec that never set them emits unchanged
     fields = {"name": block.getname(fully_qualified=True), "units": units}
     if resource != block.local_name:
         fields["resource"] = resource
-    if stock:
-        fields["stock"] = True
-    for key, value in (("lower", lower), ("upper", upper), ("initial", initial)):
-        if value is not None:
-            fields[key] = to_jsonable(value, where=f"{fields['name']}.{key}")
     record(scope.model(), "resource", **fields)
+
+
+def resource_graph(block) -> ResourceGraph:
+    """Return the tasks, resources and edges under ``block``.
+
+    Args:
+        block: A plant, network or the whole model.
+
+    Returns:
+        The graph. A resource with a node is ``BALANCED``, an Arc is a private
+        two-edge ``ARC`` resource, and a registered resource with neither is
+        ``OPEN``.
+    """
+    balanced = {
+        candidate._flex_balanced_resource
+        for candidate in block.component_data_objects(
+            pyo.Block, active=True, descend_into=True
+        )
+        if hasattr(candidate, "_flex_balanced_resource")
+    }
+    resources = {
+        name: GraphResource(
+            ResourceKind.BALANCED if name in balanced else ResourceKind.OPEN, terms
+        )
+        for name, terms in iter_resource_terms(block).items()
+    }
+    for arc in _live_arcs(block):
+        source, destination = arc.ports
+        resources[arc.name] = GraphResource(
+            ResourceKind.ARC,
+            [
+                ResourceTerm(
+                    arc.name,
+                    port.vars.get("flow_vol_phase"),
+                    coeff,
+                    0,
+                    port.parent_block(),
+                )
+                for port, coeff in ((source, 1.0), (destination, -1.0))
+            ],
+        )
+    tasks = dict.fromkeys(
+        edge.unit for entry in resources.values() for edge in entry.edges
+    )
+    return ResourceGraph(list(tasks), resources)

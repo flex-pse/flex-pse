@@ -187,12 +187,14 @@ class SetElement(_StrictModel):
 
 
 class Connection(_StrictModel):
-    """An arc from a port of the unit that owns it to another unit's port."""
+    """An arc from a unit's port to another unit's port, or its port's resource node."""
 
     port: str = Field(description="Port on the owning unit, e.g. 'outlet'.")
     to: str = Field(
-        description="Destination as '<unit element name>.<port path>'; may "
-        "contain '{i}' for an indexed connection."
+        description="Destination as '<unit element name>.<port path>', which may "
+        "contain '{i}' for an indexed connection, or the name of a resource "
+        "element to attach this port to. An attached inlet consumes the resource "
+        "and an attached outlet supplies it, and many ports can share one."
     )
     name: str | None = Field(
         default=None,
@@ -620,7 +622,7 @@ class ObjectiveElement(_StrictModel):
 
 
 class ResourceElement(_StrictModel):
-    """A balance on one named resource over a plant or network."""
+    """A strict node balance on one named resource over a plant or network."""
 
     kind: Literal["resource"]
     name: str = Field(
@@ -632,64 +634,15 @@ class ResourceElement(_StrictModel):
         description="Resource to balance, as units register it. Defaults to the "
         "last part of name.",
     )
-    units: str = Field(
-        description="Units of the balance, a rate for a flow resource or a "
-        "quantity for a stock."
-    )
-    stock: bool = Field(
-        default=False,
-        description="True if the resource's level accumulates over time.",
-    )
-    lower: float | Quantity | None = Field(
-        default=None,
-        description="Lower bound on the net contribution for a flow, or on the "
-        "level for a stock. A bare number is in units.",
-    )
-    upper: float | Quantity | None = Field(
-        default=None,
-        description="Upper bound on the net contribution for a flow, or on the "
-        "level for a stock. A bare number is in units.",
-    )
-    initial: float | Quantity | None = Field(
-        default=None,
-        description="Level at the first time point. Required for a stock, not "
-        "allowed for a flow. A bare number is in units.",
-    )
+    units: str = Field(description="Rate units of the balance.")
 
     @model_validator(mode="after")
-    def _consistent(self) -> "ResourceElement":
-        """Check for a parent, initial only on a stock, and consistent bounds."""
+    def _has_parent(self) -> "ResourceElement":
+        """Check that the node sits under a plant or network."""
         if "." not in self.name:
             raise ValueError(
                 f"resource {self.name!r}: name the balance under a plant or "
                 "network, e.g. 'site.gas_balance'."
-            )
-        if self.stock and self.initial is None:
-            raise ValueError(
-                f"resource {self.name!r}: a stock needs an initial level; set "
-                "initial."
-            )
-        if not self.stock and self.initial is not None:
-            raise ValueError(
-                f"resource {self.name!r}: a flow has no initial level; remove "
-                "initial, or set stock to true."
-            )
-        if (
-            isinstance(self.lower, float)
-            and isinstance(self.upper, float)
-            and self.lower > self.upper
-        ):
-            raise ValueError(
-                f"resource {self.name!r}: lower ({self.lower}) is above upper "
-                f"({self.upper})."
-            )
-        if isinstance(self.initial, float) and (
-            (isinstance(self.lower, float) and self.initial < self.lower)
-            or (isinstance(self.upper, float) and self.initial > self.upper)
-        ):
-            raise ValueError(
-                f"resource {self.name!r}: initial ({self.initial}) is outside "
-                f"lower ({self.lower}) and upper ({self.upper})."
             )
         return self
 
@@ -972,11 +925,29 @@ class FlowsheetSpec(_StrictModel):
     def _connections_are_consistent(self) -> "FlowsheetSpec":
         """Require resolvable destinations, valid placeholders and one arc per port."""
         units = {el.name: el for el in self.of_kind("unit")}
+        nodes = {el.name for el in self.of_kind("resource")}
         sources, destinations = set(), set()
         for unit in units.values():
             label = f"unit {unit.name!r}"
             for conn in unit.connections:
-                if find_unit(units, conn.to) is None:
+                node = conn.to in nodes
+                if node and (
+                    not conn.directed
+                    or conn.name
+                    or conn.index
+                    or "{i}" in conn.port + conn.to
+                ):
+                    raise ValueError(
+                        f"{label}: connection to resource node {conn.to!r} must be "
+                        "directed, with no name, index or '{i}'. An indexed unit "
+                        "attaches every member."
+                    )
+                if node and not unit.name.startswith(f"{parent_name(conn.to)}."):
+                    raise ValueError(
+                        f"{label}: connection to {conn.to!r} needs the unit to sit "
+                        "under the node's parent."
+                    )
+                if not node and find_unit(units, conn.to) is None:
                     raise ValueError(
                         f"{label}: connection to {conn.to!r} does not start with "
                         f"a unit element name. Units: {sorted(units)}."
@@ -988,13 +959,14 @@ class FlowsheetSpec(_StrictModel):
                         f"{conn.to!r} needs an index on the connection or the unit."
                     )
                 source = (unit.name, conn.port)
-                if source in sources or conn.to in destinations:
+                if source in sources or (not node and conn.to in destinations):
                     raise ValueError(
                         f"{label}: port {conn.port!r} or destination {conn.to!r} "
                         "is already used by another connection; one arc per port."
                     )
                 sources.add(source)
-                destinations.add(conn.to)
+                if not node:
+                    destinations.add(conn.to)
         return self
 
     @model_validator(mode="after")

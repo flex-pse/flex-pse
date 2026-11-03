@@ -100,7 +100,7 @@ Within the logic stage, kinds build in {data}`~flexops.core.stages.LOGIC_ORDER`:
 status first, because startup, conditional and parallel logic hang off a
 status binary, and logic between units last. The `resources` stage runs after
 `logic`, since a balance sums what units and their logic registered, and
-before `state`, so a `fix` can name a balance's variables. Degradation builds
+before `state`, so a `fix` can name a node's variables. Degradation builds
 before surrogates, so a `surrogate` element can replace the wear relations it
 registers. **Costing is processed last because `cost_process` aggregates
 whatever is registered when it runs**: every power term a unit, a surrogate or
