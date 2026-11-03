@@ -119,3 +119,101 @@ def test_gpu_model_evaluates_end_to_end():
     hess = gpu_driver.hessian(x)
     assert isinstance(hess, np.ndarray)
     assert hess.tolist() == pytest.approx(cpu_driver.hessian(x).tolist(), rel=1e-5)
+
+
+@pytest.fixture
+def single_thread():
+    """Run torch on one thread: BatchNorm's backward pass deadlocks in OpenMP on
+    macOS conda, where a second OpenMP runtime is loaded."""
+    torch = pytest.importorskip("torch")
+    threads = torch.get_num_threads()
+    torch.set_num_threads(1)
+    yield
+    torch.set_num_threads(threads)
+
+
+def _stochastic_module(torch):
+    """A float32 module whose output depends on train/eval mode."""
+
+    class _Stochastic(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = torch.nn.Linear(2, 2)
+            self.norm = torch.nn.BatchNorm1d(2)
+            self.drop = torch.nn.Dropout(p=0.5)
+
+        def forward(self, x):
+            hidden = self.norm(self.linear(x).reshape(1, 2))
+            return self.drop(hidden).sum()
+
+    return _Stochastic()
+
+
+@pytest.mark.unit
+@pytest.mark.needs_torch
+def test_repeated_evaluation_of_a_stochastic_module_returns_the_same_value(
+    single_thread,
+):
+    torch = pytest.importorskip("torch")
+    from flexops.surrogates.drivers.torch_driver import TorchDriver
+
+    module = _stochastic_module(torch)
+    driver = TorchDriver(module, n_inputs=2)
+    x = np.array([1.0, 2.0])
+    assert driver.evaluate(x) == driver.evaluate(x)
+    np.testing.assert_array_equal(driver.jacobian(x), driver.jacobian(x))
+
+
+@pytest.mark.unit
+@pytest.mark.needs_torch
+def test_driver_leaves_the_callers_module_untouched(single_thread):
+    torch = pytest.importorskip("torch")
+    from flexops.surrogates.drivers.torch_driver import TorchDriver
+
+    module = _stochastic_module(torch)
+    stats_before = module.norm.running_mean.clone()
+    batches_before = module.norm.num_batches_tracked.clone()
+
+    driver = TorchDriver(module, n_inputs=2)
+    driver.evaluate(np.array([1.0, 2.0]))
+    driver.jacobian(np.array([1.0, 2.0]))
+
+    assert module.training
+    assert next(module.parameters()).dtype == torch.float32
+    assert torch.equal(module.norm.running_mean, stats_before)
+    assert torch.equal(module.norm.num_batches_tracked, batches_before)
+
+
+@pytest.mark.unit
+@pytest.mark.needs_torch
+def test_evaluate_emits_no_requires_grad_warning(recwarn):
+    torch = pytest.importorskip("torch")
+    from flexops.surrogates.drivers.torch_driver import TorchDriver
+
+    driver = TorchDriver(torch.nn.Linear(1, 1), n_inputs=1)
+    driver.evaluate(np.array([1.0]))
+    assert not [w for w in recwarn if "requires_grad" in str(w.message)]
+
+
+@pytest.mark.unit
+@pytest.mark.needs_torch
+def test_check_differentiable_names_the_input_count_on_a_shape_error():
+    torch = pytest.importorskip("torch")
+    from flexcore.exceptions import FlexConfigError
+    from flexops.surrogates.drivers.torch_driver import TorchDriver
+
+    driver = TorchDriver(torch.nn.Linear(3, 1), n_inputs=2)
+    with pytest.raises(FlexConfigError, match="2 input"):
+        driver.check_differentiable(np.array([1.0, 2.0]))
+
+
+@pytest.mark.unit
+@pytest.mark.needs_torch
+def test_check_differentiable_rejects_a_non_scalar_output():
+    torch = pytest.importorskip("torch")
+    from flexcore.exceptions import FlexConfigError
+    from flexops.surrogates.drivers.torch_driver import TorchDriver
+
+    driver = TorchDriver(torch.nn.Linear(2, 3), n_inputs=2)
+    with pytest.raises(FlexConfigError, match="scalar"):
+        driver.check_differentiable(np.array([1.0, 2.0]))

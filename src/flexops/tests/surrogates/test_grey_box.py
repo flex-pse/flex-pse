@@ -15,10 +15,11 @@ from pyomo.environ import units as pyunits
 from pyomo.util.check_units import assert_units_consistent
 
 from flexcore.exceptions import FlexConfigError
+from flexcore.solvers import check_training_range, get_solver
 from flexops.core.ops_block import OpsBlock
 from flexops.core.time_block import TimeBlock
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
-from flexops.surrogates import grey_box
+from flexops.surrogates import MultilinearSurrogate, grey_box
 from flexops.surrogates.grey_box import (
     ExternalFramework,
     ExternalModelDriver,
@@ -452,3 +453,264 @@ def test_reswapping_a_grey_box_relation_solves_to_the_same_optimum():
 
     assert str(results.solver.status) == "ok"
     assert pyo.value(unit.power_electrical[t0]) == pytest.approx(7.0, rel=1e-5)
+
+
+# -- evaluation cache ----------------------------------------------------------
+
+
+class _CountingDriver(_StubDriver):
+    """Stub driver counting how often each evaluation runs."""
+
+    def __init__(self, model, n_inputs):
+        super().__init__(model, n_inputs)
+        self.calls = {"value": 0, "jacobian": 0, "hessian": 0}
+
+    def evaluate(self, x):
+        self.calls["value"] += 1
+        return super().evaluate(x)
+
+    def jacobian(self, x):
+        self.calls["jacobian"] += 1
+        return super().jacobian(x)
+
+    def hessian(self, x):
+        self.calls["hessian"] += 1
+        return super().hessian(x)
+
+
+def _counting_adapter():
+    """An adapter over a :class:`_CountingDriver`, with its call counts reset."""
+    driver = _CountingDriver(model=_dummy_model, n_inputs=2)
+    adapter = _ExternalModelGreyBox(driver, ["x0", "x1"], "y", {"x0": 1.0, "x1": 1.0})
+    return adapter, driver
+
+
+@pytest.mark.unit
+def test_each_derivative_is_evaluated_once_per_point():
+    adapter, driver = _counting_adapter()
+    adapter.set_input_values(np.array([2.0, 3.0]))
+    for _ in range(3):
+        adapter.evaluate_outputs()
+        adapter.evaluate_jacobian_outputs()
+        adapter.evaluate_hessian_outputs()
+        adapter.set_input_values(np.array([2.0, 3.0]))
+    assert driver.calls == {"value": 1, "jacobian": 1, "hessian": 1}
+
+
+@pytest.mark.unit
+def test_changing_the_point_recomputes():
+    adapter, driver = _counting_adapter()
+    adapter.set_input_values(np.array([2.0, 3.0]))
+    assert adapter.evaluate_outputs()[0] == pytest.approx(5.0)
+    adapter.set_input_values(np.array([4.0, 3.0]))
+    assert adapter.evaluate_outputs()[0] == pytest.approx(7.0)
+    assert driver.calls["value"] == 2
+
+
+@pytest.mark.unit
+def test_mutating_the_input_buffer_does_not_return_stale_values():
+    adapter, _ = _counting_adapter()
+    buffer = np.array([2.0, 3.0])
+    adapter.set_input_values(buffer)
+    assert adapter.evaluate_outputs()[0] == pytest.approx(5.0)
+    buffer[0] = 4.0
+    adapter.set_input_values(buffer)
+    assert adapter.evaluate_outputs()[0] == pytest.approx(7.0)
+
+
+@pytest.mark.unit
+def test_multiplier_change_rescales_a_cached_hessian():
+    adapter, driver = _counting_adapter()
+    adapter.set_input_values(np.array([2.0, 3.0]))
+    adapter.set_output_constraint_multipliers([2.0])
+    first = adapter.evaluate_hessian_outputs().data.copy()
+    adapter.set_output_constraint_multipliers([4.0])
+    second = adapter.evaluate_hessian_outputs().data
+    np.testing.assert_allclose(second, 2.0 * first)
+    assert driver.calls["hessian"] == 1
+
+
+# -- validation ----------------------------------------------------------------
+
+
+def _torch_data(model_name, **extra):
+    """Surrogate data for a model stored on this test module."""
+    return {
+        "framework": "pytorch",
+        "model_path": f"{__name__}.{model_name}",
+        "input_variables": {"x": "dimensionless"},
+        "output_variables": {"y": "dimensionless"},
+        **extra,
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.needs_torch
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+def test_non_finite_output_at_the_probe_raises_and_suggests_probe_point(bad):
+    torch = pytest.importorskip("torch")
+    globals()["_non_finite_model"] = lambda x: x[0] * torch.tensor(bad).double()
+    with pytest.raises(FlexConfigError, match="probe_point"):
+        ExternalModelSurrogate(_torch_data("_non_finite_model"))
+
+
+@pytest.mark.unit
+@pytest.mark.needs_torch
+def test_wrong_input_count_raises_config_error():
+    torch = pytest.importorskip("torch")
+    globals()["_three_input_model"] = torch.nn.Linear(3, 1)
+    with pytest.raises(FlexConfigError, match="1 input"):
+        ExternalModelSurrogate(_torch_data("_three_input_model"))
+
+
+def _stub_surrogate(monkeypatch, **extra):
+    """A surrogate over the stub driver, with two inputs."""
+    monkeypatch.setattr(grey_box, "get_driver", lambda framework: _StubDriver)
+    return ExternalModelSurrogate(
+        {
+            "framework": "pytorch",
+            "model_path": f"{__name__}._dummy_model",
+            "input_variables": {"a": "dimensionless", "b": "dimensionless"},
+            "output_variables": {"y": "dimensionless"},
+            **extra,
+        }
+    )
+
+
+@pytest.mark.unit
+def test_start_point_uses_probe_then_range_midpoint_then_one(monkeypatch):
+    surrogate = _stub_surrogate(
+        monkeypatch,
+        probe_point={"a": 5.0},
+        training_range={"a": [0.0, 2.0], "b": [10.0, 20.0]},
+    )
+    assert surrogate._probe_point == {"a": 5.0, "b": 15.0}
+    assert _stub_surrogate(monkeypatch)._probe_point == {"a": 1.0, "b": 1.0}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "training_range",
+    [
+        {"nope": [0.0, 1.0]},
+        {"a": ["low", "high"]},
+        {"a": [1.0]},
+        {"a": 3.0},
+        {"a": [2.0, 1.0]},
+        {"a": [1.0, 1.0]},
+        {"a": [float("nan"), 1.0]},
+        ["a"],
+    ],
+)
+def test_invalid_training_range_raises(monkeypatch, training_range):
+    with pytest.raises(FlexConfigError, match="training_range"):
+        _stub_surrogate(monkeypatch, training_range=training_range)
+
+
+@pytest.mark.unit
+def test_training_range_reaches_the_grey_box_model(monkeypatch):
+    monkeypatch.setattr(grey_box, "get_driver", lambda framework: _StubDriver)
+    m, unit = _unit()
+    surrogate = ExternalModelSurrogate(
+        {**_EXTERNAL_MODEL_DATA, "training_range": {"flow_out": [0.0, 2.0]}}
+    )
+    block = unit.swap_relation("power_electrical_relation", surrogate)
+    t0 = next(iter(unit.flow_out.index_set()))
+    external = block.egb[t0].get_external_model()
+    assert external.training_range == {"flow_out": (0.0, 2.0)}
+    block.egb[t0].inputs["flow_out"].set_value(3.0)
+    assert [v.input_name for v in check_training_range(m)] == ["flow_out"]
+
+
+@pytest.mark.unit
+def test_unknown_data_key_error_lists_the_allowed_keys(monkeypatch):
+    with pytest.raises(FlexConfigError, match="training_range"):
+        _stub_surrogate(monkeypatch, nope=1)
+
+
+# -- switching and swapping away -----------------------------------------------
+
+
+def _power_multilinear():
+    """A closed-form surrogate on the same relation as :func:`_swapped_unit`."""
+    return MultilinearSurrogate(
+        {
+            "input_variables": {"flow_out": "m^3/hr"},
+            "output_variables": {"power_electrical": "kW"},
+            "coefficients": {"flow_out": 2.0, "intercept": 1.0},
+        }
+    )
+
+
+@pytest.mark.unit
+def test_swapping_to_a_grey_box_drops_the_previous_coefficients(monkeypatch):
+    monkeypatch.setattr(grey_box, "get_driver", lambda framework: _StubDriver)
+    _, unit = _unit()
+    unit.swap_relation("power_electrical_relation", _power_multilinear())
+    assert any(
+        p.relation_name == "power_electrical_relation"
+        for p in unit._io_registry.parameters
+    )
+    unit.swap_relation(
+        "power_electrical_relation", ExternalModelSurrogate(_EXTERNAL_MODEL_DATA)
+    )
+    assert not any(
+        p.relation_name == "power_electrical_relation"
+        for p in unit._io_registry.parameters
+    )
+
+
+@pytest.mark.unit
+def test_switching_to_a_grey_box_block_sets_flags_and_drops_coefficients(monkeypatch):
+    monkeypatch.setattr(grey_box, "get_driver", lambda framework: _StubDriver)
+    _, unit = _unit()
+    grey = unit.swap_relation(
+        "power_electrical_relation", ExternalModelSurrogate(_EXTERNAL_MODEL_DATA)
+    )
+    grey_name = unit.current_surrogate_block("power_electrical_relation")
+    closed = unit.swap_relation("power_electrical_relation", _power_multilinear())
+    closed_name = unit.current_surrogate_block("power_electrical_relation")
+    t0 = next(iter(unit.flow_out.index_set()))
+    assert not grey.egb[t0].active
+
+    unit.switch_surrogate_block(grey_name)
+
+    assert grey.active
+    assert grey.egb[t0].active
+    assert not closed.active
+    assert not any(
+        p.relation_name == "power_electrical_relation"
+        for p in unit._io_registry.parameters
+    )
+
+    unit.switch_surrogate_block(closed_name)
+
+    assert closed.active
+    assert not grey.egb[t0].active
+    assert {
+        p.name
+        for p in unit._io_registry.parameters
+        if p.relation_name == "power_electrical_relation"
+    } == {"flow_out", "intercept"}
+
+
+@pytest.mark.component
+@pytest.mark.needs_cyipopt
+@pytest.mark.needs_torch
+def test_switching_away_from_a_grey_box_and_back_solves():
+    pytest.importorskip("torch")
+    m, unit = _swapped_unit("_switch_back_model")
+    grey_name = unit.current_surrogate_block("power_electrical_relation")
+    unit.swap_relation("power_electrical_relation", _power_multilinear())
+    closed_name = unit.current_surrogate_block("power_electrical_relation")
+    t0 = next(iter(unit.power_electrical.index_set()))
+
+    unit.switch_surrogate_block(grey_name)
+    solver = get_solver(model=m)
+    solver.solve(m)
+    assert solver.name == "cyipopt"
+    assert pyo.value(unit.power_electrical[t0]) == pytest.approx(7.0, rel=1e-5)
+
+    unit.switch_surrogate_block(closed_name)
+    assert solver.name == "cyipopt"
+    assert get_solver(model=m).name != "cyipopt"
