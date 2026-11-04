@@ -1,10 +1,16 @@
 """Repo-wide pytest configuration: tier-marker enforcement and unit-tier guards."""
 
+import importlib.util
+
 import pytest
 
 pytest_plugins = ["pytester"]
 
 TIER_MARKERS = {"unit", "component", "integration"}
+
+OPTIONAL_PACKAGES = {"torch", "cyipopt"}
+"""``needs_<name>`` markers resolved by import rather than through the solver
+registry, so ``needs_torch``/``needs_cyipopt`` skip on a bare install."""
 
 
 def _solver_availability():
@@ -47,15 +53,23 @@ def pytest_collection_modifyitems(config, items):
     }
     if not needs:
         return
-    available = _solver_availability()
+
+    available = None  # solver registry probed lazily, only if actually needed
     for item in items:
         for marker in item.iter_markers():
-            if marker.name.startswith("needs_"):
-                name = marker.name[len("needs_") :]
-                if name not in available:
+            if not marker.name.startswith("needs_"):
+                continue
+            name = marker.name[len("needs_") :]
+            if name in OPTIONAL_PACKAGES:
+                if importlib.util.find_spec(name) is None:
                     item.add_marker(
-                        pytest.mark.skip(reason=f"solver {name} not installed")
+                        pytest.mark.skip(reason=f"package {name} not installed")
                     )
+                continue
+            if available is None:
+                available = _solver_availability()
+            if name not in available:
+                item.add_marker(pytest.mark.skip(reason=f"solver {name} not installed"))
 
 
 @pytest.fixture(autouse=True)

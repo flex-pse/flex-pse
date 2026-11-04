@@ -14,6 +14,7 @@ import pyomo.environ as pyo
 
 from flexcore.logger import get_logger
 from flexcore.solvers.classify import ProblemClass
+from flexcore.solvers.grey_box import TrainingRangeViolation, active_grey_boxes
 
 _log = get_logger(__name__)
 
@@ -49,11 +50,14 @@ class SolveReport:
         strategy: The strategy's name.
         steps: The steps in the order they ran; the last produced the solution.
         bound: A bound on the optimal objective, if the strategy computed one.
+        out_of_range: Grey-box inputs of the final solution outside their
+            training range.
     """
 
     strategy: str
     steps: list[StepResult]
     bound: float | None = None
+    out_of_range: list[TrainingRangeViolation] = dataclasses.field(default_factory=list)
 
     @property
     def objective(self) -> float | None:
@@ -107,6 +111,14 @@ def _is_infeasible(termination: pyo.TerminationCondition) -> bool:
     return termination in (
         pyo.TerminationCondition.infeasible,
         pyo.TerminationCondition.infeasibleOrUnbounded,
+    )
+
+
+def _no_solution(termination: pyo.TerminationCondition) -> bool:
+    """Report whether a grey-box solve returned no usable point."""
+    return (
+        _is_infeasible(termination)
+        or termination == pyo.TerminationCondition.invalidProblem
     )
 
 
@@ -169,6 +181,8 @@ class RelaxAndFix:
             return results, SolveReport(strategy="relax_and_fix", steps=[step])
         if warmstart:
             _log.warning("RelaxAndFix does not use warm starts; solving cold.")
+        if active_grey_boxes(model):
+            return self._dive(model, run_step)
 
         binaries = []
         for var in model.component_data_objects(pyo.Var, descend_into=True):
@@ -217,3 +231,53 @@ class RelaxAndFix:
         optimal = relaxation.termination == pyo.TerminationCondition.optimal
         bound = relaxation.objective if optimal else None
         return results, SolveReport(strategy="relax_and_fix", steps=steps, bound=bound)
+
+    def _dive(
+        self, model: pyo.ConcreteModel, run_step: StepRunner
+    ) -> tuple[Any, SolveReport]:
+        """Fix binaries in stages, re-solving the NLP, since cyipopt can't branch.
+
+        Args:
+            model: The Pyomo model to solve; it holds a live grey box.
+            run_step: Solves the model once as ``(problem_class, label, warmstart)``.
+
+        Returns:
+            The results of the last step, and a report with no bound, since a
+            local NLP optimum does not bound the objective.
+        """
+        binaries = [
+            var
+            for var in model.component_data_objects(pyo.Var, descend_into=True)
+            if var.is_binary() and not var.fixed
+        ]
+        domains = [(var, var.domain) for var in binaries]
+        fixed: list = []
+
+        def distance(var):
+            return abs(var.value - round(var.value))
+
+        try:
+            for var in binaries:
+                var.domain = pyo.UnitInterval
+            results, step = run_step(ProblemClass.NLP, "relaxation", False)
+            steps = [step]
+            # A binary with no value is in no active constraint, so needs no fixing.
+            remaining = [var for var in binaries if var.value is not None]
+            while remaining and not _no_solution(steps[-1].termination):
+                # Fix the closest one when none is within tolerance, so each pass ends.
+                chosen = [var for var in remaining if distance(var) <= self.fix_tol]
+                chosen = chosen or [min(remaining, key=distance)]
+                for var in chosen:
+                    var.fix(int(round(var.value)))
+                    fixed.append(var)
+                remaining = [var for var in remaining if not var.fixed]
+                results, step = run_step(
+                    ProblemClass.NLP, f"dive ({len(fixed)} fixed)", False
+                )
+                steps.append(dataclasses.replace(step, n_fixed=len(fixed)))
+        finally:
+            for var, domain in domains:
+                var.domain = domain
+            for var in fixed:
+                var.unfix()
+        return results, SolveReport(strategy="relax_and_fix", steps=steps)

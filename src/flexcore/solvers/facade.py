@@ -13,21 +13,33 @@ MUMPS-linked stock IPOPT — an order of magnitude faster and more robust on sti
 NLPs. It falls back to ``pyo.SolverFactory`` when idaes is unavailable, keeping
 idaes an optional dependency (see :func:`_idaes_ipopt`).
 
+A model with a live grey box always solves with cyipopt, the one solver that can
+call back into Python to evaluate it.
+
 How a facade solves is set by its strategy (:mod:`flexcore.solvers.strategies`),
 and its options by settings plus solver-neutral keywords
 (:mod:`flexcore.solvers.options`).
 """
 
+import contextlib
 import dataclasses
 import os
 import time
 from typing import Any
 
 import pyomo.environ as pyo
+from pyomo.opt import SolverResults
 
 from flexcore.exceptions import FlexSolverError
 from flexcore.logger import get_logger
 from flexcore.solvers.classify import ProblemClass, classify
+from flexcore.solvers.grey_box import (
+    active_grey_boxes,
+    check_training_range,
+    grey_box_var_values,
+    suspend_orphaned_grey_boxes,
+    suspend_trivial_constraints,
+)
 from flexcore.solvers.options import SolverSettings, solver_options
 from flexcore.solvers.registry import (
     WARMSTART_SOLVERS,
@@ -40,6 +52,7 @@ from flexcore.solvers.strategies import (
     SolveStrategy,
     StepResult,
     _is_infeasible,
+    _no_solution,
 )
 
 _log = get_logger(__name__)
@@ -49,6 +62,15 @@ _log = get_logger(__name__)
 # solver), then the open-source LP/MILP solvers, then the NLP solver. SCIP is
 # not LP-capable in the registry, so pure LP still resolves to HiGHS.
 _PRIORITY = ["gurobi", "scip", "highs", "cbc", "ipopt"]
+
+
+def _cyipopt_missing() -> FlexSolverError:
+    """Return the error for a grey-box model when cyipopt isn't installed."""
+    return FlexSolverError(
+        "this model contains a grey box, which only cyipopt can solve; install "
+        "it with 'pip install \"flex-pse[greybox]\"'.",
+        solver="cyipopt",
+    )
 
 
 def _idaes_ipopt():
@@ -140,7 +162,8 @@ class SolverFacade:
 
         The solution is loaded into the model only when the solver found one;
         an infeasible model returns its results without raising. The step-by-step
-        record is kept on :attr:`last_report`.
+        record is kept on :attr:`last_report`. A model with a live grey box solves
+        with cyipopt whatever solver this facade names.
 
         Args:
             model: The Pyomo model to solve.
@@ -154,6 +177,10 @@ class SolverFacade:
 
         Returns:
             The Pyomo results object of the step that produced the solution.
+
+        Raises:
+            FlexSolverError: If the model has a live grey box and cyipopt is not
+                installed, or it has unfixed integers when cyipopt would run.
         """
         self.last_report = None
         deadline = None if time_limit is None else time.perf_counter() + time_limit
@@ -162,7 +189,22 @@ class SolverFacade:
             problem_class: ProblemClass, label: str, step_warmstart: bool
         ) -> tuple[Any, StepResult]:
             name = self.name
-            if problem_class not in available_solvers().get(name, set()):
+            grey_box = bool(active_grey_boxes(model))
+            if grey_box:
+                name = "cyipopt"
+                if name not in available_solvers():
+                    raise _cyipopt_missing()
+                # An unfixed integer ends the Python process inside cyipopt.
+                if classify(model) is ProblemClass.MINLP:
+                    raise FlexSolverError(
+                        "this grey-box model has unfixed integer variables, which "
+                        "cyipopt cannot solve. Use "
+                        "get_solver(model, strategy=RelaxAndFix()) for binaries, "
+                        "and fix any general integers first.",
+                        solver=name,
+                        problem_class=ProblemClass.MINLP.value,
+                    )
+            elif problem_class not in available_solvers().get(name, set()):
                 name = get_solver(problem_class=problem_class).name
             step_options = options
             if options and name != self.name:
@@ -177,8 +219,10 @@ class SolverFacade:
             if step_warmstart and not warm_capable:
                 _log.warning("Solver %r cannot warm start; solving cold.", name)
                 step_warmstart = False
+            # IPOPT rejects a time limit of exactly zero.
+            floor = 1e-6 if grey_box else 0.0
             remaining = (
-                None if deadline is None else max(deadline - time.perf_counter(), 0.0)
+                None if deadline is None else max(deadline - time.perf_counter(), floor)
             )
             native = solver_options(
                 name, self.settings, mip_gap, remaining, step_options
@@ -190,20 +234,44 @@ class SolverFacade:
                 ),
                 None,
             )
+            # cyipopt writes values even when infeasible, so keep them to restore.
+            before = grey_box_var_values(model) if grey_box else []
             start = time.perf_counter()
-            with _solver_runtime_env(name):
-                # HiGHS keeps no solution to load later when there is no objective.
-                results = _pyomo_solver(name, step_warmstart).solve(
-                    model,
-                    tee=tee,
-                    options=native,
-                    load_solutions=active is None,
-                    **extra,
-                )
+            # IPOPT counts a constraint with no free variables as an equation too many.
+            trivial = (
+                suspend_trivial_constraints(model)
+                if grey_box
+                else contextlib.nullcontext(False)
+            )
+            with (
+                _solver_runtime_env(name),
+                suspend_orphaned_grey_boxes(model),
+                trivial as violated,
+            ):
+                if violated:
+                    results = SolverResults()
+                    results.solver.termination_condition = (
+                        pyo.TerminationCondition.infeasible
+                    )
+                else:
+                    # HiGHS keeps no solution to load later when there is no objective.
+                    # cyipopt crashes on a grey box unless it loads the solution.
+                    results = _pyomo_solver(name, step_warmstart).solve(
+                        model,
+                        tee=tee,
+                        options=native,
+                        load_solutions=active is None or grey_box,
+                        **extra,
+                    )
             wall_time = time.perf_counter() - start
             termination = results.solver.termination_condition
             objective = None
-            if (
+            if grey_box and _no_solution(termination):
+                for var, value in before:
+                    var.set_value(value, skip_validation=True)
+            elif grey_box and active is not None:
+                objective = pyo.value(active)
+            elif (
                 active is not None
                 and len(results.solution) > 0
                 and not _is_infeasible(termination)
@@ -233,6 +301,8 @@ class SolverFacade:
         results, self.last_report = self.strategy.solve(
             model, self.problem_class, run_step, warmstart
         )
+        if not _no_solution(self.last_report.steps[-1].termination):
+            self.last_report.out_of_range = check_training_range(model)
         return results
 
 
@@ -271,7 +341,8 @@ def get_solver(
 
     Raises:
         ValueError: If both ``model`` and ``problem_class`` are given.
-        FlexSolverError: If no available solver supports the problem class. For
+        FlexSolverError: If no available solver supports the problem class, or
+            ``model`` has a live grey box and cyipopt is not installed. For
             ``MINLP`` the message points at ``flexschedule.SolveSequence``;
             the facade never relaxes integrality itself.
 
@@ -298,6 +369,15 @@ def get_solver(
         return SolverFacade(
             name=name, problem_class=problem_class, settings=settings, strategy=strategy
         )
+
+    if model is not None and active_grey_boxes(model):
+        if "cyipopt" not in available:
+            raise _cyipopt_missing()
+        if prefer not in (None, "cyipopt"):
+            _log.warning(
+                "Preferred solver %r cannot evaluate a grey box; using cyipopt.", prefer
+            )
+        return _facade("cyipopt")
 
     def _capable(name: str) -> bool:
         caps = available.get(name)

@@ -19,6 +19,7 @@ schedule flexible industrial energy operations.
    explanation/model_and_block_structure
    explanation/relaxation_policies
    explanation/solve_strategies
+   explanation/grey_box_surrogates
    explanation/config_schema
    explanation/energy_nomenclature
    explanation/reported_cost

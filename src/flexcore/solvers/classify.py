@@ -12,6 +12,8 @@ import enum
 import pyomo.environ as pyo
 from pyomo.core.expr import identify_variables
 
+from flexcore.solvers.grey_box import active_grey_boxes
+
 # Expression-shape ranking, worst-wins when combined across expressions.
 _LINEAR = 0
 _QUADRATIC = 1
@@ -65,7 +67,7 @@ def _fingerprint(model: pyo.ConcreteModel) -> tuple[frozenset[int], ...]:
 
     Returns:
         The ids of ``(active constraints, active objectives, fixed vars, unfixed
-        discrete vars)``.
+        discrete vars, live grey boxes)``.
     """
     cons = frozenset(
         id(c)
@@ -85,7 +87,8 @@ def _fingerprint(model: pyo.ConcreteModel) -> tuple[frozenset[int], ...]:
             fixed.add(id(var))
         elif var.is_integer():
             discrete.add(id(var))
-    return cons, objs, frozenset(fixed), frozenset(discrete)
+    grey_boxes = frozenset(id(block) for block in active_grey_boxes(model))
+    return cons, objs, frozenset(fixed), frozenset(discrete), grey_boxes
 
 
 def classify(model: pyo.ConcreteModel) -> ProblemClass:
@@ -97,11 +100,11 @@ def classify(model: pyo.ConcreteModel) -> ProblemClass:
     with fixed binaries classifies ``LP``. Note that a quadratic *constraint*
     classifies ``NLP``, not ``QP``: only a quadratic *objective* over
     all-linear constraints is ``QP`` (smallest choice consistent with
-    the QP capability matrix).
+    the QP capability matrix). A live grey box counts as a nonlinear constraint.
 
     The result is cached on the model and reused while the sets of active
-    constraints, active objectives, fixed variables, and unfixed discrete
-    variables are unchanged. Replacing a constraint's expression in place
+    constraints, active objectives, fixed variables, unfixed discrete variables,
+    and live grey boxes are unchanged. Replacing a constraint's expression in place
     is not detected.
 
     Args:
@@ -138,7 +141,7 @@ def _classify_uncached(model: pyo.ConcreteModel) -> ProblemClass:
     Returns:
         The problem class.
     """
-    constraint_shape = _LINEAR
+    constraint_shape = _NONLINEAR if active_grey_boxes(model) else _LINEAR
     objective_shape = _LINEAR
     has_discrete = False
 

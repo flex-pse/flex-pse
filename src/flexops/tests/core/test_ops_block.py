@@ -1753,3 +1753,78 @@ def test_fix_surrogate_coefficients_none_skips_relations_without_surrogate():
     unit.fix_surrogate_coefficients()
 
     assert all(var.is_fixed() for _, var in unit.surrogate_flow.coefficients.items())
+
+
+@pytest.mark.unit
+def test_swap_drops_coefficients_the_new_surrogate_does_not_have():
+    """A swap leaves only the new surrogate's coefficients on that relation."""
+    _, unit = _two_flow_relation_unit()
+    unit.swap_relation(
+        "flow_relation",
+        _multilinear(
+            {"flow_out": 2.0, "intercept": 1.0},
+            output_variables={"flow_out": "m^3/hr"},
+        ),
+    )
+    unit.swap_relation(
+        "secondary_flow_relation",
+        _multilinear(
+            {"flow_out": 2.0},
+            input_variables={"flow_out": "m^3/hr"},
+            output_variables={"flow_in": "m^3/hr"},
+        ),
+    )
+    unit.swap_relation(
+        "flow_relation",
+        _multilinear(
+            {"intercept": 3.0},
+            input_variables={"flow_out": "m^3/hr"},
+            output_variables={"flow_out": "m^3/hr"},
+        ),
+    )
+
+    by_relation = {}
+    for p in unit._io_registry.parameters:
+        by_relation.setdefault(p.relation_name, []).append(p.name)
+    assert by_relation["flow_relation"] == ["intercept"]
+    assert by_relation["secondary_flow_relation"] == ["flow_out", "intercept"]
+    current = unit.find_component(unit.current_surrogate_block("flow_relation"))
+    record = next(
+        p for p in unit._io_registry.parameters if p.relation_name == "flow_relation"
+    )
+    assert record.param is current.coefficients["intercept"]
+
+
+@pytest.mark.unit
+def test_switch_registers_only_the_activated_blocks_coefficients():
+    """Switching back restores that block's coefficients and drops the others."""
+    _, unit = _flow_relation_unit()
+    unit.swap_relation(
+        "flow_relation",
+        _multilinear(
+            {"flow_out": 1.0, "intercept": 0.0},
+            output_variables={"flow_out": "m^3/hr"},
+        ),
+    )
+    unit.swap_relation(
+        "flow_relation",
+        _multilinear(
+            {"intercept": 2.0},
+            input_variables={"flow_out": "m^3/hr"},
+            output_variables={"flow_out": "m^3/hr"},
+        ),
+    )
+
+    unit.switch_surrogate_block("surrogate_flow")
+
+    names = [
+        p.name
+        for p in unit._io_registry.parameters
+        if p.relation_name == "flow_relation"
+    ]
+    assert sorted(names) == ["flow_out", "intercept"]
+    assert all(
+        p.param.parent_block() is unit.surrogate_flow
+        for p in unit._io_registry.parameters
+        if p.relation_name == "flow_relation"
+    )

@@ -54,15 +54,24 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: pyproject.toml
+      # cyipopt builds from source and links a system IPOPT and LAPACK/BLAS. The
+      # binary from setup-ipopt below has no headers, so it can't satisfy this.
+      - name: Install IPOPT headers for cyipopt
+        if: ${{ matrix.coverage }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            coinor-libipopt1v5 coinor-libipopt-dev liblapack-dev libblas-dev
       # The coverage run adds the [parameterize] extra (scikit-learn) because
       # the flexparameterize floor was calibrated with it -- without it,
       # LinearRegressor's real fit path never executes and flexparameterize
-      # coverage reads ~5pp low (82% -> 77%).
+      # coverage reads ~5pp low (82% -> 77%). It adds [greybox] (cyipopt, torch)
+      # too, or the grey-box code reports 0% and drops the flexops floor.
       - name: Install
         shell: bash
         run: |
           extras="dev,solvers"
-          if [ "${{ matrix.coverage }}" = "true" ]; then extras="$extras,parameterize"; fi
+          if [ "${{ matrix.coverage }}" = "true" ]; then extras="$extras,parameterize,greybox"; fi
           uv pip install --system -e ".[$extras]"
       - uses: ./.github/actions/setup-ipopt
 

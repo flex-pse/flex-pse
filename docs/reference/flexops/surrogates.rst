@@ -66,6 +66,32 @@ constant term, read in the declared output units.
 
    MultilinearSurrogate
 
+External model (grey box)
+-------------------------
+
+.. currentmodule:: flexops.surrogates.grey_box
+
+Wraps code that reports a value and its derivatives at a point, such as a fitted
+neural network, as a unit's relation. Models using one solve with cyipopt. See
+:doc:`../../explanation/grey_box_surrogates` for the data format, how to solve,
+and known limits.
+
+Registers no coefficients, so
+:func:`~flexparameterize.regression.get_regressor` raises a permanent
+:class:`~flexcore.exceptions.FlexConfigError` for
+``SurrogateType.EXTERNAL_MODEL``.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   ExternalModelSurrogate
+   ExternalModelDataKey
+   ExternalFramework
+   ExternalModelDriver
+
+.. autofunction:: get_driver
+
 Not yet implemented
 --------------------
 
