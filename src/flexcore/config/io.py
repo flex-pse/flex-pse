@@ -13,6 +13,7 @@ import copy
 import gzip
 import json
 import re
+import warnings
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
@@ -26,7 +27,7 @@ from flexcore.config.spec import (
     SourceRef,
     element_target,
 )
-from flexcore.exceptions import FlexConfigError
+from flexcore.exceptions import FlexConfigError, FlexMigrationWarning
 
 
 def _migrate_0_1_0(data: dict) -> dict:
@@ -38,6 +39,7 @@ def _migrate_0_1_0(data: dict) -> dict:
     Returns:
         A copy of the spec at version 0.1.1.
     """
+
     migrated = copy.deepcopy(data)
     raw = migrated.get("elements")
     elements = (
@@ -58,6 +60,14 @@ def _migrate_0_1_0(data: dict) -> dict:
             owner, dot, leaf = variable.rpartition(".")
             if leaf == "capacity" and re.sub(r"\[.*?\]", "", owner) in batteries:
                 el["variable"] = f"{owner}{dot}energy_capacity"
+
+    warnings.warn(
+        "The spec was migrated from schema_version 0.1.0 to 0.1.1. The "
+        "BatteryModel option and variable 'capacity' were renamed to "
+        "'energy_capacity'. Please update your config files accordingly.",
+        FlexMigrationWarning,
+        stacklevel=3,
+    )
 
     return {**migrated, "schema_version": "0.1.1"}
 
