@@ -1819,6 +1819,61 @@ def test_a_custom_supply_term_counts_as_supply_for_electricity():
     verify_resources(m, error_type="error")
 
 
+def _imported_power_plant(*adds):
+    """Return ``_plant(*adds)`` with an IMPORT electricity utility on it."""
+    m = _plant(*adds)
+    m.plant.power = Resource(
+        property_package=_utility(m, "electricity", "kW"),
+        balance=BalanceType.IMPORT,
+    )
+    return m
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("add", [lambda m: _pump(m, "pump"), _battery])
+def test_one_unit_that_can_draw_is_enough_for_an_import_electricity_utility(add):
+    verify_resources(_imported_power_plant(add), error_type="error")
+
+
+@pytest.mark.unit
+def test_a_lone_generator_on_an_import_electricity_utility_raises():
+    with pytest.raises(FlexConfigError, match="no consumer"):
+        verify_resources(_imported_power_plant(_solar), error_type="error")
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_a_lone_pump_on_an_import_electricity_utility_solves_with_its_draw():
+    m = _imported_power_plant(_pumped_water)
+    m.cost = pyo.Objective(expr=m.plant.feed.withdrawal[0])
+
+    pyo.assert_optimal_termination(get_solver(model=m, prefer="highs").solve(m))
+
+    assert pyo.value(m.plant.pump.power_electrical[0]) > 0
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_a_lone_battery_on_an_import_electricity_utility_only_charges():
+    m = _imported_power_plant(_battery)
+    battery = m.plant.battery
+    m.goal = pyo.Objective(expr=battery.power_charge[0], sense=pyo.maximize)
+    solver = get_solver(model=m, prefer="highs")
+
+    pyo.assert_optimal_termination(solver.solve(m))
+    assert pyo.value(battery.power_charge[0]) > 0
+
+    m.goal.deactivate()
+    m.discharge = pyo.Objective(
+        expr=sum(battery.power_discharge[t] - battery.power_charge[t] for t in [0, 1]),
+        sense=pyo.maximize,
+    )
+
+    pyo.assert_optimal_termination(solver.solve(m))
+    assert pyo.value(battery.power_electrical[0]) >= -1e-6
+    assert pyo.value(battery.power_electrical[1]) >= -1e-6
+
+
 @pytest.mark.component
 @pytest.mark.needs_highs
 def test_solving_an_electricity_utility_with_only_draws_raises():
