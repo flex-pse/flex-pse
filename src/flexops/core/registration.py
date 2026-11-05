@@ -305,26 +305,6 @@ class BoundaryRecord:
 
 
 @dataclass
-class ResourceRecord:
-    """A contribution to a named resource added with ``register_resource``.
-
-    Attributes:
-        var: Time-indexed Pyomo ``Var`` or ``Reference``.
-        name: Local name of the variable on its unit block.
-        resource: Name the term is collected under.
-        coeff: Signed coefficient. Positive supplies the resource, negative
-            consumes it.
-        offset: Delay in steps. The term at ``t`` uses ``var[t - offset]``.
-    """
-
-    var: Any
-    name: str
-    resource: str
-    coeff: float
-    offset: int
-
-
-@dataclass
 class ResourceTerm:
     """One variable's signed contribution to a resource, as a balance sees it.
 
@@ -335,14 +315,12 @@ class ResourceTerm:
             shared port until arcs are expanded, when the arc gets its own flow.
         coeff: Signed coefficient. Positive supplies the resource, negative
             consumes it.
-        offset: Delay in steps.
         unit: Block that registered the variable, used in error messages.
     """
 
     resource: str
     var: Any
     coeff: float
-    offset: int
     unit: Any
 
 
@@ -363,9 +341,6 @@ class IORegistry:
         relations: Registered swappable relationships (see
             :class:`RelationRecord`).
         boundary: Registered boundary flows (feeds and products).
-        resources: Contributions added with ``register_resource``. Power,
-            fuel and boundary terms come from their own registrations (see
-            :func:`iter_resource_terms`).
         port_coeffs: Each port's sign as a resource edge, ``-1`` for an inlet
             and ``+1`` for an outlet.
     """
@@ -377,7 +352,6 @@ class IORegistry:
     intensity_basis: dict[PowerKind, str] = field(default_factory=dict)
     relations: list[RelationRecord] = field(default_factory=list)
     boundary: list[BoundaryRecord] = field(default_factory=list)
-    resources: list[ResourceRecord] = field(default_factory=list)
     port_coeffs: dict[str, float] = field(default_factory=dict)
 
     def is_empty(self) -> bool:
@@ -389,7 +363,6 @@ class IORegistry:
             or self.fuel
             or self.relations
             or self.boundary
-            or self.resources
         )
 
 
@@ -455,8 +428,7 @@ def iter_resource_terms(block) -> dict[str, list[ResourceTerm]]:
 
     Returns:
         ``{resource: [ResourceTerm, ...]}`` with resources sorted by name.
-        Terms are in model order, and a block's ``register_resource`` terms
-        come after the ones from its power, fuel and boundary registrations.
+        Terms are in model order.
     """
     terms: dict[str, list[ResourceTerm]] = {}
     seen: set[int] = set()
@@ -472,9 +444,9 @@ def iter_resource_terms(block) -> dict[str, list[ResourceTerm]]:
         if not isinstance(registry, IORegistry):
             continue
 
-        def add(resource, var, coeff, offset=0, _unit=candidate):
+        def add(resource, var, coeff, _unit=candidate):
             terms.setdefault(resource, []).append(
-                ResourceTerm(resource, var, coeff, offset, _unit)
+                ResourceTerm(resource, var, coeff, _unit)
             )
 
         for rec in registry.boundary:
@@ -484,6 +456,4 @@ def iter_resource_terms(block) -> dict[str, list[ResourceTerm]]:
                 add(ELECTRICITY_RESOURCE, rec.var, -1.0)
         for rec in registry.fuel:
             add(rec.fuel_name, rec.var, -1.0)
-        for rec in registry.resources:
-            add(rec.resource, rec.var, rec.coeff, rec.offset)
     return {resource: terms[resource] for resource in sorted(terms)}

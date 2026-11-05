@@ -7,7 +7,6 @@ from pyomo.common.config import ConfigValue
 from pyomo.environ import units as pyunits
 
 from flexcore import nomenclature as nm
-from flexcore.exceptions import FlexConfigError
 from flexops import NetworkBlock, PlantBlock
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.registration import iter_resource_terms
@@ -95,7 +94,6 @@ def test_terms_carry_the_registered_variables():
     assert terms["electricity"][0].var is m.plant.pump.power_electrical
     assert terms["natural_gas"][0].var is m.plant.burner.fuel_usage_natural_gas
     assert terms["raw_water"][0].unit is m.plant.feed
-    assert terms["raw_water"][0].offset == 0
 
 
 @pytest.mark.unit
@@ -133,63 +131,6 @@ def test_thermal_power_is_not_mapped_to_a_resource():
 
     assert m.plant.heater._io_registry.power
     assert iter_resource_terms(m.plant) == {}
-
-
-@pytest.mark.unit
-def test_explicit_registration_is_returned_unchanged():
-    """coeff and offset reach the term as given."""
-    m = dummy_time_block(4)
-    m.plant = PlantBlock(time_block=m.time_block)
-    m.plant.unit = BareUnit()
-    recovered = pyo.Var(m.time_block.time_index, initialize=0.0)
-    m.plant.unit.recovered = recovered
-
-    m.plant.unit.register_resource(recovered, resource="brine", coeff=-0.45, offset=3)
-
-    (term,) = iter_resource_terms(m.plant)["brine"]
-    assert (term.var, term.coeff, term.offset, term.unit) == (
-        recovered,
-        -0.45,
-        3,
-        m.plant.unit,
-    )
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    ("kwargs", "field"),
-    [
-        ({"resource": ""}, "resource"),
-        ({"resource": "brine", "offset": -1}, "offset"),
-        ({"resource": "brine", "offset": 1.5}, "offset"),
-        ({"resource": "brine", "coeff": "1"}, "coeff"),
-    ],
-)
-def test_register_resource_rejects_bad_arguments(kwargs, field):
-    m = dummy_time_block(3)
-    m.unit = BareUnit()
-    m.unit.flow = pyo.Var(m.time_block.time_index)
-
-    with pytest.raises(FlexConfigError) as excinfo:
-        m.unit.register_resource(m.unit.flow, **kwargs)
-
-    assert excinfo.value.field == field
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("indexed_over", ["scalar", "other_set"])
-def test_register_resource_requires_a_time_indexed_var(indexed_over):
-    """A scalar or wrongly indexed Var is refused with advice on what to pass."""
-    m = dummy_time_block(3)
-    m.unit = BareUnit()
-    m.unit.flow = (
-        pyo.Var() if indexed_over == "scalar" else pyo.Var(["a", "b"], initialize=0)
-    )
-
-    with pytest.raises(FlexConfigError, match="time points") as excinfo:
-        m.unit.register_resource(m.unit.flow, resource="brine")
-
-    assert excinfo.value.field == "var"
 
 
 @pytest.mark.unit
@@ -257,17 +198,3 @@ def test_deactivated_unit_contributes_no_terms():
 
     assert "natural_gas" not in terms
     assert _signs(terms["raw_water"]) == {"feed": 1.0}
-
-
-@pytest.mark.unit
-def test_registering_the_same_term_twice_raises():
-    """A repeated registration would count the variable twice in a balance."""
-    m = dummy_time_block(3)
-    m.unit = BareUnit()
-    m.unit.flow = pyo.Var(m.time_block.time_index)
-    m.unit.register_resource(m.unit.flow, resource="brine")
-
-    with pytest.raises(FlexConfigError, match="already registered") as excinfo:
-        m.unit.register_resource(m.unit.flow, resource="brine", coeff=2.0)
-
-    assert excinfo.value.field == "var"

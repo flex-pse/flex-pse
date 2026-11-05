@@ -23,6 +23,7 @@ from flexops.logic.status import (
     RollingStateKind,
     _register_rolling_state,
     _track_binary,
+    count_domains,
     status_max_count,
 )
 
@@ -98,28 +99,18 @@ def add_startup_shutdown(
     active_index = [t for t in tb.time_index if t >= 1]
     train_count = status_max_count(unit)
 
-    if train_count == 1:
-        unit.startup = pyo.Var(
-            active_index, domain=pyo.Binary, doc="Startup indicator: 1 at a 0->1 edge."
-        )
-        unit.shutdown = pyo.Var(
-            active_index,
-            domain=pyo.Binary,
-            doc="Shutdown indicator: 1 at a 1->0 edge.",
-        )
-    else:
-        unit.startup = pyo.Var(
-            active_index,
-            domain=pyo.NonNegativeIntegers,
-            bounds=(0, train_count),
-            doc="Number of trains started at t.",
-        )
-        unit.shutdown = pyo.Var(
-            active_index,
-            domain=pyo.NonNegativeIntegers,
-            bounds=(0, train_count),
-            doc="Number of trains stopped at t.",
-        )
+    unit.startup = pyo.Var(
+        active_index,
+        domain=count_domains(unit)[0],
+        bounds=(0, train_count),
+        doc="Trains started at t: 1 at a 0->1 edge for a single train.",
+    )
+    unit.shutdown = pyo.Var(
+        active_index,
+        domain=count_domains(unit)[0],
+        bounds=(0, train_count),
+        doc="Trains stopped at t: 1 at a 1->0 edge for a single train.",
+    )
     startup, shutdown = unit.startup, unit.shutdown
 
     @unit.Constraint(
@@ -155,17 +146,8 @@ def add_startup_shutdown(
         window = range(max(1, t - downtime_window_size + 1), t + 1)
         return sum(shutdown[i] for i in window) <= train_count - status_var[t]
 
-    if train_count == 1:
-        _track_binary(unit, startup)
-        _track_binary(unit, shutdown)
-    else:
-        for transition_var in (startup, shutdown):
-            _track_binary(
-                unit,
-                transition_var,
-                discrete=pyo.NonNegativeIntegers,
-                relaxed=pyo.NonNegativeReals,
-            )
+    _track_binary(unit, startup)
+    _track_binary(unit, shutdown)
 
     if uptime_window_size > 1:
         _register_rolling_state(

@@ -194,7 +194,6 @@ This registry holds the records that FlexParameterize and the docs generator con
    RelationRecord
    BoundaryRecord
    BoundaryKind
-   ResourceRecord
    ResourceTerm
 
 .. autofunction:: iter_io_registry

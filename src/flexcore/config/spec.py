@@ -442,24 +442,7 @@ class StatusElement(_StrictModel):
         description="Number of identical trains this unit represents. Above 1, "
         "status is an integer count and output limits apply per train.",
     )
-    min_count_on: int | None = Field(
-        default=None,
-        description="Fewest trains that can run when any are running, from 2 to "
-        "max_count. Leave out to allow any count from 0 to max_count.",
-    )
     name: str | None = _label_field()
-
-    @model_validator(mode="after")
-    def _count_limits_consistent(self) -> "StatusElement":
-        """Check that min_count_on is between 2 and max_count."""
-        if self.min_count_on is not None and not (
-            2 <= self.min_count_on <= self.max_count
-        ):
-            raise ValueError(
-                f"status {self.variable!r}: min_count_on must be between 2 and "
-                f"max_count ({self.max_count}), got {self.min_count_on}."
-            )
-        return self
 
 
 class StartupShutdownElement(_StrictModel):

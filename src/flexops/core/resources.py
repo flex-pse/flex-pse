@@ -171,11 +171,6 @@ def _reject_arc_flows(scope, name: str, terms: list[ResourceTerm]) -> None:
         )
 
 
-def _edge_label(term: ResourceTerm) -> str:
-    """Return the name of a term's edge, unique within one resource."""
-    return f"{term.var.name}@{term.offset}" if term.offset else term.var.name
-
-
 def _port_package(port):
     """Return the property package of the state block behind a port, if it has one."""
     member = next(iter(port.vars.values()))
@@ -500,9 +495,9 @@ class ResourceData(UnitModelBlockData):
         time_index = find_time_block(self.model()).time_index
         units = self.config.property_package.config.units
         rate_units = parse_units(units)
-        edges = {_edge_label(term): term for term in terms}
+        edges = {term.var.name: term for term in terms}
         if len(edges) != len(terms):
-            labels = [_edge_label(term) for term in terms]
+            labels = [term.var.name for term in terms]
             raise FlexConfigError(
                 f"Utility {name!r}: {sorted(set(labels))} holds a variable "
                 "registered twice, which would drop one term. Register it once with "
@@ -516,11 +511,7 @@ class ResourceData(UnitModelBlockData):
         @self.Expression(self.edges, time_index, doc="Signed flow on each edge.")
         def flow(_, edge, t):
             term = edges[edge]
-            key = t - term.offset
-            # a term before the horizon starts adds nothing
-            if key not in term.var:
-                return 0 * rate_units
-            raw = term.coeff * term.var[key]
+            raw = term.coeff * term.var[t]
             # convert each term on its own so an error names its unit
             try:
                 return pyunits.convert(raw, to_units=rate_units)
@@ -540,8 +531,6 @@ class ResourceData(UnitModelBlockData):
 
         @self.Constraint(time_index, doc="How the edges at t relate to zero.")
         def balance(b, t):
-            if all(t - term.offset not in term.var for term in terms):
-                return pyo.Constraint.Skip
             return relation(sum(b.flow[edge, t] for edge in b.edges), 0 * rate_units)
 
 
@@ -620,9 +609,7 @@ def _verify_stream(node, error_type: ErrorType) -> None:
 
 
 def _only_supplies(term: ResourceTerm) -> bool:
-    """Return whether a term's bounds and sign mean it can never consume."""
-    if term.coeff > 0:
-        return all(var.lb is not None and var.lb >= 0 for var in term.var.values())
+    """Return whether a power term's upper bound means it can never consume."""
     return all(var.ub is not None and var.ub <= 0 for var in term.var.values())
 
 
@@ -648,9 +635,7 @@ def _verify_electricity(node, terms: list[ResourceTerm], error_type: ErrorType) 
                 field="property_package",
                 value=node.utility_name,
             )
-    has_supply = any(
-        term.coeff > 0 or getattr(term.unit, "supplies_power", False) for term in terms
-    )
+    has_supply = any(getattr(term.unit, "supplies_power", False) for term in terms)
     must_net_zero = node.config.balance is BalanceType.BALANCED
     has_consumer = (len(terms) > 1 or not must_net_zero) and not all(
         _only_supplies(term) for term in terms
@@ -683,7 +668,7 @@ def _verify_utility(node, error_type: ErrorType) -> None:
     name = node.utility_name
     scope = node.parent_block()
     terms = iter_resource_terms(scope).get(name, [])
-    current = {_edge_label(term) for term in terms}
+    current = {term.var.name for term in terms}
     built = set(node.edges)
     if current != built:
         raise FlexConfigError(
@@ -713,51 +698,23 @@ def _verify_utility(node, error_type: ErrorType) -> None:
         )
 
 
-def _power_is_accounted_for(unit) -> bool:
-    """Return whether anything accounts for what on-site power supplies.
-
-    Args:
-        unit: A unit that supplies power.
-
-    Returns:
-        Whether a block holding that unit also holds a ``GridConnection`` or an
-        electricity utility, or costing on the model bills electricity.
-    """
-    model_blocks = unit.model().component_data_objects(pyo.Block, descend_into=True)
-    if any(getattr(block, "bills_electricity", False) for block in model_blocks):
-        return True
-    parent = unit.parent_block()
-    while parent is not None:
-        for block in parent.component_data_objects(
-            pyo.Block, active=True, descend_into=False
-        ):
-            if getattr(block, "closes_power_balance", False) or (
-                isinstance(block, ResourceData)
-                and block.utility_name == nm.ELECTRICITY_RESOURCE
-            ):
-                return True
-        parent = parent.parent_block()
-    return False
-
-
 def verify_resources(block, *, error_type: ErrorType | str = ErrorType.WARN) -> None:
     """Check every resource under ``block`` against the model as it is now.
 
     Args:
         block: A plant, network or the whole model.
-        error_type: How to report a one-sided balance, or on-site power nothing
-            accounts for: ``"warn"`` or ``"error"``.
+        error_type: How to report a one-sided balance: ``"warn"`` or ``"error"``.
 
     Raises:
         FlexConfigError: If ``error_type`` is unknown, a stream's arc runs the wrong
             way, joins an incompatible package or a deactivated unit, a utility is
             out of date, counts a flow an Arc conserves, or sits beside a
             ``GridConnection`` on electricity, or, with ``error_type`` ``"error"``,
-            a balance is one-sided or nothing accounts for on-site power.
+            a balance is one-sided.
 
     Warns:
         FlexResourceWarning: If ``error_type`` is ``"warn"`` and a balance is
-            one-sided or nothing accounts for on-site power.
+            one-sided.
     """
     try:
         error_type = ErrorType(error_type)
@@ -776,16 +733,6 @@ def verify_resources(block, *, error_type: ErrorType | str = ErrorType.WARN) -> 
                 _verify_stream(candidate, error_type)
             else:
                 _verify_utility(candidate, error_type)
-        elif getattr(
-            candidate, "supplies_power", False
-        ) and not _power_is_accounted_for(candidate):
-            _report_one_sided(
-                f"{candidate.name!r} is on-site power or storage that nothing accounts "
-                "for, so what it supplies disappears. Add a GridConnection, a Resource "
-                "of ELECTRICITY, or a FlexCosting that bills electricity.",
-                error_type,
-                nm.ELECTRICITY_RESOURCE,
-            )
 
 
 def _verify_before_solve(model) -> None:
@@ -863,13 +810,13 @@ def resource_graph(block) -> ResourceGraph:
         else:
             terms = iter_resource_terms(node.parent_block()).get(name, [])
             resources[node.name] = GraphResource(ResourceKind.UTILITY, terms)
-            collected.update((name, _edge_label(term)) for term in terms)
+            collected.update((name, term.var.name) for term in terms)
     for name, terms in iter_resource_terms(block).items():
         conserved = {id(term) for term in _arc_conserved(block, terms)}
         rest = [
             term
             for term in terms
-            if (name, _edge_label(term)) not in collected and id(term) not in conserved
+            if (name, term.var.name) not in collected and id(term) not in conserved
         ]
         if rest:
             resources[name] = GraphResource(ResourceKind.OPEN, rest)
@@ -886,7 +833,7 @@ def resource_graph(block) -> ResourceGraph:
                 ResourceKind.ARC,
                 [
                     ResourceTerm(
-                        arc.name, _arc_flow(arc, port), coeff, 0, port.parent_block()
+                        arc.name, _arc_flow(arc, port), coeff, port.parent_block()
                     )
                     for port, coeff in ends
                 ],
@@ -901,7 +848,7 @@ def resource_graph(block) -> ResourceGraph:
                     owner.name, GraphResource(ResourceKind.STREAM, [])
                 ).edges.append(
                     ResourceTerm(
-                        owner.name, _arc_flow(arc, far), -coeff, 0, far.parent_block()
+                        owner.name, _arc_flow(arc, far), -coeff, far.parent_block()
                     )
                 )
     tasks = dict.fromkeys(

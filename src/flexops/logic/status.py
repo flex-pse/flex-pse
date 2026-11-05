@@ -53,6 +53,21 @@ def status_max_count(unit: Any) -> int:
     return getattr(unit, "_flexops_status_max_count", 1)
 
 
+def count_domains(unit: Any) -> tuple[Any, Any]:
+    """Return the discrete and relaxed domains of ``unit``'s status and transitions.
+
+    Args:
+        unit: A unit block, with or without ``add_status`` applied.
+
+    Returns:
+        ``(discrete, relaxed)``: binary and unit interval for a binary status, or
+        non-negative integers and reals for a counted one.
+    """
+    if status_max_count(unit) == 1:
+        return pyo.Binary, pyo.UnitInterval
+    return pyo.NonNegativeIntegers, pyo.NonNegativeReals
+
+
 def require_binary_status(unit: Any, *, used_by: str) -> None:
     """Raise if ``unit`` has a counted status, for logic that reads status as on/off.
 
@@ -127,13 +142,7 @@ def _register_rolling_state(
     entries.append({"var": var, "k": k, "kind": kind})
 
 
-def _track_binary(
-    unit: Any,
-    binary: pyo.Var,
-    *,
-    discrete: Any = pyo.Binary,
-    relaxed: Any = pyo.UnitInterval,
-) -> None:
+def _track_binary(unit: Any, binary: pyo.Var) -> None:
     """Append ``binary`` to the unit's private logic-binary registry.
 
     The registry is a plain Python list (never a Pyomo component), created
@@ -142,21 +151,16 @@ def _track_binary(
     Args:
         unit: The unit block the binary lives on.
         binary: Discrete ``Var`` to track for ``relax``/``unrelax``.
-        discrete: Domain ``unrelax`` restores. ``pyo.Binary`` by default.
-        relaxed: Domain ``relax`` sets. ``pyo.UnitInterval`` by default. A
-            count passes ``pyo.NonNegativeReals`` and keeps its ``(0, n)``
-            bounds.
     """
     binaries = getattr(unit, _BINARIES_ATTR, None)
     if binaries is None:
         binaries = []
         setattr(unit, _BINARIES_ATTR, binaries)
-    binaries.append((binary, discrete, relaxed))
+    binaries.append(binary)
 
 
 def _set_domain(binary: pyo.Var, domain: Any) -> None:
     """Set the domain of every data object of a (possibly indexed) discrete Var."""
-    # bounds are separate from the domain, so a count keeps its (0, n) bounds
     for data in binary.values() if binary.is_indexed() else (binary,):
         data.domain = domain
 
@@ -168,7 +172,6 @@ def add_status(
     max_output: Any,
     *,
     max_count: int = 1,
-    min_count_on: int | None = None,
 ) -> pyo.Var:
     """Attach the on/off status binary and its semicontinuous links to a unit.
 
@@ -194,17 +197,14 @@ def add_status(
             ``output_var``. For a counted unit, the limit of one train.
         max_count: Number of identical trains the unit represents. ``1``
             (default) keeps ``status`` binary.
-        min_count_on: Fewest trains that can run when any are running, from
-            2 to ``max_count``. ``None`` (default) allows any count.
 
     Returns:
         The attached ``status`` Var. Binary, or an integer in
         ``[0, max_count]`` when ``max_count > 1``.
 
     Raises:
-        FlexConfigError: If ``max_count < 1``, ``min_count_on`` is outside
-            ``[2, max_count]``, or ``max_count > 1`` and a swapped relation on
-            the unit has a constant term.
+        FlexConfigError: If ``max_count < 1``, or ``max_count > 1`` and a swapped
+            relation on the unit has a constant term.
     """
     if max_count < 1:
         raise FlexConfigError(
@@ -212,45 +212,27 @@ def add_status(
             field="max_count",
             value=max_count,
         )
-    if min_count_on is not None and not 2 <= min_count_on <= max_count:
-        raise FlexConfigError(
-            f"add_status requires 2 <= min_count_on <= max_count ({max_count}), "
-            f"got {min_count_on}. A minimum of 1 is the default and needs no "
-            "setting.",
-            field="min_count_on",
-            value=min_count_on,
-        )
     for relation in unit._io_registry.relations:
         if relation.surrogate is not None:
             require_no_intercept(unit, relation.name, relation.surrogate, max_count)
-    # leave defaults out so existing specs emit unchanged
-    counted_fields: dict[str, int] = {}
-    if max_count > 1:
-        counted_fields["max_count"] = max_count
-    if min_count_on is not None:
-        counted_fields["min_count_on"] = min_count_on
     record(
         unit,
         "status",
         variable=variable_path(output_var, unit),
         min_output=to_jsonable(min_output, where="add_status.min_output"),
         max_output=to_jsonable(max_output, where="add_status.max_output"),
-        **counted_fields,
+        # leave the default out so existing specs emit unchanged
+        **({"max_count": max_count} if max_count > 1 else {}),
     )
     tb = unit._find_time_block()
-    if max_count == 1:
-        unit.status = pyo.Var(
-            tb.time_index, domain=pyo.Binary, doc="On/off status binary (1 = on)."
-        )
-    else:
-        unit.status = pyo.Var(
-            tb.time_index,
-            domain=pyo.NonNegativeIntegers,
-            bounds=(0, max_count),
-            doc=f"Number of trains running, an integer in 0..{max_count}.",
-        )
-    status = unit.status
     unit._flexops_status_max_count = max_count
+    unit.status = pyo.Var(
+        tb.time_index,
+        domain=count_domains(unit)[0],
+        bounds=(0, max_count),
+        doc="Number of trains running (1 = on for a single train).",
+    )
+    status = unit.status
 
     @unit.Constraint(
         tb.time_index,
@@ -266,41 +248,7 @@ def add_status(
     def status_max_link(_b, t):
         return output_var[t] <= max_output * status[t]
 
-    if max_count == 1:
-        _track_binary(unit, status)
-    else:
-        # a relaxed count is a real in [0, n], the bounds stay on the Var
-        _track_binary(
-            unit,
-            status,
-            discrete=pyo.NonNegativeIntegers,
-            relaxed=pyo.NonNegativeReals,
-        )
-
-    if min_count_on is not None:
-        unit.status_on = pyo.Var(
-            tb.time_index,
-            domain=pyo.Binary,
-            doc="1 when any train is running, else 0.",
-        )
-        status_on = unit.status_on
-        minimum_running = min_count_on
-
-        @unit.Constraint(
-            tb.time_index,
-            doc="If any train runs, at least min_count_on trains run.",
-        )
-        def status_on_min(_b, t):
-            return minimum_running * status_on[t] <= status[t]
-
-        @unit.Constraint(
-            tb.time_index,
-            doc="Any train running forces status_on to 1.",
-        )
-        def status_on_max(_b, t):
-            return status[t] <= max_count * status_on[t]
-
-        _track_binary(unit, status_on)
+    _track_binary(unit, status)
     return status
 
 
@@ -310,8 +258,8 @@ def relax(unit: Any) -> None:
     Args:
         unit: The unit whose tracked binaries to relax.
     """
-    for var, _discrete, relaxed in getattr(unit, _BINARIES_ATTR, []):
-        _set_domain(var, relaxed)
+    for var in getattr(unit, _BINARIES_ATTR, []):
+        _set_domain(var, count_domains(unit)[1])
 
 
 def unrelax(unit: Any) -> None:
@@ -320,5 +268,5 @@ def unrelax(unit: Any) -> None:
     Args:
         unit: The unit whose tracked binaries to restore to integrality.
     """
-    for var, discrete, _relaxed in getattr(unit, _BINARIES_ATTR, []):
-        _set_domain(var, discrete)
+    for var in getattr(unit, _BINARIES_ATTR, []):
+        _set_domain(var, count_domains(unit)[0])

@@ -28,16 +28,10 @@ can deliver between 20 and 200. One count instead of ``n`` binaries means the
 solver doesn't search through equivalent orderings of the same trains. Trains
 with different limits have to stay separate units.
 
-``min_count_on=m`` stops the unit from running between 1 and ``m - 1``
-trains. It adds a binary ``status_on[t]`` that's 1 when any train runs, with
-``m * status_on[t] <= status[t] <= n * status_on[t]``.
-
-:func:`~flexops.logic.unit_commitment.add_startup_shutdown` counts the trains
-started and stopped at each step, and ``min_downtime`` compares against
-``n - status[t]`` instead of ``1 - status[t]``. :func:`relax` turns a count
-into a real in ``[0, n]``. It only changes variable domains, never
-constraints, bounds or fixed values, so warm starts and references held
-elsewhere survive. With the default ``max_count=1`` you get the same binary
+The unit's startup and shutdown count trains too, so
+:func:`~flexops.logic.unit_commitment.add_startup_shutdown` compares
+``min_downtime`` against ``n - status[t]``. :func:`relax` turns a count into a
+real in ``[0, n]``. With the default ``max_count=1`` you get the same binary
 model as before.
 
 ``add_conditional``, ``add_startup_delay`` and

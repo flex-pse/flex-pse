@@ -14,7 +14,7 @@ from flexcore.config.schema import (
     UnitConfig,
 )
 from flexcore.exceptions import FlexConfigError, FlexSolverError
-from flexcore.solvers import facade, get_solver
+from flexcore.solvers import get_solver
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.properties.simple_gas import SimpleGasFlow
 from flexops.surrogates import MultilinearSurrogate
@@ -514,10 +514,8 @@ def test_duct_fired_hrsg_adds_firing_to_recovered_heat():
 
 
 @pytest.mark.component
-def test_hrsg_fed_by_a_combustor_arc_solves(monkeypatch):
+def test_hrsg_fed_by_a_combustor_arc_solves():
     """A Combustor's flue gas drives an HRSG through an arc."""
-    # only the flue gas is under test, so nothing needs the combustor's power
-    monkeypatch.setattr(facade, "PRE_SOLVE_CHECKS", [])
     m = _model()
     m.chp = Combustor(
         property_package=m.properties,

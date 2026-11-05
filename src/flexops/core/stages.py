@@ -371,7 +371,6 @@ def _add_unit_logic(member, element) -> None:
             _limit(element.min_output),
             _limit(element.max_output),
             max_count=element.max_count,
-            min_count_on=element.min_count_on,
         )
     elif element.kind == "bypass":
         logic.add_bypass(member, _variable(member, element), _limit(element.max))

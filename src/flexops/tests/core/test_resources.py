@@ -14,7 +14,6 @@ from flexcore.config.spec import SCHEMA_VERSION
 from flexcore.exceptions import FlexConfigError, FlexResourceWarning
 from flexcore.solvers import facade, get_solver
 from flexops import (
-    NetworkBlock,
     PlantBlock,
     SimpleAqueousFlow,
     SimpleGasFlow,
@@ -30,9 +29,8 @@ from flexops.core.resources import (
     resource_graph,
     verify_resources,
 )
-from flexops.costing import FlexCosting, currency_units
 from flexops.testing import dummy_time_block
-from flexops.tests.core.test_resource_terms import BareUnit, GasBurner
+from flexops.tests.core.test_resource_terms import GasBurner
 from flexops.unit_models import (
     BatteryModel,
     Feed,
@@ -156,33 +154,12 @@ def test_utility_term_on_an_arc_connected_port_is_refused():
     second = _pump(m, "second")
     m.plant.link = Arc(source=first.outlet, destination=second.inlet)
     first.out_flow = pyo.Reference(first.outlet_state.flow_vol_phase[:, "Liq"])
-    first.register_resource(first.out_flow, resource="water_term")
+    first.register_fuel_usage(first.out_flow, fuel_name="water_term")
 
     with pytest.raises(FlexConfigError, match="Arc") as excinfo:
         m.plant.water = Resource(property_package=_utility(m, "water_term"))
 
     assert excinfo.value.field == "property_package"
-
-
-@pytest.mark.unit
-def test_a_term_offset_before_the_horizon_adds_nothing():
-    """With offset 2, the first two steps see no contribution."""
-    m = dummy_time_block(4)
-    m.plant = PlantBlock(time_block=m.time_block)
-    m.plant.unit = BareUnit()
-    m.plant.unit.flow = pyo.Var(
-        m.time_block.time_index, initialize=1.0, units=pyunits.m**3 / pyunits.hr
-    )
-    m.plant.unit.register_resource(
-        m.plant.unit.flow, resource="delayed", coeff=1.0, offset=2
-    )
-
-    m.plant.delayed = Resource(property_package=_utility(m, "delayed"))
-
-    m.plant.unit.flow[0].set_value(9.0)
-    assert list(m.plant.delayed.balance.keys()) == [2, 3]
-    assert pyo.value(m.plant.delayed.flow["plant.unit.flow@2", 1]) == 0.0
-    assert pyo.value(m.plant.delayed.flow["plant.unit.flow@2", 2]) == 9.0
 
 
 @pytest.mark.unit
@@ -1092,8 +1069,8 @@ def test_a_term_registered_twice_under_one_label_is_refused():
     m = dummy_time_block(2)
     m.plant = PlantBlock(time_block=m.time_block)
     m.plant.burner = GasBurner()
-    m.plant.burner.register_resource(
-        m.plant.burner.fuel_usage_natural_gas, resource="natural_gas", coeff=5.0
+    m.plant.burner.register_fuel_usage(
+        m.plant.burner.fuel_usage_natural_gas, fuel_name="natural_gas"
     )
 
     with pytest.raises(FlexConfigError, match="fuel_usage_natural_gas") as excinfo:
@@ -1248,18 +1225,6 @@ def test_an_arc_to_a_node_over_its_own_index_cannot_be_emitted():
     )
 
     with pytest.raises(FlexConfigError, match="plant.indexed"):
-        emit_model(m, check=False)
-
-
-@pytest.mark.unit
-def test_register_resource_terms_cannot_be_emitted():
-    """Spec has no form for these yet, so the emitted model would differ."""
-    m = dummy_time_block(2)
-    m.plant = PlantBlock(time_block=m.time_block)
-    pump = _pump(m, "pump")
-    pump.register_resource(pump.flow_in, resource="brine", coeff=-1.0)
-
-    with pytest.raises(FlexConfigError, match="register_resource"):
         emit_model(m, check=False)
 
 
@@ -1663,117 +1628,6 @@ def _plant(*adds):
     return m
 
 
-@pytest.mark.unit
-@pytest.mark.parametrize("onsite", [_battery, _solar])
-def test_onsite_power_with_nothing_balancing_it_warns(onsite):
-    with pytest.warns(FlexResourceWarning, match="on-site"):
-        verify_resources(_plant(onsite))
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("onsite", [_battery, _solar])
-def test_onsite_power_with_nothing_accounting_for_it_raises_on_error(onsite):
-    with pytest.raises(FlexConfigError, match="on-site") as excinfo:
-        verify_resources(_plant(onsite), error_type="error")
-
-    assert excinfo.value.field == "property_package"
-
-
-@pytest.mark.component
-@pytest.mark.needs_highs
-def test_solving_onsite_power_with_nothing_accounting_for_it_raises():
-    m = _plant(_pumped_water, _battery)
-    m.keep_charge = pyo.Objective(expr=m.plant.battery.charge[1], sense=pyo.maximize)
-
-    with pytest.raises(FlexConfigError, match="on-site"):
-        get_solver(model=m, prefer="highs").solve(m)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("onsite", [_battery, _solar])
-def test_costing_that_bills_electricity_accounts_for_onsite_power(onsite, recwarn):
-    m = _plant(onsite)
-    m.costing = FlexCosting(
-        time_block=m.time_block,
-        energy_prices={"electrical": 0.12 * currency_units("USD") / pyunits.kWh},
-    )
-
-    verify_resources(m, error_type="error")
-
-    assert not recwarn.list
-
-
-@pytest.mark.unit
-def test_costing_that_only_bills_gas_does_not_account_for_onsite_power():
-    m = _plant(_battery)
-    m.costing = FlexCosting(
-        time_block=m.time_block,
-        energy_prices={"natural_gas": 0.3 * currency_units("USD") / pyunits.m**3},
-    )
-
-    with pytest.raises(FlexConfigError, match="on-site"):
-        verify_resources(m, error_type="error")
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("onsite", [_battery, _solar])
-def test_onsite_power_beside_a_grid_gives_no_warning(onsite, recwarn):
-    m = _plant(onsite)
-    m.plant.grid = GridConnection()
-
-    verify_resources(m, error_type="error")
-
-    assert not recwarn.list
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("onsite", [_battery, _solar])
-def test_onsite_power_with_a_pump_on_an_electricity_utility_gives_no_warning(
-    onsite, recwarn
-):
-    m = _plant(onsite, lambda m: _pump(m, "pump"))
-    m.plant.power = Resource(property_package=_utility(m, "electricity", "kW"))
-
-    verify_resources(m, error_type="error")
-
-    assert not recwarn.list
-
-
-@pytest.mark.unit
-def test_an_electricity_utility_on_a_network_covers_the_plants_below_it():
-    m = dummy_time_block(2)
-    m.net = NetworkBlock(time_block=m.time_block)
-    m.net.plant = PlantBlock(time_block=m.time_block)
-    m.net.plant.solar = GenericRenewables(
-        capacity=10 * pyunits.kW, capacity_factor=[0.2, 0.5]
-    )
-    m.net.plant.pump = Pump(property_package=m.properties, energy_intensity=INTENSITY)
-    m.net.power = Resource(property_package=_utility(m, "electricity", "kW"))
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", FlexResourceWarning)
-        verify_resources(m)
-
-
-@pytest.mark.unit
-def test_a_grid_on_another_plant_does_not_balance_onsite_power():
-    m = dummy_time_block(2)
-    for name in ("a", "b"):
-        m.add_component(name, PlantBlock(time_block=m.time_block))
-    m.a.grid = GridConnection()
-    m.b.solar = GenericRenewables(capacity=10 * pyunits.kW, capacity_factor=[0.2, 0.5])
-
-    with pytest.warns(FlexResourceWarning, match="b.solar"):
-        verify_resources(m)
-
-
-@pytest.mark.unit
-def test_a_pump_with_no_electricity_resource_gives_no_warning(recwarn):
-    verify_resources(_plant(lambda m: _pump(m, "pump")), error_type="error")
-
-    assert not recwarn.list
-
-
 def _power_utility_plant(*adds):
     """Return ``_plant(*adds)`` with an electricity utility on it."""
     m = _plant(*adds)
@@ -1804,19 +1658,6 @@ def test_an_electricity_utility_that_forces_zero_warns_by_default(adds, missing)
 
     with pytest.warns(FlexResourceWarning, match=missing):
         verify_resources(m)
-
-
-@pytest.mark.unit
-def test_a_custom_supply_term_counts_as_supply_for_electricity():
-    m = _plant(lambda m: _pump(m, "pump"))
-    m.plant.source = BareUnit()
-    m.plant.source.supply = pyo.Var(
-        m.time_block.time_index, bounds=(0, None), units=pyunits.kW
-    )
-    m.plant.source.register_resource(m.plant.source.supply, resource="electricity")
-    m.plant.power = Resource(property_package=_utility(m, "electricity", "kW"))
-
-    verify_resources(m, error_type="error")
 
 
 def _imported_power_plant(*adds):

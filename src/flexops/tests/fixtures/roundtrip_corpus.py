@@ -453,7 +453,7 @@ def logic_status_startup() -> pyo.ConcreteModel:
 
 
 def counted_trains() -> pyo.ConcreteModel:
-    """One pump unit standing for three identical trains, at least two when on."""
+    """One pump unit standing for three identical trains."""
     m = pyo.ConcreteModel(name="counted_trains")
     m.time_block = fo.TimeBlock(
         start_date="2025-01-01", end_date="2025-01-01T08:00", time_step=1 * pyunits.hr
@@ -473,7 +473,6 @@ def counted_trains() -> pyo.ConcreteModel:
         1 * pyunits.kW,
         20 * pyunits.kW,
         max_count=3,
-        min_count_on=2,
     )
     logic.add_startup_shutdown(pump, status, min_uptime=2, min_downtime=2)
     m.costing.cost_process()

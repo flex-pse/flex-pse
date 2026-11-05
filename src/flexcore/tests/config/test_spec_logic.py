@@ -240,27 +240,19 @@ def test_status_counts_default_to_a_single_binary():
     spec = accepts(pump(), status())
 
     element = next(e for e in spec.elements if e.kind == "status")
-    assert (element.max_count, element.min_count_on) == (1, None)
+    assert element.max_count == 1
 
 
 @pytest.mark.unit
-def test_status_accepts_a_count_with_a_minimum():
-    accepts(pump(), status(max_count=3, min_count_on=2))
+def test_status_accepts_a_count():
+    accepts(pump(), status(max_count=3))
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    ("fields", "fragments"),
-    [
-        ({"max_count": 0}, ("greater than or equal to 1",)),
-        ({"max_count": 3, "min_count_on": 1}, ("min_count_on", "between 2 and")),
-        ({"max_count": 3, "min_count_on": 4}, ("min_count_on", "max_count (3)")),
-        ({"min_count_on": 2}, ("min_count_on", "max_count (1)")),
-    ],
-    ids=["zero", "minimum_of_one", "above_max", "needs_max_count"],
-)
-def test_status_rejects_inconsistent_counts(fields, fragments):
-    rejects(spec_dict(plant(), pump(), status(**fields)), *fragments)
+def test_status_rejects_a_zero_count():
+    rejects(
+        spec_dict(plant(), pump(), status(max_count=0)), "greater than or equal to 1"
+    )
 
 
 def resource(name="p.gas", **fields):

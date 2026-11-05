@@ -554,11 +554,6 @@ class FlexCostingData(FlowsheetCostingBlockData):
         self.base_currency = self._currency
         self.base_period = pyunits.year
 
-    @property
-    def bills_electricity(self) -> bool:
-        """Whether this block prices electricity, natively or through a tariff."""
-        return "electrical" in self._prices or "electric" in self._tariff_utilities
-
     def _resolve_tariff(self):
         """Load the tariff from config, or ``None`` when pricing is all native.
 

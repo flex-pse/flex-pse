@@ -1423,19 +1423,6 @@
           "description": "Output when on, upper limit: a number or a quantity.",
           "title": "Max Output"
         },
-        "min_count_on": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Fewest trains that can run when any are running, from 2 to max_count. Leave out to allow any count from 0 to max_count.",
-          "title": "Min Count On"
-        },
         "min_output": {
           "anyOf": [
             {

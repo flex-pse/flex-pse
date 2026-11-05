@@ -10,8 +10,6 @@ share state across stages -- every test method builds and tears down its own
 ``(model, unit)`` pair.
 """
 
-from unittest.mock import patch
-
 import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
@@ -21,7 +19,7 @@ from pyomo.util.check_units import assert_units_consistent
 
 from flexcore import nomenclature as nm
 from flexcore.exceptions import FlexSolverError
-from flexcore.solvers import facade, get_solver
+from flexcore.solvers import get_solver
 from flexops.core.time_block import TimeBlock
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.properties.simple_gas import SimpleGasFlow
@@ -126,9 +124,7 @@ def _solve_with_inputs_fixed(model, unit) -> None:
         solver = get_solver(model=model)
     except FlexSolverError as exc:
         pytest.skip(str(exc))
-    # a unit tested alone has no plant to balance what it supplies
-    with patch.object(facade, "PRE_SOLVE_CHECKS", []):
-        assert_optimal_termination(solver.solve(model))
+    assert_optimal_termination(solver.solve(model))
 
 
 class UnitModelTestHarness:

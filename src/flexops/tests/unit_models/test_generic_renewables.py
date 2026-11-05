@@ -390,7 +390,7 @@ def test_generic_renewables_exports_net_against_plant_load():
     from flexcore.exceptions import FlexSolverError
     from flexcore.solvers import get_solver
     from flexops import PlantBlock
-    from flexops.unit_models import ConstantEnergyIntensityModel, GridConnection
+    from flexops.unit_models import ConstantEnergyIntensityModel
 
     m = dummy_time_block(3)
     m.plant = PlantBlock(time_block=m.time_block)
@@ -398,7 +398,6 @@ def test_generic_renewables_exports_net_against_plant_load():
         capacity=10 * pyunits.kW, capacity_factor=[0.2, 0.5, 0.8]
     )
     m.plant.load = ConstantEnergyIntensityModel(property_package=m.properties)
-    m.plant.grid = GridConnection()
     m.plant._build_aggregates()
 
     for t in m.time_block.time_index:

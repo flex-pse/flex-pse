@@ -140,17 +140,14 @@ coefficient supplies the resource and a negative one consumes it.
 | `register_boundary_flow(kind=PRODUCT)` | its `resource` | −1 |
 | `register_power(kind=ELECTRICAL)` | `"electricity"` | −1 |
 | `register_fuel_usage(var, fuel_name)` | `fuel_name` | −1 |
-| {meth}`~flexops.core.ops_block.OpsBlockData.register_resource` | as given | as given |
 
 `power_electrical` is positive when a unit draws power, so the −1 makes a draw
 consume electricity, and an export supplies it. Thermal power isn't mapped, because
 a heat duty carries a temperature and summing heat at different temperatures needs
 its own treatment.
 
-The block holds `edges`, the Expression `flow[edge, t]` equal to `coeff *
-var[t - offset]`, and the Constraint `balance[t]`. A utility adds no flow variables.
-`offset` is a delay in steps, and a term that would land before the horizon starts
-adds nothing. An `UNBOUNDED` utility keeps its edges and has no `balance`. Each term
+The block holds `edges`, the Expression `flow[edge, t]` equal to `coeff * var[t]`, and
+the Constraint `balance[t]`. A utility adds no flow variables. An `UNBOUNDED` utility keeps its edges and has no `balance`. Each term
 gets converted to the package's `units` on its own, so when one doesn't fit, the error names the unit that registered it. A term that's a flow
 an `Arc` already conserves is refused, because balancing it again would count it
 twice. That covers a flow on a connected port, and a `Feed`'s or `Product`'s metered
@@ -176,8 +173,8 @@ It raises `FlexConfigError` when:
 
 A one-sided balance forces its flows to zero: a `BALANCED` utility whose edges all have
 one sign, a `BALANCED` stream with arcs on one side only, an `EXPORT` with nothing
-supplying it, or an `IMPORT` with nothing consuming it. Like on-site power nothing accounts for, covered
-below, that's normal while a model is being put together, so `build_model` warns with
+supplying it, or an `IMPORT` with nothing consuming it. That's normal while a model is
+being put together, so `build_model` warns with
 {class}`~flexcore.exceptions.FlexResourceWarning`. It's almost always a mistake in a
 model you solve, so a solve raises instead. Pass `error_type="warn"` or
 `error_type="error"` to choose when you call it yourself. A stream with no arcs at all
@@ -206,20 +203,13 @@ import limits or tariff.
 A coefficient alone can't tell supply from draw on a signed variable. A battery and a
 pump both have a coefficient of −1, yet the discharging battery supplies the pump. So an
 electricity `Resource` is judged by what its units can do. It has a supply if a unit is
-marked `supplies_power` (`BatteryModel`, `GenericRenewables`, `Combustor`) or a term has
-a positive coefficient, and it has a consumer if an edge can draw. Without both, a
+marked `supplies_power` (`BatteryModel`, `GenericRenewables`, `Combustor`), and it has a
+consumer if an edge can draw. Without both, a
 `BALANCED` one forces its flows to zero, so it warns at build and raises at solve like
 any other one-sided balance. A lone unit on a `BALANCED` one also counts as one-sided,
 since one term can't balance itself. `EXPORT` and `IMPORT` are inequalities, so one unit
 can satisfy them: a lone pump can draw on an `IMPORT`, and a lone battery on an `IMPORT`
 can only charge.
-
-On-site power or storage needs something to account for what it supplies, or that power
-disappears. A `GridConnection`, an electricity `Resource`, or a `FlexCosting` that bills
-electricity all count. Costing counts because it bills net exports at the import price
-unless `export_prices` says otherwise, which is net metering, so exports are unlimited
-unless a model limits them. With none of the three, a model warns at build and raises at
-solve. A `FlexCosting` that only prices gas doesn't count.
 
 A custom unit that can supply power sets the class attribute `supplies_power = True`.
 

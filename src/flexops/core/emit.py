@@ -110,7 +110,6 @@ def emit_model(
     units: dict[str, list] = {}
     _structure(model, packages, costings, elements, sets, units)
     unit_elements = {el.name: el for el in elements if el.kind == "unit"}
-    _refuse_registered_terms(units)
     _connections(model, unit_elements, units, sets)
     elements += sets.values()
     elements += _mutable_elements(model, units)
@@ -488,25 +487,6 @@ def _structure(block, packages, costings, elements, sets, units) -> None:
 def _template(rest: str, member) -> str:
     """Return a path tail with every occurrence of ``member`` made ``{i}``."""
     return rest if member is None else rest.replace(str(member), "{i}")
-
-
-def _refuse_registered_terms(units: dict) -> None:
-    """Raise if a unit has ``register_resource`` terms, which a spec can't hold yet.
-
-    Args:
-        units: Unit element names mapped to their member blocks.
-
-    Raises:
-        FlexConfigError: If any member registered such a term.
-    """
-    for name, members in units.items():
-        for member in members:
-            if member._io_registry.resources:
-                raise FlexConfigError(
-                    f"{member.name!r} has register_resource terms, which a spec "
-                    "can't hold yet, so the emitted model would leave them out.",
-                    field=name,
-                )
 
 
 def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
