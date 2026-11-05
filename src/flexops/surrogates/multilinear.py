@@ -148,6 +148,11 @@ class MultilinearSurrogate(Surrogate):
                 )
 
     @property
+    def intercept(self) -> float:
+        """Return the ``"intercept"`` coefficient, ``0.0`` if it is not given."""
+        return float(self.data["coefficients"].get(_INTERCEPT, 0.0))
+
+    @property
     def input_variables(self) -> dict[str, str]:
         """Return the declared input variable names and their units."""
         return dict(self.data["input_variables"])

@@ -27,6 +27,22 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class BalanceType(enum.StrEnum):
+    """How what enters a resource must relate to what leaves it at each step.
+
+    Attributes:
+        BALANCED: What enters equals what leaves.
+        EXPORT: What enters may exceed what leaves, so a surplus leaves the model.
+        IMPORT: What leaves may exceed what enters, so a shortfall enters the model.
+        UNBOUNDED: No balance, an infinite source and sink.
+    """
+
+    BALANCED = "balanced"
+    EXPORT = "export"
+    IMPORT = "import"
+    UNBOUNDED = "unbounded"
+
+
 class IOVariableSpec(_StrictModel):
     """A declared process input or output variable of a unit."""
 

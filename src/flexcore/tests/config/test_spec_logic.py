@@ -3,6 +3,7 @@
 import pytest
 
 from flexcore.config.io import load_spec
+from flexcore.config.schema import BalanceType
 from flexcore.config.spec import KINDS, SCHEMA_VERSION, FlowsheetSpec
 from flexcore.tests.config.test_spec import (
     PACKAGE,
@@ -232,3 +233,163 @@ def test_a_0_1_0_spec_migrates_to_the_current_version():
     data["schema_version"] = "0.1.0"
 
     assert load_spec(data).schema_version == SCHEMA_VERSION
+
+
+@pytest.mark.unit
+def test_status_counts_default_to_a_single_binary():
+    spec = accepts(pump(), status())
+
+    element = next(e for e in spec.elements if e.kind == "status")
+    assert element.max_count == 1
+
+
+@pytest.mark.unit
+def test_status_accepts_a_count():
+    accepts(pump(), status(max_count=3))
+
+
+@pytest.mark.unit
+def test_status_rejects_a_zero_count():
+    rejects(
+        spec_dict(plant(), pump(), status(max_count=0)), "greater than or equal to 1"
+    )
+
+
+def resource(name="p.gas", **fields):
+    """Return a resource element dict."""
+    return {
+        "kind": "resource",
+        "name": name,
+        "property_package": PACKAGE["name"],
+        **fields,
+    }
+
+
+@pytest.mark.unit
+def test_resource_kind_builds_between_logic_and_state():
+    from flexcore.config.spec import STAGE_ORDER
+
+    assert KINDS["resource"] == ("resources", False)
+    assert STAGE_ORDER.index("logic") + 1 == STAGE_ORDER.index("resources")
+    assert STAGE_ORDER.index("resources") + 1 == STAGE_ORDER.index("state")
+
+
+def fuel():
+    """Return a utility property package element."""
+    return {
+        "kind": "property_package",
+        "name": "fuel",
+        "property_class": "SimpleUtility",
+        "options": {"resource": "natural_gas", "units": "m^3/hr"},
+    }
+
+
+@pytest.mark.unit
+def test_resource_balance_defaults_to_balanced_and_takes_a_type():
+    plain = FlowsheetSpec.model_validate(spec_dict(plant(), resource()))
+    source = FlowsheetSpec.model_validate(
+        spec_dict(plant(), resource(balance="import"))
+    )
+
+    assert plain.of_kind("resource")[0].balance is BalanceType.BALANCED
+    assert source.of_kind("resource")[0].balance is BalanceType.IMPORT
+
+
+@pytest.mark.unit
+def test_resource_must_name_a_property_package_element():
+    rejects(spec_dict(plant(), resource(property_package="oil")), "oil")
+
+
+@pytest.mark.unit
+def test_auto_package_of_a_unit_skips_utility_packages():
+    accepts(pump(), fuel(), resource(property_package="fuel"))
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "field", ["stock", "lower", "upper", "initial", "units", "contents"]
+)
+def test_resource_has_no_bounds_level_or_units_fields(field):
+    rejects(spec_dict(plant(), resource(**{field: 1.0})), field)
+
+
+def attached(*connections):
+    """Return a pump whose connections are the given (port, to) pairs."""
+    return pump(connections=[{"port": p, "to": to} for p, to in connections])
+
+
+@pytest.mark.unit
+def test_connection_may_name_a_resource_node_shared_by_many_ports():
+    FlowsheetSpec.model_validate(
+        spec_dict(
+            plant(),
+            attached(("inlet", "p.gas"), ("outlet", "p.gas")),
+            pump("p.b", connections=[{"port": "inlet", "to": "p.gas"}]),
+            resource(),
+        )
+    )
+
+
+@pytest.mark.unit
+def test_a_port_attaches_to_one_node_only():
+    rejects(
+        spec_dict(
+            plant(),
+            attached(("inlet", "p.gas"), ("inlet", "p.oil")),
+            resource(),
+            resource("p.oil"),
+        ),
+        "one arc per port",
+    )
+
+
+@pytest.mark.unit
+def test_a_port_cannot_take_both_a_node_and_another_units_arc():
+    feeder = pump("p.b", connections=[{"port": "outlet", "to": "p.a.inlet"}])
+    rejects(
+        spec_dict(plant(), attached(("inlet", "p.gas")), feeder, resource()),
+        "one arc per port",
+    )
+
+
+@pytest.mark.unit
+def test_connection_to_a_node_must_be_directed_and_unindexed():
+    undirected = pump(connections=[{"port": "inlet", "to": "p.gas", "directed": False}])
+    rejects(spec_dict(plant(), undirected, resource()), "resource node")
+    indexed = pump(connections=[{"port": "inlet", "to": "p.gas", "index": "s"}])
+    rejects(
+        spec_dict(
+            plant(), indexed, resource(), {"kind": "set", "name": "s", "values": [0]}
+        ),
+        "resource node",
+    )
+
+
+@pytest.mark.unit
+def test_a_resource_may_sit_at_the_model_root_or_under_another_plant():
+    other = {"kind": "plant", "name": "q"}
+    FlowsheetSpec.model_validate(
+        spec_dict(plant(), other, attached(("inlet", "q.gas")), resource("q.gas"))
+    )
+    FlowsheetSpec.model_validate(
+        spec_dict(plant(), attached(("inlet", "gas")), resource("gas"))
+    )
+
+
+@pytest.mark.unit
+def test_resource_parent_must_be_a_plant_or_network():
+    rejects(spec_dict(plant(), pump(), resource("p.a.gas")), "allowed parent kinds")
+
+
+@pytest.mark.unit
+def test_resource_may_sit_under_a_network():
+    accepts_network = spec_dict({"kind": "network", "name": "n"}, resource("n.gas"))
+    FlowsheetSpec.model_validate(accepts_network)
+
+
+@pytest.mark.unit
+def test_resource_names_are_unique():
+    rejects(
+        spec_dict(plant(), resource(), resource()),
+        "already used by another element",
+    )

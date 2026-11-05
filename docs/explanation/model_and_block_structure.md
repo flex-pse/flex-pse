@@ -21,7 +21,7 @@ kinds.
 ```
 ConcreteModel
 ├── TimeBlock                      the discrete-time substrate (exactly one)
-├── <PropertyPackage>              a parameter block (SimpleAqueousFlow, SimpleGasFlow, …)
+├── <PropertyPackage>              a parameter block (SimpleAqueousFlow, SimpleUtility, …)
 └── <unit>  : OpsBlock             one per process unit
     ├── power_electrical[t]        base power Var(s), kW, indexed by time
     ├── power_thermal[t]
@@ -70,6 +70,15 @@ one to three balance constraints as difference equations against
   `flow_vol_phase`, since which variables count as meaningful IO depends on
   the property package), and exposes the ports through the inherited IDAES
   `add_inlet_port`/`add_outlet_port` helpers.
+
+### Resource terms, a signed list of what each unit adds or takes
+
+A resource is anything a plant balances, like a water stream, a fuel or
+electricity. {func}`~flexops.core.registration.iter_resource_terms` lists
+which variables add to or take from each resource, and with what sign, for a
+plant, a network, a unit or the whole model. It doesn't build any constraints.
+It reads the power, fuel and boundary registrations units already make, so a
+unit never registers the same variable twice. See {doc}`resources` for the sign table and how a utility uses these terms.
 
 ### Property packages, a parameter block plus state blocks
 

@@ -23,6 +23,8 @@ from flexops.logic.status import (
     RollingStateKind,
     _register_rolling_state,
     _track_binary,
+    count_domains,
+    status_max_count,
 )
 
 
@@ -42,7 +44,10 @@ def add_startup_shutdown(
       window ``= range(max(1, t - min_uptime + 1), t + 1)``. A startup within
       the trailing ``min_uptime`` steps forces the unit on at ``t``.
     * ``min_downtime[t]``: the mirror, ``sum(shutdown[i] for i in window) <=
-      1 - status_var[t]``, window sized by ``min_downtime``.
+      n - status_var[t]``, window sized by ``min_downtime``, where ``n`` is the
+      unit's ``max_count`` (``1`` for a binary status). With ``n > 1`` the
+      trains are interchangeable: a recent startup keeps the count up, so an
+      older train may stop while the new one runs.
 
     At the defaults (``min_uptime=1, min_downtime=1``) each window is the
     single point ``{t}``, so these reduce exactly to the tightening bounds
@@ -59,8 +64,9 @@ def add_startup_shutdown(
 
     Args:
         unit: The unit block to attach the transition structure to.
-        status_var: The unit's time-indexed on/off ``status`` Binary (from
-            :func:`~flexops.logic.status.add_status`).
+        status_var: The unit's time-indexed ``status`` Var from
+            :func:`~flexops.logic.status.add_status`. Binary, or a count when
+            the unit was built with ``max_count > 1``.
         min_uptime: Minimum number of steps the unit must stay on after a
             startup. Must be ``>= 1``; ``1`` means no additional requirement
             beyond the instant the unit turns on.
@@ -68,8 +74,9 @@ def add_startup_shutdown(
             shutdown. Must be ``>= 1``, with the same "no-op at 1" meaning.
 
     Returns:
-        The attached ``(startup, shutdown)`` Binary Vars, each indexed over
-        ``t >= 1``.
+        The attached ``(startup, shutdown)`` Vars, each indexed over
+        ``t >= 1``. Binary, or the number of trains started or stopped (an
+        integer in ``[0, max_count]``) for a counted unit.
 
     Raises:
         FlexConfigError: If ``min_uptime`` or ``min_downtime`` is ``< 1``.
@@ -90,12 +97,19 @@ def add_startup_shutdown(
 
     tb = unit._find_time_block()
     active_index = [t for t in tb.time_index if t >= 1]
+    train_count = status_max_count(unit)
 
     unit.startup = pyo.Var(
-        active_index, domain=pyo.Binary, doc="Startup indicator: 1 at a 0->1 edge."
+        active_index,
+        domain=count_domains(unit)[0],
+        bounds=(0, train_count),
+        doc="Trains started at t: 1 at a 0->1 edge for a single train.",
     )
     unit.shutdown = pyo.Var(
-        active_index, domain=pyo.Binary, doc="Shutdown indicator: 1 at a 1->0 edge."
+        active_index,
+        domain=count_domains(unit)[0],
+        bounds=(0, train_count),
+        doc="Trains stopped at t: 1 at a 1->0 edge for a single train.",
     )
     startup, shutdown = unit.startup, unit.shutdown
 
@@ -130,7 +144,7 @@ def add_startup_shutdown(
     )
     def min_downtime(_b, t):
         window = range(max(1, t - downtime_window_size + 1), t + 1)
-        return sum(shutdown[i] for i in window) <= 1 - status_var[t]
+        return sum(shutdown[i] for i in window) <= train_count - status_var[t]
 
     _track_binary(unit, startup)
     _track_binary(unit, shutdown)

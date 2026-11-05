@@ -76,12 +76,12 @@ def test_load_spec_newer_version_raises():
 @pytest.mark.unit
 def test_load_spec_runs_spec_migrations(monkeypatch):
     """An older flat spec steps through MIGRATIONS to the current version."""
-    monkeypatch.setattr(io_module, "SCHEMA_VERSION", "0.1.1")
+    monkeypatch.setattr(io_module, "SCHEMA_VERSION", "0.1.2")
     monkeypatch.setitem(
-        io_module.MIGRATIONS, "0.1.0", lambda data: {**data, "schema_version": "0.1.1"}
+        io_module.MIGRATIONS, "0.1.1", lambda data: {**data, "schema_version": "0.1.2"}
     )
 
-    assert load_spec(FLAT).schema_version == "0.1.1"
+    assert load_spec(FLAT).schema_version == "0.1.2"
 
 
 @pytest.mark.unit

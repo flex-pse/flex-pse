@@ -21,6 +21,7 @@ schedule flexible industrial energy operations.
    explanation/solve_strategies
    explanation/config_schema
    explanation/energy_nomenclature
+   explanation/resources
    explanation/reported_cost
    explanation/pass_through_and_bypass
    explanation/degradation

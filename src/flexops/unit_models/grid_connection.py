@@ -38,6 +38,8 @@ class GridConnectionData(OpsBlockData):
         ... )
     """
 
+    closes_power_balance = True
+
     CONFIG = OpsBlockData.CONFIG()
     CONFIG.get("unit_commitment").set_default_value(UnitCommitmentConfig(status=False))
     CONFIG.declare(

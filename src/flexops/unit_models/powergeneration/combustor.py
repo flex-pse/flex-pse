@@ -284,6 +284,8 @@ class CombustorData(OpsBlockData):
         ... )
     """
 
+    supplies_power = True
+
     CONFIG = OpsBlockData.CONFIG()
     CONFIG.get("allow_pass_through").set_default_value(True)
     CONFIG.declare(

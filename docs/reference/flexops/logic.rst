@@ -17,6 +17,35 @@ Status
 
 .. autofunction:: unrelax
 
+Counted trains
+~~~~~~~~~~~~~~
+
+Pass ``max_count=n`` to :func:`~flexops.logic.status.add_status` when one unit
+stands for ``n`` identical trains with the same limits. ``status[t]`` becomes
+an integer count in ``0..n`` and the output limits apply per running train.
+With ``min_output = 10``, ``max_output = 100`` and two trains running, the unit
+can deliver between 20 and 200. One count instead of ``n`` binaries means the
+solver doesn't search through equivalent orderings of the same trains. Trains
+with different limits have to stay separate units.
+
+The unit's startup and shutdown count trains too, so
+:func:`~flexops.logic.unit_commitment.add_startup_shutdown` compares
+``min_downtime`` against ``n - status[t]``. :func:`relax` turns a count into a
+real in ``[0, n]``. With the default ``max_count=1`` you get the same binary
+model as before.
+
+``add_conditional``, ``add_startup_delay`` and
+``register_parallel_group(order_status=True)`` compare status to 0 and 1,
+which means something different for a count (``1 - status`` can go negative).
+They raise ``FlexConfigError`` on a counted unit instead of building the wrong
+model.
+
+A counted unit is exact only when its relations scale with the trains. A
+multilinear relation with a nonzero ``intercept`` would add that constant once
+instead of once per running train, so ``add_status(max_count > 1)`` and a
+later ``swap_relation`` both raise ``FlexConfigError`` for it. Fit the relation
+with an intercept of 0, or build one unit per train.
+
 Commitment and timing
 ---------------------
 

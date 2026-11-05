@@ -94,6 +94,10 @@ class FlexEmitWarning(UserWarning):
     """
 
 
+class FlexResourceWarning(UserWarning):
+    """A resource balance is legal but forces its flows to zero."""
+
+
 class FlexFixWarning(UserWarning):
     """Warned when a fix value outside a variable's bounds is fixed anyway or skipped.
 

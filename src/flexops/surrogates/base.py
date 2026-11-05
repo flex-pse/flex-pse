@@ -55,6 +55,11 @@ class Surrogate(ABC):
         """
 
     @property
+    def intercept(self) -> float:
+        """Return the relationship's constant term, ``0.0`` if it has none."""
+        return 0.0
+
+    @property
     @abstractmethod
     def input_variables(self) -> dict[str, str]:
         """Return this relationship's input variable names and declared units."""

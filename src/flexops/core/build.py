@@ -10,6 +10,7 @@ written as ``{"value": 15, "units": "min"}`` (or, for the time step, the string
 import pyomo.environ as pyo
 
 from flexcore.config.io import load_spec
+from flexops.core.resources import verify_resources
 from flexops.core.stages import STAGES, BuildContext, parse_quantity
 from flexops.core.units import parse_units
 
@@ -34,11 +35,15 @@ def build_model(config, *, expand_arcs: bool = True) -> pyo.ConcreteModel:
     Raises:
         FlexConfigError: If the config fails validation (the message names the
             offending field path) or does not fit the model it builds.
+
+    Warns:
+        FlexResourceWarning: If a resource balance would force its flows to zero.
     """
     spec = load_spec(config)
     model = pyo.ConcreteModel(name=spec.name)
     ctx = BuildContext(base_dir=spec._base_dir, expand_arcs=expand_arcs)
     for stage in STAGES:
         stage(model, spec, ctx)
+    verify_resources(model)
     model._flex_spec = spec  # the spec this model was built from
     return model

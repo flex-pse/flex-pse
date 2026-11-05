@@ -1,5 +1,16 @@
 {
   "$defs": {
+    "BalanceType": {
+      "description": "How what enters a resource must relate to what leaves it at each step. Attributes: BALANCED: What enters equals what leaves. EXPORT: What enters may exceed what leaves, so a surplus leaves the model. IMPORT: What leaves may exceed what enters, so a shortfall enters the model. UNBOUNDED: No balance, an infinite source and sink.",
+      "enum": [
+        "balanced",
+        "export",
+        "import",
+        "unbounded"
+      ],
+      "title": "BalanceType",
+      "type": "string"
+    },
     "BypassElement": {
       "additionalProperties": false,
       "description": "Let part of a flow bypass the unit's energy relation.",
@@ -107,7 +118,7 @@
     },
     "Connection": {
       "additionalProperties": false,
-      "description": "An arc from a port of the unit that owns it to another unit's port.",
+      "description": "An arc from a unit's port to another unit's port, or its port's resource node.",
       "properties": {
         "directed": {
           "default": true,
@@ -160,7 +171,7 @@
           "type": "string"
         },
         "to": {
-          "description": "Destination as '<unit element name>.<port path>'; may contain '{i}' for an indexed connection.",
+          "description": "Destination as '<unit element name>.<port path>', which may contain '{i}' for an indexed connection, or the name of a stream resource element. An inlet then takes from the resource and an outlet supplies it, and many ports can share one.",
           "title": "To",
           "type": "string"
         }
@@ -1159,6 +1170,39 @@
       "title": "RampElement",
       "type": "object"
     },
+    "ResourceElement": {
+      "additionalProperties": false,
+      "description": "A balance on one resource.",
+      "properties": {
+        "balance": {
+          "$ref": "#/$defs/BalanceType",
+          "default": "balanced",
+          "description": "How what enters relates to what leaves at each step."
+        },
+        "kind": {
+          "const": "resource",
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "description": "Dotted path of the resource's block.",
+          "title": "Name",
+          "type": "string"
+        },
+        "property_package": {
+          "description": "Name of the property_package element that sets the resource's units. A SimpleUtility package makes it a utility, collected from what units register; any other makes it a stream, reached by arcs.",
+          "title": "Property Package",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "property_package"
+      ],
+      "title": "ResourceElement",
+      "type": "object"
+    },
     "SetElement": {
       "additionalProperties": false,
       "description": "A set of members that units and connections can be indexed over.",
@@ -1359,6 +1403,13 @@
           "const": "status",
           "title": "Kind",
           "type": "string"
+        },
+        "max_count": {
+          "default": 1,
+          "description": "Number of identical trains this unit represents. Above 1, status is an integer count and output limits apply per train.",
+          "minimum": 1,
+          "title": "Max Count",
+          "type": "integer"
         },
         "max_output": {
           "anyOf": [
@@ -1696,6 +1747,7 @@
             "plant": "#/$defs/PlantElement",
             "property_package": "#/$defs/PropertyPackageElement",
             "ramp": "#/$defs/RampElement",
+            "resource": "#/$defs/ResourceElement",
             "set": "#/$defs/SetElement",
             "startup_delay": "#/$defs/StartupDelayElement",
             "startup_shutdown": "#/$defs/StartupShutdownElement",
@@ -1755,6 +1807,9 @@
           },
           {
             "$ref": "#/$defs/ParallelGroupElement"
+          },
+          {
+            "$ref": "#/$defs/ResourceElement"
           },
           {
             "$ref": "#/$defs/DegradationElement"

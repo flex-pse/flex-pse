@@ -12,7 +12,11 @@ import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexConfigError
 from flexops.logic._records import record
-from flexops.logic.status import RollingStateKind, _register_rolling_state
+from flexops.logic.status import (
+    RollingStateKind,
+    _register_rolling_state,
+    require_binary_status,
+)
 
 
 def add_startup_delay(
@@ -50,7 +54,8 @@ def add_startup_delay(
         The attached ``startup_delay`` Constraint.
 
     Raises:
-        FlexConfigError: If ``upstream`` has no ``status`` Var.
+        FlexConfigError: If ``upstream`` has no ``status`` Var, or either unit
+            counts more than one train (``max_count > 1``).
     """
     if not hasattr(upstream, "status"):
         raise FlexConfigError(
@@ -59,6 +64,8 @@ def add_startup_delay(
             field="upstream",
             value=upstream.name,
         )
+    for member in (unit, upstream):
+        require_binary_status(member, used_by="add_startup_delay")
     record(
         unit.model(),
         "startup_delay",

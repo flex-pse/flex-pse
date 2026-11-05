@@ -15,6 +15,8 @@ selects one. It errors loudly rather than transforming the model (see
 
 .. autofunction:: get_solver
 
+.. autodata:: PRE_SOLVE_CHECKS
+
 .. autoclass:: SolverFacade
    :members:
 
@@ -171,6 +173,7 @@ elements, in any order. Pydantic is the schema authority, and
    StartupDelayElement
    ConditionalElement
    ParallelGroupElement
+   ResourceElement
    DegradationElement
    DispatchElement
    FixElement
@@ -200,6 +203,7 @@ Shared building blocks
    :nosignatures:
 
    UnitConfig
+   BalanceType
    PropertyPackageSpec
    IOVariableSpec
    SurrogateSpec
@@ -262,6 +266,8 @@ Exceptions
 .. autoexception:: FlexDataError
 
 .. autoexception:: FlexEmitWarning
+
+.. autoexception:: FlexResourceWarning
 
 .. autoexception:: FlexFixWarning
 
