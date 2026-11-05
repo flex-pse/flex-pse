@@ -7,10 +7,12 @@ import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
 from pyomo.opt import assert_optimal_termination
+from pyomo.repn import generate_standard_repn
 
 from flexcore.config.schema import UnitCommitmentConfig
 from flexcore.exceptions import FlexConfigError
-from flexops import SimpleAqueousFlow
+from flexops import SimpleAqueousFlow, build_model, emit_model
+from flexops.core.compare import assert_models_equivalent
 from flexops.core.time_block import TimeBlock
 from flexops.costing import FlexCosting
 from flexops.logic import relax
@@ -177,20 +179,124 @@ def test_charge_balance_includes_leakage():
 
 
 @pytest.mark.unit
-def test_soc_is_var_bounded_and_linked_to_charge():
-    """soc is a Var bounded by [soc_min, soc_max] and tied to charge/capacity
-    via the soc_capacity_link equality Constraint (see class docstring)."""
+def test_soc_limits_are_linear_rows_and_soc_reads_charge_over_capacity():
+    """soc_min/soc_max bound charge through linear rows, and soc is charge/capacity."""
     _, unit = _battery(4, soc_min=0.2, soc_max=0.8)
     capacity_val = pyo.value(unit.capacity)
 
-    assert unit.soc[0].lb == pytest.approx(0.2)
-    assert unit.soc[0].ub == pytest.approx(0.8)
-
     unit.charge[0].set_value(0.8 * capacity_val)
-    unit.soc[0].set_value(0.8)
-    assert pyo.value(unit.soc_capacity_link[0].body) == pytest.approx(
-        pyo.value(unit.soc_capacity_link[0].upper), abs=1e-9
+    assert pyo.value(unit.soc[0]) == pytest.approx(0.8)
+    assert pyo.value(unit.soc_upper_limit[0].body) == pytest.approx(0.0, abs=1e-9)
+
+    unit.charge[0].set_value(0.2 * capacity_val)
+    assert pyo.value(unit.soc[0]) == pytest.approx(0.2)
+    assert pyo.value(unit.soc_lower_limit[0].body) == pytest.approx(0.0, abs=1e-9)
+
+
+@pytest.mark.unit
+def test_power_capacity_is_fixed_at_larger_power_limit_by_default():
+    """power_capacity is fixed at, and bounded above by, the larger power limit."""
+    _, unit = _battery(
+        4, power_charge_max=3 * pyunits.kW, power_discharge_max=5 * pyunits.kW
     )
+    assert unit.power_capacity.fixed
+    assert pyo.value(unit.power_capacity) == pytest.approx(5.0)
+    assert unit.power_capacity.ub == pytest.approx(5.0)
+
+
+@pytest.mark.unit
+def test_power_capacity_limits_charge_and_discharge():
+    """Charge and discharge power are each limited by power_capacity."""
+    _, unit = _battery(
+        4, power_charge_max=5 * pyunits.kW, power_discharge_max=5 * pyunits.kW
+    )
+    unit.power_capacity.fix(2.0)
+    unit.power_charge[1].set_value(3.0)
+    unit.power_discharge[1].set_value(1.0)
+    assert pyo.value(unit.power_charge_limit[1].body) == pytest.approx(1.0)
+    assert pyo.value(unit.power_discharge_limit[1].body) == pytest.approx(-1.0)
+
+
+@pytest.mark.unit
+def test_power_capacity_is_registered_for_sizing_with_a_costing_package():
+    """A costed battery registers power_capacity, so design mode can free it."""
+    m = _battery_with_costing(4)
+    m.costing.set_design_mode()
+    assert not m.battery.capacity.fixed
+    assert not m.battery.power_capacity.fixed
+
+
+@pytest.mark.unit
+def test_battery_rows_stay_linear_when_capacity_and_power_are_free():
+    """Freeing both sizes leaves every active battery constraint linear."""
+    _, unit = _battery(4)
+    unit.capacity.unfix()
+    unit.power_capacity.unfix()
+    for con in unit.component_data_objects(pyo.Constraint, active=True):
+        assert generate_standard_repn(con.body).is_linear(), con.name
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_operations_objective_is_unchanged_by_linear_formulation():
+    """A fixed-size arbitrage solve matches the bilinear formulation's objective."""
+    from flexcore.solvers import ProblemClass, get_solver
+
+    m = _battery_with_costing(
+        24,
+        baseload_power_kw=100.0,
+        power_charge_max=50 * pyunits.kW,
+        power_discharge_max=50 * pyunits.kW,
+    )
+    m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
+    results = get_solver(problem_class=ProblemClass.LP, prefer="highs").solve(m)
+    assert_optimal_termination(results)
+    assert pyo.value(m.objective) == pytest.approx(373.88880747337976, rel=1e-6)
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_cyclic_battery_balances_first_charge_against_last():
+    """With cyclic=True, charge[0] follows from charge[n-1], not charge_init."""
+    from flexcore.solvers import ProblemClass, get_solver
+
+    m = _battery_with_costing(
+        24,
+        baseload_power_kw=100.0,
+        power_charge_max=50 * pyunits.kW,
+        power_discharge_max=50 * pyunits.kW,
+        cyclic=True,
+    )
+    m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
+    results = get_solver(problem_class=ProblemClass.LP, prefer="highs").solve(m)
+    assert_optimal_termination(results)
+
+    unit = m.battery
+    leakage = pyo.value(unit.charge_leakage_rate) / 24.0
+    expected = (
+        pyo.value(unit.charge[23]) * (1 - leakage)
+        + pyo.value(unit.eta_charge) * pyo.value(unit.power_charge[0])
+        - pyo.value(unit.power_discharge[0]) / pyo.value(unit.eta_discharge)
+    )
+    assert pyo.value(unit.charge[0]) == pytest.approx(expected, abs=1e-5)
+
+
+@pytest.mark.unit
+def test_cyclic_battery_registers_no_initial_state():
+    """A cyclic battery has no fixed start, so it declares no initial state."""
+    m, unit = _battery(4, cyclic=True)
+    assert unit.charge_init not in m.time_block.initial_state_params
+    m_default, unit_default = _battery(4)
+    assert unit_default.charge_init in m_default.time_block.initial_state_params
+
+
+@pytest.mark.unit
+def test_cyclic_option_survives_emit_and_rebuild():
+    """cyclic=True round-trips through emit_model and build_model."""
+    m = _battery_with_costing(4, cyclic=True)
+    rebuilt = build_model(emit_model(m))
+    assert rebuilt.battery.config.cyclic is True
+    assert_models_equivalent(m, rebuilt)
 
 
 @pytest.mark.unit
