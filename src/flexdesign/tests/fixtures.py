@@ -1,15 +1,7 @@
-"""Design studies shared by the flexdesign tests."""
-
-import calendar
+"""Design studies shared by the flexdesign tests, prorated to one day per month."""
 
 from flexcore.config.design import DesignSpec
-
 from flexcore.config.spec import SCHEMA_VERSION
-
-
-def _daily(values: list[float], year: int, month: int) -> list[float]:
-    """Repeat a 24-hour profile over every day of a calendar month."""
-    return values * calendar.monthrange(year, month)[1]
 
 
 def _base_elements(costing: dict, *, battery: bool) -> list[dict]:
@@ -18,7 +10,7 @@ def _base_elements(costing: dict, *, battery: bool) -> list[dict]:
         {
             "kind": "time",
             "start_date": "2025-01-01",
-            "end_date": "2025-02-01",
+            "end_date": "2025-01-02",
             "time_step": "1 hr",
         },
         {
@@ -44,7 +36,7 @@ def _base_elements(costing: dict, *, battery: bool) -> list[dict]:
             "property_package": None,
             "construction_options": {
                 "capacity": {"value": 500.0, "units": "kW"},
-                "capacity_factor": [0.5] * 744,
+                "capacity_factor": [0.5] * 24,
             },
         },
         {"kind": "fix", "variable": "pump.delta_pressure", "value": 300000.0},
@@ -111,11 +103,7 @@ def pump_battery_solar_study(
             {
                 "element": "pv",
                 "months": [month],
-                "values": {
-                    "construction_options": {
-                        "capacity_factor": _daily(shaped, 2026, month)
-                    }
-                },
+                "values": {"construction_options": {"capacity_factor": shaped}},
             }
         )
     if costing is None:
@@ -126,12 +114,8 @@ def pump_battery_solar_study(
                     "element": "costing",
                     "months": [month],
                     "values": {
-                        "energy_prices": {
-                            "electrical": {"value": _daily(price, 2026, month)}
-                        },
-                        "export_prices": {
-                            "electrical": {"value": _daily([0.0] * 24, 2026, month)}
-                        },
+                        "energy_prices": {"electrical": {"value": price}},
+                        "export_prices": {"electrical": {"value": [0.0] * 24}},
                     },
                 }
             )
@@ -145,7 +129,10 @@ def pump_battery_solar_study(
             "elements": _base_elements(costing, battery=True),
         },
         "years": [{"year": 2026, "represents": 5}, {"year": 2031, "represents": 5}],
-        "months": [{"month": 1, "weight": 6.0}, {"month": 7, "weight": 6.0}],
+        "months": [
+            {"month": 1, "weight": 6.0, "days": 1},
+            {"month": 7, "weight": 6.0, "days": 1},
+        ],
         "changes": changes,
         "capacities": [
             {
@@ -183,6 +170,7 @@ def solar_only_study(
     lifetime_years: float,
     rate: float,
     lower: float = 0.0,
+    days: int | None = None,
 ) -> DesignSpec:
     """Return a pump and solar study over January and July with flat prices."""
     return DesignSpec.model_validate(
@@ -196,8 +184,8 @@ def solar_only_study(
             },
             "years": years,
             "months": [
-                {"month": 1, "weight": weights[0]},
-                {"month": 7, "weight": weights[1]},
+                {"month": 1, "weight": weights[0], "days": days},
+                {"month": 7, "weight": weights[1], "days": days},
             ],
             "changes": changes,
             "capacities": [

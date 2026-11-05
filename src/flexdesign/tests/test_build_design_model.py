@@ -1,9 +1,13 @@
 """build_design_model: the merged structure, checked without a solve."""
 
+from pathlib import Path
+
 import pyomo.environ as pyo
 import pytest
+from pyomo.repn import generate_standard_repn
 from pyomo.util.check_units import assert_units_consistent
 
+import flexops
 from flexcore.exceptions import FlexConfigError
 from flexcore.solvers import ProblemClass, classify
 from flexdesign import build_design_model
@@ -33,7 +37,25 @@ def test_one_horizon_per_year_and_month(model):
         (2031, 1),
         (2031, 7),
     ]
-    assert model.horizon[2031, 7].time_block.n_points == 744
+    assert model.horizon[2031, 7].time_block.n_points == 24
+
+
+@pytest.mark.unit
+def test_every_active_constraint_is_linear(model):
+    """Assembly leaves no nonlinear row, including in the links and batteries."""
+    for con in model.component_data_objects(pyo.Constraint, active=True):
+        assert generate_standard_repn(con.body).is_linear(), con.name
+
+
+@pytest.mark.unit
+def test_link_equates_each_horizon_var_with_the_shared_size(model):
+    """Each link's body is zero only when a horizon's Var equals the size."""
+    block = model.capacity["solar"]
+    block.size.set_value(10.0)
+    model.horizon[2026, 7].pv.capacity.set_value(10.0)
+    assert pyo.value(block.link[2026, 7].body) == pytest.approx(0.0)
+    model.horizon[2026, 7].pv.capacity.set_value(7.0)
+    assert abs(pyo.value(block.link[2026, 7].body)) == pytest.approx(3.0)
 
 
 @pytest.mark.unit
@@ -102,7 +124,9 @@ def test_upper_above_the_vars_own_bound_raises():
 def test_non_cyclic_storage_raises():
     """A fixed initial state would let each month drain free energy."""
     document = pump_battery_solar_study().model_dump(by_alias=True)
-    battery = next(el for el in document["base"]["elements"] if el["name"] == "battery")
+    battery = next(
+        el for el in document["base"]["elements"] if el.get("name") == "battery"
+    )
     battery["construction_options"]["cyclic"] = False
     spec = pump_battery_solar_study(base=document["base"])
     with pytest.raises(FlexConfigError, match="initial states"):
@@ -131,3 +155,18 @@ def test_series_of_the_wrong_length_raises():
     spec = pump_battery_solar_study(changes=[*document["changes"], change])
     with pytest.raises(FlexConfigError, match="capacity_factor has 10 values"):
         build_design_model(spec)
+
+
+@pytest.mark.unit
+def test_tariff_study_assembles_with_linked_capacities():
+    """A tariff-billed study builds and links like a natively priced one."""
+    tariff = Path(flexops.__file__).parent / "tests/fixtures/tariff_tou_demo.json"
+    costing = {
+        "kind": "costing",
+        "name": "costing",
+        "tariff_source": str(tariff),
+        "discount_rate": 0.07,
+    }
+    m = build_design_model(pump_battery_solar_study(costing=costing))
+    assert len(m.capacity["solar"].link) == 4
+    assert_units_consistent(m)

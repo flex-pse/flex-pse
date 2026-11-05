@@ -22,7 +22,11 @@ def _base() -> dict:
                 "end_date": "2025-02-01",
                 "time_step": "1 hr",
             },
-            {"kind": "costing", "name": "costing"},
+            {
+                "kind": "costing",
+                "name": "costing",
+                "energy_prices": {"electrical": {"value": 0.1, "units": "USD/kWh"}},
+            },
             {"kind": "fix", "name": "load", "variable": "pump.flow", "value": 1.0},
         ],
     }
@@ -73,6 +77,8 @@ def test_valid_study_is_accepted():
         ({"months": [{"month": 1, "weight": 6}, {"month": 1, "weight": 6}]}, "unique"),
         ({"capacities": [_capacity(), _capacity()]}, "unique"),
         ({"capacities": [_capacity(lower=5.0, upper=1.0)]}, "lower > upper"),
+        ({"months": [{"month": 1, "weight": 12, "days": 0}]}, "greater than or equal"),
+        ({"months": [{"month": 1, "weight": 12, "days": 29}]}, "less than or equal"),
         ({"unexpected": 1}, "Extra inputs"),
         ({"changes": [{"element": "nope", "values": {}}]}, "unknown element"),
         (
@@ -112,7 +118,12 @@ def test_base_needs_exactly_one_costing_element(count):
     base = _base()
     base["elements"] = [el for el in base["elements"] if el["kind"] != "costing"]
     base["elements"] += [
-        {"kind": "costing", "name": f"costing_{i}"} for i in range(count)
+        {
+            "kind": "costing",
+            "name": f"costing_{i}",
+            "energy_prices": {"electrical": {"value": 0.1, "units": "USD/kWh"}},
+        }
+        for i in range(count)
     ]
     with pytest.raises(ValidationError, match="one costing element"):
         DesignSpec.model_validate(_study(base=base))

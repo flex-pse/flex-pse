@@ -1,8 +1,8 @@
 """present_worth_factors: discounting modeled years over the years they represent."""
 
 import pytest
-from flexcore.config.design import PlanningYear
 
+from flexcore.config.design import PlanningYear
 from flexdesign import present_worth_factors
 
 

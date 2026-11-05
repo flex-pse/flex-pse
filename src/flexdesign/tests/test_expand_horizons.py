@@ -23,7 +23,7 @@ def _study(changes=(), years=None, months=(1, 7)):
 
 def _load(spec) -> float:
     """Return the value of a spec's named load element."""
-    return next(el for el in spec.elements if el.name == "load").value
+    return next(el for el in spec.elements if getattr(el, "name", None) == "load").value
 
 
 def _time(spec):
@@ -101,7 +101,7 @@ def test_change_merges_nested_fields_and_keeps_siblings():
     pv = next(
         el
         for el in expand_horizons(_study([change]))[2025, 1].elements
-        if el.name == "pv"
+        if getattr(el, "name", None) == "pv"
     )
     assert pv.construction_options["capacity_factor"] == [0.1] * 744
     assert pv.construction_options["capacity"] == {"value": 500.0, "units": "kW"}
@@ -135,7 +135,7 @@ def test_source_references_survive_expansion():
     load = next(
         el
         for el in expand_horizons(_study([change]))[2025, 1].elements
-        if el.name == "load"
+        if getattr(el, "name", None) == "load"
     )
     assert isinstance(load.value, SourceRef)
     assert load.value.source == "load.json"
@@ -147,3 +147,13 @@ def test_base_directory_is_carried_to_every_horizon(tmp_path):
     spec = _study()
     spec.base._base_dir = tmp_path
     assert all(s._base_dir == tmp_path for s in expand_horizons(spec).values())
+
+
+@pytest.mark.unit
+def test_days_shorten_a_horizon_from_the_start_of_the_month():
+    """A prorated month ends the given number of days after it starts."""
+    spec = _study()
+    spec.months[1].days = 2
+    expanded = expand_horizons(spec)
+    assert _time(expanded[2025, 7]).end_date == "2025-07-03"
+    assert _time(expanded[2025, 1]).end_date == "2025-02-01"
