@@ -207,10 +207,12 @@ A coefficient alone can't tell supply from draw on a signed variable. A battery 
 pump both have a coefficient of −1, yet the discharging battery supplies the pump. So an
 electricity `Resource` is judged by what its units can do. It has a supply if a unit is
 marked `supplies_power` (`BatteryModel`, `GenericRenewables`, `Combustor`) or a term has
-a positive coefficient, and it has a consumer if another edge can draw. Without both,
-a `BALANCED` one forces its flows to zero, so it warns at build and raises at solve like
-any other one-sided balance. A battery alone counts as one-sided, since there's nothing for
-it to supply.
+a positive coefficient, and it has a consumer if an edge can draw. Without both, a
+`BALANCED` one forces its flows to zero, so it warns at build and raises at solve like
+any other one-sided balance. A lone unit on a `BALANCED` one also counts as one-sided,
+since one term can't balance itself. `EXPORT` and `IMPORT` are inequalities, so one unit
+can satisfy them: a lone pump can draw on an `IMPORT`, and a lone battery on an `IMPORT`
+can only charge.
 
 On-site power or storage needs something to account for what it supplies, or that power
 disappears. A `GridConnection`, an electricity `Resource`, or a `FlexCosting` that bills

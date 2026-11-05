@@ -651,7 +651,10 @@ def _verify_electricity(node, terms: list[ResourceTerm], error_type: ErrorType) 
     has_supply = any(
         term.coeff > 0 or getattr(term.unit, "supplies_power", False) for term in terms
     )
-    has_consumer = len(terms) > 1 and not all(_only_supplies(term) for term in terms)
+    must_net_zero = node.config.balance is BalanceType.BALANCED
+    has_consumer = (len(terms) > 1 or not must_net_zero) and not all(
+        _only_supplies(term) for term in terms
+    )
     missing = _missing_side(node.config.balance, has_supply, has_consumer)
     if missing:
         _report_one_sided(
