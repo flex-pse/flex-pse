@@ -145,7 +145,7 @@ gives its values. An `unfix` element frees one, such as a parameter a unit
 fixes by default:
 
 ```json
-{"kind": "fix", "variable": "plant.battery.soc[0]", "value": 0.5},
+{"kind": "fix", "variable": "plant.battery.charge[0]", "value": 5.0},
 {"kind": "fix", "variable": "plant.pretreatment[*].status", "value": 1},
 {"kind": "fix", "variable": "plant.intake.flow_in", "value": [120, 120, 95, 80], "units": "m^3/hr"},
 {"kind": "unfix", "variable": "plant.ro[*].recovery"}

@@ -19,13 +19,14 @@ fixed at the constructor value by default (operations mode); a
   ``power_charge_max``/``power_discharge_max`` (the semicontinuous link needs a
   finite bound), which -- like the non-UC default case -- falls back to a 1C
   rate (the whole capacity in one hour) when neither is given.
-* ``soc[t]`` is a Var, bounded by ``soc_min``/``soc_max``, tied to
-  ``charge[t]``/``capacity`` by the equality Constraint ``soc_capacity_link``
-  (``charge[t] == soc[t] * capacity``), matching the milestone spec literally.
-  This is a genuine product of two *free* Vars whenever ``capacity`` is
-  unfixed (design mode) -- an unconditional bilinear equality that forces
-  that solve to NLP. Accepted at explicit user request: a single bilinear
-  equality per timestep is not a significant modeling burden.
+* ``soc[t]`` is an Expression, ``charge[t] / capacity``. ``soc_min``/``soc_max``
+  bound ``charge[t]`` through the linear rows ``soc_lower_limit`` and
+  ``soc_upper_limit``, so the unit stays linear when ``capacity`` is free.
+* ``power_capacity`` is the fixable power rating, sized independently of the
+  energy ``capacity``. It is fixed at, and bounded above by, the larger of the
+  two power limits.
+* ``cyclic=True`` ties ``charge[0]`` to the final charge in place of
+  ``charge_init``, and registers no initial state.
 * ``charge_balance`` covers **every** ``t``, including ``t=0`` (referencing
   ``charge_init`` in place of ``charge[t-1]`` at the boundary), rather than
   a separate ``t=1..N-1`` difference equation plus an unrelated
@@ -75,7 +76,7 @@ Usage::
 
 Config: see ``capacity``, ``power_charge_max``/``power_discharge_max``,
 ``eta_charge``/``eta_discharge``, ``soc_min``/``soc_max``, ``initial_soc``, ``soh``,
-``charge_leakage_rate`` below, plus the inherited
+``charge_leakage_rate``, ``cyclic`` below, plus the inherited
 ``relaxation``/``unit_commitment``/``external_dispatch``/``costing_package``.
 
 **Behind-the-meter assumption (v0).** ``power_electrical[t]`` may go negative
@@ -204,6 +205,15 @@ class BatteryModelData(OpsBlockData):
         ),
     )
     CONFIG.declare(
+        "cyclic",
+        ConfigValue(
+            default=False,
+            domain=bool,
+            description="Tie the initial charge to the final charge instead of "
+            "initial_soc.",
+        ),
+    )
+    CONFIG.declare(
         "soh",
         ConfigValue(
             default=0.85,
@@ -291,6 +301,27 @@ class BatteryModelData(OpsBlockData):
             units=pyunits.kW,
             doc="Discharging power output (dispatch input).",
         )
+        power_rating = max(charge_max_val, discharge_max_val)
+        self.power_capacity = pyo.Var(
+            initialize=power_rating,
+            bounds=(0.0, power_rating),
+            units=pyunits.kW,
+            doc="Power rating (design Var); fixed at the larger power limit by "
+            "default.",
+        )
+        self.power_capacity.fix(power_rating)
+        self.register_process_parameter(self.power_capacity, regressable=False)
+        if costing_package is not None:
+            costing_package.register_sizing_variable(self.power_capacity)
+
+        @self.Constraint(tb.time_index, doc="power_charge[t] <= power_capacity.")
+        def power_charge_limit(b, t):
+            return b.power_charge[t] <= b.power_capacity
+
+        @self.Constraint(tb.time_index, doc="power_discharge[t] <= power_capacity.")
+        def power_discharge_limit(b, t):
+            return b.power_discharge[t] <= b.power_capacity
+
         self.register_io_variable(self.power_charge, role="input")
         self.register_io_variable(self.power_discharge, role="input")
 
@@ -322,7 +353,8 @@ class BatteryModelData(OpsBlockData):
             units=pyunits.kWh,
             doc="Initial stored energy, charge[0] (rolling-horizon initial state).",
         )
-        tb.register_initial_state(self.charge_init)
+        if not self.config.cyclic:
+            tb.register_initial_state(self.charge_init)
         self.register_process_parameter(self.charge_init, regressable=False)
 
         self.eta_charge = pyo.Var(
@@ -376,7 +408,12 @@ class BatteryModelData(OpsBlockData):
             "free, manufacturing energy from nothing).",
         )
         def charge_balance(b, t):
-            previous = b.charge[t - 1] if t > 0 else b.charge_init
+            if t > 0:
+                previous = b.charge[t - 1]
+            elif self.config.cyclic:
+                previous = b.charge[tb.n_points - 1]
+            else:
+                previous = b.charge_init
             delta_charge = pyunits.convert(
                 tb.dt
                 * (
@@ -393,22 +430,17 @@ class BatteryModelData(OpsBlockData):
         soc_min = self.config.soc_min
         soc_max = self.config.soc_max
 
-        self.soc = pyo.Var(
-            tb.time_index,
-            bounds=(soc_min, soc_max),
-            units=pyunits.dimensionless,
-            doc="State of charge, a fraction of capacity in [soc_min, "
-            "soc_max]; tied to charge/capacity by soc_capacity_link.",
-        )
+        @self.Expression(tb.time_index, doc="State of charge, charge[t] / capacity.")
+        def soc(b, t):
+            return b.charge[t] / b.capacity
 
-        @self.Constraint(
-            tb.time_index,
-            doc="Ties soc to stored energy: charge[t] == soc[t] * capacity "
-            "(a bilinear equality when capacity is unfixed -- see the module "
-            "docstring's 'Deviations from the milestone spec').",
-        )
-        def soc_capacity_link(b, t):
-            return b.charge[t] == b.soc[t] * b.capacity
+        @self.Constraint(tb.time_index, doc="charge[t] >= soc_min * capacity.")
+        def soc_lower_limit(b, t):
+            return b.charge[t] >= soc_min * b.capacity
+
+        @self.Constraint(tb.time_index, doc="charge[t] <= soc_max * capacity.")
+        def soc_upper_limit(b, t):
+            return b.charge[t] <= soc_max * b.capacity
 
         @self.Constraint(
             tb.time_index,
