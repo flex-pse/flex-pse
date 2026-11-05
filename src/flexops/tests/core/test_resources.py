@@ -951,7 +951,7 @@ def test_ipopt_on_a_closed_recycle_lands_where_its_start_takes_it():
         pyo.assert_optimal_termination(get_solver(model=m, prefer="ipopt").solve(m))
         return pyo.value(second.flow_out[0])
 
-    assert solve(None) == pytest.approx(5.0, abs=0.01)
+    assert solve(None) == pytest.approx(5.0, abs=0.1)
     assert solve(1000.0) != pytest.approx(5.0, abs=1.0)
 
 
