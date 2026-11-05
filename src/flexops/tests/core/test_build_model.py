@@ -463,3 +463,22 @@ def test_classify_treats_spec_built_native_prices_as_linear():
     """Parsed price units don't make a spec-built linear model look nonlinear."""
     m = build_model(_solar_spec([0.0, 0.5, 1.0, 0.25]))
     assert classify(m) is ProblemClass.LP
+
+
+@pytest.mark.unit
+def test_classify_treats_a_spec_built_battery_as_linear_when_sizes_are_free():
+    """A battery's fixed efficiencies and time step leave its rows linear."""
+    spec = _solar_spec([0.0, 0.5, 1.0, 0.25])
+    spec["elements"].append(
+        {
+            "kind": "unit",
+            "name": "battery",
+            "unit_model_class": "BatteryModel",
+            "property_package": None,
+            "construction_options": {"capacity": {"value": 10.0, "units": "kWh"}},
+        }
+    )
+    m = build_model(spec)
+    m.battery.capacity.unfix()
+    m.battery.power_capacity.unfix()
+    assert classify(m) is ProblemClass.LP
