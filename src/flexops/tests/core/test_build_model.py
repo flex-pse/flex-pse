@@ -1,6 +1,7 @@
 """build_model: the config-driven path equals the imperative one."""
 
 import json
+import warnings
 from pathlib import Path
 
 import pyomo.environ as pyo
@@ -10,9 +11,9 @@ from pyomo.network import Arc
 from pyomo.opt import assert_optimal_termination
 
 from flexcore.config.io import load_spec
-from flexcore.config.spec import DispatchElement, UnfixElement
-from flexcore.exceptions import FlexConfigError
-from flexcore.solvers import get_solver
+from flexcore.config.spec import SCHEMA_VERSION, DispatchElement, UnfixElement
+from flexcore.exceptions import FlexConfigError, FlexEmitWarning
+from flexcore.solvers import ProblemClass, classify, get_solver
 from flexops import (
     BatteryModel,
     ConstantEnergyIntensityModel,
@@ -23,9 +24,11 @@ from flexops import (
     Tank,
     TimeBlock,
     build_model,
+    emit_model,
 )
 from flexops.core import stages as stages_module
 from flexops.core.build import parse_quantity, parse_units
+from flexops.core.compare import assert_models_equivalent
 from flexops.core.fixing import apply_state
 from flexops.core.ops_block import OpsBlock
 from flexops.core.stages import BuildContext
@@ -380,3 +383,83 @@ def test_dispatch_source_resolves_against_config_dir(tmp_path, monkeypatch):
     model = build_model(path)
 
     assert model.demo.surrogate.power_electrical[0].fixed
+
+
+def _solar_spec(capacity_factor) -> dict:
+    """Return a one-day solar spec with the given capacity_factor option."""
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "name": "solar",
+        "elements": [
+            {
+                "kind": "time",
+                "start_date": "2025-07-01",
+                "end_date": "2025-07-02",
+                "time_step": "6 hr",
+            },
+            {
+                "kind": "costing",
+                "name": "costing",
+                "energy_prices": {"electrical": {"value": 0.1, "units": "USD/kWh"}},
+            },
+            {
+                "kind": "unit",
+                "name": "pv",
+                "unit_model_class": "GenericRenewables",
+                "property_package": None,
+                "construction_options": {
+                    "capacity": {"value": 10.0, "units": "kW"},
+                    "capacity_factor": capacity_factor,
+                },
+            },
+            {"kind": "objective"},
+        ],
+    }
+
+
+def _write_solar_files(tmp_path, values) -> Path:
+    """Write a capacity factor file and a spec referencing it, returning the spec."""
+    (tmp_path / "pv.json").write_text(json.dumps(values))
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(_solar_spec({"$source": "pv.json"})))
+    return path
+
+
+@pytest.mark.unit
+def test_unit_option_loads_values_from_source_file(tmp_path):
+    """A $source in construction_options resolves relative to the spec file."""
+    m = build_model(_write_solar_files(tmp_path, [0.0, 0.5, 1.0, 0.25]))
+    assert pyo.value(m.pv._capacity_factor[2]) == pytest.approx(1.0)
+
+
+@pytest.mark.unit
+def test_unit_option_source_with_wrong_length_raises(tmp_path):
+    """A $source series that doesn't match the horizon raises."""
+    with pytest.raises(FlexConfigError, match="capacity_factor has 3 values"):
+        build_model(_write_solar_files(tmp_path, [0.0, 0.5, 1.0]))
+
+
+@pytest.mark.unit
+def test_unit_option_source_missing_file_raises(tmp_path):
+    """A $source naming a missing file raises."""
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(_solar_spec({"$source": "missing.json"})))
+    with pytest.raises(FlexConfigError, match="missing.json"):
+        build_model(path)
+
+
+@pytest.mark.unit
+def test_unit_option_source_round_trips_through_emit(tmp_path):
+    """A model built from a $source option emits and rebuilds equivalently."""
+    m = build_model(_write_solar_files(tmp_path, [0.0, 0.5, 1.0, 0.25]))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FlexEmitWarning)
+        rebuilt = build_model(emit_model(m, check=True))
+    assert_models_equivalent(m, rebuilt)
+
+
+@pytest.mark.unit
+def test_classify_treats_spec_built_native_prices_as_linear():
+    """Parsed price units don't make a spec-built linear model look nonlinear."""
+    m = build_model(_solar_spec([0.0, 0.5, 1.0, 0.25]))
+    assert classify(m) is ProblemClass.LP
