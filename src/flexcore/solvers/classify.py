@@ -47,7 +47,7 @@ def _degree(expr) -> int | None:
     Returns:
         1 if linear, 2 if quadratic, or None if general nonlinear.
     """
-    repn = generate_standard_repn(expr, compute_values=False, quadratic=True)
+    repn = generate_standard_repn(expr, quadratic=True)
     if repn.is_linear():
         return 1
     return 2 if repn.is_quadratic() else None
