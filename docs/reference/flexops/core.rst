@@ -210,24 +210,59 @@ enclosing plant discovers it from this registry rather than by importing the
 :class:`~flexops.unit_models.product.Product` classes. ``flexops.unit_models``
 imports ``flexops.core``, so the reverse would be circular.
 
-Resource nodes
---------------
+Resources
+---------
 
 .. currentmodule:: flexops.core.resources
 
-:func:`add_resource_balance` adds a strict node on one named resource to a plant
-or network, using the terms
-:func:`~flexops.core.registration.iter_resource_terms` collects. A ``resource``
-element calls it during the build. :func:`resource_graph` returns the tasks,
-resources and edges under a block. See :doc:`/explanation/resources`.
+:class:`Resource` adds a resource node to a model, with a property block and a
+balance type. A stream has ports that Arcs reach, and a utility collects the terms
+:func:`~flexops.core.registration.iter_resource_terms` finds. A ``resource`` element
+builds one. :func:`stream_flow_rule` conserves flow over arcs on every unit and
+resource port, :func:`verify_resources` checks resources against the model as it is
+now, :func:`resource_graph` returns the tasks, resources and edges under a block, and
+:func:`validate_rtn` checks a model is a pure resource-task network. See
+:doc:`/explanation/resources`.
 
-.. autofunction:: add_resource_balance
+.. autoclass:: Resource
+
+.. autoclass:: ResourceData
+   :members: build
+
+.. autofunction:: stream_flow_rule
+
+.. autofunction:: conserve_flow
+
+.. autofunction:: verify_resources
+
+.. autofunction:: check_stream_arcs
+
+.. autoclass:: ErrorType
+   :members:
 
 .. autofunction:: resource_graph
 
 .. autoclass:: ResourceGraph
+   :members: connections
 
 .. autoclass:: GraphResource
 
+.. autofunction:: validate_rtn
+
 .. autoclass:: ResourceKind
    :members:
+
+Tasks
+-----
+
+.. currentmodule:: flexops.core.task_block
+
+:class:`Task` groups connected units so they act and swap as one task. See
+:doc:`/explanation/resources`.
+
+.. autoclass:: Task
+
+.. autoclass:: TaskData
+   :members: build
+
+.. autofunction:: task_of

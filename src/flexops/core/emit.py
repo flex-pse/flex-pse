@@ -47,7 +47,9 @@ from flexops.core.fixing import element_points, time_of, variable_points
 from flexops.core.network_block import NetworkBlock
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.plant_block import PlantBlock
+from flexops.core.resources import ResourceData
 from flexops.core.serialize import to_jsonable, units_to_str
+from flexops.core.task_block import Task
 from flexops.core.time_block import find_time_block
 from flexops.costing import FlexCosting
 from flexops.properties import PROPERTY_PACKAGES
@@ -108,6 +110,7 @@ def emit_model(
     units: dict[str, list] = {}
     _structure(model, packages, costings, elements, sets, units)
     unit_elements = {el.name: el for el in elements if el.kind == "unit"}
+    _refuse_registered_terms(units)
     _connections(model, unit_elements, units, sets)
     elements += sets.values()
     elements += _mutable_elements(model, units)
@@ -457,6 +460,12 @@ def _structure(block, packages, costings, elements, sets, units) -> None:
         if isinstance(component, NetworkBlock):
             elements.append(NetworkElement(kind="network", name=name))
             _structure(component, packages, costings, elements, sets, units)
+        elif isinstance(component, Task):
+            raise FlexConfigError(
+                f"Task {name!r} can't be written to a spec yet, which has no form "
+                "for a group of units.",
+                field=name,
+            )
         elif isinstance(component, PlantBlock):
             elements.append(PlantElement(kind="plant", name=name))
             _structure(component, packages, costings, elements, sets, units)
@@ -481,8 +490,27 @@ def _template(rest: str, member) -> str:
     return rest if member is None else rest.replace(str(member), "{i}")
 
 
+def _refuse_registered_terms(units: dict) -> None:
+    """Raise if a unit has ``register_resource`` terms, which a spec can't hold yet.
+
+    Args:
+        units: Unit element names mapped to their member blocks.
+
+    Raises:
+        FlexConfigError: If any member registered such a term.
+    """
+    for name, members in units.items():
+        for member in members:
+            if member._io_registry.resources:
+                raise FlexConfigError(
+                    f"{member.name!r} has register_resource terms, which a spec "
+                    "can't hold yet, so the emitted model would leave them out.",
+                    field=name,
+                )
+
+
 def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
-    """Add a connection to each unit element for every Arc and attached port.
+    """Add a connection to each unit element for every Arc.
 
     Args:
         model: The model.
@@ -491,20 +519,23 @@ def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
         sets: Set elements by name, filled for arcs over their own set.
 
     Raises:
-        FlexConfigError: If an arc's ends are not unit ports, no ``{i}``
-            template reproduces every member of an indexed arc, or an attached
-            port's resource has no balance.
+        FlexConfigError: If an arc's ends are not unit or resource ports, or no
+            ``{i}`` template reproduces every member of an indexed arc.
     """
     for arc in model.component_objects(Arc, active=None, descend_into=True):
         found = set()
         for member, data in arc.items() if arc.is_indexed() else [(None, arc)]:
             label = data.getname(fully_qualified=True)
             src, dst = (data.source, data.destination) if data.directed else data.ports
+            node = None
+            for end, other in ((src, dst), (dst, src)):
+                if isinstance(end.parent_block(), ResourceData):
+                    node, src = end.parent_block(), other
             src_path = src.getname(fully_qualified=True)
             dst_path = dst.getname(fully_qualified=True)
             source = find_unit(unit_elements, src_path)
             destination = find_unit(unit_elements, dst_path)
-            if source is None or destination is None:
+            if source is None or (destination is None and node is None):
                 raise FlexConfigError(
                     f"Arc {label} joins {src_path} and {dst_path}; both ends must be "
                     "ports of units to be written to a spec.",
@@ -521,9 +552,12 @@ def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
                         field=label,
                     )
                 port = port.removeprefix("[{i}].")
-            end, end_rest = destination
-            to = end + ("" if end_rest.startswith("[") else ".")
-            to += _template(end_rest, member)
+            if node is not None:
+                to = node.getname(fully_qualified=True)
+            else:
+                end, end_rest = destination
+                to = end + ("" if end_rest.startswith("[") else ".")
+                to += _template(end_rest, member)
             found.add((unit, port, to))
             if len(found) > 1:
                 raise FlexConfigError(
@@ -539,6 +573,13 @@ def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
             if not source_index.is_indexed() or (
                 source_index.index_set() is not arc.index_set()
             ):
+                if node is not None:
+                    raise FlexConfigError(
+                        f"Arc {arc.name} is indexed over its own set, but an arc to a "
+                        "resource can only be indexed over its unit, to be written "
+                        "to a spec.",
+                        field=arc.name,
+                    )
                 index = _set_element(arc, sets)
         unit_elements[unit].connections.append(
             Connection(
@@ -550,30 +591,6 @@ def _connections(model, unit_elements: dict, units: dict, sets: dict) -> None:
                 directed=next(iter(arc.values())).directed,
             )
         )
-    nodes = [
-        (r.fields["name"], r.fields.get("resource"))
-        for r in model.__dict__.get("_flex_logic", [])
-        if r.kind == "resource"
-    ]
-    for unit, element in unit_elements.items():
-        for port, resource in units[unit][0]._io_registry.attached_ports.items():
-            node = next(
-                (
-                    name
-                    for name, key in nodes
-                    if (key or name.rpartition(".")[2]) == resource
-                    and unit.startswith(f"{name.rpartition('.')[0]}.")
-                ),
-                None,
-            )
-            if node is None:
-                raise FlexConfigError(
-                    f"Port {port!r} on {unit!r} is attached to resource "
-                    f"{resource!r}, which has no balance to write to a spec. Add "
-                    "one with add_resource_balance.",
-                    field=unit,
-                )
-            element.connections.append(Connection(port=port, to=node))
 
 
 def _mutable_elements(model, units: dict) -> list:

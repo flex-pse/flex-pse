@@ -21,6 +21,7 @@ from pydantic import (
 )
 
 from flexcore.config.schema import (
+    BalanceType,
     CostingConfig,
     DegradationSpec,
     DRConfig,
@@ -33,7 +34,7 @@ from flexcore.config.schema import (
     _StrictModel,
 )
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.1.1"
 """str: the schema version this build writes and validates against."""
 
 KINDS: dict[str, tuple[str, bool]] = {
@@ -65,6 +66,9 @@ KINDS: dict[str, tuple[str, bool]] = {
 
 STAGE_ORDER = tuple(dict.fromkeys(stage for stage, _ in KINDS.values()))
 """Build stages in the order the registry lists them."""
+
+UTILITY_PROPERTY_CLASS = "SimpleUtility"
+"""str: the property class that makes a resource a utility; 'auto' never picks it."""
 
 AUTO = "auto"
 """Value of a unit's package field that means the model's only package."""
@@ -192,9 +196,9 @@ class Connection(_StrictModel):
     port: str = Field(description="Port on the owning unit, e.g. 'outlet'.")
     to: str = Field(
         description="Destination as '<unit element name>.<port path>', which may "
-        "contain '{i}' for an indexed connection, or the name of a resource "
-        "element to attach this port to. An attached inlet consumes the resource "
-        "and an attached outlet supplies it, and many ports can share one."
+        "contain '{i}' for an indexed connection, or the name of a stream resource "
+        "element. An inlet then takes from the resource and an outlet supplies it, "
+        "and many ports can share one."
     )
     name: str | None = Field(
         default=None,
@@ -622,29 +626,19 @@ class ObjectiveElement(_StrictModel):
 
 
 class ResourceElement(_StrictModel):
-    """A strict node balance on one named resource over a plant or network."""
+    """A balance on one resource."""
 
     kind: Literal["resource"]
-    name: str = Field(
-        description="Dotted path of the balance block. Its parent has to be a "
-        "plant or network."
+    name: str = Field(description="Dotted path of the resource's block.")
+    property_package: str = Field(
+        description="Name of the property_package element that sets the resource's "
+        "units. A SimpleUtility package makes it a utility, collected from what "
+        "units register; any other makes it a stream, reached by arcs."
     )
-    resource: str | None = Field(
-        default=None,
-        description="Resource to balance, as units register it. Defaults to the "
-        "last part of name.",
+    balance: BalanceType = Field(
+        default=BalanceType.BALANCED,
+        description="How what enters relates to what leaves at each step.",
     )
-    units: str = Field(description="Rate units of the balance.")
-
-    @model_validator(mode="after")
-    def _has_parent(self) -> "ResourceElement":
-        """Check that the node sits under a plant or network."""
-        if "." not in self.name:
-            raise ValueError(
-                f"resource {self.name!r}: name the balance under a plant or "
-                "network, e.g. 'site.gas_balance'."
-            )
-        return self
 
 
 Element = Annotated[
@@ -864,13 +858,29 @@ class FlowsheetSpec(_StrictModel):
                 )
         return self
 
+    def auto_candidates(self, kind: str) -> list[str]:
+        """Return the names of the elements of ``kind`` that 'auto' may pick.
+
+        Args:
+            kind: The element kind.
+
+        Returns:
+            The element names, leaving out utility property packages.
+        """
+        return [
+            el.name
+            for el in self.of_kind(kind)
+            if getattr(el, "property_class", None) != UTILITY_PROPERTY_CLASS
+        ]
+
     def _check_package(self, label: str, choice: str | None, kind: str) -> None:
         """Raise unless ``choice`` ('auto', None or a name) resolves among ``kind``."""
         names = [el.name for el in self.of_kind(kind)]
-        if choice == AUTO and len(names) != 1:
+        candidates = self.auto_candidates(kind)
+        if choice == AUTO and len(candidates) != 1:
             raise ValueError(
                 f"{label}: {kind} 'auto' needs exactly one {kind} element, but "
-                f"there are {len(names)} ({names}). Name one explicitly"
+                f"there are {len(candidates)} ({candidates}). Name one explicitly"
                 f"{', or set it to null' if kind != 'objective' else ''}."
             )
         if choice not in (None, AUTO) and choice not in names:
@@ -885,6 +895,9 @@ class FlowsheetSpec(_StrictModel):
             label = f"unit {el.name!r}"
             self._check_package(label, el.property_package, "property_package")
             self._check_package(label, el.costing_package, "costing")
+        for el in self.of_kind("resource"):
+            label = f"resource {el.name!r}"
+            self._check_package(label, el.property_package, "property_package")
         for el in self.of_kind("degradation"):
             label = f"degradation {el.name!r} on {el.unit!r}"
             self._check_package(label, el.costing_package, "costing")
@@ -932,20 +945,12 @@ class FlowsheetSpec(_StrictModel):
             for conn in unit.connections:
                 node = conn.to in nodes
                 if node and (
-                    not conn.directed
-                    or conn.name
-                    or conn.index
-                    or "{i}" in conn.port + conn.to
+                    not conn.directed or conn.index or "{i}" in conn.port + conn.to
                 ):
                     raise ValueError(
                         f"{label}: connection to resource node {conn.to!r} must be "
-                        "directed, with no name, index or '{i}'. An indexed unit "
-                        "attaches every member."
-                    )
-                if node and not unit.name.startswith(f"{parent_name(conn.to)}."):
-                    raise ValueError(
-                        f"{label}: connection to {conn.to!r} needs the unit to sit "
-                        "under the node's parent."
+                        "directed, with no index or '{i}'. An indexed unit connects "
+                        "every member."
                     )
                 if not node and find_unit(units, conn.to) is None:
                     raise ValueError(
@@ -959,14 +964,15 @@ class FlowsheetSpec(_StrictModel):
                         f"{conn.to!r} needs an index on the connection or the unit."
                     )
                 source = (unit.name, conn.port)
-                if source in sources or (not node and conn.to in destinations):
+                # a node connection also takes up the unit's own port
+                destination = f"{unit.name}.{conn.port}" if node else conn.to
+                if source in sources or destination in destinations:
                     raise ValueError(
-                        f"{label}: port {conn.port!r} or destination {conn.to!r} "
+                        f"{label}: port {conn.port!r} or destination {destination!r} "
                         "is already used by another connection; one arc per port."
                     )
                 sources.add(source)
-                if not node:
-                    destinations.add(conn.to)
+                destinations.add(destination)
         return self
 
     @model_validator(mode="after")

@@ -28,7 +28,6 @@ from flexops.core.serialize import to_jsonable
 from flexops.logic._records import record, variable_path
 
 _BINARIES_ATTR = "_flexops_logic_binaries"
-_MAX_COUNT_ATTR = "_flexops_status_max_count"
 _ROLLING_STATE_ATTR = "_flexops_rolling_state"
 
 
@@ -51,7 +50,7 @@ def status_max_count(unit: Any) -> int:
     Returns:
         The ``max_count`` given to :func:`add_status`, or ``1``.
     """
-    return getattr(unit, _MAX_COUNT_ATTR, 1)
+    return getattr(unit, "_flexops_status_max_count", 1)
 
 
 def require_binary_status(unit: Any, *, used_by: str) -> None:
@@ -251,7 +250,7 @@ def add_status(
             doc=f"Number of trains running, an integer in 0..{max_count}.",
         )
     status = unit.status
-    setattr(unit, _MAX_COUNT_ATTR, max_count)
+    unit._flexops_status_max_count = max_count
 
     @unit.Constraint(
         tb.time_index,

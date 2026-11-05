@@ -4,13 +4,14 @@ Public API:
     - :func:`classify` and :class:`ProblemClass` -- model classification.
     - :func:`available_solvers` -- installed subset of the capability matrix.
     - :func:`get_solver` and :class:`SolverFacade` -- solver selection facade.
+    - :data:`PRE_SOLVE_CHECKS` -- functions run on a model before every solve.
     - :class:`SolverSettings` and :class:`SolverOption` -- solver-neutral tuning.
     - :class:`Direct`, :class:`RelaxAndFix`, :class:`SolveStrategy`,
       :class:`SolveReport`, :class:`StepResult` -- solve strategies.
 """
 
 from flexcore.solvers.classify import ProblemClass, classify
-from flexcore.solvers.facade import SolverFacade, get_solver
+from flexcore.solvers.facade import PRE_SOLVE_CHECKS, SolverFacade, get_solver
 from flexcore.solvers.options import SolverOption, SolverSettings
 from flexcore.solvers.registry import available_solvers
 from flexcore.solvers.strategies import (
@@ -22,6 +23,7 @@ from flexcore.solvers.strategies import (
 )
 
 __all__ = [
+    "PRE_SOLVE_CHECKS",
     "ProblemClass",
     "classify",
     "available_solvers",

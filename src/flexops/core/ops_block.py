@@ -53,6 +53,7 @@ from flexops.core.registration import (
     RelationRecord,
     ResourceRecord,
 )
+from flexops.core.resources import conserve_flow
 from flexops.core.time_block import TimeBlockData, find_time_block
 from flexops.logic.status import require_no_intercept, status_max_count
 from flexops.surrogates import Surrogate, surrogate_from_spec
@@ -217,6 +218,14 @@ class OpsBlockData(UnitModelBlockData):
     #: Whether a spec ``status`` element may target this unit; ``False`` for
     #: units that manage their own status.
     allows_status_element: ClassVar[bool] = True
+
+    #: Whether this unit closes its plant's power balance without registering an
+    #: edge, so an electricity utility beside it would over-constrain the plant.
+    closes_power_balance: ClassVar[bool] = False
+
+    #: Whether this unit can supply electrical power on site, by generating or
+    #: discharging, so something has to balance it.
+    supplies_power: ClassVar[bool] = False
 
     def create_stream_naming_convention(self, naming_dict: dict[str, str]) -> None:
         """Register this unit's role -> Pyomo component name mapping.
@@ -582,8 +591,8 @@ class OpsBlockData(UnitModelBlockData):
             var: Time-indexed Pyomo ``Var`` or ``Reference`` over this unit's
                 time points.
             resource: Name the term is collected under (e.g. ``"brine"``).
-            coeff: Signed coefficient in resource units per ``var`` unit.
-                Positive supplies the resource, negative consumes it.
+            coeff: Signed, unitless coefficient. Positive supplies the resource,
+                negative consumes it.
             offset: Delay in steps, ``>= 0``. The term at ``t`` is
                 ``coeff * var[t - offset]``.
 
@@ -643,58 +652,10 @@ class OpsBlockData(UnitModelBlockData):
             )
         )
 
-    def attach_port(self, port: str, *, resource: str) -> None:
-        """Attach a port's flow to a named resource as an edge.
-
-        Args:
-            port: Name of a port on this unit. An outlet supplies the resource
-                and an inlet consumes it.
-            resource: Name the edge is collected under.
-
-        Raises:
-            FlexConfigError: If this unit has no such port, the port is already
-                attached, or the port's package does not have exactly one phase.
-        """
-        registry = self._io_registry
-        if port not in registry.port_coeffs:
-            raise FlexConfigError(
-                f"Unit {self.name!r} has no port {port!r}. Available ports: "
-                f"{sorted(registry.port_coeffs)}.",
-                field="port",
-                value=port,
-            )
-        if port in registry.attached_ports:
-            raise FlexConfigError(
-                f"Port {port!r} on {self.name!r} is already attached to resource "
-                f"{registry.attached_ports[port]!r}; a port joins one resource.",
-                field="port",
-                value=port,
-            )
-        state = registry.port_states[port]
-        phases = list(state.params.phase_list)
-        if len(phases) != 1:
-            raise FlexConfigError(
-                f"Port {port!r} on {self.name!r} needs exactly one phase to attach "
-                f"to a resource; found {phases}.",
-                field="port",
-                value=port,
-            )
-        registry.resources.append(
-            ResourceRecord(
-                var=state.flow_vol_phase,
-                name=state.flow_vol_phase.local_name,
-                resource=resource,
-                coeff=registry.port_coeffs[port],
-                offset=0,
-                phase=phases[0],
-            )
-        )
-        registry.attached_ports[port] = resource
-
     # -- stream state blocks + ports (property package) --------------------
 
     def add_inlet_port(self, name=None, block=None, doc=None):
-        """Build an inlet port and record that it consumes as a resource edge.
+        """Build an inlet port whose flow is conserved over arcs, and record its sign.
 
         Args:
             name: Name of the port; ``None`` takes the IDAES default.
@@ -705,12 +666,12 @@ class OpsBlockData(UnitModelBlockData):
             The new port.
         """
         port = super().add_inlet_port(name=name, block=block, doc=doc)
+        conserve_flow(port, block.params.get_flow_basis_var_name())
         self._io_registry.port_coeffs[port.local_name] = -1.0
-        self._io_registry.port_states[port.local_name] = block
         return port
 
     def add_outlet_port(self, name=None, block=None, doc=None):
-        """Build an outlet port and record that it supplies as a resource edge.
+        """Build an outlet port whose flow is conserved over arcs, and record its sign.
 
         Args:
             name: Name of the port; ``None`` takes the IDAES default.
@@ -721,8 +682,8 @@ class OpsBlockData(UnitModelBlockData):
             The new port.
         """
         port = super().add_outlet_port(name=name, block=block, doc=doc)
+        conserve_flow(port, block.params.get_flow_basis_var_name())
         self._io_registry.port_coeffs[port.local_name] = 1.0
-        self._io_registry.port_states[port.local_name] = block
         return port
 
     def add_stream_ports(

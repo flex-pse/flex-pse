@@ -21,7 +21,7 @@ kinds.
 ```
 ConcreteModel
 ├── TimeBlock                      the discrete-time substrate (exactly one)
-├── <PropertyPackage>              a parameter block (SimpleAqueousFlow, SimpleGasFlow, …)
+├── <PropertyPackage>              a parameter block (SimpleAqueousFlow, SimpleUtility, …)
 └── <unit>  : OpsBlock             one per process unit
     ├── power_electrical[t]        base power Var(s), kW, indexed by time
     ├── power_thermal[t]
@@ -79,9 +79,8 @@ which variables add to or take from each resource, and with what sign, for a
 plant, a network, a unit or the whole model. It doesn't build any constraints.
 It reads the power, fuel and boundary registrations units already make, so a
 unit never registers the same variable twice.
-{meth}`~flexops.core.ops_block.OpsBlockData.attach_port` adds a port's flow, and
 {meth}`~flexops.core.ops_block.OpsBlockData.register_resource` covers anything
-else. See {doc}`resources` for the sign table and how a node uses these terms.
+else. See {doc}`resources` for the sign table and how a utility uses these terms.
 
 ### Property packages, a parameter block plus state blocks
 

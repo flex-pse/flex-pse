@@ -1,5 +1,16 @@
 {
   "$defs": {
+    "BalanceType": {
+      "description": "How what enters a resource must relate to what leaves it at each step. Attributes: BALANCED: What enters equals what leaves. EXPORT: What enters may exceed what leaves, so a surplus leaves the model. IMPORT: What leaves may exceed what enters, so a shortfall enters the model. UNBOUNDED: No balance, an infinite source and sink.",
+      "enum": [
+        "balanced",
+        "export",
+        "import",
+        "unbounded"
+      ],
+      "title": "BalanceType",
+      "type": "string"
+    },
     "BypassElement": {
       "additionalProperties": false,
       "description": "Let part of a flow bypass the unit's energy relation.",
@@ -160,7 +171,7 @@
           "type": "string"
         },
         "to": {
-          "description": "Destination as '<unit element name>.<port path>', which may contain '{i}' for an indexed connection, or the name of a resource element to attach this port to. An attached inlet consumes the resource and an attached outlet supplies it, and many ports can share one.",
+          "description": "Destination as '<unit element name>.<port path>', which may contain '{i}' for an indexed connection, or the name of a stream resource element. An inlet then takes from the resource and an outlet supplies it, and many ports can share one.",
           "title": "To",
           "type": "string"
         }
@@ -1161,41 +1172,33 @@
     },
     "ResourceElement": {
       "additionalProperties": false,
-      "description": "A strict node balance on one named resource over a plant or network.",
+      "description": "A balance on one resource.",
       "properties": {
+        "balance": {
+          "$ref": "#/$defs/BalanceType",
+          "default": "balanced",
+          "description": "How what enters relates to what leaves at each step."
+        },
         "kind": {
           "const": "resource",
           "title": "Kind",
           "type": "string"
         },
         "name": {
-          "description": "Dotted path of the balance block. Its parent has to be a plant or network.",
+          "description": "Dotted path of the resource's block.",
           "title": "Name",
           "type": "string"
         },
-        "resource": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Resource to balance, as units register it. Defaults to the last part of name.",
-          "title": "Resource"
-        },
-        "units": {
-          "description": "Rate units of the balance.",
-          "title": "Units",
+        "property_package": {
+          "description": "Name of the property_package element that sets the resource's units. A SimpleUtility package makes it a utility, collected from what units register; any other makes it a stream, reached by arcs.",
+          "title": "Property Package",
           "type": "string"
         }
       },
       "required": [
         "kind",
         "name",
-        "units"
+        "property_package"
       ],
       "title": "ResourceElement",
       "type": "object"

@@ -15,6 +15,8 @@ selects one. It errors loudly rather than transforming the model (see
 
 .. autofunction:: get_solver
 
+.. autodata:: PRE_SOLVE_CHECKS
+
 .. autoclass:: SolverFacade
    :members:
 
@@ -201,6 +203,7 @@ Shared building blocks
    :nosignatures:
 
    UnitConfig
+   BalanceType
    PropertyPackageSpec
    IOVariableSpec
    SurrogateSpec
@@ -263,6 +266,8 @@ Exceptions
 .. autoexception:: FlexDataError
 
 .. autoexception:: FlexEmitWarning
+
+.. autoexception:: FlexResourceWarning
 
 .. autoexception:: FlexFixWarning
 

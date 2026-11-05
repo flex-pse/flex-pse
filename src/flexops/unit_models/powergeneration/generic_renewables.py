@@ -242,6 +242,8 @@ class GenericRenewablesData(OpsBlockData):
         ... )
     """
 
+    supplies_power = True
+
     CONFIG = OpsBlockData.CONFIG()
     CONFIG.get("unit_commitment").set_default_value(UnitCommitmentConfig(status=False))
     CONFIG.declare(

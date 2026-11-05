@@ -29,14 +29,15 @@ from flexcore.exceptions import FlexConfigError
 from flexops import logic
 from flexops.core.extensions import resolve_extension
 from flexops.core.fixing import FixReport, apply_state
-from flexops.core.network_block import NetworkBlock, NetworkBlockData
+from flexops.core.network_block import NetworkBlock
 from flexops.core.ops_block import OpsBlockData
-from flexops.core.plant_block import PlantBlock, PlantBlockData
-from flexops.core.resources import add_resource_balance
+from flexops.core.plant_block import PlantBlock
+from flexops.core.resources import Resource, check_stream_arcs
 from flexops.core.time_block import TimeBlock
 from flexops.core.units import parse_units
 from flexops.costing import FlexCosting
 from flexops.properties import PROPERTY_PACKAGES
+from flexops.properties.simple_utility import SimpleUtilityData
 from flexops.surrogates import surrogate_from_spec
 
 LOGIC_ORDER: tuple[str, ...] = (
@@ -219,15 +220,16 @@ def stage_topology(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
     for element in units:
         _build_unit(model, spec, element, ctx)
     nodes = {node.name: node for node in elements_of(spec, "resource")}
+    for node in nodes.values():
+        if not _is_utility(model, node):
+            _attach(model, node.name, _resource(model, node))
     for element in units:
         for connection in sorted(element.connections, key=lambda c: (c.port, c.to)):
-            if connection.to not in nodes:
+            if connection.to in nodes:
+                _build_node_connection(model, element.name, connection, ctx)
+            else:
                 _build_connection(model, element.name, connection, ctx)
-                continue
-            for member in ctx.members[element.name]:
-                member.attach_port(
-                    connection.port, resource=_resource_key(nodes[connection.to])
-                )
+    check_stream_arcs(model)
     if ctx.expand_arcs:
         pyo.TransformationFactory("network.expand_arcs").apply_to(model)
 
@@ -411,13 +413,21 @@ def _pairs(model, ctx: BuildContext, first: str, second: str) -> list[tuple]:
     return list(zip(firsts, seconds, strict=True))
 
 
-def _resource_key(element) -> str:
-    """Return the resource a resource element balances."""
-    return element.resource or element.name.rpartition(".")[2]
+def _is_utility(model, element) -> bool:
+    """Return whether a resource element's package makes it a utility."""
+    return isinstance(model.find_component(element.property_package), SimpleUtilityData)
+
+
+def _resource(model, element):
+    """Return the Resource block a resource element describes."""
+    return Resource(
+        property_package=model.find_component(element.property_package),
+        balance=element.balance,
+    )
 
 
 def stage_resources(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
-    """Add a balance for each resource element to its plant or network.
+    """Add each utility, once the units and logic it collects from are built.
 
     Args:
         model: The model with built units and logic.
@@ -425,24 +435,12 @@ def stage_resources(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
         ctx: The shared build context.
 
     Raises:
-        FlexConfigError: If the parent is not a plant or network, the resource
-            has no registered terms, or its units do not fit its terms.
+        FlexConfigError: If a utility has no registered terms or its units do not
+            fit its terms.
     """
     for element in elements_of(spec, "resource"):
-        parent = model.find_component(parent_name(element.name))
-        if not isinstance(parent, (PlantBlockData, NetworkBlockData)):
-            raise FlexConfigError(
-                f"Resource {element.name!r} needs a plant or network as its "
-                f"parent, but {parent_name(element.name)!r} is not one.",
-                field="name",
-                value=element.name,
-            )
-        add_resource_balance(
-            parent,
-            element.name.rpartition(".")[2],
-            resource=_resource_key(element),
-            units=element.units,
-        )
+        if _is_utility(model, element):
+            _attach(model, element.name, _resource(model, element))
 
 
 def stage_state(model, spec: FlowsheetSpec, ctx: BuildContext) -> None:
@@ -686,7 +684,7 @@ def _build_unit(model, spec: FlowsheetSpec, element: UnitElement, ctx: BuildCont
         ("costing_package", "costing", element.costing_package),
     ):
         if choice is not None:
-            name = spec.of_kind(kind)[0].name if choice == AUTO else choice
+            name = spec.auto_candidates(kind)[0] if choice == AUTO else choice
             runtime[key] = model.find_component(name)
     unit_config = UnitConfig(
         unit_model_class=element.unit_model_class,
@@ -728,6 +726,83 @@ def _port(model, ctx: BuildContext, unit_name: str, path: str):
     return port
 
 
+def _arc_place(model, conn: Connection, first: str, second: str, tail: str):
+    """Return the block an arc between two elements sits on, and the arc's name.
+
+    Args:
+        model: The model.
+        conn: The connection, whose ``name`` wins over a derived one.
+        first: Element name of one end.
+        second: Element name of the other end.
+        tail: Text ending the derived name.
+
+    Returns:
+        The closest block holding both ends, and the name to give the arc.
+
+    Raises:
+        FlexConfigError: If the name is taken.
+    """
+    shared = []
+    for a, b in zip(first.split(".")[:-1], second.split(".")[:-1], strict=False):
+        if a != b:
+            break
+        shared.append(a)
+    parent = ".".join(shared)
+    block = model.find_component(parent) if parent else model
+    start = len(parent) + 1 if parent else 0
+    derived = f"{first[start:]}_{conn.port}_to_{second[start:]}{tail}"
+    # Drop indices and {i} so the derived name is a plain Pyomo name.
+    name = conn.name or re.sub(r"\[[^\]]*\]|\{i\}", "", derived).replace(".", "_")
+    if block.find_component(name) is not None:
+        raise FlexConfigError(
+            f"Cannot name the arc {name!r} on {parent or 'the model'!r}: that name "
+            f"is taken. Set an explicit 'name' on the connection {conn.port!r} -> "
+            f"{conn.to!r}.",
+            field="name",
+            value=name,
+        )
+    return block, name
+
+
+def _build_node_connection(
+    model, unit_name: str, conn: Connection, ctx: BuildContext
+) -> None:
+    """Build the arc between a unit's port and a stream resource.
+
+    Args:
+        model: The model with every unit and stream built.
+        unit_name: Element name of the unit.
+        conn: The connection, whose ``to`` names the resource.
+        ctx: The shared build context.
+
+    Raises:
+        FlexConfigError: If the resource is a utility, the port is missing, or the
+            arc's name is taken.
+    """
+    node = model.find_component(conn.to)
+    if node is None:
+        raise FlexConfigError(
+            f"{unit_name!r} connects {conn.port!r} to {conn.to!r}, a utility, which "
+            "has no ports. Give the resource a stream property package instead.",
+            field="to",
+            value=conn.to,
+        )
+    block, name = _arc_place(model, conn, unit_name, conn.to, "")
+    unit = model.find_component(unit_name)
+
+    def ends(member):
+        port = _port(model, ctx, unit_name, f"{member.name}.{conn.port}")
+        if member._io_registry.port_coeffs[conn.port] < 0:
+            return {"source": node.outlet, "destination": port}
+        return {"source": port, "destination": node.inlet}
+
+    if unit.is_indexed():
+        arc = Arc(unit.index_set(), rule=lambda _, i: ends(unit[i]), doc=conn.doc)
+    else:
+        arc = Arc(**ends(unit), doc=conn.doc)
+    block.add_component(name, arc)
+
+
 def _build_connection(
     model, unit_name: str, conn: Connection, ctx: BuildContext
 ) -> None:
@@ -748,30 +823,9 @@ def _build_connection(
     else:
         index_set = source_unit.index_set() if source_unit.is_indexed() else None
     destination_unit, destination_port = find_unit(ctx.members, conn.to)
-    shared = []
-    for a, b in zip(
-        unit_name.split(".")[:-1], destination_unit.split(".")[:-1], strict=False
-    ):
-        if a != b:
-            break
-        shared.append(a)
-    parent = ".".join(shared)
-    block = model.find_component(parent) if parent else model
-    start = len(parent) + 1 if parent else 0
-    derived = (
-        f"{unit_name[start:]}_{conn.port}_to_{destination_unit[start:]}"
-        f"_{destination_port}"
+    block, name = _arc_place(
+        model, conn, unit_name, destination_unit, f"_{destination_port}"
     )
-    # Drop indices and {i} so the derived name is a plain Pyomo name.
-    name = conn.name or re.sub(r"\[[^\]]*\]|\{i\}", "", derived).replace(".", "_")
-    if block.find_component(name) is not None:
-        raise FlexConfigError(
-            f"Cannot name the arc {name!r} on {parent or 'the model'!r}: that name "
-            f"is taken. Set an explicit 'name' on the connection {conn.port!r} -> "
-            f"{conn.to!r}.",
-            field="name",
-            value=name,
-        )
     source_template = f"{unit_name}.{conn.port}"
     if source_unit.is_indexed():
         source_template = f"{unit_name}[{{i}}].{conn.port}"

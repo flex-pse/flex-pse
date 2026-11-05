@@ -30,3 +30,16 @@ variables (``flow_vol``, ``pressure``, ``temperature``).
    SimpleGasFlow
    SimpleGasFlowData
    SimpleGasStateBlockData
+
+.. currentmodule:: flexops.properties.simple_utility
+
+``SimpleUtility`` names a utility resource, like electricity or a fuel, and the units
+it balances in. A :class:`~flexops.core.resources.Resource` built on one collects what
+units register under that name. See :doc:`/explanation/resources`.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   SimpleUtility
+   SimpleUtilityData

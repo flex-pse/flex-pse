@@ -21,6 +21,7 @@ and its options by settings plus solver-neutral keywords
 import dataclasses
 import os
 import time
+from collections.abc import Callable
 from typing import Any
 
 import pyomo.environ as pyo
@@ -43,6 +44,9 @@ from flexcore.solvers.strategies import (
 )
 
 _log = get_logger(__name__)
+
+PRE_SOLVE_CHECKS: list[Callable[[pyo.ConcreteModel], None]] = []
+"""Functions run on a model before every solve; one that raises stops the solve."""
 
 # Fixed fallback priority (implementer's choice): commercial first, then SCIP
 # (benchmark-preferred over HiGHS for MILP, and the default open-source MINLP
@@ -155,6 +159,8 @@ class SolverFacade:
         Returns:
             The Pyomo results object of the step that produced the solution.
         """
+        for check in PRE_SOLVE_CHECKS:
+            check(model)
         self.last_report = None
         deadline = None if time_limit is None else time.perf_counter() + time_limit
 
