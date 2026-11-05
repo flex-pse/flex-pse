@@ -42,7 +42,7 @@ m.waterfacility.tank_to_plant = Arc(
     source=m.waterfacility.tank.outlet, destination=m.waterfacility.plant.inlet
 )
 m.waterfacility.battery = fo.BatteryModel(
-    capacity=1 * pyunits.kWh, costing_package=m.costing
+    energy_capacity=1 * pyunits.kWh, costing_package=m.costing
 )
 
 m.costing.cost_process()

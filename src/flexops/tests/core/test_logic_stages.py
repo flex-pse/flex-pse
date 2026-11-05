@@ -273,7 +273,7 @@ def battery(name="p.b", **fields):
         "name": name,
         "unit_model_class": "BatteryModel",
         "property_package": None,
-        "construction_options": {"capacity": {"value": 1.0, "units": "kWh"}},
+        "construction_options": {"energy_capacity": {"value": 1.0, "units": "kWh"}},
         **fields,
     }
 

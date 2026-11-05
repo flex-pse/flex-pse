@@ -39,7 +39,7 @@ def simple(unit_class, **options):
 def build_battery():
     m = plant_model()
     m.plant.unit = fo.BatteryModel(
-        capacity=10 * pyunits.kWh,
+        energy_capacity=10 * pyunits.kWh,
         unit_commitment=UnitCommitmentConfig(status=False),
     )
     return m

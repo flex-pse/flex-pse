@@ -57,7 +57,7 @@ def _hand_built() -> pyo.ConcreteModel:
         costing_package=m.costing,
     )
     m.demo.battery = BatteryModel(
-        capacity=10.0 * pyunits.kWh, costing_package=m.costing
+        energy_capacity=10.0 * pyunits.kWh, costing_package=m.costing
     )
     m.demo.arc_0 = Arc(source=m.demo.tank.outlet, destination=m.demo.surrogate.inlet)
     m.costing.cost_process()

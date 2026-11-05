@@ -9,6 +9,7 @@ versions step through :data:`MIGRATIONS`), then validates against
 path.
 """
 
+import copy
 import gzip
 import json
 import re
@@ -27,7 +28,41 @@ from flexcore.config.spec import (
 )
 from flexcore.exceptions import FlexConfigError
 
-MIGRATIONS: dict[str, Callable[[dict], dict]] = {}
+
+def _migrate_0_1_0(data: dict) -> dict:
+    """Rename BatteryModel's ``capacity`` option and Var to ``energy_capacity``.
+
+    Args:
+        data: A parsed 0.1.0 spec; left unchanged.
+
+    Returns:
+        A copy of the spec at version 0.1.1.
+    """
+    migrated = copy.deepcopy(data)
+    raw = migrated.get("elements")
+    elements = (
+        [el for el in raw if isinstance(el, dict)] if isinstance(raw, list) else []
+    )
+
+    batteries = set()
+    for el in elements:
+        if el.get("kind") == "unit" and el.get("unit_model_class") == "BatteryModel":
+            batteries.add(el.get("name"))
+            options = el.get("construction_options")
+            if isinstance(options, dict) and "capacity" in options:
+                options["energy_capacity"] = options.pop("capacity")
+
+    for el in elements:
+        variable = el.get("variable")
+        if el.get("kind") in ("fix", "unfix") and isinstance(variable, str):
+            owner, dot, leaf = variable.rpartition(".")
+            if leaf == "capacity" and re.sub(r"\[.*?\]", "", owner) in batteries:
+                el["variable"] = f"{owner}{dot}energy_capacity"
+
+    return {**migrated, "schema_version": "0.1.1"}
+
+
+MIGRATIONS: dict[str, Callable[[dict], dict]] = {"0.1.0": _migrate_0_1_0}
 """Source version -> upgrade hook, applied in sequence on load. Each hook must
 set the new ``schema_version`` on the dict it returns."""
 
