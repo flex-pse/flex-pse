@@ -926,13 +926,14 @@ def test_combustor_exports_net_against_plant_load():
     from flexcore.exceptions import FlexSolverError
     from flexcore.solvers import get_solver
     from flexops import PlantBlock, SimpleAqueousFlow
-    from flexops.unit_models import ConstantEnergyIntensityModel
+    from flexops.unit_models import ConstantEnergyIntensityModel, GridConnection
 
     m = dummy_gas_time_block(3)
     m.aqueous_properties = SimpleAqueousFlow()
     m.plant = PlantBlock(time_block=m.time_block)
     m.plant.combustor = Combustor(property_package=m.properties, inlet_names=("fuel",))
     m.plant.load = ConstantEnergyIntensityModel(property_package=m.aqueous_properties)
+    m.plant.grid = GridConnection()
     m.plant._build_aggregates()
 
     for t in m.time_block.time_index:

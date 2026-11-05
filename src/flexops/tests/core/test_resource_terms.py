@@ -271,18 +271,3 @@ def test_registering_the_same_term_twice_raises():
         m.unit.register_resource(m.unit.flow, resource="brine", coeff=2.0)
 
     assert excinfo.value.field == "var"
-
-
-@pytest.mark.unit
-def test_an_attached_port_replaces_the_units_boundary_term():
-    """A Feed's withdrawal and its attached outlet are one flow, so count it once."""
-    m = dummy_time_block(3)
-    m.plant = PlantBlock(time_block=m.time_block)
-    m.plant.feed = Feed(property_package=m.properties, resource_name="water")
-    m.plant.feed.attach_port("outlet_a", resource="water")
-
-    (term,) = iter_resource_terms(m.plant)["water"]
-
-    assert term.var is m.plant.feed.outlet_a_state.flow_vol_phase
-    assert term.phase == "Liq"
-    assert term.coeff == 1.0

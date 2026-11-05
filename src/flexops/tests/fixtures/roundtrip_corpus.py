@@ -5,9 +5,9 @@ from pyomo.environ import units as pyunits
 from pyomo.network import Arc
 
 import flexops as fo
-from flexcore.config.schema import DegradationSpec, UnitCommitmentConfig
+from flexcore.config.schema import BalanceType, DegradationSpec, UnitCommitmentConfig
 from flexops import logic
-from flexops.core.resources import add_resource_balance
+from flexops.core.resources import Resource
 from flexops.costing import currency_units
 from flexops.logic import (
     add_conditional,
@@ -498,12 +498,87 @@ def resource_balances() -> pyo.ConcreteModel:
         energy_intensity=0.5 * pyunits.kWh / pyunits.m**3,
     )
     m.site.supply = fo.Product(property_package=m.properties, resource_name="water")
-    m.site.well.attach_port("outlet_a", resource="raw")
-    m.site.pump.attach_port("inlet", resource="raw")
-    m.site.pump.attach_port("outlet", resource="treated")
-    m.site.supply.attach_port("inlet_a", resource="treated")
-    add_resource_balance(m.site, "raw", resource="raw", units="m^3/hr")
-    add_resource_balance(m.site, "treated_node", resource="treated", units="m^3/hr")
+    m.site.raw = Resource(property_package=m.properties)
+    m.site.treated_node = Resource(property_package=m.properties)
+    m.site.a1 = Arc(source=m.site.well.outlet_a, destination=m.site.raw.inlet)
+    m.site.a2 = Arc(source=m.site.raw.outlet, destination=m.site.pump.inlet)
+    m.site.a3 = Arc(source=m.site.pump.outlet, destination=m.site.treated_node.inlet)
+    m.site.a4 = Arc(
+        source=m.site.treated_node.outlet, destination=m.site.supply.inlet_a
+    )
+    m.power = fo.SimpleUtility(resource="electricity", units="MW")
+    m.site.electricity = Resource(property_package=m.power)
+    return m
+
+
+# --- resource_on_an_indexed_unit ---
+
+
+def resource_on_an_indexed_unit() -> pyo.ConcreteModel:
+    """Every member of an indexed pump connects to one stream node."""
+    m = pyo.ConcreteModel(name="resource_on_an_indexed_unit")
+    m.time_block = fo.TimeBlock(
+        start_date="2025-01-01", end_date="2025-01-01T08:00", time_step=1 * pyunits.hr
+    )
+    m.properties = fo.SimpleAqueousFlow()
+    m.site = fo.PlantBlock(time_block=m.time_block)
+    m.site.trains = pyo.Set(initialize=[0, 1], ordered=True)
+    m.site.well = fo.Feed(property_package=m.properties, resource_name="water")
+    m.site.pump = fo.Pump(
+        m.site.trains,
+        property_package=m.properties,
+        energy_intensity=0.5 * pyunits.kWh / pyunits.m**3,
+    )
+    m.site.raw = Resource(property_package=m.properties)
+    m.site.a1 = Arc(source=m.site.well.outlet_a, destination=m.site.raw.inlet)
+    m.site.a2 = Arc(
+        m.site.pump.index_set(),
+        rule=lambda b, i: {
+            "source": b.raw.outlet,
+            "destination": b.pump[i].inlet,
+        },
+    )
+    return m
+
+
+# --- resource_utility ---
+
+
+def resource_utility() -> pyo.ConcreteModel:
+    """A feed and a boiler's fuel balance on a natural gas utility."""
+    m = pyo.ConcreteModel(name="resource_utility")
+    m.time_block = fo.TimeBlock(
+        start_date="2025-01-01", end_date="2025-01-01T08:00", time_step=1 * pyunits.hr
+    )
+    m.gas = fo.SimpleGasFlow()
+    m.site = fo.PlantBlock(time_block=m.time_block)
+    m.site.gas_feed = fo.Feed(property_package=m.gas, resource_name="natural_gas")
+    m.fuel = fo.SimpleUtility(resource="natural_gas", units="m^3/hr")
+    m.site.gas_balance = Resource(property_package=m.fuel)
+    return m
+
+
+# --- resource_boundaries ---
+
+
+def resource_boundaries() -> pyo.ConcreteModel:
+    """A pump between a source and a sink, on an unbounded electricity utility."""
+    m = pyo.ConcreteModel(name="resource_boundaries")
+    m.time_block = fo.TimeBlock(
+        start_date="2025-01-01", end_date="2025-01-01T08:00", time_step=1 * pyunits.hr
+    )
+    m.properties = fo.SimpleAqueousFlow()
+    m.power = fo.SimpleUtility(resource="electricity", units="kW")
+    m.site = fo.PlantBlock(time_block=m.time_block)
+    m.site.pump = fo.Pump(
+        property_package=m.properties,
+        energy_intensity=0.5 * pyunits.kWh / pyunits.m**3,
+    )
+    m.site.source = Resource(property_package=m.properties, balance=BalanceType.IMPORT)
+    m.site.sink = Resource(property_package=m.properties, balance=BalanceType.EXPORT)
+    m.site.a1 = Arc(source=m.site.source.outlet, destination=m.site.pump.inlet)
+    m.site.a2 = Arc(source=m.site.pump.outlet, destination=m.site.sink.inlet)
+    m.site.grid = Resource(property_package=m.power, balance=BalanceType.UNBOUNDED)
     return m
 
 
@@ -873,6 +948,9 @@ CASES = {
     "pump_scheduling": (pump_scheduling, True, "unit"),
     "ramp_and_bypass": (ramp_and_bypass, False, "unit"),
     "resource_balances": (resource_balances, False, "unit"),
+    "resource_on_an_indexed_unit": (resource_on_an_indexed_unit, False, "unit"),
+    "resource_utility": (resource_utility, False, "unit"),
+    "resource_boundaries": (resource_boundaries, False, "unit"),
     "surrogate_and_dispatch": (surrogate_and_dispatch, False, "unit"),
     "two_property_packages": (two_property_packages, False, "unit"),
     "units_on_model": (units_on_model, True, "unit"),
