@@ -82,6 +82,22 @@ from flexops.costing.opex import (
 _log = get_logger(__name__)
 
 
+def capital_recovery_factor(rate: float, lifetime_years: float) -> float:
+    """Return the annual capital recovery factor.
+
+    Args:
+        rate: Effective annual rate, as a fraction.
+        lifetime_years: Asset lifetime in years, greater than 0.
+
+    Returns:
+        The fraction of overnight cost charged per year.
+    """
+    if rate == 0:
+        return 1.0 / lifetime_years
+    growth = (1 + rate) ** lifetime_years
+    return rate * growth / (growth - 1)
+
+
 def _is_multi_tariff_source(source) -> bool:
     """Whether a configured tariff source holds several tariffs to merge.
 
@@ -1482,7 +1498,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
                 field="lifetime_years",
                 value=n,
             )
-        crf = (1.0 / n) if rate == 0 else rate * (1 + rate) ** n / ((1 + rate) ** n - 1)
+        crf = capital_recovery_factor(rate, n)
         self.lifetime = pyo.Param(
             initialize=n,
             mutable=True,

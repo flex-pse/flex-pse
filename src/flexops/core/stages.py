@@ -645,7 +645,9 @@ def _build_unit(model, spec: FlowsheetSpec, element: UnitElement, ctx: BuildCont
             runtime[key] = model.find_component(name)
     unit_config = UnitConfig(
         unit_model_class=element.unit_model_class,
-        construction_options=_with_packages(model, element.construction_options),
+        construction_options=_with_packages(
+            model, resolve_sources(element.construction_options, ctx.base_dir)
+        ),
         io_variables=element.io_variables,
         unit_commitment=element.unit_commitment,
     )
