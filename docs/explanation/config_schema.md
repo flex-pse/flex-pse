@@ -39,7 +39,7 @@ inside it:
 
 ```json
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.1.1",
   "name": "waterfacility",
   "elements": [
     {"kind": "unit", "name": "waterfacility.plant",
@@ -288,6 +288,9 @@ or too-new version raises a `FlexConfigError`, and an older one steps through
 Their exported JSON Schema is checked in under `src/flexcore/config/schemas/`,
 so schema changes show up in review and other tools can validate against it.
 Changing the default fix policy is a breaking change and needs a new version.
+Version 0.1.1 renames the `BatteryModel` `capacity` option and Var to
+`energy_capacity`; a 0.1.0 spec is rewritten on load, except for extension
+functions, which are user code.
 
 ## The FlexParameterize and FlexOps seam
 

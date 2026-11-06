@@ -25,7 +25,7 @@ _PEAK_HOURS = (16, 17, 18, 19, 20)
 
 
 class TestBatteryModel(UnitModelTestHarness):
-    """capacity fixed, power_charge/power_discharge are the harness's dispatch inputs.
+    """energy_capacity fixed, power_charge/power_discharge are the dispatch inputs.
 
     Unit commitment ``status`` is disabled for this harness build so the plain
     build/units/registration/DoF/solve mechanics stay a clean LP; the
@@ -38,7 +38,7 @@ class TestBatteryModel(UnitModelTestHarness):
     def configure(self):
         m = dummy_time_block(4)
         m.unit = BatteryModel(
-            capacity=10 * pyunits.kWh,
+            energy_capacity=10 * pyunits.kWh,
             unit_commitment=UnitCommitmentConfig(status=False),
         )
         return m, m.unit
@@ -48,7 +48,7 @@ def _battery(n: int = 4, **kwargs) -> tuple[pyo.ConcreteModel, BatteryModel]:
     """Build a fresh BatteryModel (status disabled by default) on an n-point block."""
     m = dummy_time_block(n)
     kwargs.setdefault("unit_commitment", UnitCommitmentConfig(status=False))
-    kwargs.setdefault("capacity", 10 * pyunits.kWh)
+    kwargs.setdefault("energy_capacity", 10 * pyunits.kWh)
     m.unit = BatteryModel(**kwargs)
     return m, m.unit
 
@@ -75,7 +75,7 @@ def _battery_with_costing(
     else:
         m.costing = FlexCosting(time_block=m.time_block, tariff=tariff)
     kwargs.setdefault("unit_commitment", UnitCommitmentConfig(status=False))
-    kwargs.setdefault("capacity", 100 * pyunits.kWh)
+    kwargs.setdefault("energy_capacity", 100 * pyunits.kWh)
     m.battery = BatteryModel(costing_package=m.costing, **kwargs)
 
     if baseload_power_kw is not None:
@@ -115,7 +115,7 @@ def test_soc_constraint_bodies():
     power_charge = [5.0, 0.0, 0.0, 2.0]
     power_discharge = [0.0, 3.0, 1.0, 0.0]
     charge = []
-    previous = 5.0  # charge_init == initial_soc(0.5) * capacity(10).
+    previous = 5.0  # charge_init == initial_soc(0.5) * energy_capacity(10).
     for t in range(4):
         previous = previous + dt_hr * (0.9 * power_charge[t] - power_discharge[t] / 0.8)
         charge.append(previous)
@@ -162,7 +162,7 @@ def test_charge_balance_includes_leakage():
     power_charge = [5.0, 0.0, 0.0, 2.0]
     power_discharge = [0.0, 3.0, 1.0, 0.0]
     charge = []
-    previous = 5.0  # charge_init == initial_soc(0.5) * capacity(10).
+    previous = 5.0  # charge_init == initial_soc(0.5) * energy_capacity(10).
     for t in range(4):
         previous = previous * (1 - 0.01 * dt_days) + dt_hr * (
             0.9 * power_charge[t] - power_discharge[t] / 0.8
@@ -179,16 +179,16 @@ def test_charge_balance_includes_leakage():
 
 
 @pytest.mark.unit
-def test_soc_limits_are_linear_rows_and_soc_reads_charge_over_capacity():
-    """soc_min/soc_max bound charge through linear rows, and soc is charge/capacity."""
+def test_soc_limits_are_linear_rows_and_soc_reads_charge_over_energy_capacity():
+    """soc_min/soc_max bound charge through linear rows; soc is charge over energy."""
     _, unit = _battery(4, soc_min=0.2, soc_max=0.8)
-    capacity_val = pyo.value(unit.capacity)
+    energy_capacity_val = pyo.value(unit.energy_capacity)
 
-    unit.charge[0].set_value(0.8 * capacity_val)
+    unit.charge[0].set_value(0.8 * energy_capacity_val)
     assert pyo.value(unit.soc[0]) == pytest.approx(0.8)
     assert pyo.value(unit.soc_upper_limit[0].body) == pytest.approx(0.0, abs=1e-9)
 
-    unit.charge[0].set_value(0.2 * capacity_val)
+    unit.charge[0].set_value(0.2 * energy_capacity_val)
     assert pyo.value(unit.soc[0]) == pytest.approx(0.2)
     assert pyo.value(unit.soc_lower_limit[0].body) == pytest.approx(0.0, abs=1e-9)
 
@@ -222,15 +222,15 @@ def test_power_capacity_is_registered_for_sizing_with_a_costing_package():
     """A costed battery registers power_capacity, so design mode can free it."""
     m = _battery_with_costing(4)
     m.costing.set_design_mode()
-    assert not m.battery.capacity.fixed
+    assert not m.battery.energy_capacity.fixed
     assert not m.battery.power_capacity.fixed
 
 
 @pytest.mark.unit
-def test_battery_rows_stay_linear_when_capacity_and_power_are_free():
+def test_battery_rows_stay_linear_when_energy_and_power_capacity_are_free():
     """Freeing both sizes leaves every active battery constraint linear."""
     _, unit = _battery(4)
-    unit.capacity.unfix()
+    unit.energy_capacity.unfix()
     unit.power_capacity.unfix()
     for con in unit.component_data_objects(pyo.Constraint, active=True):
         assert generate_standard_repn(con.body).is_linear(), con.name
@@ -312,7 +312,8 @@ def test_soh_default_mid_life():
 @pytest.mark.unit
 def test_eta_charge_eta_discharge_are_fixed_regressable_vars():
     """eta_charge/eta_discharge are fixed Vars, registered regressable (FlexParameterize
-    fits them from SCADA power in/out + observed charge/SOC, given known capacity)."""
+    fits them from SCADA power in/out + observed charge/SOC, given energy_capacity).
+    """
     _, unit = _battery(4, eta_charge=0.9, eta_discharge=0.8)
 
     assert unit.eta_charge.fixed
@@ -337,29 +338,29 @@ def test_charge_registered_as_output_io_variable():
 
 @pytest.mark.unit
 def test_soh_capacity_limit_constraint_body():
-    """soh_capacity_limit bounds charge by soh * capacity, independent of soc_max."""
+    """soh_capacity_limit bounds charge by soh * energy_capacity, not by soc_max."""
     _, unit = _battery(4, soh=0.6, soc_max=1.0)
-    capacity_val = pyo.value(unit.capacity)
+    energy_capacity_val = pyo.value(unit.energy_capacity)
 
-    unit.charge[0].set_value(0.6 * capacity_val)
+    unit.charge[0].set_value(0.6 * energy_capacity_val)
     assert pyo.value(unit.soh_capacity_limit[0].body) == pytest.approx(
         pyo.value(unit.soh_capacity_limit[0].upper), abs=1e-9
     )
 
 
 @pytest.mark.unit
-def test_capacity_fix_unfix():
-    """capacity is fixed at construction; costing modes toggle it (R4)."""
+def test_energy_capacity_fix_unfix():
+    """energy_capacity is fixed at construction; costing modes toggle it (R4)."""
     m = _battery_with_costing()
-    assert m.battery.capacity.fixed
-    assert pyo.value(m.battery.capacity) == pytest.approx(100.0)
+    assert m.battery.energy_capacity.fixed
+    assert pyo.value(m.battery.energy_capacity) == pytest.approx(100.0)
 
     m.costing.set_design_mode()
-    assert not m.battery.capacity.fixed
+    assert not m.battery.energy_capacity.fixed
 
     m.costing.set_operations_mode()
-    assert m.battery.capacity.fixed
-    assert pyo.value(m.battery.capacity) == pytest.approx(100.0)
+    assert m.battery.energy_capacity.fixed
+    assert pyo.value(m.battery.energy_capacity) == pytest.approx(100.0)
 
 
 @pytest.mark.unit
@@ -383,7 +384,7 @@ def test_battery_does_not_force_status_off_when_explicitly_enabled():
 def test_battery_unit_commitment_status_defaults_false():
     """With no unit_commitment kwarg at all, BatteryModel defaults status False."""
     m = dummy_time_block(4)
-    m.unit = BatteryModel(capacity=10 * pyunits.kWh)
+    m.unit = BatteryModel(energy_capacity=10 * pyunits.kWh)
     assert m.unit.config.unit_commitment.status is False
     assert not hasattr(m.unit, "status")
 
@@ -396,7 +397,7 @@ def test_1c_fallback_applies_even_with_status_off():
     battery with no explicit power rating was silently unbounded above.
     """
     m = dummy_time_block(4)
-    m.unit = BatteryModel(capacity=8 * pyunits.kWh)
+    m.unit = BatteryModel(energy_capacity=8 * pyunits.kWh)
     assert m.unit.power_charge[0].ub == pytest.approx(8.0)
     assert m.unit.power_discharge[0].ub == pytest.approx(8.0)
 
@@ -420,15 +421,17 @@ def test_status_requires_the_two_power_maxima_together():
 
 @pytest.mark.unit
 def test_status_without_power_maxima_falls_back_to_a_1c_rate():
-    """Neither maximum given: the status link bounds both at capacity per hour.
+    """Neither maximum given: the status link bounds both at energy_capacity per hour.
 
     M09 requirement -- the frozen api-freeze script builds
-    ``BatteryModel(capacity=1 * pyunits.kWh, costing_package=...)`` with no
+    ``BatteryModel(energy_capacity=1 * pyunits.kWh, costing_package=...)`` with no
     power rating at all, and the semicontinuous status link still needs a
     finite bound.
     """
     _, unit = _battery(
-        4, capacity=8 * pyunits.kWh, unit_commitment=UnitCommitmentConfig(status=True)
+        4,
+        energy_capacity=8 * pyunits.kWh,
+        unit_commitment=UnitCommitmentConfig(status=True),
     )
     assert unit.power_charge[0].ub == pytest.approx(8.0)
     assert unit.power_discharge[0].ub == pytest.approx(8.0)
@@ -477,7 +480,7 @@ def test_status_enables_mutually_exclusive_charge_discharge():
 
 @pytest.mark.unit
 def test_external_dispatch_fixes_power_not_sizing():
-    """set_dispatch fixes power_charge/power_discharge; capacity stays a free var."""
+    """set_dispatch fixes power_charge/power_discharge; energy_capacity stays free."""
     m = _battery_with_costing()
     battery = m.battery
     series = {0: 10.0, 1: -5.0, 2: 0.0, 3: 8.0}
@@ -494,13 +497,13 @@ def test_external_dispatch_fixes_power_not_sizing():
             assert pyo.value(battery.power_discharge[t]) == pytest.approx(-v)
 
     m.costing.set_design_mode()
-    assert not battery.capacity.fixed
+    assert not battery.energy_capacity.fixed
 
 
 @pytest.mark.component
 @pytest.mark.needs_highs
 def test_external_dispatch_sizing_only_solve():
-    """With dispatch fixed and design mode on, capacity still optimizes (feasibly)."""
+    """With dispatch fixed and design mode on, energy_capacity still optimizes."""
     from flexcore.solvers import get_solver
 
     m = _battery_with_costing()
@@ -512,11 +515,11 @@ def test_external_dispatch_sizing_only_solve():
 
     results = get_solver(model=m, prefer="highs").solve(m)
     assert_optimal_termination(results)
-    assert not battery.capacity.fixed
+    assert not battery.energy_capacity.fixed
     required_capacity = max(
         pyo.value(battery.charge[t]) for t in m.time_block.time_index
     )
-    assert pyo.value(battery.capacity) >= required_capacity - 1e-6
+    assert pyo.value(battery.energy_capacity) >= required_capacity - 1e-6
 
 
 _BATTERY_POWER_MAX_KW = 50.0

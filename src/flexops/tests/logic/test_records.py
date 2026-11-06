@@ -126,7 +126,8 @@ def test_parallel_group_records_once():
 def test_battery_status_not_recorded():
     m = dummy_time_block(3)
     m.b = BatteryModel(
-        capacity=10 * pyunits.kWh, unit_commitment=UnitCommitmentConfig(status=True)
+        energy_capacity=10 * pyunits.kWh,
+        unit_commitment=UnitCommitmentConfig(status=True),
     )
 
     assert m.b.find_component("status") is not None
