@@ -57,7 +57,7 @@ def _base_elements(costing: dict, *, battery: bool) -> list[dict]:
                 "unit_model_class": "BatteryModel",
                 "property_package": None,
                 "construction_options": {
-                    "capacity": {"value": 5000.0, "units": "kWh"},
+                    "energy_capacity": {"value": 5000.0, "units": "kWh"},
                     "power_charge_max": {"value": 2000.0, "units": "kW"},
                     "power_discharge_max": {"value": 2000.0, "units": "kW"},
                     "eta_charge": 0.95,
@@ -137,7 +137,7 @@ def pump_battery_solar_study(
         "capacities": [
             {
                 "name": "battery_energy",
-                "variable": "battery.capacity",
+                "variable": "battery.energy_capacity",
                 "capital_cost": energy_cost,
                 "lifetime_years": 15,
                 "upper": 1500.0,

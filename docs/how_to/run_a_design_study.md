@@ -23,7 +23,7 @@ A design study sizes equipment once, for a plant that then operates across sever
     {"element": "costing", "years": [2031], "values": {"energy_prices": {"electrical": {"value": 0.12}}}}
   ],
   "capacities": [
-    {"name": "battery_energy", "variable": "battery.capacity", "capital_cost": 300.0, "lifetime_years": 15, "upper": 1500.0},
+    {"name": "battery_energy", "variable": "battery.energy_capacity", "capital_cost": 300.0, "lifetime_years": 15, "upper": 1500.0},
     {"name": "battery_power", "variable": "battery.power_capacity", "capital_cost": 200.0, "lifetime_years": 15, "upper": 1500.0},
     {"name": "solar", "variable": "pv.capacity", "capital_cost": 1200.0, "lifetime_years": 25, "upper": 1500.0}
   ]

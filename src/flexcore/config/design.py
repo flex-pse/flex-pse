@@ -53,7 +53,9 @@ class CapacitySpec(_StrictModel):
     """One capacity decision shared by every horizon."""
 
     name: str = Field(description="Decision name, e.g. 'battery_energy'.")
-    variable: str = Field(description="Scalar Var path, e.g. 'battery.capacity'.")
+    variable: str = Field(
+        description="Scalar Var path, e.g. 'battery.energy_capacity'."
+    )
     capital_cost: float = Field(ge=0, description="Overnight cost per Var unit.")
     lifetime_years: float = Field(
         gt=0, description="Asset lifetime used for annualization."

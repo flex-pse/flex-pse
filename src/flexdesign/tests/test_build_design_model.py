@@ -80,7 +80,7 @@ def test_only_listed_capacities_are_unfixed():
     m = build_design_model(spec)
     for key in m.horizon:
         assert not m.horizon[key].pv.capacity.fixed
-        assert m.horizon[key].battery.capacity.fixed
+        assert m.horizon[key].battery.energy_capacity.fixed
         assert m.horizon[key].battery.power_capacity.fixed
 
 
