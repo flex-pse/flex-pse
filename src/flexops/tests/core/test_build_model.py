@@ -475,10 +475,12 @@ def test_classify_treats_a_spec_built_battery_as_linear_when_sizes_are_free():
             "name": "battery",
             "unit_model_class": "BatteryModel",
             "property_package": None,
-            "construction_options": {"capacity": {"value": 10.0, "units": "kWh"}},
+            "construction_options": {
+                "energy_capacity": {"value": 10.0, "units": "kWh"}
+            },
         }
     )
     m = build_model(spec)
-    m.battery.capacity.unfix()
+    m.battery.energy_capacity.unfix()
     m.battery.power_capacity.unfix()
     assert classify(m) is ProblemClass.LP
