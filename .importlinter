@@ -1,14 +1,15 @@
 [importlinter]
 root_packages =
     flexcore
+    flexdesign
     flexops
     flexparameterize
     flexschedule
 
 [importlinter:contract:layers]
-name = flexcore <- flexops <- {flexparameterize, flexschedule}
+name = flexcore <- flexops <- {flexdesign, flexparameterize, flexschedule}
 type = layers
 layers =
-    flexparameterize | flexschedule
+    flexdesign | flexparameterize | flexschedule
     flexops
     flexcore
