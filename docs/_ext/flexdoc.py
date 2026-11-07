@@ -89,7 +89,7 @@ def _build_tank():
 def _build_battery():
     m = dummy_time_block(3)
     m.unit = BatteryModel(
-        capacity=10 * pyunits.kWh,
+        energy_capacity=10 * pyunits.kWh,
         unit_commitment=UnitCommitmentConfig(status=False),
     )
     return m, m.unit

@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.1.1",
   "name": "demo",
   "elements": [
     {
@@ -39,7 +39,7 @@
       "name": "demo.battery",
       "unit_model_class": "BatteryModel",
       "property_package": null,
-      "construction_options": {"capacity": {"value": 10.0, "units": "kWh"}}
+      "construction_options": {"energy_capacity": {"value": 10.0, "units": "kWh"}}
     },
     {"kind": "objective", "name": "objective"}
   ]

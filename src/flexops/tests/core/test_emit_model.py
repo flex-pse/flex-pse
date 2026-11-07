@@ -394,7 +394,7 @@ def test_constant_intensity_applied_with_apply_spec_is_emitted(tmp_path):
 @pytest.mark.unit
 def test_external_dispatch_is_emitted():
     m = base_model()
-    m.p.battery = fo.BatteryModel(capacity=10 * pyunits.kWh)
+    m.p.battery = fo.BatteryModel(energy_capacity=10 * pyunits.kWh)
     m.p.battery.set_external_dispatch(
         m.p.battery.power_charge, {0: 1.0, 1: 2.0, 2: 0.0}, fix=False
     )
@@ -548,7 +548,7 @@ def test_fix_in_code_over_the_horizon_collapses_to_one_value():
 @pytest.mark.unit
 def test_fix_in_code_over_the_horizon_keeps_a_varying_list():
     m = base_model()
-    m.p.battery = fo.BatteryModel(capacity=10 * pyunits.kWh)
+    m.p.battery = fo.BatteryModel(energy_capacity=10 * pyunits.kWh)
     for t, value in enumerate([1.0, 2.0, 0.5]):
         m.p.battery.power_charge[t].fix(value)
 
@@ -561,7 +561,7 @@ def test_fix_in_code_over_the_horizon_keeps_a_varying_list():
 @pytest.mark.unit
 def test_fix_in_code_on_some_points_uses_at():
     m = base_model()
-    m.p.battery = fo.BatteryModel(capacity=10 * pyunits.kWh)
+    m.p.battery = fo.BatteryModel(energy_capacity=10 * pyunits.kWh)
     m.p.battery.power_charge[0].fix(1.0)
     m.p.battery.power_charge[2].fix(3.0)
 
@@ -622,7 +622,7 @@ def test_unfix_in_code_is_emitted():
 @pytest.mark.unit
 def test_long_fixed_series_goes_to_a_sidecar(tmp_path):
     m = base_model()
-    m.p.battery = fo.BatteryModel(capacity=10 * pyunits.kWh)
+    m.p.battery = fo.BatteryModel(energy_capacity=10 * pyunits.kWh)
     for t, value in enumerate([1.0, 2.0, 0.5]):
         m.p.battery.power_charge[t].fix(value)
 
@@ -640,7 +640,7 @@ def test_long_fixed_series_goes_to_a_sidecar(tmp_path):
 def test_fix_from_the_spec_changed_in_code_writes_the_new_value():
     m = build_model(
         {
-            "schema_version": "0.1.0",
+            "schema_version": "0.1.1",
             "name": "site",
             "elements": [
                 {
@@ -654,7 +654,7 @@ def test_fix_from_the_spec_changed_in_code_writes_the_new_value():
                     "name": "battery",
                     "unit_model_class": "BatteryModel",
                     "construction_options": {
-                        "capacity": {"value": 10.0, "units": "kWh"}
+                        "energy_capacity": {"value": 10.0, "units": "kWh"}
                     },
                     "property_package": None,
                     "costing_package": None,

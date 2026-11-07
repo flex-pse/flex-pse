@@ -3,14 +3,15 @@ r"""BatteryModel: SOC dynamics + first-class DERMS dispatch.
 No fluid ports (no ``property_package`` needed): a battery is an energy-only
 unit with two dispatch-input actuators, ``power_charge[t]``/
 ``power_discharge[t]`` (kW), and a state of charge tracked in absolute energy
-terms, ``charge[t]`` (kWh). ``capacity`` is the fixable sizing ``Var``:
+terms, ``charge[t]`` (kWh). ``energy_capacity`` (kWh) is the fixable energy sizing
+``Var``:
 fixed at the constructor value by default (operations mode); a
 ``costing_package=`` associates it with :meth:`FlexCostingData.set_design_mode`/
 :meth:`~flexops.costing.flex_costing.FlexCostingData.set_operations_mode`.
 
 * ``UnitCommitmentConfig.status`` defaults ``True`` project-wide, but
   ``BatteryModel`` overrides that default to ``False`` -- a bare
-  ``BatteryModel(capacity=...)`` builds as a plain LP, no on/off binary. A
+  ``BatteryModel(energy_capacity=...)`` builds as a plain LP, no on/off binary. A
   caller opts in with ``unit_commitment=UnitCommitmentConfig(status=True)``;
   when ``True``, :func:`~flexops.logic.status.add_status` is attached to
   ``power_charge`` and a symmetric ``discharge_exclusivity`` constraint bounds
@@ -18,14 +19,15 @@ fixed at the constructor value by default (operations mode); a
   mutually-exclusive charge/discharge. This requires both
   ``power_charge_max``/``power_discharge_max`` (the semicontinuous link needs a
   finite bound), which -- like the non-UC default case -- falls back to a 1C
-  rate (the whole capacity in one hour) when neither is given.
-* ``soc[t]`` is a Var, bounded by ``soc_min``/``soc_max``, tied to
-  ``charge[t]``/``capacity`` by the equality Constraint ``soc_capacity_link``
-  (``charge[t] == soc[t] * capacity``), matching the milestone spec literally.
-  This is a genuine product of two *free* Vars whenever ``capacity`` is
-  unfixed (design mode) -- an unconditional bilinear equality that forces
-  that solve to NLP. Accepted at explicit user request: a single bilinear
-  equality per timestep is not a significant modeling burden.
+  rate (the whole energy capacity in one hour) when neither is given.
+* ``soc[t]`` is an Expression, ``charge[t] / energy_capacity``. ``soc_min``/``soc_max``
+  bound ``charge[t]`` through the linear rows ``soc_lower_limit`` and
+  ``soc_upper_limit``, so the unit stays linear when ``energy_capacity`` is free.
+* ``power_capacity`` (kW) is the fixable power sizing ``Var``, sized independently
+  of ``energy_capacity``. It is fixed at, and bounded above by, the larger of the
+  two power limits.
+* ``cyclic=True`` ties ``charge[0]`` to the final charge in place of
+  ``charge_init``, and registers no initial state.
 * ``charge_balance`` covers **every** ``t``, including ``t=0`` (referencing
   ``charge_init`` in place of ``charge[t-1]`` at the boundary), rather than
   a separate ``t=1..N-1`` difference equation plus an unrelated
@@ -41,13 +43,13 @@ fixed at the constructor value by default (operations mode); a
 * ``soh`` (state of health) and ``soh_capacity_limit`` are **not** part of the
   base battery spec; added at explicit user request as a v0 placeholder ahead of any
   future degradation-modeling work. ``soh`` is fixed at the constructor
-  value (default 0.85, mid-life) like ``capacity``.
+  value (default 0.85, mid-life) like ``energy_capacity``.
 * ``eta_charge``/``eta_discharge`` are fixed **Vars** (registered
   ``regressable=True``), not plain floats read from config -- also added at
   explicit user request, matching :class:`~flexops.unit_models.pump.Pump`'s
   ``efficiency`` pattern. ``soh`` is registered the same way. FlexParameterize
   fits all three from SCADA data: ``power_charge``/``power_discharge`` in,
-  ``charge`` (the SOC state, registered as the process output) out, ``capacity``
+  ``charge`` (the SOC state, registered as the process output) out, ``energy_capacity``
   known.
 * ``charge_leakage_rate`` (self-discharge) is **not** part of the base battery spec;
   added at explicit user request as a v0 self-discharge proxy. Like
@@ -71,11 +73,11 @@ Usage::
     >>> from flexops.unit_models import BatteryModel
     >>> from pyomo.environ import units as pyunits
     >>> m = dummy_time_block(4)
-    >>> m.battery = BatteryModel(capacity=10 * pyunits.kWh)  # doctest: +SKIP
+    >>> m.battery = BatteryModel(energy_capacity=10 * pyunits.kWh)  # doctest: +SKIP
 
-Config: see ``capacity``, ``power_charge_max``/``power_discharge_max``,
+Config: see ``energy_capacity``, ``power_charge_max``/``power_discharge_max``,
 ``eta_charge``/``eta_discharge``, ``soc_min``/``soc_max``, ``initial_soc``, ``soh``,
-``charge_leakage_rate`` below, plus the inherited
+``charge_leakage_rate``, ``cyclic`` below, plus the inherited
 ``relaxation``/``unit_commitment``/``external_dispatch``/``costing_package``.
 
 **Behind-the-meter assumption (v0).** ``power_electrical[t]`` may go negative
@@ -130,13 +132,13 @@ def _power_max_kw(configured, fallback_kw: float | None) -> float | None:
 
 @declare_process_block_class("BatteryModel")
 class BatteryModelData(OpsBlockData):
-    """A battery: SOC dynamics, fixable capacity, DERMS dispatch (module docstring)."""
+    """A battery: SOC dynamics, fixable sizes, DERMS dispatch (module docstring)."""
 
     allows_status_element = False
     CONFIG = OpsBlockData.CONFIG()
     CONFIG.get("unit_commitment").set_default_value(UnitCommitmentConfig(status=False))
     CONFIG.declare(
-        "capacity",
+        "energy_capacity",
         ConfigValue(
             description="Initial battery energy capacity, kWh -- the fixed "
             "design Var value at construction. Required."
@@ -147,7 +149,7 @@ class BatteryModelData(OpsBlockData):
         ConfigValue(
             default=None,
             description="Maximum charging power, kW. None (default) falls back "
-            "to a 1C rate (the whole capacity in one hour) -- with "
+            "to a 1C rate (the whole energy capacity in one hour) -- with "
             "unit_commitment.status enabled, its semicontinuous link needs a "
             "finite bound; the fallback applies either way so a bare battery "
             "is never unbounded. Give it and power_discharge_max together or "
@@ -183,7 +185,8 @@ class BatteryModelData(OpsBlockData):
         ConfigValue(
             default=0.0,
             domain=_fraction_domain,
-            description="Minimum state of charge, a fraction of capacity in [0, 1].",
+            description="Minimum state of charge, a fraction of energy capacity "
+            "in [0, 1].",
         ),
     )
     CONFIG.declare(
@@ -191,7 +194,8 @@ class BatteryModelData(OpsBlockData):
         ConfigValue(
             default=1.0,
             domain=_fraction_domain,
-            description="Maximum state of charge, a fraction of capacity in [0, 1].",
+            description="Maximum state of charge, a fraction of energy capacity "
+            "in [0, 1].",
         ),
     )
     CONFIG.declare(
@@ -199,8 +203,17 @@ class BatteryModelData(OpsBlockData):
         ConfigValue(
             default=0.5,
             domain=_fraction_domain,
-            description="Initial state of charge, a fraction of capacity in "
+            description="Initial state of charge, a fraction of energy capacity in "
             "[0, 1]; fixes charge[0] via charge_init (rolling-horizon state).",
+        ),
+    )
+    CONFIG.declare(
+        "cyclic",
+        ConfigValue(
+            default=False,
+            domain=bool,
+            description="Tie the initial charge to the final charge instead of "
+            "initial_soc.",
         ),
     )
     CONFIG.declare(
@@ -208,7 +221,7 @@ class BatteryModelData(OpsBlockData):
         ConfigValue(
             default=0.85,
             domain=_fraction_domain,
-            description="State of health, a fraction of nameplate capacity "
+            description="State of health, a fraction of nameplate energy capacity "
             "still available due to degradation; fixes soh at construction. "
             "Default 0.85 represents a mid-life battery.",
         ),
@@ -224,7 +237,7 @@ class BatteryModelData(OpsBlockData):
     )
 
     def build(self) -> None:
-        """Build capacity, power/charge dynamics, SOC bounds, and UC status."""
+        """Build energy capacity, power/charge dynamics, SOC bounds, and UC status."""
         super().build()
         tb = self._find_time_block()
 
@@ -238,32 +251,34 @@ class BatteryModelData(OpsBlockData):
                 "together when unit_commitment.status is enabled: the "
                 "mutually-exclusive charge/discharge link needs a finite "
                 "bound on each side. Pass both, or pass neither (both then "
-                "default to a 1C rate, capacity per hour).",
+                "default to a 1C rate, energy capacity per hour).",
                 field="power_discharge_max" if given[0] else "power_charge_max",
                 value=None,
             )
 
-        capacity_val = pyo.value(pyunits.convert(self.config.capacity, pyunits.kWh))
-        self.capacity = pyo.Var(
-            initialize=capacity_val,
+        energy_capacity_val = pyo.value(
+            pyunits.convert(self.config.energy_capacity, pyunits.kWh)
+        )
+        self.energy_capacity = pyo.Var(
+            initialize=energy_capacity_val,
             bounds=(0.0, None),
             units=pyunits.kWh,
             doc="Chosen battery energy capacity (design Var); fixed at "
             "the constructor value by default (operations mode); "
             "costing.set_design_mode() unfixes it.",
         )
-        self.capacity.fix(capacity_val)
-        self.register_process_parameter(self.capacity, regressable=False)
+        self.energy_capacity.fix(energy_capacity_val)
+        self.register_process_parameter(self.energy_capacity, regressable=False)
         costing_package = self.config.costing_package
         if costing_package is not None:
-            costing_package.register_sizing_variable(self.capacity)
+            costing_package.register_sizing_variable(self.energy_capacity)
 
         soh_val = self.config.soh
         self.soh = pyo.Var(
             initialize=soh_val,
             bounds=(0.0, 1.0),
             units=pyunits.dimensionless,
-            doc="State of health: fraction of nameplate capacity still "
+            doc="State of health: fraction of nameplate energy capacity still "
             "available due to degradation. Fixed at the constructor value "
             "(v0 has no degradation dynamics); default 0.85 is mid-life.",
         )
@@ -271,9 +286,9 @@ class BatteryModelData(OpsBlockData):
         self.register_process_parameter(self.soh, regressable=True)
 
         # A battery with no explicit power rating falls back to a 1C bound --
-        # its whole capacity in one hour, the textbook default -- regardless
+        # its whole energy capacity in one hour, the textbook default -- regardless
         # of unit_commitment.status, so a bare battery is never unbounded.
-        one_c = capacity_val
+        one_c = energy_capacity_val
         charge_max_val = _power_max_kw(self.config.power_charge_max, one_c)
         discharge_max_val = _power_max_kw(self.config.power_discharge_max, one_c)
 
@@ -291,6 +306,27 @@ class BatteryModelData(OpsBlockData):
             units=pyunits.kW,
             doc="Discharging power output (dispatch input).",
         )
+        power_rating = max(charge_max_val, discharge_max_val)
+        self.power_capacity = pyo.Var(
+            initialize=power_rating,
+            bounds=(0.0, power_rating),
+            units=pyunits.kW,
+            doc="Power rating (design Var); fixed at the larger power limit by "
+            "default.",
+        )
+        self.power_capacity.fix(power_rating)
+        self.register_process_parameter(self.power_capacity, regressable=False)
+        if costing_package is not None:
+            costing_package.register_sizing_variable(self.power_capacity)
+
+        @self.Constraint(tb.time_index, doc="power_charge[t] <= power_capacity.")
+        def power_charge_limit(b, t):
+            return b.power_charge[t] <= b.power_capacity
+
+        @self.Constraint(tb.time_index, doc="power_discharge[t] <= power_capacity.")
+        def power_discharge_limit(b, t):
+            return b.power_discharge[t] <= b.power_capacity
+
         self.register_io_variable(self.power_charge, role="input")
         self.register_io_variable(self.power_discharge, role="input")
 
@@ -315,14 +351,15 @@ class BatteryModelData(OpsBlockData):
             doc="Stored energy content.",
         )
 
-        initial_charge_val = self.config.initial_soc * capacity_val
+        initial_charge_val = self.config.initial_soc * energy_capacity_val
         self.charge_init = pyo.Param(
             initialize=initial_charge_val,
             mutable=True,
             units=pyunits.kWh,
             doc="Initial stored energy, charge[0] (rolling-horizon initial state).",
         )
-        tb.register_initial_state(self.charge_init)
+        if not self.config.cyclic:
+            tb.register_initial_state(self.charge_init)
         self.register_process_parameter(self.charge_init, regressable=False)
 
         self.eta_charge = pyo.Var(
@@ -332,7 +369,7 @@ class BatteryModelData(OpsBlockData):
             doc="Charging efficiency. Fixed at the configured value by "
             "default; a future FlexParameterize regression may estimate it "
             "from SCADA data (power_charge/power_discharge in, charge/soc "
-            "out, capacity known).",
+            "out, energy capacity known).",
         )
         self.eta_charge.fix(self.config.eta_charge)
         self.register_process_parameter(self.eta_charge, regressable=True)
@@ -376,7 +413,12 @@ class BatteryModelData(OpsBlockData):
             "free, manufacturing energy from nothing).",
         )
         def charge_balance(b, t):
-            previous = b.charge[t - 1] if t > 0 else b.charge_init
+            if t > 0:
+                previous = b.charge[t - 1]
+            elif self.config.cyclic:
+                previous = b.charge[tb.n_points - 1]
+            else:
+                previous = b.charge_init
             delta_charge = pyunits.convert(
                 tb.dt
                 * (
@@ -393,32 +435,29 @@ class BatteryModelData(OpsBlockData):
         soc_min = self.config.soc_min
         soc_max = self.config.soc_max
 
-        self.soc = pyo.Var(
-            tb.time_index,
-            bounds=(soc_min, soc_max),
-            units=pyunits.dimensionless,
-            doc="State of charge, a fraction of capacity in [soc_min, "
-            "soc_max]; tied to charge/capacity by soc_capacity_link.",
+        @self.Expression(
+            tb.time_index, doc="State of charge, charge[t] / energy_capacity."
         )
+        def soc(b, t):
+            return b.charge[t] / b.energy_capacity
+
+        @self.Constraint(tb.time_index, doc="charge[t] >= soc_min * energy_capacity.")
+        def soc_lower_limit(b, t):
+            return b.charge[t] >= soc_min * b.energy_capacity
+
+        @self.Constraint(tb.time_index, doc="charge[t] <= soc_max * energy_capacity.")
+        def soc_upper_limit(b, t):
+            return b.charge[t] <= soc_max * b.energy_capacity
 
         @self.Constraint(
             tb.time_index,
-            doc="Ties soc to stored energy: charge[t] == soc[t] * capacity "
-            "(a bilinear equality when capacity is unfixed -- see the module "
-            "docstring's 'Deviations from the milestone spec').",
-        )
-        def soc_capacity_link(b, t):
-            return b.charge[t] == b.soc[t] * b.capacity
-
-        @self.Constraint(
-            tb.time_index,
-            doc="State-of-health capacity limit: charge[t] <= soh * "
-            "capacity. Independent of soc_max -- soh models capacity fade "
+            doc="State-of-health limit: charge[t] <= soh * "
+            "energy_capacity. Independent of soc_max -- soh models capacity fade "
             "from degradation, while soc_max is an operational headroom "
-            "fraction of nameplate capacity.",
+            "fraction of nameplate energy capacity.",
         )
         def soh_capacity_limit(b, t):
-            return b.charge[t] <= b.soh * b.capacity
+            return b.charge[t] <= b.soh * b.energy_capacity
 
         if self.config.unit_commitment.status:
             # unit_commitment.status rebuilds this status; it is not a spec element.
@@ -441,7 +480,7 @@ class BatteryModelData(OpsBlockData):
 
         # charge (SOC state) is the regression target for eta_charge/
         # eta_discharge/soh: FlexParameterize fits them from SCADA power
-        # in/out against the observed charge trajectory, using capacity.
+        # in/out against the observed charge trajectory, using energy capacity.
         self.register_io_variable(self.charge, role="output")
 
     def set_dispatch(self, series) -> None:
@@ -451,7 +490,7 @@ class BatteryModelData(OpsBlockData):
         discharging) into the ``power_charge``/``power_discharge`` actuators
         and fixes both via
         :meth:`~flexops.core.ops_block.OpsBlockData.set_external_dispatch`,
-        removing the dispatch degree of freedom while leaving ``capacity``
+        removing the dispatch degree of freedom while leaving ``energy_capacity``
         free. Fixing only the net ``power_electrical`` would
         leave the charge/discharge split underdetermined -- their
         efficiencies differ, so the split affects the SOC trajectory -- so
