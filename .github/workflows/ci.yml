@@ -169,7 +169,7 @@ jobs:
               "flexcore", "flexcore.config", "flexcore.solvers",
               "flexops", "flexops.core", "flexops.unit_models",
               "flexops.unit_models.base", "flexops.logic", "flexops.costing",
-              "flexops.costing.unit_models", "flexops.design",
+              "flexops.costing.unit_models",
               "flexops.properties",
               "flexparameterize", "flexparameterize.regression",
               "flexschedule",

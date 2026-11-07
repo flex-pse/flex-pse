@@ -33,6 +33,7 @@ from flexops.costing import (
     CostReport,
     FlexCosting,
     OperatingCostBreakdown,
+    capital_recovery_factor,
     currency_units,
     evaluate_fuel_cost,
     load_tariff,
@@ -1740,3 +1741,10 @@ def test_report_cost_credits_gas_exports_with_decomposition():
         m.costing.aggregate_fuel_usage[t, "gas"].set_value(flow)
     # 12 h x 10 m3/hr x $0.10 - 12 h x 4 m3/hr x $0.05 = 12 - 2.4
     assert m.costing.report_cost(m).operating.fuel == pytest.approx(9.6)
+
+
+@pytest.mark.unit
+def test_capital_recovery_factor_matches_hand_values():
+    """CRF follows the annuity formula, and is 1/lifetime at a zero rate."""
+    assert capital_recovery_factor(0.07, 20) == pytest.approx(0.0943929, rel=1e-5)
+    assert capital_recovery_factor(0, 10) == pytest.approx(0.1)

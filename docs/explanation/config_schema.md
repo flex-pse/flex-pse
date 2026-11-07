@@ -129,7 +129,7 @@ or a fixed demand profile, can live beside the spec:
  "value": {"$source": "data/demand.json.gz"}}
 ```
 
-A `$source` path is relative to the spec file and names a `.json` or gzipped
+A `$source` also works anywhere in a unit's `construction_options`. A `$source` path is relative to the spec file and names a `.json` or gzipped
 `.json.gz` file. `emit_model(data_dir=..., inline_limit=2000)` writes every list
 longer than `inline_limit` this way, and `relative_to=` writes paths relative to
 where the spec will be saved.
