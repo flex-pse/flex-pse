@@ -79,7 +79,7 @@ Solar output has no curtailment, so all generation has to go somewhere. Limiting
 
 ## Prepare the base flowsheet
 
-- **Use cyclic storage.** Set `"cyclic": true` on each battery. A study rejects any fixed initial state, because each month could otherwise drain free stored energy. This currently rules out units without a cyclic option, such as `Tank`.
+- **Free the starting state of storage.** Set `"fix_initial_state": false` on each battery and tank, since a study rejects any fixed initial state. Also set `"cyclic": true`, which requires each month to end at least as full as it started, so no month can drain free stored energy.
 - **Set constructor limits at or above sizing bounds.** A decision's `upper` can't exceed its Var's own bound, and `battery.power_capacity` is bounded by the larger of `power_charge_max` and `power_discharge_max`.
 - **Give every decision an `upper`.** With net metering, an unbounded capacity can make the problem unbounded. If a report flags a size as at its upper bound, the bound is probably driving the answer.
 - **Set an export price if exports aren't credited at the import price.** Otherwise surplus solar earns the full import price.
