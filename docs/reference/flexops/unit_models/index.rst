@@ -175,6 +175,10 @@ capacity factor series, into an electrical export, scaled by a fixable
 nameplate ``capacity``. Like a discharging ``BatteryModel`` or an exporting
 ``Combustor``, the draw is negative (export), and the sign is split from the
 relation for the magnitude of generation the same way ``Combustor`` splits them.
+With ``curtailable=True`` the optimizer may spill output: ``power_curtailed``
+is subtracted from the available ``power_generated`` to give
+``power_delivered``, which is what gets exported. By default ``power_curtailed``
+is fixed at 0, and every available kWh is exported.
 
 .. autosummary::
    :toctree: generated

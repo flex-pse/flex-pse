@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **`GenericRenewables` can be curtailed.** `curtailable=True` frees a new `power_curtailed[t]` Var (non-negative, kW). Each period, `curtailment_balance` gives `power_delivered = power_generated - power_curtailed`, and `power_electrical` is now `-power_delivered`. `power_generated` still targets the swappable relation and now means available output. By default `power_curtailed` is fixed at 0, so existing models behave as before. `power_curtailed` is registered as an IO output.
 - **`Tank` takes `fix_initial_state` and `cyclic`.** `fix_initial_state=False` leaves `volume[0]` free and registers no initial state, so a tank can be used in a design study. `cyclic=True` adds `cyclic_volume`, `volume[N-1] >= volume[0]`.
 
 ### Changed

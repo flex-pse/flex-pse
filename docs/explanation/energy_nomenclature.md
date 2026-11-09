@@ -52,6 +52,16 @@ Rules:
   **magnitude space**, positive, the way generation data is normally
   logged. That's why `power_generated`, not `power_electrical`, is the
   unit's registered IO output.
+- **Curtailment sits between the magnitude and the sign.**
+  `GenericRenewables` treats `power_generated` as *available* output. An
+  unregistered `curtailment_balance[t]` subtracts the non-negative
+  `power_curtailed[t]` to give `power_delivered[t]`, and the sign constraint
+  negates that. A surrogate swap therefore can't remove curtailment, and the
+  fitted relationship should be trained on availability data (irradiance,
+  wind speed), not metered output that was already curtailed. Curtailment
+  carries no cost, so when the marginal price of export is exactly zero, how
+  much gets curtailed is arbitrary. The optimizer is indifferent between
+  exporting and spilling.
 
 ## Fuel is a volume, not a power
 
