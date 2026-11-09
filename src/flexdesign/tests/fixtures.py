@@ -66,6 +66,7 @@ def _base_elements(costing: dict, *, battery: bool) -> list[dict]:
                     "soc_max": 1.0,
                     "soh": 1.0,
                     "cyclic": True,
+                    "fix_initial_state": False,
                 },
             }
         )
