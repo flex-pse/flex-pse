@@ -78,7 +78,7 @@ jobs:
         if: ${{ matrix.coverage }}
         run: >-
           pytest -n auto
-          --cov=flexcore --cov=flexops --cov=flexparameterize --cov=flexschedule
+          --cov=flexcore --cov=flexdesign --cov=flexops --cov=flexparameterize --cov=flexschedule
           --cov-report=xml --cov-report=term
       - name: Coverage floors
         if: ${{ matrix.coverage }}
@@ -87,6 +87,7 @@ jobs:
           coverage report --include="src/flexops/*" --fail-under=94
           coverage report --include="src/flexparameterize/*" --fail-under=80
           coverage report --include="src/flexschedule/*" --fail-under=98
+          coverage report --include="src/flexdesign/*" --fail-under=95
       # The only Codecov upload; keep codecov.yml's after_n_builds in step.
       - if: ${{ matrix.coverage }}
         uses: codecov/codecov-action@v4
@@ -169,10 +170,10 @@ jobs:
               "flexcore", "flexcore.config", "flexcore.solvers",
               "flexops", "flexops.core", "flexops.unit_models",
               "flexops.unit_models.base", "flexops.logic", "flexops.costing",
-              "flexops.costing.unit_models", "flexops.design",
+              "flexops.costing.unit_models",
               "flexops.properties",
               "flexparameterize", "flexparameterize.regression",
-              "flexschedule",
+              "flexschedule", "flexdesign",
           ]
           for name in modules:
               importlib.import_module(name)

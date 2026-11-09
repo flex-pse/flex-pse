@@ -100,3 +100,11 @@ class FlexFixWarning(UserWarning):
     Raise it to an error with ``warnings.simplefilter("error", FlexFixWarning)``
     so a run stops on any fix that differs from what the spec wrote.
     """
+
+
+class FlexMigrationWarning(UserWarning):
+    """Warned when loading a spec migrates it from an older schema version.
+
+    Raise it to an error with ``warnings.simplefilter("error", FlexMigrationWarning)``
+    to require specs already at the current schema version.
+    """

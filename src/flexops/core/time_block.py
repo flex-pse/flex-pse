@@ -198,7 +198,7 @@ class TimeBlockData(ProcessBlockData):
             description="Maximum horizon length as a dateutil.relativedelta, "
             "measured with calendar arithmetic from start_date. Defaults to one "
             "calendar month; widen it only if the rolling-horizon driver "
-            "(flexschedule) or design-mode wrapper (flexops.design) cannot.",
+            "(flexschedule) or design tool (flexdesign) cannot.",
         ),
     )
 
@@ -225,7 +225,7 @@ class TimeBlockData(ProcessBlockData):
                 f"Horizon {start.isoformat()} -> {end.isoformat()} exceeds "
                 f"the {_describe_max_length(max_length)} limit (max end_date is "
                 f"{max_end.isoformat()}). Use the rolling-horizon driver "
-                "(flexschedule) or the design-mode wrapper (flexops.design) "
+                "(flexschedule) or the design tool (flexdesign) "
                 "for longer studies.",
                 field="end_date",
                 value=self.config.end_date,

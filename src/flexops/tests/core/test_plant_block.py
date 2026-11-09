@@ -52,7 +52,7 @@ def _plant_with_two_units(n: int = 3):
     m = dummy_time_block(n)
     m.plant = PlantBlock(time_block=m.time_block)
     m.plant.surrogate = ConstantEnergyIntensityModel(property_package=m.properties)
-    m.plant.battery = BatteryModel(capacity=10 * pyunits.kWh)
+    m.plant.battery = BatteryModel(energy_capacity=10 * pyunits.kWh)
     return m
 
 
@@ -93,7 +93,7 @@ def test_aggregates_survive_units_added_after_the_first_call():
         )
 
     m.plant.surrogate = ConstantEnergyIntensityModel(property_package=m.properties)
-    m.plant.battery = BatteryModel(capacity=10 * pyunits.kWh)
+    m.plant.battery = BatteryModel(energy_capacity=10 * pyunits.kWh)
     m.plant._build_aggregates()
     _fix_power(m.plant, m.time_block.time_index)
 

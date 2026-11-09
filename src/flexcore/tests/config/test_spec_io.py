@@ -76,12 +76,12 @@ def test_load_spec_newer_version_raises():
 @pytest.mark.unit
 def test_load_spec_runs_spec_migrations(monkeypatch):
     """An older flat spec steps through MIGRATIONS to the current version."""
-    monkeypatch.setattr(io_module, "SCHEMA_VERSION", "0.1.1")
+    monkeypatch.setattr(io_module, "SCHEMA_VERSION", "0.1.2")
     monkeypatch.setitem(
-        io_module.MIGRATIONS, "0.1.0", lambda data: {**data, "schema_version": "0.1.1"}
+        io_module.MIGRATIONS, "0.1.1", lambda data: {**data, "schema_version": "0.1.2"}
     )
 
-    assert load_spec(FLAT).schema_version == "0.1.1"
+    assert load_spec({**FLAT, "schema_version": "0.1.1"}).schema_version == "0.1.2"
 
 
 @pytest.mark.unit
@@ -187,3 +187,91 @@ def test_dump_spec_does_not_reorder_the_spec(tmp_path):
     dump_spec(spec, tmp_path / "spec.json")
 
     assert [el.kind for el in spec.elements] == [e["kind"] for e in FLAT["elements"]]
+
+
+def _spec_0_1_0(*elements) -> dict:
+    """Return a 0.1.0 spec of the FLAT elements plus ``elements``."""
+    return {
+        **FLAT,
+        "schema_version": "0.1.0",
+        "elements": [*FLAT["elements"], *elements],
+    }
+
+
+def _unit_named(spec: FlowsheetSpec, name: str):
+    """Return the unit element called ``name``."""
+    return next(el for el in spec.of_kind("unit") if el.name == name)
+
+
+@pytest.mark.unit
+def test_0_1_0_migration_renames_only_the_battery_capacity_option():
+    """A BatteryModel gets energy_capacity; another unit's capacity is untouched."""
+    energy = {"value": 10.0, "units": "kWh"}
+    power = {"value": 5.0, "units": "kW"}
+    spec = load_spec(
+        _spec_0_1_0(
+            {
+                "kind": "unit",
+                "name": "site.battery",
+                "unit_model_class": "BatteryModel",
+                "construction_options": {"capacity": energy},
+            },
+            {
+                "kind": "unit",
+                "name": "site.solar",
+                "unit_model_class": "GenericRenewables",
+                "construction_options": {"capacity": power},
+            },
+        )
+    )
+
+    assert spec.schema_version == SCHEMA_VERSION
+    assert _unit_named(spec, "site.battery").construction_options == {
+        "energy_capacity": energy
+    }
+    assert _unit_named(spec, "site.solar").construction_options == {"capacity": power}
+
+
+@pytest.mark.unit
+def test_0_1_0_migration_rewrites_fix_and_unfix_of_a_battery_capacity():
+    """Fix and unfix paths move to energy_capacity, on battery units only."""
+    spec = load_spec(
+        _spec_0_1_0(
+            {
+                "kind": "unit",
+                "name": "site.battery",
+                "unit_model_class": "BatteryModel",
+            },
+            {"kind": "unit", "name": "site.tank2", "unit_model_class": "Tank"},
+            {"kind": "fix", "variable": "site.battery.capacity", "value": 3.0},
+            {"kind": "fix", "variable": "site.battery[*].capacity", "value": 3.0},
+            {"kind": "unfix", "variable": "site.battery.capacity"},
+            {"kind": "fix", "variable": "site.tank2.capacity", "value": 3.0},
+        )
+    )
+
+    assert [el.variable for el in spec.of_kind("fix", "unfix")] == [
+        "site.battery.energy_capacity",
+        "site.battery[*].energy_capacity",
+        "site.battery.energy_capacity",
+        "site.tank2.capacity",
+    ]
+
+
+@pytest.mark.unit
+def test_0_1_0_migration_leaves_the_callers_dict_alone():
+    """Loading an old spec does not rewrite the mapping passed in."""
+    options = {"capacity": {"value": 10.0, "units": "kWh"}}
+    data = _spec_0_1_0(
+        {
+            "kind": "unit",
+            "name": "site.battery",
+            "unit_model_class": "BatteryModel",
+            "construction_options": options,
+        }
+    )
+
+    load_spec(data)
+
+    assert data["schema_version"] == "0.1.0"
+    assert options == {"capacity": {"value": 10.0, "units": "kWh"}}

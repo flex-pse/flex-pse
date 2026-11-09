@@ -41,6 +41,7 @@ Loaders and CSV conversion
    tariff_currency_units
    currency_units
    monthly_scale_factor
+   capital_recovery_factor
 
 **Several tariff files** merge into one frame with :func:`merge_tariffs`, which
 is what ``FlexCosting(tariff_file=...)`` uses when given a list or a mapping.
@@ -424,10 +425,8 @@ Every cost lives in one of two sub-blocks built by
    :meth:`~FlexCostingData.set_operations_mode` fixes the registered sizing
    Vars and deactivates their capex constraints.
    :meth:`~FlexCostingData.set_design_mode` unfixes and activates them. Both
-   are idempotent toggles on a single model. In v0 the sizing registry is
-   empty, so they are no-ops. Merging representative months and linking
-   sizing Vars across them is a planned wrapper for design mode, not built
-   yet.
+   are idempotent toggles on a single model. Merging representative months and
+   linking sizing Vars across them is the job of ``flexdesign``.
 
 .. note:: **Export prices.**
 

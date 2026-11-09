@@ -70,6 +70,7 @@ flexops = [
     "tests/fixtures/api_freeze/*.json",
     "tests/fixtures/api_freeze/data/*.json",
 ]
+flexdesign = ["py.typed"]
 flexparameterize = ["py.typed"]
 flexschedule = ["py.typed"]
 

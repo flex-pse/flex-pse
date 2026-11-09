@@ -41,7 +41,7 @@ def api_freeze_like() -> pyo.ConcreteModel:
         source=m.waterfacility.tank.outlet, destination=m.waterfacility.plant.inlet
     )
     m.waterfacility.battery = fo.BatteryModel(
-        capacity=1 * pyunits.kWh, costing_package=m.costing
+        energy_capacity=1 * pyunits.kWh, costing_package=m.costing
     )
     m.costing.cost_process()
     m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
@@ -64,7 +64,7 @@ def battery_status() -> pyo.ConcreteModel:
     )
     m.site = fo.PlantBlock(time_block=m.time_block)
     m.site.battery = fo.BatteryModel(
-        capacity=10 * pyunits.kWh,
+        energy_capacity=10 * pyunits.kWh,
         power_charge_max=5 * pyunits.kW,
         power_discharge_max=5 * pyunits.kW,
         unit_commitment=UnitCommitmentConfig(status=True),
@@ -603,7 +603,7 @@ def pump_scheduling() -> pyo.ConcreteModel:
 
     rate = 30 * pyunits.kW
     m.battery = fo.BatteryModel(
-        capacity=rate * 4 * pyunits.hr,
+        energy_capacity=rate * 4 * pyunits.hr,
         power_charge_max=rate,
         power_discharge_max=rate,
         eta_charge=0.95,
@@ -714,7 +714,7 @@ def surrogate_and_dispatch() -> pyo.ConcreteModel:
     m.site = fo.PlantBlock(time_block=m.time_block)
     m.site.pump = fo.Pump(property_package=m.properties, costing_package=m.costing)
     m.site.battery = fo.BatteryModel(
-        capacity=10 * pyunits.kWh, costing_package=m.costing
+        energy_capacity=10 * pyunits.kWh, costing_package=m.costing
     )
     fo.apply_spec(m, [SURROGATE])
     charge = [0.0, 1.0, 2.0, 2.0, 0.5, 0.0]
@@ -787,7 +787,7 @@ def units_on_model() -> pyo.ConcreteModel:
     m.feed_to_tank = Arc(source=m.feed_pump.outlet, destination=m.tank.inlet)
     m.tank_to_product = Arc(source=m.tank.outlet, destination=m.product_pump.inlet)
     m.battery = fo.BatteryModel(
-        capacity=40.0 * pyunits.kWh,
+        energy_capacity=40.0 * pyunits.kWh,
         power_charge_max=10.0 * pyunits.kW,
         costing_package=m.costing,
     )

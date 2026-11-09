@@ -39,7 +39,7 @@ inside it:
 
 ```json
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.1.1",
   "name": "waterfacility",
   "elements": [
     {"kind": "unit", "name": "waterfacility.plant",
@@ -129,7 +129,7 @@ or a fixed demand profile, can live beside the spec:
  "value": {"$source": "data/demand.json.gz"}}
 ```
 
-A `$source` path is relative to the spec file and names a `.json` or gzipped
+A `$source` also works anywhere in a unit's `construction_options`. A `$source` path is relative to the spec file and names a `.json` or gzipped
 `.json.gz` file. `emit_model(data_dir=..., inline_limit=2000)` writes every list
 longer than `inline_limit` this way, and `relative_to=` writes paths relative to
 where the spec will be saved.
@@ -145,7 +145,7 @@ gives its values. An `unfix` element frees one, such as a parameter a unit
 fixes by default:
 
 ```json
-{"kind": "fix", "variable": "plant.battery.soc[0]", "value": 0.5},
+{"kind": "fix", "variable": "plant.battery.charge[0]", "value": 5.0},
 {"kind": "fix", "variable": "plant.pretreatment[*].status", "value": 1},
 {"kind": "fix", "variable": "plant.intake.flow_in", "value": [120, 120, 95, 80], "units": "m^3/hr"},
 {"kind": "unfix", "variable": "plant.ro[*].recovery"}
@@ -291,6 +291,9 @@ or too-new version raises a `FlexConfigError`, and an older one steps through
 Their exported JSON Schema is checked in under `src/flexcore/config/schemas/`,
 so schema changes show up in review and other tools can validate against it.
 Changing the default fix policy is a breaking change and needs a new version.
+Version 0.1.1 renames the `BatteryModel` `capacity` option and Var to
+`energy_capacity`; a 0.1.0 spec is rewritten on load, except for extension
+functions, which are user code.
 
 ## The FlexParameterize and FlexOps seam
 

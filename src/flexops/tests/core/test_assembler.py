@@ -63,7 +63,7 @@ def spec_dict(*elements, name="site", objective=True) -> dict:
     """Return a spec of the base elements plus ``elements``."""
     base = [TIME, COSTING, PACKAGE, *([OBJECTIVE] if objective else [])]
     return {
-        "schema_version": "0.1.0",
+        "schema_version": "0.1.1",
         "name": name,
         "elements": copy.deepcopy([*base, *elements]),
     }
@@ -112,7 +112,7 @@ def freeze_spec(directory: Path) -> Path:
             "name": "waterfacility.battery",
             "unit_model_class": "BatteryModel",
             "property_package": None,
-            "construction_options": {"capacity": {"value": 1.0, "units": "kWh"}},
+            "construction_options": {"energy_capacity": {"value": 1.0, "units": "kWh"}},
         },
         {
             "kind": "property_package",
@@ -123,7 +123,7 @@ def freeze_spec(directory: Path) -> Path:
     path = directory / "freeze.json"
     path.write_text(
         json.dumps(
-            {"schema_version": "0.1.0", "name": "waterfacility", "elements": elements}
+            {"schema_version": "0.1.1", "name": "waterfacility", "elements": elements}
         )
     )
     return path
@@ -373,7 +373,7 @@ def test_unit_swap_missing_port_lists_ports():
     spec["elements"][-2]["unit_model_class"] = "BatteryModel"
     spec["elements"][-2]["property_package"] = None
     spec["elements"][-2]["construction_options"] = {
-        "capacity": {"value": 1.0, "units": "kWh"}
+        "energy_capacity": {"value": 1.0, "units": "kWh"}
     }
 
     with pytest.raises(FlexConfigError) as excinfo:

@@ -4,8 +4,8 @@
 pip install "flex-pse[solvers]"
 ```
 
-This installs `flexcore`, `flexops`, `flexparameterize`, and `flexschedule`
-(the last is an unpopulated scaffold in 0.1.0 — see the
+This installs `flexcore`, `flexops`, `flexdesign`, `flexparameterize`, and
+`flexschedule` (the last is an unpopulated scaffold in 0.1.0 — see the
 [release notes](../changelog.md)), plus their required dependencies
 (`idaes-pse`, `pyomo`, `eeco`, `pandas`, `pydantic`). The `[solvers]` extra
 adds [HiGHS](https://highs.dev/) (`highspy`), a self-contained wheel covering
@@ -28,7 +28,7 @@ dependency, so no separate install is needed to run it.
 
 ```bash
 python -c "
-import flexcore, flexops, flexparameterize, flexschedule
+import flexcore, flexops, flexdesign, flexparameterize, flexschedule
 print(flexcore.__version__, flexops.__file__)
 "
 ```

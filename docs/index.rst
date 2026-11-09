@@ -24,6 +24,7 @@ schedule flexible industrial energy operations.
    explanation/reported_cost
    explanation/pass_through_and_bypass
    explanation/degradation
+   explanation/design_annualization
    explanation/boiler
    explanation/electrolyzer_model
 
@@ -34,6 +35,7 @@ schedule flexible industrial energy operations.
    how_to/build_a_plant
    how_to/round_trip_a_model
    how_to/parameterize_from_data
+   how_to/run_a_design_study
 
 .. toctree::
    :maxdepth: 2
@@ -60,4 +62,5 @@ schedule flexible industrial energy operations.
    reference/flexops/testing
    reference/flexops/unit_models/index
    reference/flexparameterize/index
+   reference/flexdesign/index
    reference/glossary

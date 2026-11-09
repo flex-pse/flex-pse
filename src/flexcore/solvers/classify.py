@@ -11,6 +11,7 @@ import enum
 
 import pyomo.environ as pyo
 from pyomo.core.expr import identify_variables
+from pyomo.repn import generate_standard_repn
 
 # Expression-shape ranking, worst-wins when combined across expressions.
 _LINEAR = 0
@@ -37,11 +38,26 @@ class ProblemClass(enum.Enum):
     MINLP_TR = "MINLP_TR"  # trust region, post-v0
 
 
+def _degree(expr) -> int | None:
+    """Return an expression's degree with fixed variables treated as constants.
+
+    Args:
+        expr: A Pyomo expression.
+
+    Returns:
+        1 if linear, 2 if quadratic, or None if general nonlinear.
+    """
+    repn = generate_standard_repn(expr, quadratic=True)
+    if repn.is_linear():
+        return 1
+    return 2 if repn.is_quadratic() else None
+
+
 def _shape(degree: int | None) -> int:
     """Rank a polynomial degree as linear, quadratic, or general nonlinear.
 
     Args:
-        degree: The value returned by ``expr.polynomial_degree()`` — an integer
+        degree: The value returned by :func:`_degree` — an integer
             degree, or ``None`` for a general (non-polynomial) expression.
 
     Returns:
@@ -151,13 +167,13 @@ def _classify_uncached(model: pyo.ConcreteModel) -> ProblemClass:
     for con in model.component_data_objects(
         pyo.Constraint, active=True, descend_into=True
     ):
-        constraint_shape = max(constraint_shape, _shape(con.body.polynomial_degree()))
+        constraint_shape = max(constraint_shape, _shape(_degree(con.body)))
         _scan(con.body)
 
     for obj in model.component_data_objects(
         pyo.Objective, active=True, descend_into=True
     ):
-        objective_shape = max(objective_shape, _shape(obj.expr.polynomial_degree()))
+        objective_shape = max(objective_shape, _shape(_degree(obj.expr)))
         _scan(obj.expr)
 
     all_linear = constraint_shape == _LINEAR and objective_shape == _LINEAR
