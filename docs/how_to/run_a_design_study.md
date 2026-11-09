@@ -75,7 +75,7 @@ A forecast is a capacity factor series: output per kW of nameplate, from 0 to 1,
 Forecast files are matched by position, starting at the first time step of the month, and only their length is checked. January and July both have 744 hours, so swapping those files builds and solves with wrong results.
 ```
 
-Solar output has no curtailment, so all generation has to go somewhere. Limiting exports to zero with `GridConnection` can make a model infeasible.
+By default solar output cannot be curtailed, so all generation has to go somewhere. Limiting exports to zero with `GridConnection` can then make a model infeasible. Set `"curtailable": true` on the `GenericRenewables` unit to let the optimizer spill the excess.
 
 ## Prepare the base flowsheet
 
