@@ -26,8 +26,9 @@ fixed at the constructor value by default (operations mode); a
 * ``power_capacity`` (kW) is the fixable power sizing ``Var``, sized independently
   of ``energy_capacity``. It is fixed at, and bounded above by, the larger of the
   two power limits.
-* ``cyclic=True`` ties ``charge[0]`` to the final charge in place of
-  ``charge_init``, and registers no initial state.
+* ``fix_initial_state=False`` replaces ``charge_init`` in the ``t=0`` balance
+  with a free ``charge_start`` Var and registers no initial state.
+  ``cyclic=True`` independently adds ``charge[N-1] >= `` that starting charge.
 * ``charge_balance`` covers **every** ``t``, including ``t=0`` (referencing
   ``charge_init`` in place of ``charge[t-1]`` at the boundary), rather than
   a separate ``t=1..N-1`` difference equation plus an unrelated
@@ -77,7 +78,7 @@ Usage::
 
 Config: see ``energy_capacity``, ``power_charge_max``/``power_discharge_max``,
 ``eta_charge``/``eta_discharge``, ``soc_min``/``soc_max``, ``initial_soc``, ``soh``,
-``charge_leakage_rate``, ``cyclic`` below, plus the inherited
+``charge_leakage_rate``, ``fix_initial_state``, ``cyclic`` below, plus the inherited
 ``relaxation``/``unit_commitment``/``external_dispatch``/``costing_package``.
 
 **Behind-the-meter assumption (v0).** ``power_electrical[t]`` may go negative
@@ -208,12 +209,21 @@ class BatteryModelData(OpsBlockData):
         ),
     )
     CONFIG.declare(
+        "fix_initial_state",
+        ConfigValue(
+            default=True,
+            domain=bool,
+            description="Start from charge_init and register it as rolling-horizon "
+            "initial state; False starts from a free charge_start Var.",
+        ),
+    )
+    CONFIG.declare(
         "cyclic",
         ConfigValue(
             default=False,
             domain=bool,
-            description="Tie the initial charge to the final charge instead of "
-            "initial_soc.",
+            description="Require the final charge to be at least the starting "
+            "charge.",
         ),
     )
     CONFIG.declare(
@@ -358,9 +368,24 @@ class BatteryModelData(OpsBlockData):
             units=pyunits.kWh,
             doc="Initial stored energy, charge[0] (rolling-horizon initial state).",
         )
-        if not self.config.cyclic:
-            tb.register_initial_state(self.charge_init)
         self.register_process_parameter(self.charge_init, regressable=False)
+        if self.config.fix_initial_state:
+            tb.register_initial_state(self.charge_init)
+            start = self.charge_init
+        else:
+            self.charge_start = pyo.Var(
+                initialize=initial_charge_val,
+                bounds=(0.0, None),
+                units=pyunits.kWh,
+                doc="Free pre-horizon charge, used in place of charge_init.",
+            )
+            start = self.charge_start
+
+        if self.config.cyclic:
+
+            @self.Constraint(doc="Final charge is at least the starting charge.")
+            def cyclic_charge(b):
+                return b.charge[tb.n_points - 1] >= start
 
         self.eta_charge = pyo.Var(
             initialize=self.config.eta_charge,
@@ -406,19 +431,15 @@ class BatteryModelData(OpsBlockData):
             doc="Charge holdup (backward difference): "
             "charge[t] == charge[t-1]*(1 - charge_leakage_rate*dt) + "
             "dt*(eta_charge*power_charge[t] - "
-            "power_discharge[t]/eta_discharge); t=0 references charge_init in "
-            "place of charge[-1], so power_charge[0]/power_discharge[0] are "
+            "power_discharge[t]/eta_discharge); t=0 references charge_init (or "
+            "the free charge_start) in place of charge[-1], so "
+            "power_charge[0]/power_discharge[0] are "
             "energy-conserving too (a separate, unconstrained-at-t=0 initial "
             "condition would let power_charge[0]/power_discharge[0] move for "
             "free, manufacturing energy from nothing).",
         )
         def charge_balance(b, t):
-            if t > 0:
-                previous = b.charge[t - 1]
-            elif self.config.cyclic:
-                previous = b.charge[tb.n_points - 1]
-            else:
-                previous = b.charge_init
+            previous = b.charge[t - 1] if t > 0 else start
             delta_charge = pyunits.convert(
                 tb.dt
                 * (

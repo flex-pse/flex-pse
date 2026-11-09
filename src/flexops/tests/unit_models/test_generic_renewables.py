@@ -71,6 +71,15 @@ class TestGenericRenewablesIndexedCapacityFactor(UnitModelTestHarness):
         return m, m.unit
 
 
+class TestGenericRenewablesCurtailable(UnitModelTestHarness):
+    """curtailable=True frees power_curtailed: one degree of freedom per step."""
+
+    expected_dof = 3
+
+    def configure(self):
+        return _generic_renewables(3, curtailable=True)
+
+
 # -- power relation body -----------------------------------------------------
 
 
@@ -125,11 +134,12 @@ def test_generic_renewables_power_generated_is_non_negative():
 
 
 @pytest.mark.unit
-def test_generic_renewables_sign_constraint_ties_export_to_generation():
-    """power_electrical_sign holds exactly when power == -power_generated."""
-    _, unit = _generic_renewables(3)
+def test_generic_renewables_sign_constraint_ties_export_to_delivered_power():
+    """power_electrical_sign holds exactly when power == -power_delivered."""
+    _, unit = _generic_renewables(3, curtailable=True)
     for t in range(3):
-        unit.power_generated[t].fix(4.0)
+        unit.power_generated[t].fix(9.0)
+        unit.power_delivered[t].fix(4.0)
         unit.power_electrical[t].fix(-4.0)
         assert pyo.value(unit.power_electrical_sign[t].body) == pytest.approx(
             0.0, abs=1e-9
@@ -187,6 +197,7 @@ def test_generic_renewables_swapped_relation_feeds_the_magnitude():
     for t in range(3):
         unit.irradiance[t].fix(0.5)
         unit.power_generated[t].fix(_INTERCEPT + 0.5 * _SLOPE)
+        unit.power_delivered[t].fix(_INTERCEPT + 0.5 * _SLOPE)
         unit.power_electrical[t].fix(-(_INTERCEPT + 0.5 * _SLOPE))
         assert pyo.value(fitted[t].body) == pytest.approx(0.0, abs=1e-9)
         assert pyo.value(unit.power_electrical_sign[t].body) == pytest.approx(
@@ -209,6 +220,133 @@ def test_generic_renewables_registers_no_thermal_power():
     kinds = {rec.kind for rec in unit._io_registry.power}
     assert kinds == {nm.PowerKind.ELECTRICAL}
     assert unit.find_component("power_thermal") is None
+
+
+# -- curtailment --------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_generic_renewables_curtailment_is_off_by_default():
+    """power_curtailed is fixed at 0 unless curtailable=True."""
+    _, unit = _generic_renewables(3)
+    assert unit.config.curtailable is False
+    for t in range(3):
+        assert unit.power_curtailed[t].fixed
+        assert pyo.value(unit.power_curtailed[t]) == pytest.approx(0.0)
+
+
+@pytest.mark.unit
+def test_generic_renewables_curtailable_frees_power_curtailed():
+    """curtailable=True leaves power_curtailed free and non-negative."""
+    _, unit = _generic_renewables(3, curtailable=True)
+    for t in range(3):
+        assert not unit.power_curtailed[t].fixed
+        assert unit.power_curtailed[t].lb == pytest.approx(0.0)
+        assert unit.power_curtailed[t].ub is None
+        assert unit.power_delivered[t].lb == pytest.approx(0.0)
+
+
+@pytest.mark.unit
+def test_generic_renewables_curtailment_balance_body():
+    """curtailment_balance holds when delivered == generated - curtailed."""
+    _, unit = _generic_renewables(3, curtailable=True)
+    for t in range(3):
+        unit.power_generated[t].fix(8.0)
+        unit.power_curtailed[t].fix(3.0)
+        unit.power_delivered[t].fix(5.0)
+        assert pyo.value(unit.curtailment_balance[t].body) == pytest.approx(
+            0.0, abs=1e-9
+        )
+        unit.power_delivered[t].fix(8.0)
+        assert pyo.value(unit.curtailment_balance[t].body) != pytest.approx(
+            0.0, abs=1e-9
+        )
+
+
+@pytest.mark.unit
+def test_generic_renewables_curtailment_balance_is_not_swappable():
+    """curtailment_balance is not registered and survives a relation swap."""
+    m, unit = _generic_renewables(3, curtailable=True)
+    registered = {record.name for record in unit._io_registry.relations}
+    assert "curtailment_balance" not in registered
+    unit.swap_relation("power_electrical_relation", _surrogate_on(m, unit))
+    for t in range(3):
+        assert unit.curtailment_balance[t].active
+        assert unit.power_electrical_sign[t].active
+
+
+@pytest.mark.unit
+def test_generic_renewables_registers_power_curtailed_as_an_io_output():
+    """power_curtailed is reported as an IO output alongside power_generated."""
+    _, unit = _generic_renewables(3)
+    outputs = {
+        record.var.local_name
+        for record in unit._io_registry.io_variables
+        if record.role == "output"
+    }
+    assert {"power_generated", "power_curtailed"} <= outputs
+
+
+def _solar_behind_export_limit(curtailable: bool):
+    """Build a plant whose solar exceeds a 3 kW export cap, with no load."""
+    from flexops import PlantBlock
+    from flexops.unit_models.grid_connection import GridConnection
+
+    m = dummy_time_block(3)
+    m.plant = PlantBlock(time_block=m.time_block)
+    m.plant.solar = GenericRenewables(
+        capacity=10 * pyunits.kW,
+        capacity_factor=[0.2, 0.5, 0.8],
+        curtailable=curtailable,
+    )
+    m.plant.grid = GridConnection(max_export=3 * pyunits.kW)
+    m.plant._build_aggregates()
+    m.obj = pyo.Objective(
+        expr=sum(m.plant.solar.power_curtailed[t] for t in m.time_block.time_index)
+    )
+    return m
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_generic_renewables_curtails_the_excess_over_an_export_limit():
+    """A curtailable unit spills exactly what the export limit can't take."""
+    from flexcore.exceptions import FlexSolverError
+    from flexcore.solvers import get_solver
+
+    m = _solar_behind_export_limit(curtailable=True)
+    try:
+        solver = get_solver(model=m)
+    except FlexSolverError as exc:
+        pytest.skip(f"flexcore.solvers.get_solver not available: {exc}")
+    pyo.assert_optimal_termination(solver.solve(m))
+
+    for t, excess in zip(range(3), (0.0, 2.0, 5.0), strict=True):
+        assert pyo.value(m.plant.solar.power_curtailed[t]) == pytest.approx(
+            excess, abs=1e-6
+        )
+        assert pyo.value(m.plant.solar.power_electrical[t]) == pytest.approx(
+            -min(3.0, [2.0, 5.0, 8.0][t]), abs=1e-6
+        )
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_generic_renewables_without_curtailment_is_infeasible_over_an_export_limit():
+    """The default unit must export everything, so a tight export cap is infeasible."""
+    from flexcore.exceptions import FlexSolverError
+    from flexcore.solvers import get_solver
+
+    m = _solar_behind_export_limit(curtailable=False)
+    try:
+        solver = get_solver(model=m)
+    except FlexSolverError as exc:
+        pytest.skip(f"flexcore.solvers.get_solver not available: {exc}")
+    results = solver.solve(m)
+    assert results.solver.termination_condition in (
+        pyo.TerminationCondition.infeasible,
+        pyo.TerminationCondition.infeasibleOrUnbounded,
+    )
 
 
 # -- capacity (sizing Var) ----------------------------------------------------

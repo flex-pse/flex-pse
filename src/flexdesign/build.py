@@ -84,7 +84,7 @@ def build_horizons(spec: DesignSpec) -> dict[tuple[int, int], pyo.ConcreteModel]
         if states:
             raise FlexConfigError(
                 f"Horizon {key} has fixed initial states "
-                f"{[p.name for p in states]}; use cyclic storage.",
+                f"{[p.name for p in states]}; set fix_initial_state=False on storage.",
                 field="base",
             )
     return models

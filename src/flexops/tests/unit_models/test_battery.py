@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pyomo.environ as pyo
 import pytest
+from pyomo.core.expr.visitor import identify_variables
 from pyomo.environ import units as pyunits
 from pyomo.opt import assert_optimal_termination
 from pyomo.repn import generate_standard_repn
@@ -256,8 +257,8 @@ def test_operations_objective_is_unchanged_by_linear_formulation():
 
 @pytest.mark.component
 @pytest.mark.needs_highs
-def test_cyclic_battery_balances_first_charge_against_last():
-    """With cyclic=True, charge[0] follows from charge[n-1], not charge_init."""
+def test_cyclic_battery_ends_at_least_as_charged_as_it_started():
+    """With cyclic=True, the solved final charge is at least charge_init."""
     from flexcore.solvers import ProblemClass, get_solver
 
     m = _battery_with_costing(
@@ -272,30 +273,42 @@ def test_cyclic_battery_balances_first_charge_against_last():
     assert_optimal_termination(results)
 
     unit = m.battery
-    leakage = pyo.value(unit.charge_leakage_rate) / 24.0
-    expected = (
-        pyo.value(unit.charge[23]) * (1 - leakage)
-        + pyo.value(unit.eta_charge) * pyo.value(unit.power_charge[0])
-        - pyo.value(unit.power_discharge[0]) / pyo.value(unit.eta_discharge)
-    )
-    assert pyo.value(unit.charge[0]) == pytest.approx(expected, abs=1e-5)
+    assert pyo.value(unit.charge[23]) >= pyo.value(unit.charge_init) - 1e-6
 
 
 @pytest.mark.unit
-def test_cyclic_battery_registers_no_initial_state():
-    """A cyclic battery has no fixed start, so it declares no initial state."""
-    m, unit = _battery(4, cyclic=True)
+def test_free_initial_state_uses_charge_start_and_registers_no_initial_state():
+    """fix_initial_state=False balances charge[0] against a free charge_start Var."""
+    m, unit = _battery(4, fix_initial_state=False)
     assert unit.charge_init not in m.time_block.initial_state_params
+    assert not unit.charge_start.fixed
+    body_vars = {id(v) for v in identify_variables(unit.charge_balance[0].body)}
+    assert id(unit.charge_start) in body_vars
+
     m_default, unit_default = _battery(4)
     assert unit_default.charge_init in m_default.time_block.initial_state_params
+    assert not hasattr(unit_default, "charge_start")
 
 
 @pytest.mark.unit
-def test_cyclic_option_survives_emit_and_rebuild():
-    """cyclic=True round-trips through emit_model and build_model."""
-    m = _battery_with_costing(4, cyclic=True)
+def test_cyclic_and_fix_initial_state_are_independent():
+    """cyclic=True alone keeps the fixed start and adds charge[N-1] >= charge_init."""
+    m, unit = _battery(4, cyclic=True)
+    assert unit.charge_init in m.time_block.initial_state_params
+    assert not hasattr(unit, "charge_start")
+    assert hasattr(unit, "cyclic_charge")
+
+    _, unit_default = _battery(4)
+    assert not hasattr(unit_default, "cyclic_charge")
+
+
+@pytest.mark.unit
+def test_storage_options_survive_emit_and_rebuild():
+    """cyclic and fix_initial_state round-trip through emit_model and build_model."""
+    m = _battery_with_costing(4, cyclic=True, fix_initial_state=False)
     rebuilt = build_model(emit_model(m))
     assert rebuilt.battery.config.cyclic is True
+    assert rebuilt.battery.config.fix_initial_state is False
     assert_models_equivalent(m, rebuilt)
 
 

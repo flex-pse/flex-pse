@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **`GenericRenewables` can be curtailed.** `curtailable=True` frees a new `power_curtailed[t]` Var (non-negative, kW). Each period, `curtailment_balance` gives `power_delivered = power_generated - power_curtailed`, and `power_electrical` is now `-power_delivered`. `power_generated` still targets the swappable relation and now means available output. By default `power_curtailed` is fixed at 0, so existing models behave as before. `power_curtailed` is registered as an IO output.
+- **`Tank` takes `fix_initial_state` and `cyclic`.** `fix_initial_state=False` leaves `volume[0]` free and registers no initial state, so a tank can be used in a design study. `cyclic=True` adds `cyclic_volume`, `volume[N-1] >= volume[0]`.
+
+### Changed
+
+- **Breaking: `BatteryModel` start and cyclic conditions are independent options.** `fix_initial_state` (default `True`) starts the `t=0` balance from `charge_init` and registers it as initial state. When it is `False`, the balance starts from a new free `charge_start` Var. `cyclic=True` no longer frees the start or wraps `charge[0]` to the final charge. It now adds `cyclic_charge`, which requires the final charge to be at least the starting charge. A spec that relied on `cyclic: true` for a free start must also set `fix_initial_state: false`.
+
 ## [0.3.0] - 2026-11-06
 
 ### Added
