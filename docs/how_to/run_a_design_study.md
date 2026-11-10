@@ -51,6 +51,14 @@ The model holds one horizon per year and month, so its size is the product of th
 
 To try a study quickly, set `"days": 1` on a month. Only the first days are modeled, and that bill is scaled up to the full month. Every series for that month must then have one value per modeled time step. A prorated month doesn't capture a whole month's peak, so use whole months for final sizes.
 
+## Cap total capital spending
+
+Set `"capex_budget"` on the study to limit the sum of the decisions' overnight capital costs (`capital_cost` times size). The budget is a one-time spend in the model currency and isn't prorated by lifetime. Use it when operating revenue could otherwise make sizes grow to their upper bounds. Without it, only each decision's `upper` bound limits size.
+
+```json
+"capex_budget": 250000.0
+```
+
 ## Vary parameters by month and year
 
 Everything that varies goes through `changes`. An entry names a base element and the values to deep-merge into it, and selects where it applies.

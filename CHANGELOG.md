@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **`GenericRenewables` can be curtailed.** `curtailable=True` frees a new `power_curtailed[t]` Var (non-negative, kW). Each period, `curtailment_balance` gives `power_delivered = power_generated - power_curtailed`, and `power_electrical` is now `-power_delivered`. `power_generated` still targets the swappable relation and now means available output. By default `power_curtailed` is fixed at 0, so existing models behave as before. `power_curtailed` is registered as an IO output.
 - **`Tank` takes `fix_initial_state` and `cyclic`.** `fix_initial_state=False` leaves `volume[0]` free and registers no initial state, so a tank can be used in a design study. `cyclic=True` adds `cyclic_volume`, `volume[N-1] >= volume[0]`.
+- **`DesignSpec.capex_budget` caps total capital spending in a design study (issue #170).** When set, `build_design_model` adds the constraint `capex_limit`, so the sum of the decisions' overnight capital costs stays within the budget. This bounds studies whose operating revenue would otherwise push sizes to their upper bounds. Each decision's `capacity[name].capital_cost` is now a Var tied to its size by `capital_cost_def`, in place of an Expression, so set it alongside `size` when evaluating costs without a solve.
 
 ### Changed
 

@@ -224,8 +224,10 @@ def build_design_model(spec: DesignSpec) -> pyo.ConcreteModel:
         for var in variables.values():
             var.unfix()
         block.link = pyo.Constraint(m.horizon.index_set(), rule=_link_rule(variables))
-        block.capital_cost = pyo.Expression(
-            expr=decision.capital_cost * currency / var_units * block.size
+        block.capital_cost = pyo.Var(bounds=(0, None), units=currency)
+        block.capital_cost_def = pyo.Constraint(
+            expr=block.capital_cost
+            == decision.capital_cost * currency / var_units * block.size
         )
         block.annualized_capital_cost = pyo.Expression(
             expr=capital_recovery_factor(rate, decision.lifetime_years)
@@ -247,6 +249,11 @@ def build_design_model(spec: DesignSpec) -> pyo.ConcreteModel:
     m.annualized_capital_cost = pyo.Expression(
         expr=sum(m.capacity[c.name].annualized_capital_cost for c in spec.capacities)
     )
+    if spec.capex_budget is not None:
+        m.capex_limit = pyo.Constraint(
+            expr=sum(m.capacity[c.name].capital_cost for c in spec.capacities)
+            <= spec.capex_budget * currency
+        )
     m.annualized_cost = pyo.Objective(
         expr=m.annualized_operating_cost + m.annualized_capital_cost
     )
