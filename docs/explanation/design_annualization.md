@@ -52,3 +52,16 @@ Weights apply to whole bills, which is valid because a whole calendar month bill
 `design_results(m).summary()` lists each capacity with its size, overnight cost, lifetime and annualized cost, then operating cost by modeled year, then the annualized totals.
 
 Don't read `total_cost` or `annualized_cost` from a horizon's own costing block. Those carry that block's empty capital placeholder, and the costing element's `lifetime_years` isn't used by a study.
+
+## NPV and IRR
+
+`investment_metrics` reports NPV and IRR for a solved design. It only reads the results and doesn't change the model or what it optimizes. It builds explicit yearly cash flows, using the same timing as the annualization above:
+
+- **Year 0** pays the total overnight capital.
+- **Years 1 to H** earn the savings, baseline operating cost minus the design's, for the modeled year that stands in for that calendar year. Years past the study repeat the last modeled year.
+- **Replacement.** An asset with lifetime {math}`L` is bought again at its overnight cost in year {math}`\lceil nL \rceil` for each {math}`n \ge 1` with {math}`nL < H`.
+- **Salvage.** In year {math}`H`, each asset returns the unused share of its last purchase, straight-line: {math}`c_d \, \mathrm{size}_d \, (\lceil H/L \rceil L - H) / L`.
+
+NPV discounts these flows at the study's effective rate. IRR is the rate that makes NPV zero, computed with `pyxirr`. It is `None` when the cash flows have no sign change. Replacement outflows can give more than one IRR, and only one is reported.
+
+Unlike the annuity treatment, these flows have explicit replacement and salvage events, so NPV divided by the annuity factor won't exactly match the annualized cost difference.

@@ -59,6 +59,20 @@ Set `"capex_budget"` on the study to limit the sum of the decisions' overnight c
 "capex_budget": 250000.0
 ```
 
+## Report NPV and IRR
+
+`investment_metrics` compares the design against a baseline annual operating cost, keyed by the same modeled years. To get one, copy the study, set every capacity's `upper` to `0`, solve it, and read its operating costs. A dict from another source, such as utility bills, also works.
+
+```python
+from flexdesign import investment_metrics
+
+baseline = design_results(baseline_m).annual_operating_cost_by_year
+metrics = investment_metrics(design_results(m), baseline, horizon_years=20)
+print(metrics.summary())
+```
+
+`horizon_years` defaults to the study length. Years past the study repeat the last modeled year. Assets that wear out inside the horizon are bought again, and any life remaining at the end is credited at straight-line value. See {doc}`../explanation/design_annualization`.
+
 ## Vary parameters by month and year
 
 Everything that varies goes through `changes`. An entry names a base element and the values to deep-merge into it, and selects where it applies.
