@@ -8,6 +8,7 @@ from flexdesign.build import (
     expand_horizons,
     present_worth_factors,
 )
+from flexdesign.investment import InvestmentMetrics, investment_metrics
 from flexdesign.results import CapacityResult, DesignResults, design_results
 
 __version__ = _dist_version("flex-pse")
@@ -15,9 +16,11 @@ __version__ = _dist_version("flex-pse")
 __all__ = [
     "CapacityResult",
     "DesignResults",
+    "InvestmentMetrics",
     "build_design_model",
     "build_horizons",
     "design_results",
     "expand_horizons",
+    "investment_metrics",
     "present_worth_factors",
 ]
