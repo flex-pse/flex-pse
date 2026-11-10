@@ -66,6 +66,7 @@ class TankData(SISOBlockData):
         Inherits the SISO/OpsBlock config; adds ``min_volume`` (default
         0 m^3), ``max_volume`` (default 1000 m^3), ``initial_volume``
         (default 500 m^3, half of the default ``max_volume``),
+        ``fix_initial_state`` (default True), ``cyclic`` (default False),
         ``level_min`` (default 0.0), and ``level_max`` (default 1.0).
         Both volumes have defaults only so an unsized ``Tank(...)`` builds;
         a real tank is always given its own.
@@ -111,6 +112,24 @@ class TankData(SISOBlockData):
             "and a rolling-horizon initial-state hook. Defaults to half of "
             "the default max_volume, so a tank built with no sizing at all "
             "starts half full; give it explicitly whenever max_volume is.",
+        ),
+    )
+    CONFIG.declare(
+        "fix_initial_state",
+        ConfigValue(
+            default=True,
+            domain=bool,
+            description="Pin volume[0] to initial_volume and register it as "
+            "rolling-horizon initial state; False leaves volume[0] free.",
+        ),
+    )
+    CONFIG.declare(
+        "cyclic",
+        ConfigValue(
+            default=False,
+            domain=bool,
+            description="Require the final volume to be at least the starting "
+            "volume, volume[0].",
         ),
     )
     CONFIG.declare(
@@ -216,12 +235,20 @@ class TankData(SISOBlockData):
             units=pyunits.m**3,
             doc="Initial tank volume, volume[0] (rolling-horizon initial state).",
         )
-        tb.register_initial_state(self.initial_volume)
         self.register_process_parameter(self.initial_volume, regressable=False)
 
-        @self.Constraint(doc="Initial condition: volume[0] equals initial_volume.")
-        def initial_volume_eq(b):
-            return b.volume[0] == b.initial_volume
+        if self.config.fix_initial_state:
+            tb.register_initial_state(self.initial_volume)
+
+            @self.Constraint(doc="Initial condition: volume[0] equals initial_volume.")
+            def initial_volume_eq(b):
+                return b.volume[0] == b.initial_volume
+
+        if self.config.cyclic:
+
+            @self.Constraint(doc="Final volume is at least the starting volume.")
+            def cyclic_volume(b):
+                return b.volume[tb.n_points - 1] >= b.volume[0]
 
         @self.Constraint(
             list(tb.time_index)[1:],

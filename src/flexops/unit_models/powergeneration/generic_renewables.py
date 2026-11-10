@@ -11,7 +11,14 @@ fixable nameplate ``capacity``:
 
     P_{gen}[t] = \text{capacity\_factor}[t] \cdot \text{capacity}
 
-    P_{elec}[t] = -P_{gen}[t]
+    P_{del}[t] = P_{gen}[t] - P_{curt}[t]
+
+    P_{elec}[t] = -P_{del}[t]
+
+``power_generated`` is the available output before curtailment;
+``power_curtailed`` is fixed at 0 unless ``curtailable=True``. A surrogate for
+the relation should be fitted on availability data, not metered generation
+that was already curtailed.
 
 Like a discharging :class:`BatteryModel` or an exporting :class:`Combustor`,
 the draw is **negative** (export): ``power_electrical[t]`` is upper-bounded at
@@ -21,8 +28,9 @@ per-unit sign flipping.
 The sign is a **separate constraint** from the relation, exactly as
 :class:`~flexops.unit_models.powergeneration.combustor.Combustor` splits them.
 ``power_generated[t]`` holds the non-negative generation magnitude and is the
-registered relation's target; ``power_electrical_sign[t]`` negates it into the
-draw and is deliberately never registered, so no surrogate swap can replace it
+registered relation's target; ``curtailment_balance[t]`` and
+``power_electrical_sign[t]`` turn it into the draw and are deliberately never
+registered, so no surrogate swap can replace them
 (see :meth:`~flexops.core.ops_block.OpsBlockData.register_relation`). Nothing
 can prove an arbitrary swapped-in surrogate body is non-positive over the
 feasible region, so the export convention rests on the target's own lower
@@ -230,6 +238,8 @@ class GenericRenewablesData(OpsBlockData):
         horizon, every value in ``[0, 1]`` (see module docstring).
         ``technology`` (default ``None``): ``"solar"`` or ``"wind"`` -- a
         placeholder, not yet consumed by ``build()`` (see module docstring).
+        ``curtailable`` (default ``False``): leave ``power_curtailed`` free
+        rather than fixed at 0.
 
     Example:
         >>> from pyomo.environ import units as pyunits
@@ -269,6 +279,15 @@ class GenericRenewablesData(OpsBlockData):
             "'solar' or 'wind' (or None). A placeholder: not yet consumed by "
             "this unit's build logic; reserved for a future costing-function "
             "selection (technology-specific capex/opex parameters).",
+        ),
+    )
+    CONFIG.declare(
+        "curtailable",
+        ConfigValue(
+            default=False,
+            domain=bool,
+            description="Whether output may be curtailed. If False, "
+            "power_curtailed is fixed at 0 and every available kWh is exported.",
         ),
     )
 
@@ -320,20 +339,47 @@ class GenericRenewablesData(OpsBlockData):
             bounds=(0.0, None),
             initialize=0.0,
             units=pyunits.kW,
-            doc="Gross electrical generation magnitude (kW, non-negative). The "
+            doc="Available generation before curtailment (kW, non-negative). The "
             "relation's target: its lower bound is what keeps a swapped-in "
             "surrogate from predicting a negative export.",
         )
         self.register_io_variable(self.power_generated, role="output")
 
+        self.power_curtailed = pyo.Var(
+            tb.time_index,
+            bounds=(0.0, None),
+            initialize=0.0,
+            units=pyunits.kW,
+            doc="Available generation spilled rather than exported (kW).",
+        )
+        if not self.config.curtailable:
+            self.power_curtailed.fix(0.0)
+        self.register_io_variable(self.power_curtailed, role="output")
+
+        self.power_delivered = pyo.Var(
+            tb.time_index,
+            bounds=(0.0, None),
+            initialize=0.0,
+            units=pyunits.kW,
+            doc="Generation actually exported after curtailment (kW).",
+        )
+
+        @self.Constraint(
+            tb.time_index,
+            doc="power_delivered == power_generated - power_curtailed. "
+            "Deliberately not registered, so no surrogate swap can replace it.",
+        )
+        def curtailment_balance(b, t):
+            return b.power_delivered[t] == b.power_generated[t] - b.power_curtailed[t]
+
         @self.Constraint(
             tb.time_index,
             doc="Sign convention: an export is a negative draw, "
-            "power_electrical == -power_generated. Deliberately not registered, "
+            "power_electrical == -power_delivered. Deliberately not registered, "
             "so no surrogate swap can replace it.",
         )
         def power_electrical_sign(b, t):
-            return power[t] == -b.power_generated[t]
+            return power[t] == -b.power_delivered[t]
 
         capacity_factor = self._capacity_factor
         capacity = self.capacity

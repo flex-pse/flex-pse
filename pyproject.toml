@@ -27,6 +27,7 @@ dependencies = [
     "pandas>=3",
     "pydantic>=2",
     "python-dateutil",
+    "numpy-financial",
 ]
 # Dependency policy (decision R12, plan/01_architecture.md §2.1): idaes-pse,
 # pyomo, and eeco are pinned to exact tested versions on purpose, with no

@@ -91,6 +91,12 @@ class DesignSpec(_StrictModel):
     capacities: list[CapacitySpec] = Field(
         min_length=1, description="Decisions to size."
     )
+    capex_budget: float | None = Field(
+        default=None,
+        ge=0,
+        allow_inf_nan=False,
+        description="Optional cap on total capital cost, in the model " "currency.",
+    )
 
     @model_validator(mode="after")
     def _study_is_consistent(self) -> "DesignSpec":

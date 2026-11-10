@@ -51,6 +51,28 @@ The model holds one horizon per year and month, so its size is the product of th
 
 To try a study quickly, set `"days": 1` on a month. Only the first days are modeled, and that bill is scaled up to the full month. Every series for that month must then have one value per modeled time step. A prorated month doesn't capture a whole month's peak, so use whole months for final sizes.
 
+## Cap total capital spending
+
+Set `"capex_budget"` on the study to limit the sum of the decisions' overnight capital costs (`capital_cost` times size). The budget is a one-time spend in the model currency and isn't prorated by lifetime. Use it when operating revenue could otherwise make sizes grow to their upper bounds. Without it, only each decision's `upper` bound limits size.
+
+```json
+"capex_budget": 250000.0
+```
+
+## Report NPV and IRR
+
+`investment_metrics` compares the design against a baseline annual operating cost, keyed by the same modeled years. To get one, copy the study, set every capacity's `upper` to `0`, solve it, and read its operating costs. A dict from another source, such as utility bills, also works.
+
+```python
+from flexdesign import investment_metrics
+
+baseline = design_results(baseline_m).annual_operating_cost_by_year
+metrics = investment_metrics(design_results(m), baseline, horizon_years=20)
+print(metrics.summary())
+```
+
+`horizon_years` defaults to the study length. Years past the study repeat the last modeled year. Assets that wear out inside the horizon are bought again, and any life remaining at the end is credited at straight-line value. See {doc}`../explanation/design_annualization`.
+
 ## Vary parameters by month and year
 
 Everything that varies goes through `changes`. An entry names a base element and the values to deep-merge into it, and selects where it applies.
@@ -75,11 +97,11 @@ A forecast is a capacity factor series: output per kW of nameplate, from 0 to 1,
 Forecast files are matched by position, starting at the first time step of the month, and only their length is checked. January and July both have 744 hours, so swapping those files builds and solves with wrong results.
 ```
 
-Solar output has no curtailment, so all generation has to go somewhere. Limiting exports to zero with `GridConnection` can make a model infeasible.
+By default solar output cannot be curtailed, so all generation has to go somewhere. Limiting exports to zero with `GridConnection` can then make a model infeasible. Set `"curtailable": true` on the `GenericRenewables` unit to let the optimizer spill the excess.
 
 ## Prepare the base flowsheet
 
-- **Use cyclic storage.** Set `"cyclic": true` on each battery. A study rejects any fixed initial state, because each month could otherwise drain free stored energy. This currently rules out units without a cyclic option, such as `Tank`.
+- **Free the starting state of storage.** Set `"fix_initial_state": false` on each battery and tank, since a study rejects any fixed initial state. Also set `"cyclic": true`, which requires each month to end at least as full as it started, so no month can drain free stored energy.
 - **Set constructor limits at or above sizing bounds.** A decision's `upper` can't exceed its Var's own bound, and `battery.power_capacity` is bounded by the larger of `power_charge_max` and `power_discharge_max`.
 - **Give every decision an `upper`.** With net metering, an unbounded capacity can make the problem unbounded. If a report flags a size as at its upper bound, the bound is probably driving the answer.
 - **Set an export price if exports aren't credited at the import price.** Otherwise surplus solar earns the full import price.

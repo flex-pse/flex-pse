@@ -47,3 +47,15 @@ Results
    design_results
    DesignResults
    CapacityResult
+
+Investment metrics
+------------------
+
+.. currentmodule:: flexdesign.investment
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   investment_metrics
+   InvestmentMetrics

@@ -5,6 +5,8 @@ import pytest
 from pyomo.environ import units as pyunits
 
 from flexcore.config.schema import UnitCommitmentConfig
+from flexops import build_model, emit_model
+from flexops.core.compare import assert_models_equivalent
 from flexops.testing import UnitModelTestHarness, dummy_time_block
 from flexops.unit_models import Pump, Tank
 
@@ -105,3 +107,40 @@ def test_pump_does_not_disable_logic():
         unit_commitment=UnitCommitmentConfig(status=True),
     )
     assert m.unit.config.unit_commitment.status is True
+
+
+@pytest.mark.unit
+def test_fix_initial_state_pins_volume_and_registers_initial_state():
+    """volume[0] is pinned to initial_volume unless fix_initial_state=False."""
+    m, unit = _tank(4)
+    assert unit.initial_volume in m.time_block.initial_state_params
+    assert hasattr(unit, "initial_volume_eq")
+
+    m_free, unit_free = _tank(4, fix_initial_state=False)
+    assert unit_free.initial_volume not in m_free.time_block.initial_state_params
+    assert not hasattr(unit_free, "initial_volume_eq")
+
+
+@pytest.mark.unit
+def test_cyclic_tank_requires_final_volume_at_least_start():
+    """cyclic=True adds volume[N-1] >= volume[0]; the default builds no such row."""
+    _, unit_default = _tank(4)
+    assert not hasattr(unit_default, "cyclic_volume")
+
+    m, unit = _tank(4, cyclic=True)
+    assert unit.initial_volume in m.time_block.initial_state_params
+    unit.volume[0].set_value(300.0)
+    unit.volume[3].set_value(250.0)
+    assert pyo.value(unit.cyclic_volume.body) > pyo.value(unit.cyclic_volume.upper)
+    unit.volume[3].set_value(300.0)
+    assert pyo.value(unit.cyclic_volume.body) <= pyo.value(unit.cyclic_volume.upper)
+
+
+@pytest.mark.unit
+def test_tank_storage_options_survive_emit_and_rebuild():
+    """cyclic and fix_initial_state round-trip through emit_model and build_model."""
+    m, _ = _tank(4, cyclic=True, fix_initial_state=False)
+    rebuilt = build_model(emit_model(m))
+    assert rebuilt.unit.config.cyclic is True
+    assert rebuilt.unit.config.fix_initial_state is False
+    assert_models_equivalent(m, rebuilt)

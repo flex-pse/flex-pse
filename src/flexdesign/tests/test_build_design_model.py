@@ -121,13 +121,13 @@ def test_upper_above_the_vars_own_bound_raises():
 
 
 @pytest.mark.unit
-def test_non_cyclic_storage_raises():
+def test_fixed_initial_state_raises():
     """A fixed initial state would let each month drain free energy."""
     document = pump_battery_solar_study().model_dump(by_alias=True)
     battery = next(
         el for el in document["base"]["elements"] if el.get("name") == "battery"
     )
-    battery["construction_options"]["cyclic"] = False
+    battery["construction_options"]["fix_initial_state"] = True
     spec = pump_battery_solar_study(base=document["base"])
     with pytest.raises(FlexConfigError, match="initial states"):
         build_design_model(spec)
@@ -170,3 +170,25 @@ def test_tariff_study_assembles_with_linked_capacities():
     m = build_design_model(pump_battery_solar_study(costing=costing))
     assert len(m.capacity["solar"].link) == 4
     assert_units_consistent(m)
+
+
+@pytest.mark.unit
+def test_capital_cost_is_a_var_tied_to_its_size(model):
+    """Each decision's overnight capital cost is a Var fixed by its own row."""
+    block = model.capacity["solar"]
+    assert block.capital_cost.ctype is pyo.Var
+    block.size.set_value(10.0)
+    block.capital_cost.set_value(12000.0)
+    assert pyo.value(block.capital_cost_def.body) == pytest.approx(0.0)
+
+
+@pytest.mark.unit
+def test_capex_limit_exists_only_when_a_budget_is_set(model):
+    """No budget adds no row; a budget caps the sum of overnight capital costs."""
+    assert model.component("capex_limit") is None
+    budgeted = build_design_model(pump_battery_solar_study(capex_budget=5000.0))
+    for block in budgeted.capacity.values():
+        block.capital_cost.set_value(1000.0)
+    assert pyo.value(budgeted.capex_limit.upper) == pytest.approx(5000.0)
+    assert pyo.value(budgeted.capex_limit.body) == pytest.approx(3000.0)
+    assert_units_consistent(budgeted)
