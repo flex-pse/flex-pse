@@ -62,6 +62,6 @@ Don't read `total_cost` or `annualized_cost` from a horizon's own costing block.
 - **Replacement.** An asset with lifetime {math}`L` is bought again at its overnight cost in year {math}`\lceil nL \rceil` for each {math}`n \ge 1` with {math}`nL < H`.
 - **Salvage.** In year {math}`H`, each asset returns the unused share of its last purchase, straight-line: {math}`c_d \, \mathrm{size}_d \, (\lceil H/L \rceil L - H) / L`.
 
-NPV discounts these flows at the study's effective rate. IRR is the rate that makes NPV zero, computed with `pyxirr`. It is `None` when the cash flows have no sign change. Replacement outflows can give more than one IRR, and only one is reported.
+NPV discounts these flows at the study's effective rate. IRR is the rate that makes NPV zero, computed with `numpy-financial`. It is `None` when the cash flows have no sign change. Replacement outflows can give more than one IRR, and only one is reported.
 
 Unlike the annuity treatment, these flows have explicit replacement and salvage events, so NPV divided by the annuity factor won't exactly match the annualized cost difference.

@@ -3,7 +3,7 @@
 import math
 from dataclasses import dataclass
 
-import pyxirr
+import numpy_financial as npf
 
 from flexdesign.results import DesignResults
 
@@ -84,16 +84,13 @@ def investment_metrics(
         remaining = installs * life - horizon
         cash_flows[horizon] += capacity.capital_cost * remaining / life
 
-    try:
-        irr = pyxirr.irr(cash_flows)
-    except pyxirr.InvalidPaymentsError:
-        irr = None
+    irr = float(npf.irr(cash_flows))
 
     return InvestmentMetrics(
         horizon_years=horizon,
         rate=results.effective_rate,
         currency=results.currency,
         cash_flows=cash_flows,
-        npv=pyxirr.npv(results.effective_rate, cash_flows),
-        irr=irr,
+        npv=float(npf.npv(results.effective_rate, cash_flows)),
+        irr=None if math.isnan(irr) else irr,
     )
