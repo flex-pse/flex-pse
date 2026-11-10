@@ -12,8 +12,11 @@ import pandas as pd
 
 from flexcore.config.schema import SurrogateSpec, SurrogateType
 from flexcore.exceptions import FlexConfigError, FlexDataError
-from flexparameterize.regression.base import FitResult
-from flexparameterize.regression.constant import _single_column
+from flexparameterize.regression.base import (
+    FitResult,
+    require_frame,
+    single_column,
+)
 
 
 class LinearRegressor:
@@ -58,7 +61,7 @@ class LinearRegressor:
 
         Args:
             X: One or more input columns.
-            y: One output column (a one-column ``DataFrame`` or a ``Series``).
+            y: A one-column ``DataFrame`` holding the output.
             input_units: Units of every fitted input column, keyed by its
                 column name (every column in ``X`` must have an entry).
                 Recorded for :meth:`to_surrogate_spec`.
@@ -72,7 +75,9 @@ class LinearRegressor:
             FlexConfigError: If scikit-learn is not installed, or if
                 ``input_units`` is missing an entry for one of ``X``'s
                 columns.
-            FlexDataError: If fewer rows survive dropping nulls than
+            FlexDataError: If ``X`` or ``y`` is not a ``DataFrame``, if
+                ``y`` does not hold exactly one column, or if fewer rows
+                survive dropping nulls than
                 ``X.shape[1] + 1`` (the minimum an OLS fit with an intercept
                 needs to be determined).
         """
@@ -84,6 +89,7 @@ class LinearRegressor:
                 "`pip install 'flex-pse[parameterize]'`."
             ) from exc
 
+        require_frame(X, regressor=type(self).__name__, role="X")
         missing = [name for name in X.columns if name not in input_units]
         if missing:
             raise FlexConfigError(
@@ -93,7 +99,9 @@ class LinearRegressor:
                 value=missing,
             )
 
-        output = _single_column(y, "y")
+        output = single_column(
+            y, regressor=type(self).__name__, role="y", what="output"
+        )
         paired = pd.concat([X, output.rename("__y__")], axis=1).dropna()
         minimum = X.shape[1] + 1
         if len(paired) < minimum:
