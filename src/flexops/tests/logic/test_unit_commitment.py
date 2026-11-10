@@ -7,7 +7,7 @@ import pytest
 
 from flexcore.exceptions import FlexConfigError
 from flexops.logic import add_startup_shutdown, add_status
-from flexops.logic.status import RollingStateKind
+from flexops.logic.status import RollingStateKind, relax, unrelax
 from flexops.testing import dummy_time_block
 from flexops.unit_models import Pump
 
@@ -77,15 +77,65 @@ def _min_downtime_feasible(schedule: tuple, k: int) -> bool:
 
 
 @pytest.mark.unit
-def test_add_startup_shutdown_returns_time_indexed_binaries():
-    """add_startup_shutdown attaches startup[t]/shutdown[t] over t >= 1."""
+def test_add_startup_shutdown_returns_time_indexed_unit_interval_vars():
+    """startup[t]/shutdown[t] over t >= 1 are continuous on [0, 1], not Binary."""
     m, unit, status, startup, shutdown = _unit_with_transitions()
     expected = set(m.time_block.time_index) - {0}
     assert set(startup.index_set()) == expected
     assert set(shutdown.index_set()) == expected
     for t in expected:
-        assert startup[t].domain is pyo.Binary
-        assert shutdown[t].domain is pyo.Binary
+        assert startup[t].domain is pyo.UnitInterval
+        assert shutdown[t].domain is pyo.UnitInterval
+
+
+@pytest.mark.unit
+def test_relax_unrelax_leave_startup_shutdown_continuous():
+    """Only status is a tracked binary: unrelax must not make startup Binary."""
+    m, unit, status, startup, shutdown = _unit_with_transitions(min_uptime=2)
+    relax(unit)
+    unrelax(unit)
+    for t in startup:
+        assert status[t].domain is pyo.Binary
+        assert startup[t].domain is pyo.UnitInterval
+        assert shutdown[t].domain is pyo.UnitInterval
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+@pytest.mark.parametrize("kwargs", [{}, {"min_uptime": 3, "min_downtime": 2}])
+def test_integral_status_forces_integral_startup_shutdown(kwargs):
+    """Every feasible status schedule pins startup/shutdown to the 0/1 edges.
+
+    With status fixed, transition gives startup - shutdown == delta and
+    startup >= 0 gives shutdown >= max(0, -delta) at every t, so if the LP
+    maximum of sum(startup + shutdown) equals the edge count, every
+    shutdown[t] (hence startup[t]) is at its integral reference value.
+    """
+    from flexcore.solvers import get_solver
+
+    m, unit, status, startup, shutdown = _unit_with_transitions(**kwargs)
+    m.obj = pyo.Objective(
+        expr=sum(startup[t] + shutdown[t] for t in startup), sense=pyo.maximize
+    )
+    up, down = kwargs.get("min_uptime", 1), kwargs.get("min_downtime", 1)
+    checked = 0
+    for schedule in itertools.product((0, 1), repeat=_N):
+        if not (
+            _min_uptime_feasible(schedule, up)
+            and _min_downtime_feasible(schedule, down)
+        ):
+            continue
+        for t, value in enumerate(schedule):
+            status[t].fix(value)
+        results = get_solver(model=m, prefer="highs").solve(m)
+        assert results.solver.termination_condition == pyo.TerminationCondition.optimal
+        edges = sum(a != b for a, b in itertools.pairwise(schedule))
+        assert pyo.value(m.obj) == pytest.approx(edges), schedule
+        for t in startup:
+            ref_up = int(schedule[t - 1] == 0 and schedule[t] == 1)
+            assert startup[t].value == pytest.approx(ref_up), (schedule, t)
+        checked += 1
+    assert checked > 0
 
 
 @pytest.mark.unit

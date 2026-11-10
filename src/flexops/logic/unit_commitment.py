@@ -19,11 +19,7 @@ import pyomo.environ as pyo
 
 from flexcore.exceptions import FlexConfigError
 from flexops.logic._records import record
-from flexops.logic.status import (
-    RollingStateKind,
-    _register_rolling_state,
-    _track_binary,
-)
+from flexops.logic.status import RollingStateKind, _register_rolling_state
 
 
 def add_startup_shutdown(
@@ -57,6 +53,14 @@ def add_startup_shutdown(
     ``t = 0`` is left unconstrained in v0: there is no initial-status Param to
     reference a transition *into* the horizon's first point.
 
+    ``startup``/``shutdown`` are continuous on ``[0, 1]``, not Binary: once
+    ``status_var`` is integral, ``transition[t]`` together with the
+    ``min_uptime[t]``/``min_downtime[t]`` rows (whose windows always contain
+    ``t``) admit exactly one solution, ``startup[t] = max(0, delta)`` and
+    ``shutdown[t] = max(0, -delta)`` for ``delta = status_var[t] -
+    status_var[t-1]``. Declaring them Binary would only add branching
+    candidates. They are therefore not tracked for ``relax``/``unrelax``.
+
     Args:
         unit: The unit block to attach the transition structure to.
         status_var: The unit's time-indexed on/off ``status`` Binary (from
@@ -68,8 +72,8 @@ def add_startup_shutdown(
             shutdown. Must be ``>= 1``, with the same "no-op at 1" meaning.
 
     Returns:
-        The attached ``(startup, shutdown)`` Binary Vars, each indexed over
-        ``t >= 1``.
+        The attached ``(startup, shutdown)`` Vars (continuous on ``[0, 1]``,
+        integral whenever ``status_var`` is), each indexed over ``t >= 1``.
 
     Raises:
         FlexConfigError: If ``min_uptime`` or ``min_downtime`` is ``< 1``.
@@ -92,10 +96,14 @@ def add_startup_shutdown(
     active_index = [t for t in tb.time_index if t >= 1]
 
     unit.startup = pyo.Var(
-        active_index, domain=pyo.Binary, doc="Startup indicator: 1 at a 0->1 edge."
+        active_index,
+        domain=pyo.UnitInterval,
+        doc="Startup indicator: 1 at a 0->1 edge (integral when status is).",
     )
     unit.shutdown = pyo.Var(
-        active_index, domain=pyo.Binary, doc="Shutdown indicator: 1 at a 1->0 edge."
+        active_index,
+        domain=pyo.UnitInterval,
+        doc="Shutdown indicator: 1 at a 1->0 edge (integral when status is).",
     )
     startup, shutdown = unit.startup, unit.shutdown
 
@@ -131,9 +139,6 @@ def add_startup_shutdown(
     def min_downtime(_b, t):
         window = range(max(1, t - downtime_window_size + 1), t + 1)
         return sum(shutdown[i] for i in window) <= 1 - status_var[t]
-
-    _track_binary(unit, startup)
-    _track_binary(unit, shutdown)
 
     if uptime_window_size > 1:
         _register_rolling_state(

@@ -14,6 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **`add_startup_shutdown`'s `startup`/`shutdown` are continuous on `[0, 1]`, no longer Binary.** With `status` binary, `transition` plus the `min_uptime`/`min_downtime` rows already force them to 0/1, so each unit now carries T binaries instead of 3T. They are no longer tracked by `relax`/`unrelax`; constraints and solutions are unchanged.
 - **Breaking: `BatteryModel` start and cyclic conditions are independent options.** `fix_initial_state` (default `True`) starts the `t=0` balance from `charge_init` and registers it as initial state. When it is `False`, the balance starts from a new free `charge_start` Var. `cyclic=True` no longer frees the start or wraps `charge[0]` to the final charge. It now adds `cyclic_charge`, which requires the final charge to be at least the starting charge. A spec that relied on `cyclic: true` for a free start must also set `fix_initial_state: false`.
 
 ## [0.3.0] - 2026-11-06
