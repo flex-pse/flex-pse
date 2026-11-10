@@ -102,6 +102,15 @@ def test_invalid_study_is_rejected(overrides, message):
 
 
 @pytest.mark.unit
+def test_capex_budget_is_optional_and_non_negative():
+    """The budget defaults to None, accepts zero or more, and rejects less."""
+    assert DesignSpec.model_validate(_study()).capex_budget is None
+    assert DesignSpec.model_validate(_study(capex_budget=0.0)).capex_budget == 0.0
+    with pytest.raises(ValidationError, match="capex_budget"):
+        DesignSpec.model_validate(_study(capex_budget=-1.0))
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize("field", ["upper", "lifetime_years"])
 def test_capacity_requires_upper_and_lifetime(field):
     """A decision without an upper bound or lifetime is rejected."""

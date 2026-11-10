@@ -11,12 +11,19 @@ BILLS = {(2026, 1): 10.0, (2026, 7): 20.0, (2031, 1): 30.0, (2031, 7): 40.0}
 SIZES = {"battery_energy": 100.0, "battery_power": 25.0, "solar": 50.0}
 
 
+def _set_size(m, name, size) -> None:
+    """Set a decision's size and its tied overnight capital cost."""
+    decision = next(c for c in m._design_spec.capacities if c.name == name)
+    m.capacity[name].size.set_value(size)
+    m.capacity[name].capital_cost.set_value(decision.capital_cost * size)
+
+
 def _set_values(m, bills, sizes) -> None:
     """Set each horizon's bill and each decision's size."""
     for key, bill in bills.items():
         m.horizon[key].costing.aggregate_operating_cost.set_value(bill)
     for name, size in sizes.items():
-        m.capacity[name].size.set_value(size)
+        _set_size(m, name, size)
 
 
 @pytest.fixture
@@ -117,14 +124,14 @@ def test_doubling_lifetime_halves_annualized_capital_at_zero_rate():
     """At a zero rate, annualized capital is overnight cost over lifetime."""
     for lifetime_years, expected in ((10, 100.0), (20, 50.0)):
         m = _solar_model(lifetime_years=lifetime_years)
-        m.capacity["solar"].size.set_value(10.0)
+        _set_size(m, "solar", 10.0)
         assert pyo.value(m.annualized_capital_cost) == pytest.approx(expected)
 
 
 @pytest.mark.unit
 def test_results_report_sizes_costs_and_binding_bounds(valued):
     """Results read the model's values, and flag a size at its upper bound."""
-    valued.capacity["solar"].size.set_value(1500.0)
+    _set_size(valued, "solar", 1500.0)
     results = design_results(valued)
     assert results.study_years == 10
     assert results.effective_rate == pytest.approx(0.07)
