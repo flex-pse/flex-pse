@@ -31,10 +31,11 @@ class TankData(SISOBlockData):
             + \Delta t \cdot (\dot{V}_{in}[t] - \dot{V}_{out}[t]),
         \quad t = 0, \dots, N-1
 
-    where ``volume[-1]`` is the level at the start of the horizon, before
-    step 0's flows: ``initial_volume`` when ``fix_initial_state=True`` (the
-    registered rolling-horizon initial state), or the free ``volume_start``
-    Var when it is ``False``. ``holdup`` covers **every** ``t``, including
+    where ``volume[-1]`` is ``initial_volume``, the level at the start of the
+    horizon, before step 0's flows. ``initial_volume`` is a scalar ``Var``,
+    not a ``Param``, so it can be swept or solved for in place: fixed and
+    registered as rolling-horizon initial state when ``fix_initial_state=True``,
+    left free when it is ``False``. ``holdup`` covers **every** ``t``, including
     ``t = 0``, as :class:`~flexops.unit_models.storage.battery.BatteryModel`'s
     ``charge_balance`` does. Pinning ``volume[0]`` instead and writing the
     balance only for ``t = 1, ..., N-1`` would leave ``flow_in[0]`` and
@@ -120,8 +121,9 @@ class TankData(SISOBlockData):
         ConfigValue(
             default=500 * pyunits.m**3,
             description="Tank volume at the start of the horizon, before "
-            "step 0's flows (volume[0] is the level after step 0): a mutable "
-            "Param and a rolling-horizon initial-state hook. Defaults to half of "
+            "step 0's flows (volume[0] is the level after step 0): the value "
+            "of the initial_volume Var, fixed by default and a rolling-horizon "
+            "initial-state hook. Defaults to half of "
             "the default max_volume, so a tank built with no sizing at all "
             "starts half full; give it explicitly whenever max_volume is.",
         ),
@@ -131,9 +133,9 @@ class TankData(SISOBlockData):
         ConfigValue(
             default=True,
             domain=bool,
-            description="Start the horizon at initial_volume and register it "
-            "as rolling-horizon initial state; False starts it at a free "
-            "volume_start Var instead.",
+            description="Fix the initial_volume Var and register it as "
+            "rolling-horizon initial state; False leaves it free, so the "
+            "solve chooses the starting volume.",
         ),
     )
     CONFIG.declare(
@@ -142,8 +144,7 @@ class TankData(SISOBlockData):
             default=False,
             domain=bool,
             description="Require the final volume to be at least the starting "
-            "volume (initial_volume, or volume_start when fix_initial_state "
-            "is False).",
+            "volume, initial_volume.",
         ),
     )
     CONFIG.declare(
@@ -189,20 +190,20 @@ class TankData(SISOBlockData):
         def capacity_limit(b, t):
             return b.volume[t] <= b.capacity
 
-        if not self.config.fix_initial_state:
-            # A free start must obey the same fill window as volume[t], or
-            # (without cyclic) a start above the chosen capacity would be
-            # free water.
-            @self.Constraint(
-                doc="Free starting volume lies in the fill window: "
-                "level_min * capacity <= volume_start <= level_max * capacity."
+        # The start obeys the same fill window as volume[t]. Built whether or
+        # not initial_volume is fixed: once it is unfixed (fix_initial_state=
+        # False, a sweep, a scenario solving for it), a start above the chosen
+        # capacity would otherwise be free water when cyclic is off.
+        @self.Constraint(
+            doc="Starting volume lies in the fill window: "
+            "level_min * capacity <= initial_volume <= level_max * capacity."
+        )
+        def initial_volume_limit(b):
+            return pyo.inequality(
+                self.config.level_min * b.capacity,
+                b.initial_volume,
+                self.config.level_max * b.capacity,
             )
-            def volume_start_limit(b):
-                return pyo.inequality(
-                    self.config.level_min * b.capacity,
-                    b.volume_start,
-                    self.config.level_max * b.capacity,
-                )
 
         self.level = pyo.Var(
             tb.time_index,
@@ -258,26 +259,22 @@ class TankData(SISOBlockData):
         self.flow_in = pyo.Reference(self.inlet_state.flow_vol_phase[:, "Liq"])
         self.flow_out = pyo.Reference(self.outlet_state.flow_vol_phase[:, "Liq"])
 
-        self.initial_volume = pyo.Param(
-            initialize=initial_volume,
-            mutable=True,
-            units=pyunits.m**3,
-            doc="Tank volume at the start of the horizon, before step 0's "
-            "flows (rolling-horizon initial state).",
+        # A fixed Var, not a Param, so a sweep can set it and a scenario can
+        # unfix it and solve for the start in place.
+        start = self.declare_process_parameter(
+            "initial_volume",
+            initial_volume,
+            pyunits.m**3,
+            "Tank volume at the start of the horizon, before step 0's flows. "
+            "Fixed and registered as rolling-horizon initial state by default; "
+            "free when fix_initial_state=False.",
+            bounds=(min_volume, max_volume),
+            regressable=False,
         )
-        self.register_process_parameter(self.initial_volume, regressable=False)
-
         if self.config.fix_initial_state:
             tb.register_initial_state(self.initial_volume)
-            start = self.initial_volume
         else:
-            self.volume_start = pyo.Var(
-                initialize=initial_volume,
-                bounds=(min_volume, max_volume),
-                units=pyunits.m**3,
-                doc="Free starting volume, used in place of initial_volume.",
-            )
-            start = self.volume_start
+            self.initial_volume.unfix()
 
         if self.config.cyclic:
 

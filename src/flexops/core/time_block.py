@@ -301,7 +301,8 @@ class TimeBlockData(ProcessBlockData):
 
     @property
     def initial_state_params(self) -> tuple:
-        """tuple: the registered rolling-horizon initial-state Params."""
+        """tuple: the registered rolling-horizon initial states (fixed scalar
+        Vars or mutable Params)."""
         return tuple(self._initial_state_params)
 
     def index_of(self, timestamp) -> int:
@@ -349,21 +350,35 @@ class TimeBlockData(ProcessBlockData):
         return self._datetime_index[i]
 
     def register_initial_state(self, param) -> None:
-        """Register a mutable Param as rolling-horizon initial state.
+        """Register a fixed scalar Var or mutable Param as initial state.
+
+        A fixed scalar ``Var`` (as built by
+        :meth:`~flexops.core.ops_block.OpsBlockData.declare_process_parameter`)
+        is preferred: a sweep can set it and a scenario can unfix it and solve
+        for it in place. Mutable ``Param`` s are still accepted.
 
         Args:
-            param: A mutable Pyomo ``Param`` (e.g. tank level, battery SOC,
-                on/off status) that the rolling-horizon driver mutates
-                between windows.
+            param: A fixed scalar Pyomo ``Var`` or a mutable ``Param`` (e.g.
+                tank level, battery SOC, on/off status) that the
+                rolling-horizon driver sets between windows.
 
         Raises:
-            FlexConfigError: If ``param`` is not a Pyomo ``Param``, or was
-                declared with ``mutable=False``.
+            FlexConfigError: If ``param`` is neither; if it is an indexed or
+                unfixed ``Var``; or if it is a ``Param`` declared with
+                ``mutable=False``.
         """
+        if isinstance(param, pyo.Var):
+            if param.is_indexed() or not param.fixed:
+                raise FlexConfigError(
+                    "An initial-state Var must be a fixed scalar Var.",
+                    value=param,
+                )
+            self._initial_state_params.append(param)
+            return
         if not isinstance(param, pyo.Param):
             raise FlexConfigError(
-                f"register_initial_state expects a Pyomo Param, got "
-                f"{type(param).__name__}.",
+                f"register_initial_state expects a fixed scalar Var or a "
+                f"mutable Param, got {type(param).__name__}.",
                 value=param,
             )
         if not param.mutable:

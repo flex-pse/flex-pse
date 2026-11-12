@@ -114,29 +114,40 @@ def test_pump_does_not_disable_logic():
 
 @pytest.mark.unit
 def test_fix_initial_state_registers_initial_state_or_frees_start():
-    """The horizon starts at initial_volume (registered) unless
-    fix_initial_state=False, which starts it at a free volume_start Var."""
+    """initial_volume is a fixed Var registered as initial state, unless
+    fix_initial_state=False, which leaves it free and unregistered."""
     m, unit = _tank(4)
+    assert isinstance(unit.initial_volume, pyo.Var)
+    assert unit.initial_volume.fixed
+    assert pyo.value(unit.initial_volume) == pytest.approx(200.0)
     assert unit.initial_volume in m.time_block.initial_state_params
-    assert not hasattr(unit, "volume_start")
-    assert not hasattr(unit, "volume_start_limit")
     assert not hasattr(unit, "initial_volume_eq")
 
     m_free, unit_free = _tank(4, fix_initial_state=False)
-    assert unit_free.initial_volume not in m_free.time_block.initial_state_params
-    assert not unit_free.volume_start.fixed
-    assert pyo.value(unit_free.volume_start) == pytest.approx(200.0)
-    assert not hasattr(unit_free, "initial_volume_eq")
+    assert not unit_free.initial_volume.fixed
+    assert pyo.value(unit_free.initial_volume) == pytest.approx(200.0)
+    assert not m_free.time_block.initial_state_params
+
+
+@pytest.mark.unit
+def test_initial_volume_can_be_swept_in_place():
+    """update_parameters sets the fixed initial_volume Var without a rebuild."""
+    _, unit = _tank(4)
+    holdup_0 = unit.holdup[0]
+    unit.update_parameters({"initial_volume": 350.0})
+    assert unit.initial_volume.fixed
+    assert pyo.value(unit.initial_volume) == pytest.approx(350.0)
+    assert unit.holdup[0] is holdup_0
 
 
 @pytest.mark.unit
 def test_free_start_stays_in_fill_window_of_chosen_capacity():
-    """volume_start obeys level_min/level_max of capacity, like volume[t]."""
+    """initial_volume obeys level_min/level_max of capacity, like volume[t]."""
     _, unit = _tank(4, fix_initial_state=False, level_min=0.1, level_max=0.9)
     unit.capacity.fix(500.0)
-    con = unit.volume_start_limit
+    con = unit.initial_volume_limit
     for value, ok in [(40.0, False), (50.0, True), (450.0, True), (460.0, False)]:
-        unit.volume_start.set_value(value)
+        unit.initial_volume.set_value(value)
         body = pyo.value(con.body)
         inside = pyo.value(con.lower) - 1e-9 <= body <= pyo.value(con.upper) + 1e-9
         assert inside is ok, value
@@ -144,8 +155,8 @@ def test_free_start_stays_in_fill_window_of_chosen_capacity():
 
 @pytest.mark.unit
 def test_cyclic_tank_requires_final_volume_at_least_start():
-    """cyclic=True adds volume[N-1] >= start (initial_volume, or volume_start
-    when fix_initial_state=False); the default builds no such row."""
+    """cyclic=True adds volume[N-1] >= initial_volume, fixed or free; the
+    default builds no such row."""
     _, unit_default = _tank(4)
     assert not hasattr(unit_default, "cyclic_volume")
 
@@ -165,7 +176,7 @@ def test_cyclic_tank_requires_final_volume_at_least_start():
     assert satisfied(unit.cyclic_volume)
 
     _, unit_free = _tank(4, cyclic=True, fix_initial_state=False)
-    unit_free.volume_start.set_value(300.0)
+    unit_free.initial_volume.set_value(300.0)
     unit_free.volume[3].set_value(250.0)
     assert not satisfied(unit_free.cyclic_volume)
     unit_free.volume[3].set_value(300.0)
@@ -209,7 +220,7 @@ def test_every_step_of_flow_is_in_the_balance(fix_initial_state, cyclic):
     outflow = sum(
         pyo.value(unit.outlet_state.flow_vol_phase[t, "Liq"]) for t in tb.time_index
     )
-    start = pyo.value(unit.initial_volume if fix_initial_state else unit.volume_start)
+    start = pyo.value(unit.initial_volume)
     end = pyo.value(unit.volume[tb.n_points - 1])
     assert start + dt * (inflow - outflow) == pytest.approx(end, abs=1e-6)
     assert outflow * dt == pytest.approx(50.0)  # 4 steps * 0.25 h * 50 m^3/hr

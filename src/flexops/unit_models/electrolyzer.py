@@ -857,15 +857,21 @@ class ElectrolyzerData(OpsBlockData):
             units=pyunits.m**3,
             doc="Separator liquid inventory, bounded by the fill window.",
         )
-        self.initial_liquid_volume = pyo.Param(
-            initialize=_magnitude(self.config.initial_liquid_volume, pyunits.m**3),
-            mutable=True,
-            units=pyunits.m**3,
-            doc="Liquid inventory at the start of the horizon, before step "
-            "0's flows (rolling-horizon initial state).",
+        # A fixed Var, not a Param, so a sweep can set it and a scenario can
+        # unfix it and solve for the start in place.
+        self.declare_process_parameter(
+            "initial_liquid_volume",
+            _magnitude(self.config.initial_liquid_volume, pyunits.m**3),
+            pyunits.m**3,
+            "Liquid inventory at the start of the horizon, before step 0's "
+            "flows (rolling-horizon initial state), bounded by the fill window.",
+            bounds=(
+                self.config.liquid_level_min * capacity,
+                self.config.liquid_level_max * capacity,
+            ),
+            regressable=False,
         )
         tb.register_initial_state(self.initial_liquid_volume)
-        self.register_process_parameter(self.initial_liquid_volume, regressable=False)
 
         make_up = self.inlet_water_state.flow_vol_phase
 

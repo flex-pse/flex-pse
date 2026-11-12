@@ -346,6 +346,9 @@ def test_liquid_holdup_tracks_make_up_minus_consumption():
         unit.liquid_volume[t].set_value(volume)
     assert len(unit.liquid_holdup) == 4
     assert not hasattr(unit, "initial_liquid_volume_eq")
+    assert isinstance(unit.initial_liquid_volume, pyo.Var)
+    assert unit.initial_liquid_volume.fixed
+    assert unit.initial_liquid_volume in m.time_block.initial_state_params
     _assert_satisfied(unit.liquid_holdup)
 
 
