@@ -26,9 +26,13 @@ fixed at the constructor value by default (operations mode); a
 * ``power_capacity`` (kW) is the fixable power sizing ``Var``, sized independently
   of ``energy_capacity``. It is fixed at, and bounded above by, the larger of the
   two power limits.
-* ``fix_initial_state=False`` replaces ``charge_init`` in the ``t=0`` balance
-  with a free ``charge_start`` Var and registers no initial state.
-  ``cyclic=True`` independently adds ``charge[N-1] >= `` that starting charge.
+* ``charge_init`` is a scalar ``Var``, not a ``Param``, so it can be swept or
+  solved for in place. ``fix_initial_state=True`` fixes it and registers it as
+  rolling-horizon initial state; ``False`` leaves it free and registers
+  nothing. Either way ``charge_init_lower_limit``, ``charge_init_upper_limit``
+  and ``charge_init_soh_limit`` hold
+  it to the same SOC and state-of-health windows as ``charge[t]``.
+  ``cyclic=True`` independently adds ``charge[N-1] >= charge_init``.
 * ``charge_balance`` covers **every** ``t``, including ``t=0`` (referencing
   ``charge_init`` in place of ``charge[t-1]`` at the boundary), rather than
   a separate ``t=1..N-1`` difference equation plus an unrelated
@@ -205,7 +209,8 @@ class BatteryModelData(OpsBlockData):
             default=0.5,
             domain=_fraction_domain,
             description="Initial state of charge, a fraction of energy capacity in "
-            "[0, 1]; fixes charge[0] via charge_init (rolling-horizon state).",
+            "[0, 1], before step 0's flows; sets the charge_init Var "
+            "(rolling-horizon state).",
         ),
     )
     CONFIG.declare(
@@ -213,8 +218,9 @@ class BatteryModelData(OpsBlockData):
         ConfigValue(
             default=True,
             domain=bool,
-            description="Start from charge_init and register it as rolling-horizon "
-            "initial state; False starts from a free charge_start Var.",
+            description="Fix the charge_init Var and register it as "
+            "rolling-horizon initial state; False leaves it free, so the "
+            "solve chooses the starting charge.",
         ),
     )
     CONFIG.declare(
@@ -362,24 +368,22 @@ class BatteryModelData(OpsBlockData):
         )
 
         initial_charge_val = self.config.initial_soc * energy_capacity_val
-        self.charge_init = pyo.Param(
-            initialize=initial_charge_val,
-            mutable=True,
-            units=pyunits.kWh,
-            doc="Initial stored energy, charge[0] (rolling-horizon initial state).",
+        # A fixed Var, not a Param, so a sweep can set it and a scenario can
+        # unfix it and solve for the start in place.
+        start = self.declare_process_parameter(
+            "charge_init",
+            initial_charge_val,
+            pyunits.kWh,
+            "Stored energy at the start of the horizon, before step 0's flows. "
+            "Fixed and registered as rolling-horizon initial state by default; "
+            "free when fix_initial_state=False.",
+            bounds=(0.0, None),
+            regressable=False,
         )
-        self.register_process_parameter(self.charge_init, regressable=False)
         if self.config.fix_initial_state:
             tb.register_initial_state(self.charge_init)
-            start = self.charge_init
         else:
-            self.charge_start = pyo.Var(
-                initialize=initial_charge_val,
-                bounds=(0.0, None),
-                units=pyunits.kWh,
-                doc="Free pre-horizon charge, used in place of charge_init.",
-            )
-            start = self.charge_start
+            self.charge_init.unfix()
 
         if self.config.cyclic:
 
@@ -431,8 +435,8 @@ class BatteryModelData(OpsBlockData):
             doc="Charge holdup (backward difference): "
             "charge[t] == charge[t-1]*(1 - charge_leakage_rate*dt) + "
             "dt*(eta_charge*power_charge[t] - "
-            "power_discharge[t]/eta_discharge); t=0 references charge_init (or "
-            "the free charge_start) in place of charge[-1], so "
+            "power_discharge[t]/eta_discharge); t=0 references charge_init "
+            "in place of charge[-1], so "
             "power_charge[0]/power_discharge[0] are "
             "energy-conserving too (a separate, unconstrained-at-t=0 initial "
             "condition would let power_charge[0]/power_discharge[0] move for "
@@ -469,6 +473,24 @@ class BatteryModelData(OpsBlockData):
         @self.Constraint(tb.time_index, doc="charge[t] <= soc_max * energy_capacity.")
         def soc_upper_limit(b, t):
             return b.charge[t] <= soc_max * b.energy_capacity
+
+        # The start obeys the same windows as charge[t]. Built whether or not
+        # charge_init is fixed: once it is unfixed, a start above the chosen
+        # capacity would otherwise be free energy when cyclic is off.
+        # Two rows, not one ranged inequality: energy_capacity is a Var, and
+        # a ranged row with Var bounds cannot be sent to a solver once the
+        # design mode unfixes it.
+        @self.Constraint(doc="charge_init >= soc_min * energy_capacity.")
+        def charge_init_lower_limit(b):
+            return b.charge_init >= soc_min * b.energy_capacity
+
+        @self.Constraint(doc="charge_init <= soc_max * energy_capacity.")
+        def charge_init_upper_limit(b):
+            return b.charge_init <= soc_max * b.energy_capacity
+
+        @self.Constraint(doc="charge_init <= soh * energy_capacity.")
+        def charge_init_soh_limit(b):
+            return b.charge_init <= b.soh * b.energy_capacity
 
         @self.Constraint(
             tb.time_index,

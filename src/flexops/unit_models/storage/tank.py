@@ -194,16 +194,16 @@ class TankData(SISOBlockData):
         # not initial_volume is fixed: once it is unfixed (fix_initial_state=
         # False, a sweep, a scenario solving for it), a start above the chosen
         # capacity would otherwise be free water when cyclic is off.
-        @self.Constraint(
-            doc="Starting volume lies in the fill window: "
-            "level_min * capacity <= initial_volume <= level_max * capacity."
-        )
-        def initial_volume_limit(b):
-            return pyo.inequality(
-                self.config.level_min * b.capacity,
-                b.initial_volume,
-                self.config.level_max * b.capacity,
-            )
+        # Two rows, not one ranged inequality: capacity is a Var, and a ranged
+        # row with Var bounds cannot be sent to a solver once the design mode
+        # unfixes it.
+        @self.Constraint(doc="initial_volume >= level_min * capacity.")
+        def initial_volume_lower_limit(b):
+            return b.initial_volume >= self.config.level_min * b.capacity
+
+        @self.Constraint(doc="initial_volume <= level_max * capacity.")
+        def initial_volume_upper_limit(b):
+            return b.initial_volume <= self.config.level_max * b.capacity
 
         self.level = pyo.Var(
             tb.time_index,

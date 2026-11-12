@@ -145,12 +145,29 @@ def test_free_start_stays_in_fill_window_of_chosen_capacity():
     """initial_volume obeys level_min/level_max of capacity, like volume[t]."""
     _, unit = _tank(4, fix_initial_state=False, level_min=0.1, level_max=0.9)
     unit.capacity.fix(500.0)
-    con = unit.initial_volume_limit
-    for value, ok in [(40.0, False), (50.0, True), (450.0, True), (460.0, False)]:
-        unit.initial_volume.set_value(value)
+
+    def inside(con):
         body = pyo.value(con.body)
-        inside = pyo.value(con.lower) - 1e-9 <= body <= pyo.value(con.upper) + 1e-9
-        assert inside is ok, value
+        lower, upper = pyo.value(con.lower), pyo.value(con.upper)
+        return (lower is None or body >= lower - 1e-9) and (
+            upper is None or body <= upper + 1e-9
+        )
+
+    for value, lower_ok, upper_ok in [
+        (40.0, False, True),
+        (50.0, True, True),
+        (450.0, True, True),
+        (460.0, True, False),
+    ]:
+        unit.initial_volume.set_value(value)
+        assert inside(unit.initial_volume_lower_limit) is lower_ok, value
+        assert inside(unit.initial_volume_upper_limit) is upper_ok, value
+
+    # With capacity free (design mode) neither row is a ranged inequality
+    # with Var bounds, which no solver interface accepts.
+    unit.capacity.unfix()
+    for con in (unit.initial_volume_lower_limit, unit.initial_volume_upper_limit):
+        assert not (con.has_lb() and con.has_ub())
 
 
 @pytest.mark.unit
