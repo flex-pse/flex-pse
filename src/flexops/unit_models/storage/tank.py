@@ -29,7 +29,18 @@ class TankData(SISOBlockData):
 
         \text{volume}[t] = \text{volume}[t-1]
             + \Delta t \cdot (\dot{V}_{in}[t] - \dot{V}_{out}[t]),
-        \quad t = 1, \dots, N-1
+        \quad t = 0, \dots, N-1
+
+    where ``volume[-1]`` is the level at the start of the horizon, before
+    step 0's flows: ``initial_volume`` when ``fix_initial_state=True`` (the
+    registered rolling-horizon initial state), or the free ``volume_start``
+    Var when it is ``False``. ``holdup`` covers **every** ``t``, including
+    ``t = 0``, as :class:`~flexops.unit_models.storage.battery.BatteryModel`'s
+    ``charge_balance`` does. Pinning ``volume[0]`` instead and writing the
+    balance only for ``t = 1, ..., N-1`` would leave ``flow_in[0]`` and
+    ``flow_out[0]`` in no balance at all, so the first step's water would
+    enter or leave the tank for free. ``volume[0]`` is therefore the level
+    *after* the first step, not the starting level.
 
     Both flows are dispatch inputs (a tank has no natural "output" flow), so
     the outlet ``flow_vol_phase`` is re-registered as ``role="input"``;
@@ -108,8 +119,9 @@ class TankData(SISOBlockData):
         "initial_volume",
         ConfigValue(
             default=500 * pyunits.m**3,
-            description="Initial tank volume, volume[0]: a mutable Param "
-            "and a rolling-horizon initial-state hook. Defaults to half of "
+            description="Tank volume at the start of the horizon, before "
+            "step 0's flows (volume[0] is the level after step 0): a mutable "
+            "Param and a rolling-horizon initial-state hook. Defaults to half of "
             "the default max_volume, so a tank built with no sizing at all "
             "starts half full; give it explicitly whenever max_volume is.",
         ),
@@ -119,8 +131,9 @@ class TankData(SISOBlockData):
         ConfigValue(
             default=True,
             domain=bool,
-            description="Pin volume[0] to initial_volume and register it as "
-            "rolling-horizon initial state; False leaves volume[0] free.",
+            description="Start the horizon at initial_volume and register it "
+            "as rolling-horizon initial state; False starts it at a free "
+            "volume_start Var instead.",
         ),
     )
     CONFIG.declare(
@@ -129,7 +142,8 @@ class TankData(SISOBlockData):
             default=False,
             domain=bool,
             description="Require the final volume to be at least the starting "
-            "volume, volume[0].",
+            "volume (initial_volume, or volume_start when fix_initial_state "
+            "is False).",
         ),
     )
     CONFIG.declare(
@@ -174,6 +188,21 @@ class TankData(SISOBlockData):
         @self.Constraint(tb.time_index, doc="Tank volume never exceeds capacity.")
         def capacity_limit(b, t):
             return b.volume[t] <= b.capacity
+
+        if not self.config.fix_initial_state:
+            # A free start must obey the same fill window as volume[t], or
+            # (without cyclic) a start above the chosen capacity would be
+            # free water.
+            @self.Constraint(
+                doc="Free starting volume lies in the fill window: "
+                "level_min * capacity <= volume_start <= level_max * capacity."
+            )
+            def volume_start_limit(b):
+                return pyo.inequality(
+                    self.config.level_min * b.capacity,
+                    b.volume_start,
+                    self.config.level_max * b.capacity,
+                )
 
         self.level = pyo.Var(
             tb.time_index,
@@ -233,27 +262,34 @@ class TankData(SISOBlockData):
             initialize=initial_volume,
             mutable=True,
             units=pyunits.m**3,
-            doc="Initial tank volume, volume[0] (rolling-horizon initial state).",
+            doc="Tank volume at the start of the horizon, before step 0's "
+            "flows (rolling-horizon initial state).",
         )
         self.register_process_parameter(self.initial_volume, regressable=False)
 
         if self.config.fix_initial_state:
             tb.register_initial_state(self.initial_volume)
-
-            @self.Constraint(doc="Initial condition: volume[0] equals initial_volume.")
-            def initial_volume_eq(b):
-                return b.volume[0] == b.initial_volume
+            start = self.initial_volume
+        else:
+            self.volume_start = pyo.Var(
+                initialize=initial_volume,
+                bounds=(min_volume, max_volume),
+                units=pyunits.m**3,
+                doc="Free starting volume, used in place of initial_volume.",
+            )
+            start = self.volume_start
 
         if self.config.cyclic:
 
             @self.Constraint(doc="Final volume is at least the starting volume.")
             def cyclic_volume(b):
-                return b.volume[tb.n_points - 1] >= b.volume[0]
+                return b.volume[tb.n_points - 1] >= start
 
         @self.Constraint(
-            list(tb.time_index)[1:],
+            tb.time_index,
             doc="Holdup difference equation (backward): volume[t] = "
-            "volume[t-1] + dt*(in[t] - out[t]). Uses pyunits.convert on the "
+            "volume[t-1] + dt*(in[t] - out[t]), with volume[-1] the starting "
+            "volume, so step 0's flows are in the balance. Uses pyunits.convert on the "
             "whole right-hand side rather than assuming the flow basis's "
             "units, so it stays correct regardless of the property "
             "package's flow units (m^3/hr, m^3/s, ...).",
@@ -262,7 +298,8 @@ class TankData(SISOBlockData):
             delta_volume = pyunits.convert(
                 tb.dt * (b.flow_in[t] - b.flow_out[t]), to_units=pyunits.m**3
             )
-            return b.volume[t] == b.volume[t - 1] + delta_volume
+            previous = b.volume[t - 1] if t > 0 else start
+            return b.volume[t] == previous + delta_volume
 
         # A tank governs flow itself (via the holdup equation above), so
         # pass every OTHER state variable straight through inlet->outlet

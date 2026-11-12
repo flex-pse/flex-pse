@@ -3,8 +3,10 @@
 import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
+from pyomo.opt import assert_optimal_termination
 
 from flexcore.config.schema import UnitCommitmentConfig
+from flexcore.solvers import get_solver
 from flexops import build_model, emit_model
 from flexops.core.compare import assert_models_equivalent
 from flexops.testing import UnitModelTestHarness, dummy_time_block
@@ -43,17 +45,18 @@ def test_mass_balance_by_hand():
     """Holdup-constraint bodies evaluate to 0 on a hand-computed trajectory."""
     m, unit = _tank(4)
 
-    # Backward differencing: volume[t] = volume[t-1] + dt*(flow_in[t] - flow_out[t]).
+    # Backward differencing: volume[t] = volume[t-1] + dt*(flow_in[t] - flow_out[t]),
+    # with volume[-1] = initial_volume (200), so step 0's flows count too.
     flow_in = [100.0, 100.0, 0.0, 0.0]
     flow_out = [50.0, 50.0, 50.0, 50.0]
-    volumes = [200.0, 212.5, 200.0, 187.5]
+    volumes = [212.5, 225.0, 212.5, 200.0]
 
     for t in m.time_block.time_index:
         unit.inlet_state.flow_vol_phase[t, "Liq"].set_value(flow_in[t])
         unit.outlet_state.flow_vol_phase[t, "Liq"].set_value(flow_out[t])
         unit.volume[t].set_value(volumes[t])
 
-    assert len(unit.holdup) == 3
+    assert len(unit.holdup) == 4
     for t in unit.holdup:
         assert pyo.value(unit.holdup[t].body) == pytest.approx(0.0, abs=1e-9)
 
@@ -110,30 +113,63 @@ def test_pump_does_not_disable_logic():
 
 
 @pytest.mark.unit
-def test_fix_initial_state_pins_volume_and_registers_initial_state():
-    """volume[0] is pinned to initial_volume unless fix_initial_state=False."""
+def test_fix_initial_state_registers_initial_state_or_frees_start():
+    """The horizon starts at initial_volume (registered) unless
+    fix_initial_state=False, which starts it at a free volume_start Var."""
     m, unit = _tank(4)
     assert unit.initial_volume in m.time_block.initial_state_params
-    assert hasattr(unit, "initial_volume_eq")
+    assert not hasattr(unit, "volume_start")
+    assert not hasattr(unit, "volume_start_limit")
+    assert not hasattr(unit, "initial_volume_eq")
 
     m_free, unit_free = _tank(4, fix_initial_state=False)
     assert unit_free.initial_volume not in m_free.time_block.initial_state_params
+    assert not unit_free.volume_start.fixed
+    assert pyo.value(unit_free.volume_start) == pytest.approx(200.0)
     assert not hasattr(unit_free, "initial_volume_eq")
 
 
 @pytest.mark.unit
+def test_free_start_stays_in_fill_window_of_chosen_capacity():
+    """volume_start obeys level_min/level_max of capacity, like volume[t]."""
+    _, unit = _tank(4, fix_initial_state=False, level_min=0.1, level_max=0.9)
+    unit.capacity.fix(500.0)
+    con = unit.volume_start_limit
+    for value, ok in [(40.0, False), (50.0, True), (450.0, True), (460.0, False)]:
+        unit.volume_start.set_value(value)
+        body = pyo.value(con.body)
+        inside = pyo.value(con.lower) - 1e-9 <= body <= pyo.value(con.upper) + 1e-9
+        assert inside is ok, value
+
+
+@pytest.mark.unit
 def test_cyclic_tank_requires_final_volume_at_least_start():
-    """cyclic=True adds volume[N-1] >= volume[0]; the default builds no such row."""
+    """cyclic=True adds volume[N-1] >= start (initial_volume, or volume_start
+    when fix_initial_state=False); the default builds no such row."""
     _, unit_default = _tank(4)
     assert not hasattr(unit_default, "cyclic_volume")
 
+    def satisfied(con):
+        body = pyo.value(con.body)
+        lower, upper = pyo.value(con.lower), pyo.value(con.upper)
+        return (lower is None or body >= lower - 1e-9) and (
+            upper is None or body <= upper + 1e-9
+        )
+
     m, unit = _tank(4, cyclic=True)
     assert unit.initial_volume in m.time_block.initial_state_params
-    unit.volume[0].set_value(300.0)
-    unit.volume[3].set_value(250.0)
-    assert pyo.value(unit.cyclic_volume.body) > pyo.value(unit.cyclic_volume.upper)
-    unit.volume[3].set_value(300.0)
-    assert pyo.value(unit.cyclic_volume.body) <= pyo.value(unit.cyclic_volume.upper)
+    unit.volume[0].set_value(100.0)  # volume[0] is not the start any more
+    unit.volume[3].set_value(150.0)
+    assert not satisfied(unit.cyclic_volume)  # 150 < initial_volume (200)
+    unit.volume[3].set_value(200.0)
+    assert satisfied(unit.cyclic_volume)
+
+    _, unit_free = _tank(4, cyclic=True, fix_initial_state=False)
+    unit_free.volume_start.set_value(300.0)
+    unit_free.volume[3].set_value(250.0)
+    assert not satisfied(unit_free.cyclic_volume)
+    unit_free.volume[3].set_value(300.0)
+    assert satisfied(unit_free.cyclic_volume)
 
 
 @pytest.mark.unit
@@ -144,3 +180,45 @@ def test_tank_storage_options_survive_emit_and_rebuild():
     assert rebuilt.unit.config.cyclic is True
     assert rebuilt.unit.config.fix_initial_state is False
     assert_models_equivalent(m, rebuilt)
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+@pytest.mark.parametrize("cyclic", [False, True])
+@pytest.mark.parametrize("fix_initial_state", [True, False])
+def test_every_step_of_flow_is_in_the_balance(fix_initial_state, cyclic):
+    """start + dt * (sum(in) - sum(out)) == volume[N-1]: step 0's flows count.
+
+    Before this was fixed, holdup skipped t = 0, so a steady 50 m^3/hr demand
+    drew 12.5 m^3 out of a 200 m^3 tank in the first step without lowering it.
+    """
+    m, unit = _tank(4, fix_initial_state=fix_initial_state, cyclic=cyclic)
+    tb = m.time_block
+    for t in tb.time_index:
+        unit.outlet_state.flow_vol_phase[t, "Liq"].fix(50.0)
+    unit.inlet_state.flow_vol_phase[:, "Liq"].setlb(0)
+    m.obj = pyo.Objective(
+        expr=sum(unit.inlet_state.flow_vol_phase[t, "Liq"] for t in tb.time_index)
+    )
+    assert_optimal_termination(get_solver(model=m).solve(m))
+
+    dt = pyo.value(pyunits.convert(tb.dt, pyunits.hr))
+    inflow = sum(
+        pyo.value(unit.inlet_state.flow_vol_phase[t, "Liq"]) for t in tb.time_index
+    )
+    outflow = sum(
+        pyo.value(unit.outlet_state.flow_vol_phase[t, "Liq"]) for t in tb.time_index
+    )
+    start = pyo.value(unit.initial_volume if fix_initial_state else unit.volume_start)
+    end = pyo.value(unit.volume[tb.n_points - 1])
+    assert start + dt * (inflow - outflow) == pytest.approx(end, abs=1e-6)
+    assert outflow * dt == pytest.approx(50.0)  # 4 steps * 0.25 h * 50 m^3/hr
+
+    if fix_initial_state and not cyclic:
+        # Nothing forces inflow: the tank drains 200 -> 150 over four steps.
+        assert inflow == pytest.approx(0.0, abs=1e-6)
+        volumes = [pyo.value(unit.volume[t]) for t in tb.time_index]
+        assert volumes == pytest.approx([187.5, 175.0, 162.5, 150.0])
+    if cyclic:
+        # Ending at least at the start means every m^3 out was pumped in.
+        assert inflow == pytest.approx(outflow, abs=1e-6)

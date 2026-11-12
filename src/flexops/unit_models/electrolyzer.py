@@ -298,8 +298,8 @@ class ElectrolyzerData(OpsBlockData):
         "initial_liquid_volume",
         ConfigValue(
             default=0.5 * pyunits.m**3,
-            description="Liquid inventory at the first time point, m^3 (a "
-            "rolling-horizon initial state).",
+            description="Liquid inventory at the start of the horizon, before "
+            "step 0's flows, m^3 (a rolling-horizon initial state).",
         ),
     )
     CONFIG.declare(
@@ -861,26 +861,28 @@ class ElectrolyzerData(OpsBlockData):
             initialize=_magnitude(self.config.initial_liquid_volume, pyunits.m**3),
             mutable=True,
             units=pyunits.m**3,
-            doc="Liquid inventory at the first time point (rolling-horizon "
-            "initial state).",
+            doc="Liquid inventory at the start of the horizon, before step "
+            "0's flows (rolling-horizon initial state).",
         )
         tb.register_initial_state(self.initial_liquid_volume)
         self.register_process_parameter(self.initial_liquid_volume, regressable=False)
 
-        @self.Constraint(doc="Initial condition: liquid_volume[0] == initial.")
-        def initial_liquid_volume_eq(b):
-            return b.liquid_volume[0] == b.initial_liquid_volume
-
         make_up = self.inlet_water_state.flow_vol_phase
 
+        # Every t, including t = 0 (with initial_liquid_volume as its
+        # predecessor), as in Tank.holdup and BatteryModel.charge_balance:
+        # pinning liquid_volume[0] instead would leave step 0's make-up and
+        # consumption in no balance.
         @self.Constraint(
-            list(tb.time_index)[1:],
+            tb.time_index,
             doc="Separator holdup (backward): liquid_volume[t] = "
-            "liquid_volume[t-1] + dt * (make-up - (1 + bleed) * consumption).",
+            "liquid_volume[t-1] + dt * (make-up - (1 + bleed) * consumption), "
+            "with liquid_volume[-1] = initial_liquid_volume.",
         )
         def liquid_holdup(b, t):
             net = make_up[t, phase] - (1 + bleed) * b.water_consumption[t]
-            return b.liquid_volume[t] == b.liquid_volume[t - 1] + pyunits.convert(
+            previous = b.liquid_volume[t - 1] if t > 0 else b.initial_liquid_volume
+            return b.liquid_volume[t] == previous + pyunits.convert(
                 tb.dt * net, pyunits.m**3
             )
 

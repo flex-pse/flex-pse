@@ -336,14 +336,16 @@ def test_liquid_holdup_tracks_make_up_minus_consumption():
     dt = 0.25  # hr
     make_up = 0.02  # m^3/hr
     consumed = ELECTRONS / 2 * WATER_VOLUME
-    volume = 5.0
+    # The balance starts from initial_liquid_volume, so step 0's make-up and
+    # consumption count too.
+    volume = pyo.value(unit.initial_liquid_volume)
     for t in m.time_block.time_index:
         unit.production_H2[t].set_value(ELECTRONS / 2)
         unit.inlet_water_state.flow_vol_phase[t, "Liq"].set_value(make_up)
-        if t > 0:
-            volume += dt * (make_up - consumed)
+        volume += dt * (make_up - consumed)
         unit.liquid_volume[t].set_value(volume)
-    assert len(unit.liquid_holdup) == 3
+    assert len(unit.liquid_holdup) == 4
+    assert not hasattr(unit, "initial_liquid_volume_eq")
     _assert_satisfied(unit.liquid_holdup)
 
 
