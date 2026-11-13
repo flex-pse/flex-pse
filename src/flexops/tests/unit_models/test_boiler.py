@@ -235,6 +235,8 @@ def test_regressable_parameters_are_registered():
         r.name for r in unit._io_registry.parameters if not r.regressable
     }
     assert "initial_heat_output" in not_regressable
+    assert isinstance(unit.initial_heat_output, pyo.Var)
+    assert unit.initial_heat_output.fixed
 
 
 @pytest.mark.unit

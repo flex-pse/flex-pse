@@ -277,17 +277,55 @@ def test_cyclic_battery_ends_at_least_as_charged_as_it_started():
 
 
 @pytest.mark.unit
-def test_free_initial_state_uses_charge_start_and_registers_no_initial_state():
-    """fix_initial_state=False balances charge[0] against a free charge_start Var."""
+def test_free_initial_state_unfixes_charge_init_and_registers_no_initial_state():
+    """fix_initial_state=False balances charge[0] against charge_init, left free."""
     m, unit = _battery(4, fix_initial_state=False)
-    assert unit.charge_init not in m.time_block.initial_state_params
-    assert not unit.charge_start.fixed
+    assert isinstance(unit.charge_init, pyo.Var)
+    assert not unit.charge_init.fixed
+    assert not m.time_block.initial_state_params
     body_vars = {id(v) for v in identify_variables(unit.charge_balance[0].body)}
-    assert id(unit.charge_start) in body_vars
+    assert id(unit.charge_init) in body_vars
 
     m_default, unit_default = _battery(4)
+    assert unit_default.charge_init.fixed
     assert unit_default.charge_init in m_default.time_block.initial_state_params
     assert not hasattr(unit_default, "charge_start")
+
+
+@pytest.mark.unit
+def test_charge_init_stays_in_soc_and_soh_windows():
+    """A free charge_init obeys soc_min/soc_max and soh, like charge[t]."""
+    _, unit = _battery(4, fix_initial_state=False, soc_min=0.1, soc_max=0.9, soh=0.8)
+    capacity = pyo.value(unit.energy_capacity)
+
+    def inside(con):
+        body = pyo.value(con.body)
+        lower, upper = pyo.value(con.lower), pyo.value(con.upper)
+        return (lower is None or body >= lower - 1e-9) and (
+            upper is None or body <= upper + 1e-9
+        )
+
+    for fraction, lower_ok, upper_ok, soh_ok in [
+        (0.05, False, True, True),
+        (0.5, True, True, True),
+        (0.85, True, True, False),
+        (0.95, True, False, False),
+    ]:
+        unit.charge_init.set_value(fraction * capacity)
+        assert inside(unit.charge_init_lower_limit) is lower_ok, fraction
+        assert inside(unit.charge_init_upper_limit) is upper_ok, fraction
+        assert inside(unit.charge_init_soh_limit) is soh_ok, fraction
+
+
+@pytest.mark.unit
+def test_charge_init_can_be_swept_in_place():
+    """update_parameters sets the fixed charge_init Var without a rebuild."""
+    _, unit = _battery(4)
+    balance_0 = unit.charge_balance[0]
+    unit.update_parameters({"charge_init": 2.0})
+    assert unit.charge_init.fixed
+    assert pyo.value(unit.charge_init) == pytest.approx(2.0)
+    assert unit.charge_balance[0] is balance_0
 
 
 @pytest.mark.unit

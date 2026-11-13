@@ -75,7 +75,7 @@ Without it a fast ramp-down or shutdown would be infeasible, because the
 stored heat has to go somewhere and firing can't go negative. An unfired HRSG
 also uses it to dump recovered heat while it's off. The term has no price,
 since it only wastes heat that was already paid for. `initial_heat_output` is
-a mutable `Param` registered as the rolling-horizon initial state.
+a fixed scalar `Var` registered as the rolling-horizon initial state.
 
 **Steam and feedwater.**
 

@@ -250,6 +250,23 @@ def test_register_initial_state_roundtrip(tb):
 
 
 @pytest.mark.unit
+def test_register_initial_state_accepts_fixed_scalar_var(tb):
+    """A fixed scalar Var registers; unfixed or indexed Vars are rejected."""
+    m = tb.model()
+    m.v = pyo.Var(initialize=0.5)
+    with pytest.raises(FlexConfigError, match="fixed scalar Var"):
+        tb.register_initial_state(m.v)
+    m.v.fix()
+    tb.register_initial_state(m.v)
+    assert tb.initial_state_params == (m.v,)
+
+    m.w = pyo.Var([0, 1], initialize=0.5)
+    m.w.fix()
+    with pytest.raises(FlexConfigError, match="fixed scalar Var"):
+        tb.register_initial_state(m.w)
+
+
+@pytest.mark.unit
 def test_window_metadata(tb):
     """window() returns correct metadata and clips at the horizon."""
     w = tb.window(4, 8)

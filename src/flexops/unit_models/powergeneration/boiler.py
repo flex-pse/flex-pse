@@ -523,16 +523,17 @@ class BoilerData(OpsBlockData):
             "First-order lag of heat output behind absorbed heat.",
             bounds=(0.0, None),
         )
-        self.initial_heat_output = pyo.Param(
-            initialize=pyo.value(
-                pyunits.convert(self.config.initial_heat_output, pyunits.kW)
-            ),
-            mutable=True,
-            units=pyunits.kW,
-            doc="Heat output before the first time point (rolling-horizon state).",
+        # A fixed Var, not a Param, so a sweep can set it and a scenario can
+        # unfix it and solve for it in place.
+        self.declare_process_parameter(
+            "initial_heat_output",
+            self.config.initial_heat_output,
+            pyunits.kW,
+            "Heat output before the first time point (rolling-horizon state).",
+            bounds=(0.0, None),
+            regressable=False,
         )
         tb.register_initial_state(self.initial_heat_output)
-        self.register_process_parameter(self.initial_heat_output, regressable=False)
         first = tb.time_index.first()
 
         @self.Constraint(
