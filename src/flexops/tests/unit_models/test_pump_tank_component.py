@@ -43,14 +43,13 @@ def test_pump_fills_tank_lp():
     assert_optimal_termination(results)
 
     n = m.time_block.n_points
-    # Backward differencing: only flows at t=1..n-1 appear in a holdup
-    # constraint (t=0's flow has no constraint tying it to volume, since
-    # volume[0] is fixed by the initial condition, not a difference equation).
+    # Every step's flows are in the holdup balance, t=0 included: the horizon
+    # starts at initial_volume (dt = 1 hr, so m^3/hr sums are m^3).
     total_in = sum(
-        pyo.value(m.pump.inlet_state.flow_vol_phase[t, "Liq"]) for t in range(1, n)
+        pyo.value(m.pump.inlet_state.flow_vol_phase[t, "Liq"]) for t in range(n)
     )
-    total_demand = demand * (n - 1)
-    initial_volume = pyo.value(m.tank.volume[0])
+    total_demand = demand * n
+    initial_volume = pyo.value(m.tank.initial_volume)
     final_volume = pyo.value(m.tank.volume[n - 1])
     assert total_in == pytest.approx(
         total_demand + (final_volume - initial_volume), rel=1e-6

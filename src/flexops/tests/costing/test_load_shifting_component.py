@@ -35,7 +35,11 @@ _PEAK_HOURS = (16, 17, 18, 19, 20)
 # month, so the $150/month customer charge and the $21.50 + $19.00 per kW monthly
 # demand charges are now billed at 24/744 of their monthly amount instead of in
 # full. The energy charge is unaffected.
-_EXPECTED_OBJECTIVE = 147.4964157706093
+#
+# Re-recorded on 2026-11-12 (was 147.4964157706093) when Tank.holdup started
+# including t = 0: the first hour's 100 m^3 of demand was outside the balance,
+# so only 2300 m^3 was pumped (none at hour 0). Now all 2400 m^3 is pumped.
+_EXPECTED_OBJECTIVE = 151.5483870967742
 
 
 def _build_headline(tariff=None) -> pyo.ConcreteModel:

@@ -102,7 +102,7 @@ def test_merged_model_classifies_as_lp(model):
     [
         ("battery.not_there", "not found"),
         ("battery.charge", "scalar"),
-        ("battery.charge_init", "Var"),
+        ("battery.charge_init_soh_limit", "Var"),
     ],
 )
 def test_capacity_path_must_name_a_scalar_var(variable, message):
