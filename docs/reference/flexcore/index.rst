@@ -4,6 +4,20 @@ flexcore
 flex-pse's tools share this substrate. It holds the exception hierarchy, the
 solver facade, and (later) the versioned config schema.
 
+Pickling a model
+----------------
+
+.. currentmodule:: flexcore.pickling
+
+Plain ``pickle.dumps`` fails on a built model. IDAES gives each process block a
+class that pickle can't find by name, Pyomo's lazily loaded config values change
+class while being pickled, and most construction rules are local functions.
+``dumps`` (also exported as ``flexops.dumps``) works around all three, and plain
+``pickle.loads`` reads its output back. The loaded model solves like the
+original, but its local construction rules can't be called again.
+
+.. autofunction:: dumps
+
 Solvers
 -------
 

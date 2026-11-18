@@ -3,6 +3,7 @@
 from importlib.metadata import version as _dist_version
 
 from flexcore.nomenclature import PowerKind
+from flexcore.pickling import dumps
 from flexops.core.build import build_model
 from flexops.core.emit import emit_model
 from flexops.core.extensions import extension
@@ -85,6 +86,7 @@ __all__ = [
     "__version__",
     "apply_spec",
     "build_model",
+    "dumps",
     "emit_model",
     "extension",
 ]
