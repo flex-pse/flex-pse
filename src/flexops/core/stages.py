@@ -530,11 +530,13 @@ def apply_relation_spec(
             )
             if not already_registered:
                 unit.register_surrogate_coefficients(relation_name)
-            for coef_name, coef_value in spec.data["coefficients"].items():
-                var = coefficients[coef_name]
-                var.set_value(coef_value)
-                var.fix()
-        return True, dict(spec.data.get("coefficients", {}))
+            # The surrogate's build already set and fixed its coefficients
+            # from spec.data. Report them from the registry, not from the raw
+            # data: data["coefficients"] is surrogate-specific (ARIMA nests
+            # "order" and coefficient lists under it), while the registry is
+            # always flat, keyed by the names update_parameters accepts.
+            return True, {name: pyo.value(var) for name, var in coefficients.items()}
+        return True, {}
 
     given = spec.data.get("coefficients", {})
     if INTENSITY_PARAMETER not in given:

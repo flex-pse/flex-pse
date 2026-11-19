@@ -15,7 +15,7 @@ from flexcore.config.io import load_spec
 from flexcore.config.spec import STAGE_ORDER, DispatchElement, SurrogateElement
 from flexcore.exceptions import FlexConfigError
 from flexcore.solvers import get_solver
-from flexops import apply_spec, build_model
+from flexops import apply_spec, build_model, emit_model
 from flexops.core.compare import assert_models_equivalent
 from flexops.core.stages import STAGES, elements_of
 
@@ -422,6 +422,87 @@ def test_surrogate_applied_post_construction():
     assert model.p.pump.config.flexops_config.surrogate is None
     assert not model.p.pump.power_electrical_relation[0].active
     assert model.p.pump.surrogate_power_electrical.fitted is not None
+
+
+ARIMA_DATA = {
+    "input_variables": {"flow_out": "m^3/hr"},
+    "output_variables": {"power_electrical": "kW"},
+    "coefficients": {
+        "order": [1, 0, 1],
+        "intercept": 2.0,
+        "ar_coefs": [0.5],
+        "ma_coefs": [0.2],
+        "exog_coefs": [0.8],
+    },
+    "history": {
+        "start_date": "2025-01-01T00:00:00",
+        "time_step_seconds": 3600.0,
+        "eta_values": [1.0],
+        "eps_values": [0.0],
+    },
+}
+
+
+def arima_spec() -> dict:
+    """Return a pump spec whose power relation is an ARIMA(1, 0, 1) surrogate."""
+    return spec_dict(
+        {"kind": "plant", "name": "p"},
+        pump("p.pump"),
+        {
+            "kind": "surrogate",
+            "unit": "p.pump",
+            "surrogate_type": "arima",
+            "data": ARIMA_DATA,
+        },
+    )
+
+
+@pytest.mark.unit
+def test_arima_surrogate_element_builds_with_fixed_coefficients():
+    """An ARIMA element builds from a spec.
+
+    Its nested coefficient data ("order", coefficient lists) used to be
+    looked up key by key in the flat registry, raising KeyError: 'order'.
+    """
+    model = build_model(arima_spec())
+
+    coefficients = model.p.pump.surrogate_power_electrical.coefficients
+    values = {name: pyo.value(var) for name, var in coefficients.items()}
+    assert values == pytest.approx(
+        {"intercept": 2.0, "ar.L1": 0.5, "ma.L1": 0.2, "exog.flow_out": 0.8}
+    )
+    assert all(var.fixed for _, var in coefficients.items())
+    assert not model.p.pump.power_electrical_relation[0].active
+
+
+@pytest.mark.unit
+def test_arima_surrogate_element_survives_emit_and_rebuild():
+    """emit_model writes the ARIMA element back out and it rebuilds the same."""
+    model = build_model(arima_spec())
+    assert_models_equivalent(model, build_model(emit_model(model)))
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_arima_surrogate_element_solves_its_recursion():
+    """The solved power follows the ARIMA recursion from the stored history.
+
+    With eps fixed at 0: eta[t] = 2 + 0.5 * eta[t-1] from eta[-1] = 1, and
+    power[t] = eta[t] + 0.8 * flow_out[t].
+    """
+    model = build_model(arima_spec())
+    pump_unit = model.p.pump
+    time_index = list(model.time_block.time_index)
+    for t in time_index:
+        pump_unit.inlet_state.flow_vol_phase[t, "Liq"].fix(10.0)
+    assert_optimal_termination(get_solver(model=model).solve(model))
+
+    eta, expected = 1.0, []
+    for _ in time_index:
+        eta = 2.0 + 0.5 * eta
+        expected.append(eta + 0.8 * 10.0)
+    power = [pyo.value(pump_unit.power_electrical[t]) for t in time_index]
+    assert power == pytest.approx(expected)
 
 
 def dispatch_spec(values) -> dict:
