@@ -24,26 +24,25 @@ runs:
       shell: bash
       run: |
         python - <<'PY' >> "$GITHUB_OUTPUT"
+        import platform
         import idaes
         print(f"path={idaes.bin_directory}")
         print(f"version={idaes.__version__}")
+        # ubuntu2204 required for latest IDAES
+        print(f"distro={'ubuntu2204' if platform.system() == 'Linux' else 'auto'}")
         PY
 
+    # Distro is in the key so a cached empty bin dir from an unsupported-distro
+    # install is never restored.
     - id: cache
       uses: actions/cache@v4
       with:
         path: ${{ steps.bindir.outputs.path }}
-        key: idaes-bin-${{ runner.os }}-${{ steps.bindir.outputs.version }}
+        key: idaes-bin-${{ runner.os }}-${{ steps.bindir.outputs.distro }}-${{ steps.bindir.outputs.version }}
 
-    # ubuntu2204 required for latest IDAES
     - if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
-      run: |
-        if [ "$RUNNER_OS" = "Linux" ]; then
-          idaes get-extensions --verbose --distro ubuntu2204
-        else
-          idaes get-extensions --verbose
-        fi
+      run: idaes get-extensions --verbose --distro ${{ steps.bindir.outputs.distro }}
 
     # `import idaes` prepends the bin directory to PATH inside the Python
     # process, but pytest plugins and any subprocess started before that import
