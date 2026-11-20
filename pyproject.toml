@@ -21,7 +21,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "idaes-pse==2.12.0",
+    "idaes-pse==2.13.0",
     "pyomo==6.10.1",
     "eeco==0.4.2",
     "pandas>=3",
