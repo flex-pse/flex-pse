@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import warnings
 
@@ -76,7 +77,7 @@ def _arima_data(
         "order": [p, d, q],
         "ar_coefs": [0.0] * p,
         "ma_coefs": [0.0] * q,
-        "exog_coefs": [0.0] * n_exog,
+        "exog_coefs": dict.fromkeys(exog_names, 0.0),
     }
     if deterministic:
         coefficients["intercept" if d == 0 else "drift"] = 0.0
@@ -182,6 +183,96 @@ def test_validate_rejects_coefficient_length_mismatch(field, values, message):
     data["coefficients"][field] = values
     with pytest.raises(FlexConfigError, match=message):
         ArimaSurrogate(data)
+
+
+def _exog_registry(block) -> dict[str, float]:
+    """Return the block's exogenous coefficients keyed by registry name."""
+    return {
+        name: pyo.value(var)
+        for name, var in block.coefficients.items()
+        if name.startswith("exog.")
+    }
+
+
+@pytest.mark.unit
+def test_exog_coefs_pair_by_name_whatever_the_input_key_order():
+    """Reordering input_variables (as a JSON tool may) keeps each pairing."""
+    data = _arima_data(n_exog=2)
+    data["coefficients"]["exog_coefs"] = {"feed_volume_kg": 0.5, "TS_pct": 0.6}
+    reordered = json.loads(json.dumps(data))
+    reordered["input_variables"] = dict(reversed(data["input_variables"].items()))
+    reordered["coefficients"]["exog_coefs"] = {"TS_pct": 0.6, "feed_volume_kg": 0.5}
+    expected = {"exog.feed_volume_kg": 0.5, "exog.TS_pct": 0.6}
+
+    for variant in (data, reordered):
+        _m, unit = _make_unit()
+        block, _body = ArimaSurrogate(variant).build(unit, unit.biogas_m3_hour)
+        assert _exog_registry(block) == pytest.approx(expected)
+
+
+@pytest.mark.unit
+def test_emitted_spec_rebuilds_with_reordered_input_variables():
+    """A spec from get_surrogate_spec survives a key reorder of its inputs."""
+    _m, unit = _make_unit()
+    _add_swappable_relation(unit)
+    data = _arima_data(p=1, n_exog=2)
+    data["coefficients"]["exog_coefs"] = {"feed_volume_kg": 0.5, "TS_pct": 0.6}
+    unit.swap_relation("biogas_m3_hour_relation", ArimaSurrogate(data))
+    spec = unit.get_surrogate_spec("biogas_m3_hour_relation")
+    assert spec["coefficients"]["exog_coefs"] == pytest.approx(
+        {"feed_volume_kg": 0.5, "TS_pct": 0.6}
+    )
+
+    spec["input_variables"] = dict(reversed(spec["input_variables"].items()))
+    _m2, unit2 = _make_unit()
+    block, _body = ArimaSurrogate(spec).build(unit2, unit2.biogas_m3_hour)
+    assert _exog_registry(block) == pytest.approx(
+        {"exog.feed_volume_kg": 0.5, "exog.TS_pct": 0.6}
+    )
+
+
+@pytest.mark.unit
+def test_validate_rejects_positional_exog_list_with_several_inputs():
+    """A list can't say which input each coefficient belongs to."""
+    data = _arima_data(n_exog=2)
+    data["coefficients"]["exog_coefs"] = [0.5, 0.6]
+    with pytest.raises(FlexConfigError, match="map each input") as info:
+        ArimaSurrogate(data)
+    assert info.value.field == "exog_coefs"
+    # The message spells out the mapping the list meant under today's order.
+    assert "'feed_volume_kg': 0.5" in str(info.value)
+
+
+@pytest.mark.unit
+def test_validate_accepts_positional_exog_list_with_one_input():
+    """With a single input a list is unambiguous and still accepted."""
+    data = _arima_data(n_exog=1)
+    data["coefficients"]["exog_coefs"] = [0.7]
+    _m, unit = _make_unit()
+    block, _body = ArimaSurrogate(data).build(unit, unit.biogas_m3_hour)
+    assert _exog_registry(block) == pytest.approx({"exog.feed_volume_kg": 0.7})
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("exog_coefs", "message"),
+    [
+        ({"feed_volume_kg": 0.5}, r"missing=\['TS_pct'\]"),
+        (
+            {"feed_volume_kg": 0.5, "TS_pct": 0.6, "extra": 1.0},
+            r"unknown=\['extra'\]",
+        ),
+        ({"feed_volume_kg": 0.5, "TS_pct": "x"}, "must be a number"),
+        (0.5, "mapping"),
+    ],
+)
+def test_validate_rejects_bad_exog_mapping(exog_coefs, message):
+    """exog_coefs keys must match input_variables and carry numbers."""
+    data = _arima_data(n_exog=2)
+    data["coefficients"]["exog_coefs"] = exog_coefs
+    with pytest.raises(FlexConfigError, match=message) as info:
+        ArimaSurrogate(data)
+    assert info.value.field == "exog_coefs"
 
 
 @pytest.mark.unit
@@ -367,7 +458,7 @@ def test_build_uses_supplied_regression_coefficient_guesses():
         {
             "ar_coefs": [0.1, 0.2],
             "ma_coefs": [0.3, 0.4],
-            "exog_coefs": [0.5, 0.6],
+            "exog_coefs": {"feed_volume_kg": 0.5, "TS_pct": 0.6},
         }
     )
     del data["history"]
@@ -567,7 +658,8 @@ def test_switch_back_returns_spec_from_reactivated_surrogate():
     spec = unit.get_surrogate_spec("biogas_m3_hour_relation")
 
     assert spec["input_variables"] == first_data["input_variables"]
-    assert spec["coefficients"]["exog_coefs"] == pytest.approx([0.7])
+    # A one-input list is accepted, and the spec comes back name-keyed.
+    assert spec["coefficients"]["exog_coefs"] == pytest.approx({"feed_volume_kg": 0.7})
     assert spec["coefficients"]["ar_coefs"] == pytest.approx([0.3])
 
 

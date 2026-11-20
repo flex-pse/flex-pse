@@ -13,7 +13,7 @@ and only the state needed immediately before the local Pyomo horizon::
             "drift": 0.0,           # optional, d=1 only
             "ar_coefs": [...],      # length p
             "ma_coefs": [...],      # length q
-            "exog_coefs": [...],    # one per input variable
+            "exog_coefs": {"feed": 0.0},  # keyed by input variable name
         },
         "history": {
             "start_date": "2025-01-01T00:00:00",
@@ -40,6 +40,12 @@ Coefficient values are stored as dimensionless magnitudes in their declared
 data basis, matching other flex-pse surrogates. ``intercept`` and ``drift``
 therefore represent output-unit magnitudes; each exogenous coefficient
 represents output units per declared input unit.
+
+``exog_coefs`` is keyed by input name, not listed by position, because a
+JSON object's key order is not guaranteed: a serializer or store may reorder
+``input_variables``, and a positional list would then silently pair each
+coefficient with the wrong input. A plain list is still accepted when there
+is at most one input, where no pairing can go wrong.
 """
 
 from __future__ import annotations
@@ -222,6 +228,70 @@ def _require_numeric_list(
                 f"ARIMA {field}[{index}] must be a number, got {item!r}.",
                 field=field,
                 value=item,
+            ) from exc
+    return result
+
+
+def _require_exog_coefs(value: object, input_names: list[str]) -> list[float]:
+    """Validate ``exog_coefs`` and return it in ``input_names`` order.
+
+    Args:
+        value: A ``{input name: coefficient}`` mapping whose keys are exactly
+            ``input_names``, or, with at most one input, a list of
+            ``len(input_names)`` numbers.
+        input_names: The declared ``input_variables`` names, in the order
+            the built block indexes them.
+
+    Returns:
+        One float per input, in ``input_names`` order.
+
+    Raises:
+        FlexConfigError: If ``value`` is a list with two or more inputs, a
+            mapping whose keys don't match ``input_names``, or carries a
+            non-numeric coefficient.
+    """
+    field = "exog_coefs"
+    if isinstance(value, list):
+        if len(input_names) > 1:
+            suggestion = dict(zip(input_names, value, strict=False))
+            raise FlexConfigError(
+                f"ARIMA {field!r} must map each input variable name to its "
+                f"coefficient when there are {len(input_names)} inputs, got "
+                f"the list {value!r}. A list pairs coefficients with inputs "
+                f"by the key order of 'input_variables', which JSON does not "
+                f"preserve. If the list follows the current order, write "
+                f"{suggestion!r}.",
+                field=field,
+                value=value,
+            )
+        return _require_numeric_list(
+            value, field=field, expected_length=len(input_names)
+        )
+    if not isinstance(value, dict):
+        raise FlexConfigError(
+            f"ARIMA {field!r} must be a {{input name: coefficient}} mapping, "
+            f"got {value!r}.",
+            field=field,
+            value=value,
+        )
+    missing = sorted(set(input_names) - set(value))
+    unknown = sorted(set(value) - set(input_names))
+    if missing or unknown:
+        raise FlexConfigError(
+            f"ARIMA {field!r} keys must match 'input_variables' exactly; "
+            f"missing={missing}, unknown={unknown}.",
+            field=field,
+            value=sorted(value),
+        )
+    result: list[float] = []
+    for name in input_names:
+        try:
+            result.append(float(value[name]))
+        except (TypeError, ValueError) as exc:
+            raise FlexConfigError(
+                f"ARIMA {field}[{name!r}] must be a number, got {value[name]!r}.",
+                field=field,
+                value=value[name],
             ) from exc
     return result
 
@@ -528,12 +598,13 @@ class ArimaSurrogate(Surrogate):
             field="ma_coefs",
             expected_length=q,
         )
-        exog_coefs = _require_numeric_list(
+        input_names = list(inputs)
+        exog_coefs = _require_exog_coefs(
             coefficients.get(
-                "exog_coefs", [1.0] * len(inputs) if regression_mode else []
+                "exog_coefs",
+                dict.fromkeys(input_names, 1.0) if regression_mode else {},
             ),
-            field="exog_coefs",
-            expected_length=len(inputs),
+            input_names,
         )
 
         parsed_history = None
@@ -945,10 +1016,10 @@ class ArimaSurrogate(Surrogate):
                 float(pyo.value(block.ma_coefs[index])) for index in range(1, q + 1)
             ]
         if len(block._exog_names) > 0:
-            coefficients["exog_coefs"] = [
-                float(pyo.value(block.exog_coefs[index]))
-                for index in range(1, len(block._exog_names) + 1)
-            ]
+            coefficients["exog_coefs"] = {
+                name: float(pyo.value(block.exog_coefs[index]))
+                for index, name in enumerate(block._exog_names, start=1)
+            }
         deterministic_name = "intercept" if d == 0 else "drift"
         deterministic_var = block.find_component(deterministic_name)
         if deterministic_var is not None:

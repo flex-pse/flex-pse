@@ -557,27 +557,45 @@ def fit_direct(
     return DirectResults(theta, terms, exog_names, y, x, forecast_horizon)
 
 
-def surrogate_coefficients(theta: np.ndarray, terms: ArimaTerms) -> dict[str, object]:
+def surrogate_coefficients(
+    theta: np.ndarray, terms: ArimaTerms, exog_names: list[str]
+) -> dict[str, object]:
     """Return ``theta`` in the surrogate's ``coefficients`` contract.
 
     Args:
         theta: Flat parameter vector.
         terms: Its layout.
+        exog_names: Exogenous column names, in fitted order.
 
     Returns:
         ``order``, then ``intercept`` (``d=0``) or ``drift`` (``d=1``) when
-        the model has a deterministic term, then ``ar_coefs``, ``ma_coefs``
-        and ``exog_coefs`` for each block that is non-empty.
+        the model has a deterministic term, then ``ar_coefs`` and
+        ``ma_coefs`` as lag-ordered lists and ``exog_coefs`` as a
+        ``{column: coefficient}`` mapping, each only when non-empty. The
+        mapping keeps every coefficient paired with its input even if a JSON
+        tool later reorders ``input_variables``.
+
+    Raises:
+        ValueError: If ``exog_names`` doesn't name every exogenous term.
     """
     c, ar, ma, beta = terms.unpack(theta)
+    if len(exog_names) != len(beta):
+        raise ValueError(
+            f"exog_names has {len(exog_names)} name(s) for {len(beta)} "
+            f"exogenous coefficient(s)."
+        )
     coefficients: dict[str, object] = {"order": [terms.p, terms.d, terms.q]}
     if terms.has_const:
         coefficients["intercept"] = c
     if terms.has_drift:
         coefficients["drift"] = c
-    for key, block in (("ar_coefs", ar), ("ma_coefs", ma), ("exog_coefs", beta)):
+    for key, block in (("ar_coefs", ar), ("ma_coefs", ma)):
         if len(block):
             coefficients[key] = [float(value) for value in block]
+    if len(beta):
+        coefficients["exog_coefs"] = {
+            name: float(value) for name, value in zip(exog_names, beta, strict=True)
+        }
     return coefficients
 
 

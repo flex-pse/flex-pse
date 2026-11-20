@@ -362,21 +362,33 @@ def test_surrogate_coefficients_name_the_deterministic_term_by_order():
     with_drift = ArimaTerms(p=0, d=1, q=1, n_exog=0, has_const=False, has_drift=True)
     bare = ArimaTerms(p=1, d=0, q=0, n_exog=0, has_const=False, has_drift=False)
 
-    assert surrogate_coefficients(np.array([0.1, 0.5, 2.0]), with_const) == {
+    assert surrogate_coefficients(np.array([0.1, 0.5, 2.0]), with_const, ["feed"]) == {
         "order": [1, 0, 0],
         "intercept": 0.1,
         "ar_coefs": [0.5],
-        "exog_coefs": [2.0],
+        "exog_coefs": {"feed": 2.0},
     }
-    assert surrogate_coefficients(np.array([0.1, 0.3]), with_drift) == {
+    assert surrogate_coefficients(np.array([0.1, 0.3]), with_drift, []) == {
         "order": [0, 1, 1],
         "drift": 0.1,
         "ma_coefs": [0.3],
     }
-    assert surrogate_coefficients(np.array([0.5]), bare) == {
+    assert surrogate_coefficients(np.array([0.5]), bare, []) == {
         "order": [1, 0, 0],
         "ar_coefs": [0.5],
     }
+
+
+@pytest.mark.unit
+def test_surrogate_coefficients_keys_exog_by_column_and_checks_names():
+    """exog_coefs pairs each beta with its column; a name count mismatch raises."""
+    terms = ArimaTerms(p=0, d=0, q=0, n_exog=2, has_const=False, has_drift=False)
+    assert surrogate_coefficients(np.array([2.0, 3.0]), terms, ["a", "b"]) == {
+        "order": [0, 0, 0],
+        "exog_coefs": {"a": 2.0, "b": 3.0},
+    }
+    with pytest.raises(ValueError, match="exog_names"):
+        surrogate_coefficients(np.array([2.0, 3.0]), terms, ["a"])
 
 
 # -- auto order search -------------------------------------------------------

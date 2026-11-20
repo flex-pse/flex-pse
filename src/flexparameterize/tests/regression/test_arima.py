@@ -319,10 +319,10 @@ def test_surrogate_spec_data_contract():
     assert data["coefficients"]["order"] == [0, 0, 0]
     assert "intercept" in data["coefficients"]
     assert "exog_coefs" in data["coefficients"]
-    assert len(data["coefficients"]["exog_coefs"]) == 1
     assert isinstance(data["coefficients"]["intercept"], float)
-    assert isinstance(data["coefficients"]["exog_coefs"], list)
-    assert len(data["coefficients"]["exog_coefs"]) == 1
+    # exog_coefs is keyed by input name, matching input_variables.
+    assert isinstance(data["coefficients"]["exog_coefs"], dict)
+    assert set(data["coefficients"]["exog_coefs"]) == set(data["input_variables"])
     assert len(data["history"]["eta_values"]) == n
     assert len(data["history"]["eps_values"]) == n
 
@@ -547,7 +547,10 @@ def test_fits_biogas_with_feed_and_ts_exog():
     spec = regressor.to_surrogate_spec()
     assert spec.surrogate_type == SurrogateType.ARIMA
     assert spec.data["coefficients"]["order"] == [1, 0, 1]
-    assert len(spec.data["coefficients"]["exog_coefs"]) == 2
+    assert set(spec.data["coefficients"]["exog_coefs"]) == {
+        "feed_volume_kg",
+        "TS_pct",
+    }
     assert spec.data["output_variables"] == {"biogas_m3_hour": "m^3/hr"}
 
 
@@ -583,7 +586,11 @@ def test_biogas_surrogate_spec_has_all_keys():
 
     assert len(data["coefficients"]["ar_coefs"]) == 2  # AR(2)
     assert len(data["coefficients"]["ma_coefs"]) == 1  # MA(1)
-    assert len(data["coefficients"]["exog_coefs"]) == 2  # two exogenous columns
+    # One coefficient per exogenous column, keyed by its name.
+    assert set(data["coefficients"]["exog_coefs"]) == {
+        "feed_volume_kg",
+        "TS_pct",
+    }
 
 
 # -- cross-validation against statsmodels on real biogas data -----------------
