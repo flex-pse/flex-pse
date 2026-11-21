@@ -173,6 +173,7 @@ jobs:
               "flexops.costing.unit_models",
               "flexops.properties",
               "flexparameterize", "flexparameterize.regression",
+              "flexparameterize.config", "flexparameterize.sweep",
               "flexschedule", "flexdesign",
           ]
           for name in modules:

@@ -37,10 +37,10 @@ def test_fit_recovers_coefficients_in_output_units():
     spec = _spec(toy_config(), toy_frame())
 
     expected = {
-        "intercept": 1e-3,
-        "flow_out": 2e-3,
-        "outlet_state.pressure": 3e-3,
-        "flow_out*outlet_state.pressure": 4e-3,
+        "intercept": 0.1,
+        "flow_out": 50.0,
+        "outlet_state.pressure": 1e-6,
+        "flow_out*outlet_state.pressure": 2e-3,
     }
     for key, value in expected.items():
         assert spec.parameters[key].value == pytest.approx(value, rel=1e-8)
@@ -88,7 +88,7 @@ def test_failed_rows_are_excluded_from_the_fit():
 
     spec = _spec(toy_config(), data)
 
-    assert spec.parameters["flow_out"].value == pytest.approx(2e-3, rel=1e-8)
+    assert spec.parameters["flow_out"].value == pytest.approx(50.0, rel=1e-8)
     assert spec.provenance["n_failed"] == 1
 
 
@@ -106,7 +106,7 @@ def test_too_many_failures_raise():
 def test_holdout_miss_raises():
     """Noise beyond the acceptance limits raises with the holdout numbers."""
     data = toy_frame()
-    noise = np.random.default_rng(3).normal(0.0, 1e3, size=len(data))
+    noise = np.random.default_rng(3).normal(0.0, 50.0, size=len(data))
     data["power_electrical"] += noise
 
     with pytest.raises(FlexDataError, match="holdout"):

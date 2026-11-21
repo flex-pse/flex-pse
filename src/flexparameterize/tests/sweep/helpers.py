@@ -7,7 +7,7 @@ from flexparameterize.config import ParameterizeConfig
 
 
 def toy_config(**overrides) -> ParameterizeConfig:
-    """A config sweeping ``a`` and ``b`` for ``z = 1 + 2a + 3b + 4ab`` in W."""
+    """A config sweeping ``a`` and ``b`` for the toy output ``z`` in W."""
     raw = {
         "inputs": {
             "a": {"path": "a", "units": "m^3/s", "range": (1e-3, 5e-3)},
@@ -34,8 +34,8 @@ def toy_config(**overrides) -> ParameterizeConfig:
 
 
 def toy_output(a, b):
-    """The toy model's output ``z`` in W."""
-    return 1.0 + 2.0 * a + 3.0 * b + 4.0 * a * b
+    """The toy output ``z = 100 + 5e4 a + 1e-3 b + 2 ab`` in W."""
+    return 100.0 + 5e4 * a + 1e-3 * b + 2.0 * a * b
 
 
 def toy_frame(n: int = 6) -> pd.DataFrame:
