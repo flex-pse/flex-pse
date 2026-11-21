@@ -16,20 +16,22 @@ ro = pytest.importorskip(
 )
 
 
-def hold_volumetric_feed(m) -> None:
-    """Specify the feed by volumetric flow and salt mass fraction."""
+def hold_volumetric_spec(m) -> None:
+    """Specify feed flow, salt fraction and recovery on a volumetric basis."""
     props = m.fs.feed.properties[0]
     props.flow_mass_phase_comp["Liq", "H2O"].unfix()
     props.flow_mass_phase_comp["Liq", "NaCl"].unfix()
     props.flow_vol_phase["Liq"].fix()
     props.mass_frac_phase_comp["Liq", "NaCl"].fix()
+    m.fs.RO.recovery_mass_phase_comp[0, "Liq", "H2O"].unfix()
+    m.fs.RO.recovery_vol_phase[0, "Liq"].fix()
 
 
 def build_model():
     """Build the RO flowsheet at its default operating point."""
     m = ro.build()
     ro.set_operating_conditions(m)
-    hold_volumetric_feed(m)
+    hold_volumetric_spec(m)
     return m
 
 
@@ -37,12 +39,15 @@ def initialize(m) -> None:
     """Re-specify the feed and pump pressure for the point, then initialize."""
     props = m.fs.feed.properties[0]
     flow = props.flow_vol_phase["Liq"].value
-    recovery = m.fs.RO.recovery_mass_phase_comp[0, "Liq", "H2O"].value
+    recovery = m.fs.RO.recovery_vol_phase[0, "Liq"].value
     props.flow_vol_phase["Liq"].unfix()
     props.mass_frac_phase_comp["Liq", "NaCl"].unfix()
+    m.fs.RO.recovery_vol_phase[0, "Liq"].unfix()
+    # WaterTAP initializes from a mass-based recovery; the volumetric one is a guess.
     ro.set_operating_conditions(m, water_recovery=recovery, flow_vol=flow)
     ro.initialize_system(m)
-    hold_volumetric_feed(m)
+    hold_volumetric_spec(m)
+    m.fs.RO.recovery_vol_phase[0, "Liq"].fix(recovery)
 
 
 def optimize(m, solver):
@@ -58,7 +63,7 @@ CONFIG = ParameterizeConfig(
             "range": (5e-4, 1.2e-3),
         },
         "recovery": {
-            "path": "fs.RO.recovery_mass_phase_comp[0,Liq,H2O]",
+            "path": "fs.RO.recovery_vol_phase[0,Liq]",
             "units": "dimensionless",
             "range": (0.40, 0.50),
         },

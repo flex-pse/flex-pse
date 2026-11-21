@@ -17,39 +17,48 @@ pip install 'flex-pse[parameterize,sweep,solvers]' 'watertap>=1.8'
 
 `run_sweep` rebuilds the flowsheet before every point, sets the swept inputs,
 initializes, and solves. The flowsheet specifies its feed by component mass
-flows, so `build_model` re-specifies it by volumetric flow and salt mass
-fraction. That makes the feed flow a fixed Var the sweep can set.
-`initialize` re-derives the mass flows and the pump pressure for the point
-before WaterTAP's own initialization.
+flows and its recovery by mass of water. `build_model` re-specifies both on a
+volumetric basis: feed volumetric flow, salt mass fraction, and the volumetric
+recovery `fs.RO.recovery_vol_phase`. That makes them fixed Vars the sweep can
+set, in the same basis as the flex-pse unit's `feed[t]` and `recovery[t]`.
+`initialize` re-derives the mass flows and the pump pressure for the point.
+WaterTAP's initialization needs a mass-based recovery, so it uses the
+volumetric value as a guess and then fixes the volumetric recovery again. The
+final solve finds the matching mass-based recovery.
 
 ```python
 from watertap.flowsheets.RO_with_energy_recovery import RO_with_energy_recovery as ro
 
 
-def hold_volumetric_feed(m):
+def hold_volumetric_spec(m):
     props = m.fs.feed.properties[0]
     props.flow_mass_phase_comp["Liq", "H2O"].unfix()
     props.flow_mass_phase_comp["Liq", "NaCl"].unfix()
     props.flow_vol_phase["Liq"].fix()
     props.mass_frac_phase_comp["Liq", "NaCl"].fix()
+    m.fs.RO.recovery_mass_phase_comp[0, "Liq", "H2O"].unfix()
+    m.fs.RO.recovery_vol_phase[0, "Liq"].fix()
 
 
 def build_model():
     m = ro.build()
     ro.set_operating_conditions(m)
-    hold_volumetric_feed(m)
+    hold_volumetric_spec(m)
     return m
 
 
 def initialize(m):
     props = m.fs.feed.properties[0]
     flow = props.flow_vol_phase["Liq"].value
-    recovery = m.fs.RO.recovery_mass_phase_comp[0, "Liq", "H2O"].value
+    recovery = m.fs.RO.recovery_vol_phase[0, "Liq"].value
     props.flow_vol_phase["Liq"].unfix()
     props.mass_frac_phase_comp["Liq", "NaCl"].unfix()
+    m.fs.RO.recovery_vol_phase[0, "Liq"].unfix()
+    # WaterTAP initializes from a mass-based recovery; the volumetric one is a guess.
     ro.set_operating_conditions(m, water_recovery=recovery, flow_vol=flow)
     ro.initialize_system(m)
-    hold_volumetric_feed(m)
+    hold_volumetric_spec(m)
+    m.fs.RO.recovery_vol_phase[0, "Liq"].fix(recovery)
 
 
 def optimize(m, solver):
@@ -69,7 +78,7 @@ config = ParameterizeConfig(
             "range": (5e-4, 1.2e-3),
         },
         "recovery": {
-            "path": "fs.RO.recovery_mass_phase_comp[0,Liq,H2O]",
+            "path": "fs.RO.recovery_vol_phase[0,Liq]",
             "units": "dimensionless",
             "range": (0.40, 0.50),
         },
@@ -93,9 +102,9 @@ config = ParameterizeConfig(
 
 - `ipopt-watertap` is WaterTAP's scaled IPOPT. It is registered when WaterTAP
   is imported.
-- The swept recovery is WaterTAP's mass-based water recovery. The flex-pse
-  unit's `recovery[t]` is volumetric. In this flowsheet the two differ by
-  about 1%: a mass recovery of 0.40 is a volumetric recovery of 0.396.
+- The swept recovery is volumetric, like the flex-pse unit's `recovery[t]`.
+  WaterTAP's mass-based water recovery is about 1% higher: a volumetric
+  recovery of 0.40 is a mass recovery of 0.404.
 - `fs.costing.aggregate_flow_electricity` is the flowsheet's total electricity
   draw: the high-pressure pump plus the booster pump behind the pressure
   exchanger.
