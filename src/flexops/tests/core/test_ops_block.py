@@ -12,6 +12,7 @@ import pyomo.environ as pyo
 import pytest
 from idaes.core import declare_process_block_class
 from idaes.core.util.model_statistics import degrees_of_freedom
+from pydantic import BaseModel, ConfigDict
 from pyomo.environ import units as pyunits
 from pyomo.network import Port
 from pyomo.util.check_units import assert_units_consistent
@@ -19,7 +20,6 @@ from pyomo.util.check_units import assert_units_consistent
 from flexcore import nomenclature as nm
 from flexcore.config.schema import (
     ExternalDispatchSpec,
-    SurrogateSpec,
     SurrogateType,
     UnitConfig,
 )
@@ -63,12 +63,39 @@ def _multilinear(coefficients, input_variables=None, output_variables=None):
         }
         input_variables = {name: "m^3/hr" for name in names or {"flow_out"}}
     return MultilinearSurrogate(
-        {
-            "input_variables": input_variables,
-            "output_variables": output_variables or {"power_electrical": "kW"},
-            "coefficients": coefficients,
-        }
+        MultilinearSurrogate.make_spec(
+            input_variables=input_variables,
+            output_variables=output_variables or {"power_electrical": "kW"},
+            coefficients=coefficients,
+        )
     )
+
+
+class _AnyConfig(BaseModel):
+    """Accepts any config, for the hand-written test surrogates below."""
+
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+
+class _CustomSurrogate(Surrogate):
+    """Base of the hand-written, unregistered surrogates these tests swap in.
+
+    A custom surrogate still implements the contract: a config model and its
+    parameters (none here). Its ``config`` is the dict it is constructed with.
+    """
+
+    surrogate_type = SurrogateType.MULTILINEAR
+    config_model = _AnyConfig
+
+    def __init__(self, config=None):
+        super().__init__({"config": dict(config or {})})
+
+    @classmethod
+    def parameter_shapes(cls, config):
+        return {}
+
+    def _build(self, unit, target):
+        raise NotImplementedError
 
 
 @declare_process_block_class("DummyOps")
@@ -393,8 +420,14 @@ def test_update_parameters_surrogate_coefficients_isolation():
         name: pyo.value(var) for name, var in block_deactivated.coefficients.items()
     }
 
-    # Update parameters on the active surrogate.
-    unit.update_parameters({"intercept": 5.0, "flow_out": 0.5})
+    # Both active surrogates name an intercept, so the bare name is ambiguous.
+    with pytest.raises(FlexConfigError, match="several relations"):
+        unit.update_parameters({"intercept": 5.0})
+
+    # Update parameters on one active surrogate, naming its relation.
+    unit.update_surrogate_parameters(
+        {"intercept": 5.0, "flow_out": 0.5}, relation_name="flow_relation"
+    )
 
     # Active surrogate's coefficients changed.
     assert pyo.value(unit.surrogate_flow.coefficients["intercept"]) == pytest.approx(
@@ -456,8 +489,8 @@ def test_register_surrogate_coefficients_preserves_other_relation_params():
     for p in unit._io_registry.parameters:
         by_relation.setdefault(p.relation_name or "<unit>", []).append(p.name)
 
-    assert by_relation["flow_relation"] == ["flow_out", "intercept"]
-    assert by_relation["secondary_flow_relation"] == ["flow_out", "intercept"]
+    assert by_relation["flow_relation"] == ["intercept", "flow_out"]
+    assert by_relation["secondary_flow_relation"] == ["intercept", "flow_out"]
 
     coef_map = {p.name: p for p in unit._io_registry.parameters}
     secondary = unit.surrogate_secondary_flow.coefficients
@@ -1106,9 +1139,7 @@ def test_swap_relation_accepts_a_non_multilinear_surrogate():
     pass, verified against a hand computation.
     """
 
-    class _SoftplusSurrogate(Surrogate):
-        def _validate(self):
-            pass
+    class _SoftplusSurrogate(_CustomSurrogate):
 
         @property
         def input_variables(self):
@@ -1120,7 +1151,7 @@ def test_swap_relation_accepts_a_non_multilinear_surrogate():
 
         def build(self, unit, target) -> tuple[None, Any]:
             q = unit.resolve_variable("flow_out", field="input_variables")
-            c = self.data
+            c = self.spec.config
 
             def body(t):
                 x = q[t] / pyunits.get_units(q[t])
@@ -1144,11 +1175,8 @@ def test_swap_relation_accepts_a_non_multilinear_surrogate():
     )
 
 
-class _LaggedSurrogate(Surrogate):
+class _LaggedSurrogate(_CustomSurrogate):
     """A surrogate whose body skips the horizon point where its lag is undefined."""
-
-    def _validate(self):
-        pass
 
     @property
     def input_variables(self):
@@ -1202,9 +1230,7 @@ def test_reswapping_deactivates_a_builders_auxiliary_constraints():
     equality would stay active alongside the new one, double-counting.
     """
 
-    class _AuxSurrogate(Surrogate):
-        def _validate(self):
-            pass
+    class _AuxSurrogate(_CustomSurrogate):
 
         @property
         def input_variables(self):
@@ -1215,7 +1241,7 @@ def test_reswapping_deactivates_a_builders_auxiliary_constraints():
             return {"power_electrical": "kW"}
 
         def build(self, unit, target) -> tuple[None, Any]:
-            tag = self.data["tag"]
+            tag = self.spec.config["tag"]
             tb = unit.model().time_block
             suffix = f"_{tag:.0f}"
             unit.add_component(f"aux_z{suffix}", pyo.Var(tb.time_index, initialize=0.0))
@@ -1284,13 +1310,10 @@ def test_add_constant_intensity_relation_auto_swaps_from_surrogate():
     m = _model(4)
     cfg = UnitConfig(
         unit_model_class="OpsBlock",
-        surrogate=SurrogateSpec(
-            surrogate_type=SurrogateType.MULTILINEAR,
-            data={
-                "input_variables": {"power_electrical": "kW"},
-                "output_variables": {"power_electrical": "kW"},
-                "coefficients": {"power_electrical": 1.0},
-            },
+        surrogate=MultilinearSurrogate.make_spec(
+            input_variables={"power_electrical": "kW"},
+            output_variables={"power_electrical": "kW"},
+            coefficients={"power_electrical": 1.0},
         ),
     )
     m.unit = OpsBlock(property_package=m.props, flexops_config=cfg)
@@ -1633,13 +1656,10 @@ def test_fix_surrogate_coefficients_unknown_relation_raises():
         unit.fix_surrogate_coefficients("nope")
 
 
-class _NoCoefficientsSurrogate(Surrogate):
+class _NoCoefficientsSurrogate(_CustomSurrogate):
     """A surrogate whose block carries no ``coefficients`` attribute."""
 
     surrogate_type = SurrogateType.MULTILINEAR
-
-    def _validate(self):
-        pass
 
     @property
     def input_variables(self):
@@ -1655,13 +1675,10 @@ class _NoCoefficientsSurrogate(Surrogate):
         return block, lambda t: 1.0 * output_units
 
 
-class _DispatchSurrogate(Surrogate):
+class _DispatchSurrogate(_CustomSurrogate):
     """Surrogate double exposing configurable OpsBlock dispatch helpers."""
 
     surrogate_type = SurrogateType.MULTILINEAR
-
-    def _validate(self):
-        pass
 
     @property
     def input_variables(self):
@@ -1684,7 +1701,7 @@ class _DispatchSurrogate(Surrogate):
         elif self._objective == "fallback":
             block.get_objective = lambda **kwargs: kwargs.get("value", 2.0)
         if self._has_spec:
-            self.get_surrogate_spec = lambda block, target: {
+            self.read_spec = lambda block, target: {
                 "block": block,
                 "target": target,
             }
@@ -1715,7 +1732,12 @@ def test_get_surrogate_spec_rejects_invalid_or_unsupported_relations():
         unit.get_surrogate_spec()
 
     unit.swap_relation("flow_relation", _NoCoefficientsSurrogate({}))
-    with pytest.raises(FlexConfigError, match="does not implement get_surrogate_spec"):
+    spec = unit.get_surrogate_spec()
+    assert spec.parameters == {} and spec.surrogate_type is SurrogateType.MULTILINEAR
+
+    record = unit._relation_record("flow_relation")
+    record.surrogate_instance = object()
+    with pytest.raises(FlexConfigError, match="does not implement read_spec"):
         unit.get_surrogate_spec()
 
 

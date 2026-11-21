@@ -57,9 +57,10 @@ from datetime import timedelta
 
 import pandas as pd
 
-from flexcore.config.schema import SurrogateSpec, SurrogateType
+from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError, FlexDataError
 from flexcore.logger import get_logger
+from flexops.surrogates.arima import ArimaSurrogate
 from flexparameterize.regression.base import (
     FitResult,
     require_frame,
@@ -77,7 +78,6 @@ from flexparameterize.regression.utils.arima_utils import (
     ma_max_root,
     parse_forecast_horizon,
     step_seconds,
-    surrogate_coefficients,
 )
 
 _log = get_logger(__name__)
@@ -538,25 +538,25 @@ class ArimaRegressor:
                 field="input_units",
                 value=missing,
             )
-        return SurrogateSpec(
-            surrogate_type=SurrogateType.ARIMA,
-            data={
-                "input_variables": {
-                    name: self.input_units[name] for name in self.exogenous_variables
-                },
-                "output_variables": {self.output_variable: self.output_units},
-                "coefficients": surrogate_coefficients(
-                    self.model.params, self.model.terms, self.exogenous_variables
-                ),
-                "history": history_payload(
-                    self.model.eta,
-                    self.model.resid,
-                    self.model.terms,
-                    start_date=self._training_index[0].isoformat(),
-                    time_step_seconds=time_step_seconds,
-                    history_steps=steps,
-                ),
+        terms = self.model.terms
+        return ArimaSurrogate.make_spec(
+            order=(terms.p, terms.d, terms.q),
+            deterministic=(
+                "intercept" if terms.has_const else "drift" if terms.has_drift else None
+            ),
+            input_variables={
+                name: self.input_units[name] for name in self.exogenous_variables
             },
+            output_variables={self.output_variable: self.output_units},
+            values=self.coefficients,
+            history=history_payload(
+                self.model.eta,
+                self.model.resid,
+                terms,
+                start_date=self._training_index[0].isoformat(),
+                time_step_seconds=time_step_seconds,
+                history_steps=steps,
+            ),
         )
 
     def fit_diagnostics(self) -> dict[str, float]:

@@ -156,7 +156,7 @@ def test_pyomo_matches_direct_fit_for_multiple_arima_orders():
         )
 
         spec = regressor.to_surrogate_spec()
-        surrogate = ArimaSurrogate(spec.data)
+        surrogate = ArimaSurrogate(spec)
         m.unit.swap_relation("biogas_m3_hour_relation", surrogate)
 
         for t in range(n_insample):
@@ -239,14 +239,14 @@ def test_reswapping_arima_relation_succeeds_and_uses_latest_coefficients():
     m.unit.register_relation(m.unit.y_relation, target=m.unit.y)
 
     spec1 = regressor1.to_surrogate_spec()
-    block1 = m.unit.swap_relation("y_relation", ArimaSurrogate(spec1.data))
+    block1 = m.unit.swap_relation("y_relation", ArimaSurrogate(spec1))
 
     fitted_1 = block1.find_component("fitted")
     assert fitted_1 is not None
     assert fitted_1[0].active
 
     spec2 = regressor2.to_surrogate_spec()
-    block2 = m.unit.swap_relation("y_relation", ArimaSurrogate(spec2.data))
+    block2 = m.unit.swap_relation("y_relation", ArimaSurrogate(spec2))
 
     assert not fitted_1[0].active
     fitted_2 = block2.find_component("fitted_2")
@@ -375,7 +375,7 @@ def test_arima_roundtrip(order, auto, auto_kwargs):
         m.unit.biogas_m3_hour_relation, target=m.unit.biogas_m3_hour
     )
 
-    surrogate = ArimaSurrogate(spec.data)
+    surrogate = ArimaSurrogate(spec)
     m.unit.swap_relation("biogas_m3_hour_relation", surrogate)
 
     for t in range(n_insample + n_fcst):
@@ -522,7 +522,7 @@ def test_arima_roundtrip_d1_at_offset_zero():
         m.unit.biogas_m3_hour_relation, target=m.unit.biogas_m3_hour
     )
 
-    surrogate = ArimaSurrogate(spec.data)
+    surrogate = ArimaSurrogate(spec)
     m.unit.swap_relation("biogas_m3_hour_relation", surrogate)
 
     # The surrogate's historical state supplies the seed window for this
@@ -603,7 +603,8 @@ def test_arima_roundtrip_d1_with_drift():
     assert "drift" in regressor.coefficients
 
     spec = regressor.to_surrogate_spec()
-    assert "drift" in spec.data["coefficients"]
+    assert spec.config["deterministic"] == "drift"
+    assert "drift" in spec.parameters
 
     insample_exog = X.iloc[-n_insample:].values
     forecast_exog = np.zeros((n_fcst, 1))
@@ -653,7 +654,7 @@ def test_arima_roundtrip_d1_with_drift():
         m.unit.biogas_m3_hour_relation, target=m.unit.biogas_m3_hour
     )
 
-    surrogate = ArimaSurrogate(spec.data)
+    surrogate = ArimaSurrogate(spec)
     m.unit.swap_relation("biogas_m3_hour_relation", surrogate)
 
     for t in range(n_insample + n_fcst):

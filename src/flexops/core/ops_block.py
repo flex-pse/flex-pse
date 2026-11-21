@@ -37,6 +37,7 @@ from pyomo.network import Port
 from flexcore import nomenclature as nm
 from flexcore.config.schema import (
     ExternalDispatchSpec,
+    SurrogateSpec,
     SurrogateType,
     UnitCommitmentConfig,
     UnitConfig,
@@ -54,6 +55,7 @@ from flexops.core.registration import (
 )
 from flexops.core.time_block import TimeBlockData, find_time_block
 from flexops.surrogates import Surrogate, surrogate_from_spec
+from flexops.surrogates.base import log_parameter_state
 
 
 class RelaxationPolicy(enum.StrEnum):
@@ -956,6 +958,14 @@ class OpsBlockData(UnitModelBlockData):
                 declared input variable is not found on the unit.
         """
         record = self._relation_record(relation_name)
+        if not getattr(surrogate, "replaces_relation", True):
+            raise FlexConfigError(
+                f"A {surrogate.surrogate_type.value} surrogate swaps no relation; "
+                f"apply it with flexops.core.stages.apply_relation_spec instead of "
+                f"swap_relation.",
+                field="surrogate_type",
+                value=surrogate.surrogate_type,
+            )
         for name in surrogate.input_variables:
             self.resolve_variable(name, field="input_variables")
 
@@ -992,7 +1002,6 @@ class OpsBlockData(UnitModelBlockData):
             ]
 
         record.swap_count += 1
-        record.spec = getattr(surrogate, "spec", None)
         fitted_name = (
             "fitted" if record.swap_count == 1 else f"fitted_{record.swap_count}"
         )
@@ -1059,6 +1068,10 @@ class OpsBlockData(UnitModelBlockData):
             if coefficients is not None and hasattr(coefficients, "items"):
                 self.register_surrogate_coefficients(relation_name)
 
+        if surrogate_block is not None and hasattr(surrogate, "read_spec"):
+            spec = surrogate.read_spec(surrogate_block, target)
+            if isinstance(spec, SurrogateSpec):
+                log_parameter_state(f"{self.name}.{relation_name}", spec, "swapped in")
         return record.surrogate_block
 
     def list_surrogate_blocks(self, relation_name: str | None = None) -> list[str]:
@@ -1203,43 +1216,65 @@ class OpsBlockData(UnitModelBlockData):
             )
         return records[0]
 
-    def get_surrogate_spec(self, relation_name: str | None = None) -> dict:
-        """Retrieve the solved surrogate spec from the active surrogate block.
+    def get_surrogate_spec(self, relation_name: str | None = None) -> SurrogateSpec:
+        """Return the active surrogate's current spec, read from its block.
 
-        After solving a model with a surrogate (e.g. ARIMA), this method
-        extracts the solved coefficients and state from the surrogate block
-        so the user can rebuild or refit from it.
+        A pure read: it changes nothing. ``config`` is the surrogate's own
+        (including any state recorded by :meth:`update_surrogate_state`), and
+        each parameter's value and fixed flag come from the live block. For the
+        receding-horizon handoff, call :meth:`update_surrogate_state` after the
+        solve, then this.
 
         Args:
             relation_name: The relation whose active surrogate spec to
                 retrieve. If ``None``, use the unit's only active surrogate.
 
         Returns:
-            A surrogate ``data`` dict, in whatever contract the surrogate's
-            own ``get_surrogate_spec`` defines. For
-            :class:`~flexops.surrogates.arima.ArimaSurrogate` that is
-            ``"input_variables"``, ``"output_variables"``,
-            ``"coefficients"``, and ``"history"``.
+            A :class:`~flexcore.config.schema.SurrogateSpec` that rebuilds the
+            surrogate as it stands.
 
         Raises:
             FlexConfigError: If the relation is not registered, has no
                 active surrogate block, ``relation_name`` is ``None`` while
                 several surrogates are active, or the surrogate does not
-                implement ``get_surrogate_spec``.
+                implement ``read_spec``.
         """
         record = self._single_active_surrogate_record(relation_name)
+        surrogate = self._spec_capable(record, "read_spec")
+        return surrogate.read_spec(record.surrogate_block, record.target)
 
+    def update_surrogate_state(self, relation_name: str | None = None) -> None:
+        """Record the active surrogate's solved state into its config.
+
+        Call after a successful solve. A surrogate with time-dependent state
+        rewrites its own ``config`` from the solution -- ARIMA replaces its
+        ``history``, so its spec initializes the next horizon from the solve.
+        Surrogates without such state are unchanged. Never runs implicitly;
+        :meth:`get_surrogate_spec` and ``emit_model`` then see the new state.
+
+        Args:
+            relation_name: The relation whose surrogate to update. If
+                ``None``, use the unit's only active surrogate.
+
+        Raises:
+            FlexConfigError: If there is no single active surrogate to update,
+                it does not implement ``update_state``, or it reports that the
+                block has not been solved.
+        """
+        record = self._single_active_surrogate_record(relation_name)
+        surrogate = self._spec_capable(record, "update_state")
+        surrogate.update_state(record.surrogate_block, record.target)
+
+    def _spec_capable(self, record, method: str):
         surrogate = record.surrogate_instance
-        if surrogate is None or not hasattr(surrogate, "get_surrogate_spec"):
+        if surrogate is None or not hasattr(surrogate, method):
             raise FlexConfigError(
-                f"Surrogate block {record.surrogate_block.local_name!r} "
-                f"on {self.name!r} does not implement get_surrogate_spec; "
-                "cannot extract spec.",
+                f"Surrogate block {record.surrogate_block.local_name!r} on "
+                f"{self.name!r} does not implement {method}; cannot use its spec.",
                 field="relation_name",
                 value=record.name,
             )
-
-        return surrogate.get_surrogate_spec(record.surrogate_block, record.target)
+        return surrogate
 
     def get_surrogate_objective(
         self,
@@ -1484,7 +1519,9 @@ class OpsBlockData(UnitModelBlockData):
         Raises:
             FlexConfigError: If a name is not a registered process parameter.
         """
-        registered = {rec.name: rec.param for rec in self._io_registry.parameters}
+        registered: dict[str, list] = {}
+        for rec in self._io_registry.parameters:
+            registered.setdefault(rec.name, []).append(rec)
         for name, value in values.items():
             if name not in registered:
                 known = ", ".join(repr(n) for n in registered) or "none"
@@ -1494,7 +1531,55 @@ class OpsBlockData(UnitModelBlockData):
                     field=name,
                     value=value,
                 )
-            registered[name].set_value(value)
+            records = registered[name]
+            if len(records) > 1:
+                relations = sorted(str(rec.relation_name) for rec in records)
+                raise FlexConfigError(
+                    f"{name!r} names a parameter of several relations on "
+                    f"{self.name!r} ({relations}); use "
+                    f"update_surrogate_parameters(values, relation_name=...) to "
+                    "pick one.",
+                    field=name,
+                    value=relations,
+                )
+            record = records[0]
+            if record.relation_name is not None:
+                self.update_surrogate_parameters(
+                    {name: value}, relation_name=record.relation_name
+                )
+            else:
+                record.param.set_value(value)
+
+    def update_surrogate_parameters(
+        self, values: dict, relation_name: str | None = None
+    ) -> None:
+        """Set the active surrogate's parameter values in place, by name.
+
+        Fixed flags are unchanged. An array parameter takes nested lists of
+        its shape.
+
+        Args:
+            values: ``{parameter name: value}``, by the names the surrogate
+                registers (e.g. ``"ar.L1"``, ``"exog.feed"``).
+            relation_name: The relation whose surrogate to update. If
+                ``None``, use the unit's only active surrogate.
+
+        Raises:
+            FlexConfigError: If there is no single active surrogate, a name is
+                not one of its parameters, or a value has the wrong shape.
+        """
+        record = self._single_active_surrogate_record(relation_name)
+        coefficients = getattr(record.surrogate_block, "coefficients", None)
+        known = [] if coefficients is None else list(coefficients)
+        for name, value in values.items():
+            if name not in known:
+                raise FlexConfigError(
+                    f"{name!r} is not a parameter of the surrogate on "
+                    f"{self.name}.{record.name} (parameters: {known}).",
+                    field=name,
+                    value=value,
+                )
+            coefficients.set_value(name, value)
 
     # -- external dispatch (DERMS) -----------------------------------------
 

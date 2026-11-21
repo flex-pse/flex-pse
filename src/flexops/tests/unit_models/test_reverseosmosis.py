@@ -4,10 +4,9 @@ import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
 
-from flexcore.config.schema import SurrogateSpec, SurrogateType
 from flexcore.exceptions import FlexConfigError
 from flexops import SimpleAqueousFlow, TimeBlock
-from flexops.surrogates import surrogate_from_spec
+from flexops.surrogates import MultilinearSurrogate, surrogate_from_spec
 from flexops.testing import UnitModelTestHarness, dummy_time_block
 from flexops.unit_models import ReverseOsmosis
 
@@ -59,9 +58,8 @@ def test_recovery_relation_is_swappable():
     m.unit.swap_relation(
         "split_definition",
         surrogate_from_spec(
-            SurrogateSpec(
-                surrogate_type=SurrogateType.MULTILINEAR,
-                data={
+            MultilinearSurrogate.make_spec(
+                **{
                     "input_variables": {
                         "feed": "m^3/hr",
                         "inlet_state.pressure": "Pa",

@@ -15,9 +15,17 @@ line-break art — rendering is the documentation builder's job.
 """
 
 import enum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    NonNegativeFloat,
+    model_serializer,
+    model_validator,
+)
+from typing_extensions import TypeAliasType
 
 
 class _StrictModel(BaseModel):
@@ -46,12 +54,10 @@ class IOVariableSpec(_StrictModel):
 
 
 class SurrogateType(enum.StrEnum):
-    """Which predefined surrogate class a SurrogateSpec's data describes.
+    """Which predefined surrogate class a SurrogateSpec describes.
 
-    Each member names a class in flexops.surrogates that validates and builds
-    the relationship; CONSTANT_INTENSITY is the one exception -- it has no
-    class, since it fixes a process parameter rather than swapping a
-    Constraint (see flexops.core.ops_block.OpsBlockData.swap_relation).
+    Each member names a class in flexops.surrogates that defines the
+    surrogate's config, validates its parameters, and builds the relationship.
     """
 
     CONSTANT_INTENSITY = "constant_intensity"
@@ -62,27 +68,103 @@ class SurrogateType(enum.StrEnum):
     NEURAL_NETWORK = "neural_network"
 
 
-class SurrogateSpec(_StrictModel):
-    """A fitted (or default) energy/IO relationship for a unit."""
+_Number = Annotated[float, Field(strict=True, allow_inf_nan=False)]
+
+ParameterValue = TypeAliasType("ParameterValue", _Number | list["ParameterValue"])
+"""A parameter value: a number, a list of values, or nested lists (a matrix)."""
+
+
+class ParameterState(_StrictModel):
+    """One surrogate parameter's value and whether the model holds it fixed.
+
+    A parameter is a scalar or an array (a list, or nested lists for a matrix);
+    the surrogate class declares each parameter's shape. fixed applies to the
+    whole parameter. A free parameter may omit value, in which case the
+    surrogate starts it from its documented initial guess.
+    """
+
+    value: ParameterValue | None = Field(
+        default=None,
+        description="The parameter's value: a number, a list, or nested lists. "
+        "Required when fixed is true.",
+    )
+    fixed: Annotated[bool, Field(strict=True)] = Field(
+        default=True,
+        description="Whether the model holds the parameter fixed (true) or "
+        "leaves it free for estimation (false). Always written on emit.",
+    )
+
+    @model_validator(mode="after")
+    def _fixed_needs_value(self) -> "ParameterState":
+        if self.fixed and self.value is None:
+            raise ValueError(
+                "a fixed parameter needs a value; give one, or set fixed to "
+                "false to start it from the surrogate's initial guess"
+            )
+        return self
+
+    @model_serializer(mode="wrap")
+    def _always_write_fixed(self, handler):
+        dumped = handler(self)
+        dumped["fixed"] = self.fixed
+        return dumped
+
+
+class _SurrogateFields(_StrictModel):
+    """The fields every surrogate spec carries, wherever it is placed."""
 
     surrogate_type: SurrogateType = Field(
         description="Which predefined surrogate class this relationship is. "
-        "The class (flexops.surrogates) validates and builds data; a class "
-        "not yet implemented raises NotImplementedError when the model is "
-        "built, not when the config is validated."
+        "The class (flexops.surrogates) validates config and parameters and "
+        "builds the relationship; a class not yet implemented raises "
+        "NotImplementedError when the model is built, not when the config is "
+        "validated."
     )
-    data: dict[str, Any] = Field(
+    config_version: int = Field(
+        default=1,
+        strict=True,
+        ge=1,
+        description="Version of this surrogate type's config format. Each "
+        "surrogate class migrates older versions of its own config when it is "
+        "built. Always written on emit.",
+    )
+    config: dict[str, Any] = Field(
         default_factory=dict,
-        description="The relationship's data, in the shape surrogate_type's "
-        "class defines and validates (e.g. a multilinear surrogate's "
-        "coefficients and its input/output variables with their units). "
+        description="Everything the surrogate needs besides its parameters "
+        "(variables and units, structure, options, state such as an ARIMA "
+        "history), in the shape surrogate_type's class defines and validates. "
         "Opaque to the schema; see the flexops.surrogates reference page for "
-        "each class's data contract.",
+        "each class's config.",
+    )
+    parameters: dict[str, ParameterState] = Field(
+        default_factory=dict,
+        description="The surrogate's fitted values, keyed by the names its "
+        "class registers (for example 'intercept', 'ar.L1', 'exog.feed'). The "
+        "names must match the class's parameters exactly.",
     )
     provenance: dict[str, Any] = Field(
         default_factory=dict,
         description="Free-form fit metadata (metrics, data window, versions).",
     )
+
+    def free_parameters(self) -> list[str]:
+        """Return the names of the parameters that are not fixed, in order."""
+        return [name for name, state in self.parameters.items() if not state.fixed]
+
+
+class SurrogateSpec(_SurrogateFields):
+    """A fitted (or default) energy/IO relationship for a unit.
+
+    The same object is produced by a fit (flexparameterize), read back from a
+    live surrogate block (flexops), and placed into a flowsheet spec as a
+    surrogate element.
+    """
+
+    @model_serializer(mode="wrap")
+    def _always_write_version(self, handler):
+        dumped = handler(self)
+        dumped["config_version"] = self.config_version
+        return dumped
 
 
 # Architecture references: external dispatch is plan/01_architecture.md §3.2.

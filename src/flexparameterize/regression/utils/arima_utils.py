@@ -30,6 +30,7 @@ from scipy.optimize import least_squares
 from scipy.signal import lfilter, lfiltic
 
 from flexcore.exceptions import FlexConfigError, FlexDataError
+from flexops.surrogates.arima import arima_parameter_names
 
 # Bound applied to every MA coefficient in a fit with forecast_horizon > 1.
 # The free-run objective barely sees the MA block (it only reaches
@@ -101,14 +102,17 @@ class ArimaTerms:
 
         Returns:
             ``intercept``/``drift`` (when present), ``ar.L1..``, ``ma.L1..``,
-            then ``exog.<column>``: the names
-            :class:`~flexops.surrogates.arima.ArimaSurrogate` registers its
-            coefficient Vars under.
+            then ``exog.<column>``: exactly the parameter names
+            :class:`~flexops.surrogates.arima.ArimaSurrogate` registers, taken
+            from :func:`~flexops.surrogates.arima.arima_parameter_names` so the
+            two can't drift apart.
         """
-        names = ["intercept"] if self.has_const else ["drift"] if self.has_drift else []
-        names += [f"ar.L{j}" for j in range(1, self.p + 1)]
-        names += [f"ma.L{j}" for j in range(1, self.q + 1)]
-        return names + [f"exog.{name}" for name in exog_names]
+        deterministic = (
+            "intercept" if self.has_const else "drift" if self.has_drift else None
+        )
+        return arima_parameter_names(
+            (self.p, self.d, self.q), deterministic, list(exog_names)
+        )
 
 
 def ma_max_root(ma_coefs) -> float:
@@ -555,48 +559,6 @@ def fit_direct(
             coefficient_bounds(terms, max_ar_persistence, MA_BOUND),
         )
     return DirectResults(theta, terms, exog_names, y, x, forecast_horizon)
-
-
-def surrogate_coefficients(
-    theta: np.ndarray, terms: ArimaTerms, exog_names: list[str]
-) -> dict[str, object]:
-    """Return ``theta`` in the surrogate's ``coefficients`` contract.
-
-    Args:
-        theta: Flat parameter vector.
-        terms: Its layout.
-        exog_names: Exogenous column names, in fitted order.
-
-    Returns:
-        ``order``, then ``intercept`` (``d=0``) or ``drift`` (``d=1``) when
-        the model has a deterministic term, then ``ar_coefs`` and
-        ``ma_coefs`` as lag-ordered lists and ``exog_coefs`` as a
-        ``{column: coefficient}`` mapping, each only when non-empty. The
-        mapping keeps every coefficient paired with its input even if a JSON
-        tool later reorders ``input_variables``.
-
-    Raises:
-        ValueError: If ``exog_names`` doesn't name every exogenous term.
-    """
-    c, ar, ma, beta = terms.unpack(theta)
-    if len(exog_names) != len(beta):
-        raise ValueError(
-            f"exog_names has {len(exog_names)} name(s) for {len(beta)} "
-            f"exogenous coefficient(s)."
-        )
-    coefficients: dict[str, object] = {"order": [terms.p, terms.d, terms.q]}
-    if terms.has_const:
-        coefficients["intercept"] = c
-    if terms.has_drift:
-        coefficients["drift"] = c
-    for key, block in (("ar_coefs", ar), ("ma_coefs", ma)):
-        if len(block):
-            coefficients[key] = [float(value) for value in block]
-    if len(beta):
-        coefficients["exog_coefs"] = {
-            name: float(value) for name, value in zip(exog_names, beta, strict=True)
-        }
-    return coefficients
 
 
 def history_payload(

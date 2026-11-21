@@ -34,9 +34,9 @@ from flexcore import nomenclature as nm
 from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexDataError
 from flexops.core.registration import iter_io_registry
+from flexops.core.serialize import units_to_str
 from flexops.core.stages import ENERGY_RELATION, apply_relation_spec
 from flexops.core.time_block import find_time_block
-from flexops.surrogates import surrogate_from_spec
 from flexparameterize.regression import ConstantIntensityRegressor
 from flexparameterize.tags import TagMap, model_alias
 from flexparameterize.validate import DEFAULT_MIN_ROWS, check_sufficiency
@@ -128,9 +128,13 @@ def _basis_aliases(unit, registry) -> list[str]:
 
 
 def _var_units(var) -> str:
-    """Return a Pyomo Var's units as a string (first data object if indexed)."""
+    """Return a Pyomo Var's units as a spec string (first data object if indexed).
+
+    Written with ``units_to_str``, so a surrogate spec's units parse back:
+    Pyomo's own ``str`` writes ``m**3/h``, which spec units don't accept.
+    """
     ref = next(iter(var.values())) if var.is_indexed() else var
-    return str(pyunits.get_units(ref))
+    return units_to_str(pyunits.get_units(ref), where=var.name)
 
 
 def _fit_unit(unit, registry, data: pd.DataFrame) -> SurrogateSpec:
@@ -264,7 +268,7 @@ def apply_to_model(
         active_block = active_map.get(unit.name)
         if isinstance(supplied_for_unit, dict):
             for relation_name, spec in supplied_for_unit.items():
-                unit.swap_relation(relation_name, surrogate_from_spec(spec))
+                apply_relation_spec(unit, spec, relation_name)
                 report.swapped_relations.setdefault(unit.name, []).append(relation_name)
             continue
         if active_block is not None:

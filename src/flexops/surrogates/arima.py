@@ -1,25 +1,31 @@
 """Pyomo ARIMA/ARIMAX surrogate with explicit innovations and local state.
 
 The surrogate implements one non-seasonal ``ARIMA(p, d, q)`` equation for
-``d`` equal to zero or one. Its persisted data contains fitted coefficients
-and only the state needed immediately before the local Pyomo horizon::
+``d`` equal to zero or one. Its spec carries the structure, options and the
+state needed immediately before the local Pyomo horizon in ``config``, and its
+fitted values in ``parameters``::
 
     {
-        "input_variables": {"feed": "kg/hr"},
-        "output_variables": {"production": "m^3/hr"},
-        "coefficients": {
+        "surrogate_type": "arima",
+        "config_version": 1,
+        "config": {
             "order": [p, d, q],
-            "intercept": 0.0,       # optional, d=0 only
-            "drift": 0.0,           # optional, d=1 only
-            "ar_coefs": [...],      # length p
-            "ma_coefs": [...],      # length q
-            "exog_coefs": {"feed": 0.0},  # keyed by input variable name
+            "deterministic": "intercept",   # "intercept" (d=0), "drift" (d=1) or null
+            "input_variables": {"feed": "kg/hr"},
+            "output_variables": {"production": "m^3/hr"},
+            "max_ar_coeff": null,           # optional AR stability bound in (0, 1]
+            "history": {                    # optional; omitted in regression mode
+                "start_date": "2025-01-01T00:00:00",
+                "time_step_seconds": 900.0,
+                "eta_values": [...],        # disturbance y - x @ beta
+                "eps_values": [...],
+            },
         },
-        "history": {
-            "start_date": "2025-01-01T00:00:00",
-            "time_step_seconds": 900.0,
-            "eta_values": [...],    # disturbance y - x @ beta
-            "eps_values": [...],
+        "parameters": {
+            "intercept": {"value": 0.0, "fixed": true},
+            "ar.L1": {"value": 0.5, "fixed": true},     # one per AR lag, p in all
+            "ma.L1": {"value": 0.2, "fixed": true},     # one per MA lag, q in all
+            "exog.feed": {"value": 0.8, "fixed": true}, # one per input, by name
         },
     }
 
@@ -41,11 +47,12 @@ data basis, matching other flex-pse surrogates. ``intercept`` and ``drift``
 therefore represent output-unit magnitudes; each exogenous coefficient
 represents output units per declared input unit.
 
-``exog_coefs`` is keyed by input name, not listed by position, because a
-JSON object's key order is not guaranteed: a serializer or store may reorder
-``input_variables``, and a positional list would then silently pair each
-coefficient with the wrong input. A plain list is still accepted when there
-is at most one input, where no pairing can go wrong.
+Exogenous coefficients are named ``exog.<input>``, so each one stays paired
+with its input even if a JSON tool reorders ``input_variables``.
+
+After a solve, :meth:`ArimaSurrogate.update_state` (through
+``unit.update_surrogate_state()``) rewrites ``history`` from the solved
+horizon, so the spec initializes the next horizon from it.
 """
 
 from __future__ import annotations
@@ -56,43 +63,26 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from numbers import Real
 from types import MethodType
-from typing import ClassVar
+from typing import Annotated, Any, ClassVar, Literal
 
 import pyomo.environ as pyo
+from pydantic import Field, field_validator, model_validator
 from pyomo.core.base.units_container import UnitsError
 from pyomo.environ import units as pyunits
 
-from flexcore.config.schema import SurrogateType
+from flexcore.config.schema import SurrogateSpec, SurrogateType, _StrictModel
 from flexcore.exceptions import FlexConfigError
 from flexcore.logger import get_logger
 from flexops.core.registration import CoefficientRegistry
 from flexops.core.time_block import find_time_block
 from flexops.core.units import parse_units
+from flexops.surrogates._config import VariablesConfig
 from flexops.surrogates.base import Surrogate
 
 _log = get_logger(__name__)
 
-_DATA_KEYS = (
-    "input_variables",
-    "output_variables",
-    "coefficients",
-    "history",
-)
-_REQUIRED_DATA_KEYS = _DATA_KEYS[:3]
-_COEFFICIENT_KEYS = {
-    "order",
-    "intercept",
-    "drift",
-    "ar_coefs",
-    "ma_coefs",
-    "exog_coefs",
-}
-_HISTORY_KEYS = {
-    "start_date",
-    "time_step_seconds",
-    "eta_values",
-    "eps_values",
-}
+_Number = Annotated[float, Field(strict=True, allow_inf_nan=False)]
+_Order = Annotated[int, Field(strict=True, ge=0)]
 
 
 def _history_prefix(p: int, d: int, q: int) -> int:
@@ -105,43 +95,125 @@ def _history_prefix(p: int, d: int, q: int) -> int:
     return max(p + d, q)
 
 
-@dataclass(frozen=True)
-class _ParsedHistory:
-    """Validated, float-normalized ``history`` mapping."""
+def arima_parameter_names(
+    order: tuple[int, int, int] | list[int],
+    deterministic: str | None,
+    input_names: list[str],
+) -> list[str]:
+    """Return an ARIMA surrogate's parameter names, in registration order.
 
-    start: datetime.datetime
-    step_seconds: float
-    eta_values: tuple[float, ...]
-    eps_values: tuple[float, ...]
-    prefix: int
+    The single definition of ARIMA parameter naming, shared with
+    flexparameterize's fitter so a fit's coefficient names and a built
+    block's registry can't drift apart.
 
-    @property
-    def modeled_count(self) -> int:
-        """Return how many modeled points follow the shared prefix."""
-        return len(self.eta_values) - self.prefix
+    Args:
+        order: ``(p, d, q)``.
+        deterministic: ``"intercept"``, ``"drift"`` or ``None``.
+        input_names: Exogenous input names, in order.
+
+    Returns:
+        ``deterministic`` (when set), ``ar.L1..ar.Lp``, ``ma.L1..ma.Lq``, then
+        ``exog.<name>`` per input.
+    """
+    p, _d, q = order
+    names = [] if deterministic is None else [deterministic]
+    names += [f"ar.L{lag}" for lag in range(1, p + 1)]
+    names += [f"ma.L{lag}" for lag in range(1, q + 1)]
+    return names + [f"exog.{name}" for name in input_names]
 
 
-@dataclass(frozen=True)
-class _ParsedArima:
-    """Validated, default-filled ARIMA coefficients and pre-horizon state.
+class ArimaHistory(_StrictModel):
+    """Pre-horizon ARIMA state: disturbances and innovations on a dated grid.
 
-    ``history`` is ``None`` in regression mode, where the coefficient lists
-    hold initial guesses rather than fitted values.
+    Both series begin with ``max(p + d, q)`` values before the first modeled
+    point, which is ``start_date``.
     """
 
-    p: int
-    d: int
-    q: int
-    deterministic_name: str
+    start_date: str
+    time_step_seconds: Annotated[float, Field(gt=0, allow_inf_nan=False)]
+    eta_values: list[_Number]
+    eps_values: list[_Number]
+
+    @field_validator("start_date")
+    @classmethod
+    def _iso(cls, value: str) -> str:
+        try:
+            datetime.datetime.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError(f"must be an ISO-8601 date, got {value!r}") from exc
+        return value
+
+    @model_validator(mode="after")
+    def _same_length(self) -> ArimaHistory:
+        if len(self.eta_values) != len(self.eps_values):
+            raise ValueError(
+                "eta_values and eps_values must contain the same number of points"
+            )
+        return self
+
+    @property
+    def start(self) -> datetime.datetime:
+        """Return ``start_date`` as a datetime."""
+        return datetime.datetime.fromisoformat(self.start_date)
+
+
+class ArimaConfig(VariablesConfig):
+    """An ARIMA surrogate's config: order, variables, options and history."""
+
+    order: Annotated[list[_Order], Field(min_length=3, max_length=3)]
+    deterministic: Literal["intercept", "drift"] | None = None
+    max_ar_coeff: Annotated[float, Field(gt=0, le=1)] | None = None
+    history: ArimaHistory | None = None
+
+    @model_validator(mode="after")
+    def _consistent(self) -> ArimaConfig:
+        p, d, q = self.order
+        if d not in (0, 1):
+            raise ValueError(f"only d=0 or d=1 is supported, got d={d}")
+        if d == 1 and self.deterministic == "intercept":
+            raise ValueError(
+                "'intercept' is invalid for d=1; use deterministic='drift' for a "
+                "constant in the differenced equation"
+            )
+        if d == 0 and self.deterministic == "drift":
+            raise ValueError(
+                "'drift' is invalid for d=0; use deterministic='intercept' for "
+                "the level equation"
+            )
+        if self.history is not None:
+            prefix = _history_prefix(p, d, q)
+            if len(self.history.eta_values) < prefix:
+                raise ValueError(
+                    f"history.eta_values must include at least max(p+d, q)="
+                    f"{prefix} value(s) before the first modeled point, got "
+                    f"{len(self.history.eta_values)}"
+                )
+        return self
+
+    @property
+    def parameter_names(self) -> list[str]:
+        """Return this config's parameter names, in registration order."""
+        return arima_parameter_names(
+            self.order, self.deterministic, list(self.input_variables)
+        )
+
+
+@dataclass(frozen=True)
+class _Coefficients:
+    """The values an ARIMA block is built with, by role."""
+
     deterministic: float | None
-    ar_coefs: tuple[float, ...]
-    ma_coefs: tuple[float, ...]
-    exog_coefs: tuple[float, ...]
-    history: _ParsedHistory | None
+    ar: tuple[float, ...]
+    ma: tuple[float, ...]
+    exog: tuple[float, ...]
 
 
 def _extend_history(
-    parsed: _ParsedArima, eta_values: list[float], eps_values: list[float], count: int
+    order: tuple[int, int, int],
+    coefficients: _Coefficients,
+    eta_values: list[float],
+    eps_values: list[float],
+    count: int,
 ) -> None:
     """Append ``count`` zero-innovation forecast steps to the history lists.
 
@@ -149,16 +221,16 @@ def _extend_history(
     the forecast needs no exogenous inputs. Each step is the conditional
     mean of the ARIMA equation with the new innovation set to zero.
     """
-    p, d, q = parsed.p, parsed.d, parsed.q
-    constant = parsed.deterministic or 0.0
+    p, d, q = order
+    constant = coefficients.deterministic or 0.0
     for _ in range(count):
         ar_part = sum(
-            parsed.ar_coefs[lag - 1]
+            coefficients.ar[lag - 1]
             * (eta_values[-lag] if d == 0 else eta_values[-lag] - eta_values[-lag - 1])
             for lag in range(1, p + 1)
         )
         ma_part = sum(
-            parsed.ma_coefs[lag - 1] * eps_values[-lag] for lag in range(1, q + 1)
+            coefficients.ma[lag - 1] * eps_values[-lag] for lag in range(1, q + 1)
         )
         mean = constant + ar_part + ma_part
         eta_values.append(mean if d == 0 else eta_values[-1] + mean)
@@ -190,110 +262,6 @@ def _exog_contribution(block, exogenous, t):
             ) from exc
         val += block.exog_coefs[index] * normalized_input * output_units
     return val
-
-
-def _require_numeric_list(
-    value: object,
-    *,
-    field: str,
-    expected_length: int,
-) -> list[float]:
-    """Validate and normalize a fixed-length list of numeric magnitudes.
-
-    Args:
-        value: The candidate list.
-        field: Field name used in error messages.
-        expected_length: Exact required length.
-
-    Returns:
-        The values as a list of floats.
-
-    Raises:
-        FlexConfigError: If ``value`` is not a list of exactly
-            ``expected_length`` numbers.
-    """
-    if not isinstance(value, list) or len(value) != expected_length:
-        raise FlexConfigError(
-            f"ARIMA {field!r} must be a list of {expected_length} numbers, "
-            f"got {value!r}.",
-            field=field,
-            value=value,
-        )
-    result: list[float] = []
-    for index, item in enumerate(value):
-        try:
-            result.append(float(item))
-        except (TypeError, ValueError) as exc:
-            raise FlexConfigError(
-                f"ARIMA {field}[{index}] must be a number, got {item!r}.",
-                field=field,
-                value=item,
-            ) from exc
-    return result
-
-
-def _require_exog_coefs(value: object, input_names: list[str]) -> list[float]:
-    """Validate ``exog_coefs`` and return it in ``input_names`` order.
-
-    Args:
-        value: A ``{input name: coefficient}`` mapping whose keys are exactly
-            ``input_names``, or, with at most one input, a list of
-            ``len(input_names)`` numbers.
-        input_names: The declared ``input_variables`` names, in the order
-            the built block indexes them.
-
-    Returns:
-        One float per input, in ``input_names`` order.
-
-    Raises:
-        FlexConfigError: If ``value`` is a list with two or more inputs, a
-            mapping whose keys don't match ``input_names``, or carries a
-            non-numeric coefficient.
-    """
-    field = "exog_coefs"
-    if isinstance(value, list):
-        if len(input_names) > 1:
-            suggestion = dict(zip(input_names, value, strict=False))
-            raise FlexConfigError(
-                f"ARIMA {field!r} must map each input variable name to its "
-                f"coefficient when there are {len(input_names)} inputs, got "
-                f"the list {value!r}. A list pairs coefficients with inputs "
-                f"by the key order of 'input_variables', which JSON does not "
-                f"preserve. If the list follows the current order, write "
-                f"{suggestion!r}.",
-                field=field,
-                value=value,
-            )
-        return _require_numeric_list(
-            value, field=field, expected_length=len(input_names)
-        )
-    if not isinstance(value, dict):
-        raise FlexConfigError(
-            f"ARIMA {field!r} must be a {{input name: coefficient}} mapping, "
-            f"got {value!r}.",
-            field=field,
-            value=value,
-        )
-    missing = sorted(set(input_names) - set(value))
-    unknown = sorted(set(value) - set(input_names))
-    if missing or unknown:
-        raise FlexConfigError(
-            f"ARIMA {field!r} keys must match 'input_variables' exactly; "
-            f"missing={missing}, unknown={unknown}.",
-            field=field,
-            value=sorted(value),
-        )
-    result: list[float] = []
-    for name in input_names:
-        try:
-            result.append(float(value[name]))
-        except (TypeError, ValueError) as exc:
-            raise FlexConfigError(
-                f"ARIMA {field}[{name!r}] must be a number, got {value[name]!r}.",
-                field=field,
-                value=value[name],
-            ) from exc
-    return result
 
 
 def _scale_for_time(block, innovation_scale, t):
@@ -417,289 +385,141 @@ def _get_regression_objective(
 
 
 class ArimaSurrogate(Surrogate):
-    """Non-seasonal ARIMA/ARIMAX relationship with explicit innovations."""
+    """Non-seasonal ARIMA/ARIMAX relationship with explicit innovations.
+
+    See the module docstring for the spec. With ``config.history`` the
+    pre-horizon state it implies is fixed; without it (regression mode) that
+    state starts at zero and is left free for in-model estimation.
+
+    A free parameter given without a value starts from these guesses: ``0.0``
+    for the intercept or drift, ``min(1.0, max_ar_coeff)`` for AR lags, and
+    ``1.0`` for MA lags and exogenous coefficients.
+    """
 
     surrogate_type: ClassVar[SurrogateType] = SurrogateType.ARIMA
+    config_model: ClassVar[type[ArimaConfig]] = ArimaConfig
 
-    def __init__(self, data: dict, *, max_ar_coeff: float | None = None) -> None:
-        """Store and validate ``data``, with an optional AR stability bound.
+    @classmethod
+    def parameter_shapes(cls, config: ArimaConfig) -> dict[str, tuple]:
+        """Return the deterministic term, one per lag and one per input."""
+        return {name: () for name in config.parameter_names}
 
-        Args:
-            data: The relationship's data (see the module docstring).
-            max_ar_coeff: Bounds every ``ar_coefs`` entry to
-                ``[-max_ar_coeff, max_ar_coeff]``. A supplied (fixed)
-                coefficient that already exceeds this raises immediately;
-                an unfixed one (regression mode) is bounded during solving.
-                AR coefficients near the unit root make this surrogate's
-                difference-equation form numerically unstable. ``None``
-                (the default) applies no bound.
+    @classmethod
+    def initial_guess(cls, name: str, config: ArimaConfig) -> float:
+        """Return a free parameter's starting value (see the class docstring)."""
+        if name.startswith("ar."):
+            return 1.0 if config.max_ar_coeff is None else min(1.0, config.max_ar_coeff)
+        if name.startswith(("ma.", "exog.")):
+            return 1.0
+        return 0.0
+
+    def _validate(self, config: ArimaConfig, spec: SurrogateSpec) -> None:
+        """Reject a fixed AR coefficient outside ``max_ar_coeff``.
+
+        A free one is bounded during solving instead (see :meth:`_build`).
 
         Raises:
-            FlexConfigError: If ``data`` does not match this class's
-                contract, or ``max_ar_coeff`` is not a number in ``(0, 1]``.
+            FlexConfigError: If a fixed ``ar.L*`` value exceeds the bound.
         """
-        if max_ar_coeff is not None and (
-            not isinstance(max_ar_coeff, (int, float))
-            or max_ar_coeff <= 0
-            or max_ar_coeff > 1
-        ):
-            raise FlexConfigError(
-                f"ArimaSurrogate max_ar_coeff must be a number in (0, 1] or "
-                f"None, got {max_ar_coeff!r}.",
-                field="max_ar_coeff",
-                value=max_ar_coeff,
-            )
-        self._max_ar_coeff = max_ar_coeff
-        super().__init__(data)
-
-    def _validate(self) -> None:
-        """Validate structural coefficients, units, and pre-horizon state."""
-        unknown = sorted(set(self.data) - set(_DATA_KEYS))
-        if unknown:
-            raise FlexConfigError(
-                f"ARIMA surrogate data carries unknown key(s) {unknown}; "
-                f"it may only have {_DATA_KEYS}.",
-                field="data",
-                value=unknown,
-            )
-        missing = sorted(set(_REQUIRED_DATA_KEYS) - set(self.data))
-        if missing:
-            raise FlexConfigError(
-                f"ARIMA surrogate data is missing key(s) {missing}; it must "
-                f"have {_REQUIRED_DATA_KEYS}.",
-                field="data",
-                value=missing,
-            )
-
-        inputs = self.data["input_variables"]
-        if not isinstance(inputs, dict):
-            raise FlexConfigError(
-                "ARIMA surrogate 'input_variables' must be a {name: units} "
-                f"mapping, got {inputs!r}.",
-                field="input_variables",
-                value=inputs,
-            )
-        outputs = self.data["output_variables"]
-        if not isinstance(outputs, dict) or len(outputs) != 1:
-            raise FlexConfigError(
-                "ARIMA surrogate 'output_variables' must be one {name: units} "
-                f"entry, got {outputs!r}.",
-                field="output_variables",
-                value=outputs,
-            )
-        for field, mapping in (
-            ("input_variables", inputs),
-            ("output_variables", outputs),
-        ):
-            for name, units in mapping.items():
-                if not isinstance(name, str) or not name:
-                    raise FlexConfigError(
-                        f"ARIMA surrogate {field!r} has invalid name {name!r}.",
-                        field=field,
-                        value=name,
-                    )
-                if not isinstance(units, str) or not units:
-                    raise FlexConfigError(
-                        f"ARIMA surrogate {field!r} entry {name!r} must map "
-                        f"to a non-empty units string, got {units!r}.",
-                        field=field,
-                        value=units,
-                    )
-                parse_units(units)
-
-        coefficients = self.data["coefficients"]
-        if not isinstance(coefficients, dict):
-            raise FlexConfigError(
-                "ARIMA surrogate 'coefficients' must be a mapping, "
-                f"got {coefficients!r}.",
-                field="coefficients",
-                value=coefficients,
-            )
-        unknown_coefficients = sorted(set(coefficients) - _COEFFICIENT_KEYS)
-        if unknown_coefficients:
-            raise FlexConfigError(
-                f"ARIMA coefficients carry unknown key(s) "
-                f"{unknown_coefficients}; allowed keys are "
-                f"{sorted(_COEFFICIENT_KEYS)}.",
-                field="coefficients",
-                value=unknown_coefficients,
-            )
-
-        order = coefficients.get("order")
-        if (
-            not isinstance(order, (list, tuple))
-            or len(order) != 3
-            or not all(type(value) is int and value >= 0 for value in order)
-        ):
-            raise FlexConfigError(
-                "ARIMA coefficients['order'] must be [p, d, q] with three "
-                f"non-negative integers, got {order!r}.",
-                field="coefficients.order",
-                value=order,
-            )
-        p, d, q = order
-        if d not in (0, 1):
-            raise FlexConfigError(
-                f"ARIMA surrogate supports only d=0 or d=1, got d={d}.",
-                field="coefficients.order",
-                value=order,
-            )
-        if d == 1 and "intercept" in coefficients:
-            raise FlexConfigError(
-                "ARIMA coefficient 'intercept' is invalid for d=1; use "
-                "'drift' for a constant in the differenced equation.",
-                field="coefficients.intercept",
-                value=coefficients["intercept"],
-            )
-        if d == 0 and "drift" in coefficients:
-            raise FlexConfigError(
-                "ARIMA coefficient 'drift' is invalid for d=0; use "
-                "'intercept' for the level equation.",
-                field="coefficients.drift",
-                value=coefficients["drift"],
-            )
-        deterministic = "intercept" if d == 0 else "drift"
-        deterministic_value = None
-        if deterministic in coefficients:
-            try:
-                deterministic_value = float(coefficients[deterministic])
-            except (TypeError, ValueError) as exc:
-                raise FlexConfigError(
-                    f"ARIMA coefficient {deterministic!r} must be a number, "
-                    f"got {coefficients[deterministic]!r}.",
-                    field=f"coefficients.{deterministic}",
-                    value=coefficients[deterministic],
-                ) from exc
-
-        regression_mode = "history" not in self.data
-        # Regression-mode initial guesses are 1.0, kept inside the AR bound.
-        ar_default = 1.0 if self._max_ar_coeff is None else min(1.0, self._max_ar_coeff)
-        ar_coefs = _require_numeric_list(
-            coefficients.get("ar_coefs", [ar_default] * p if regression_mode else []),
-            field="ar_coefs",
-            expected_length=p,
-        )
-        if self._max_ar_coeff is not None and "ar_coefs" in coefficients:
-            # Only explicitly supplied (fixed) coefficients are checked here;
-            # regression mode's placeholder initial guess is unfixed and
-            # bounded during solving instead (see build()).
-            for value in ar_coefs:
-                if abs(value) > self._max_ar_coeff:
-                    raise FlexConfigError(
-                        f"ARIMA ar_coefs entry {value} exceeds "
-                        f"max_ar_coeff={self._max_ar_coeff}; AR coefficients "
-                        f"near the unit root are unstable in this "
-                        f"surrogate's difference-equation form.",
-                        field="coefficients.ar_coefs",
-                        value=value,
-                    )
-        ma_coefs = _require_numeric_list(
-            coefficients.get("ma_coefs", [1.0] * q if regression_mode else []),
-            field="ma_coefs",
-            expected_length=q,
-        )
-        input_names = list(inputs)
-        exog_coefs = _require_exog_coefs(
-            coefficients.get(
-                "exog_coefs",
-                dict.fromkeys(input_names, 1.0) if regression_mode else {},
-            ),
-            input_names,
-        )
-
-        parsed_history = None
-        if "history" in self.data:
-            history = self.data["history"]
-            if not isinstance(history, dict):
-                raise FlexConfigError(
-                    "ARIMA history must be a mapping.",
-                    field="history",
-                    value=history,
-                )
-            missing_history = sorted(_HISTORY_KEYS - set(history))
-            unknown_history = sorted(set(history) - _HISTORY_KEYS)
-            if missing_history or unknown_history:
-                raise FlexConfigError(
-                    "ARIMA history must contain exactly the required keys; "
-                    f"missing={missing_history}, unknown={unknown_history}.",
-                    field="history",
-                    value=history,
-                )
-            try:
-                start = datetime.datetime.fromisoformat(history["start_date"])
-                step_seconds = float(history["time_step_seconds"])
-            except (TypeError, ValueError) as exc:
-                raise FlexConfigError(
-                    "ARIMA history start_date must be ISO-8601 and "
-                    "time_step_seconds must be numeric.",
-                    field="history",
-                    value=history,
-                ) from exc
-            if step_seconds <= 0:
-                raise FlexConfigError(
-                    "ARIMA history time_step_seconds must be positive.",
-                    field="history.time_step_seconds",
-                    value=step_seconds,
-                )
-            eta_values = _require_numeric_list(
-                history["eta_values"],
-                field="history.eta_values",
-                expected_length=len(history["eta_values"]),
-            )
-            eps_values = _require_numeric_list(
-                history["eps_values"],
-                field="history.eps_values",
-                expected_length=len(history["eps_values"]),
-            )
-            history_prefix = _history_prefix(p, d, q)
-            for field_name, values in (
-                ("eta_values", eta_values),
-                ("eps_values", eps_values),
+        bound = config.max_ar_coeff
+        if bound is None:
+            return
+        for name, state in spec.parameters.items():
+            if (
+                name.startswith("ar.")
+                and state.fixed
+                and state.value is not None
+                and abs(state.value) > bound
             ):
-                if len(values) < history_prefix:
-                    raise FlexConfigError(
-                        f"ARIMA history.{field_name} must include at least "
-                        f"max(p+d, q)={history_prefix} value(s) before the "
-                        f"first modeled point, got {len(values)}.",
-                        field=f"history.{field_name}",
-                        value=len(values),
-                    )
-            if len(eta_values) != len(eps_values):
                 raise FlexConfigError(
-                    "ARIMA history eta_values and eps_values must contain the "
-                    "same number of modeled points.",
-                    field="history",
-                    value=history,
+                    f"ARIMA {name} = {state.value} exceeds max_ar_coeff={bound}; AR "
+                    "coefficients near the unit root are unstable in this "
+                    "surrogate's difference-equation form.",
+                    field=f"parameters.{name}",
+                    value=state.value,
                 )
-            parsed_history = _ParsedHistory(
-                start=start,
-                step_seconds=step_seconds,
-                eta_values=tuple(eta_values),
-                eps_values=tuple(eps_values),
-                prefix=history_prefix,
-            )
 
-        self._parsed = _ParsedArima(
-            p=p,
-            d=d,
-            q=q,
-            deterministic_name=deterministic,
-            deterministic=deterministic_value,
-            ar_coefs=tuple(ar_coefs),
-            ma_coefs=tuple(ma_coefs),
-            exog_coefs=tuple(exog_coefs),
-            history=parsed_history,
+    @classmethod
+    def make_spec(
+        cls,
+        *,
+        order: tuple[int, int, int] | list[int],
+        input_variables: dict[str, str],
+        output_variables: dict[str, str],
+        values: dict[str, float] | None = None,
+        deterministic: Literal["intercept", "drift"] | None = None,
+        fixed: dict[str, bool] | None = None,
+        history: dict[str, Any] | None = None,
+        max_ar_coeff: float | None = None,
+        provenance: dict[str, Any] | None = None,
+    ) -> SurrogateSpec:
+        """Return a validated ARIMA spec.
+
+        Args:
+            order: ``(p, d, q)``.
+            input_variables: ``{name: units}`` of each exogenous input, in
+                order.
+            output_variables: ``{name: units}`` of the one output.
+            values: ``{parameter: value}`` by the names
+                :func:`arima_parameter_names` gives. A free parameter may be
+                left out to start from its initial guess.
+            deterministic: ``"intercept"`` (``d=0``), ``"drift"`` (``d=1``),
+                or ``None`` for no constant term.
+            fixed: ``{parameter: False}`` for each parameter to leave free;
+                every other parameter is fixed.
+            history: The pre-horizon state; ``None`` for regression mode.
+            max_ar_coeff: Optional bound on every AR coefficient's magnitude.
+            provenance: Free-form fit metadata.
+
+        Returns:
+            The spec.
+
+        Raises:
+            FlexConfigError: If the result does not match the contract.
+        """
+        config: dict[str, Any] = {
+            "order": list(order),
+            "deterministic": deterministic,
+            "input_variables": dict(input_variables),
+            "output_variables": dict(output_variables),
+        }
+        if max_ar_coeff is not None:
+            config["max_ar_coeff"] = max_ar_coeff
+        if history is not None:
+            config["history"] = dict(history)
+        return cls._make(
+            config=config, values=dict(values or {}), fixed=fixed, provenance=provenance
         )
 
     @property
     def input_variables(self) -> dict[str, str]:
         """Return exogenous input names and declared units."""
-        return dict(self.data["input_variables"])
+        return dict(self.config.input_variables)
 
     @property
     def output_variables(self) -> dict[str, str]:
         """Return the single output name and declared units."""
-        return dict(self.data["output_variables"])
+        return dict(self.config.output_variables)
+
+    @property
+    def order(self) -> tuple[int, int, int]:
+        """Return ``(p, d, q)``."""
+        p, d, q = self.config.order
+        return p, d, q
+
+    def _coefficients(self) -> _Coefficients:
+        p, _d, q = self.order
+        deterministic = self.config.deterministic
+        return _Coefficients(
+            deterministic=(
+                None if deterministic is None else float(self.value_of(deterministic))
+            ),
+            ar=tuple(float(self.value_of(f"ar.L{lag}")) for lag in range(1, p + 1)),
+            ma=tuple(float(self.value_of(f"ma.L{lag}")) for lag in range(1, q + 1)),
+            exog=tuple(
+                float(self.value_of(f"exog.{name}")) for name in self.input_variables
+            ),
+        )
 
     def _initial_state(self, time_block) -> tuple[list[float], list[float]]:
         """Return the pre-horizon ``(eta, eps)`` lags ``history`` implies.
@@ -718,10 +538,13 @@ class ArimaSurrogate(Surrogate):
             FlexConfigError: If ``history`` does not align with the
                 ``TimeBlock`` start date on the model's step grid.
         """
-        parsed = self._parsed
-        history = parsed.history
+        p, d, q = self.order
+        history = self.config.history
+        prefix = _history_prefix(p, d, q)
         current_start = time_block.datetime_index[0].to_pydatetime()
-        offset = (current_start - history.start).total_seconds() / history.step_seconds
+        offset = (current_start - history.start).total_seconds() / (
+            history.time_step_seconds
+        )
         offset_index = round(offset)
         if offset < 0 or abs(offset - offset_index) > 1e-8:
             reason = (
@@ -731,16 +554,17 @@ class ArimaSurrogate(Surrogate):
                 "training series"
                 if offset < 0
                 else "is off the history's step grid starting at "
-                f"{history.start.isoformat()} with step {history.step_seconds}s"
+                f"{history.start.isoformat()} with step "
+                f"{history.time_step_seconds}s"
             )
             raise FlexConfigError(
                 f"ARIMA TimeBlock start date {current_start.isoformat()} {reason}.",
-                field="history.start_date",
+                field="config.history.start_date",
                 value=current_start,
             )
         eta_values = list(history.eta_values)
         eps_values = list(history.eps_values)
-        missing = offset_index - history.modeled_count
+        missing = offset_index - (len(eta_values) - prefix)
         if missing > 0:
             _log.warning(
                 "ARIMA history ends %d step(s) before the TimeBlock start "
@@ -749,23 +573,27 @@ class ArimaSurrogate(Surrogate):
                 missing,
                 current_start.isoformat(),
             )
-            _extend_history(parsed, eta_values, eps_values, missing)
-        end = history.prefix + offset_index
+            _extend_history(
+                self.order, self._coefficients(), eta_values, eps_values, missing
+            )
+        end = prefix + offset_index
         return (
-            eta_values[end - (parsed.p + parsed.d) : end],
-            eps_values[end - parsed.q : end],
+            eta_values[end - (p + d) : end],
+            eps_values[end - q : end],
         )
 
-    def build(self, unit, target):
+    def _build(self, unit, target):
         """Build coefficient, innovation, and initial-state components.
 
         The returned ``body(t)`` is the complete right-hand side consumed by
-        :meth:`~flexops.core.ops_block.OpsBlockData.swap_relation`. All
-        coefficients and current innovations are fixed at build time. When
-        ``history`` is supplied, the pre-horizon state it implies is also
-        fixed. When ``history`` is omitted, the pre-horizon state is
-        initialized to zero and left free for in-model estimation. Regression
-        callers explicitly unfix any other quantities they intend to estimate.
+        :meth:`~flexops.core.ops_block.OpsBlockData.swap_relation`. Each
+        coefficient is fixed or free as its parameter says (applied by
+        :meth:`~flexops.surrogates.base.Surrogate.build`), and current innovations are
+        fixed. When ``history`` is supplied, the pre-horizon state it implies
+        is also fixed. When
+        ``history`` is omitted, the pre-horizon state is initialized to zero
+        and left free for in-model estimation. Regression callers explicitly
+        unfix any other quantities they intend to estimate.
 
         Args:
             unit: Unit owning the variables named by ``input_variables``.
@@ -780,9 +608,9 @@ class ArimaSurrogate(Surrogate):
                 input variable's model units are incompatible with the units
                 it declares.
         """
-        parsed = self._parsed
-        p, d, q = parsed.p, parsed.d, parsed.q
-        state_provided = parsed.history is not None
+        p, d, q = self.order
+        coefficients = self._coefficients()
+        state_provided = self.config.history is not None
         time_block = find_time_block(unit.model())
         if state_provided:
             eta_history, eps_history = self._initial_state(time_block)
@@ -790,30 +618,26 @@ class ArimaSurrogate(Surrogate):
             eta_history = [0.0] * (p + d)
             eps_history = [0.0] * q
         exog_names = list(self.input_variables)
-        exog_coefs = parsed.exog_coefs
         output_units = parse_units(next(iter(self.output_variables.values())))
         time_values = list(time_block.time_index)
         time_positions = {value: position for position, value in enumerate(time_values)}
 
-        exogenous = []
-        for name, units_string in self.input_variables.items():
-            exogenous.append(
-                (
-                    unit.resolve_variable(name, field="input_variables"),
-                    parse_units(units_string),
-                )
-            )
+        exogenous = [
+            (unit.resolve_variable(name, field="input_variables"), parse_units(units))
+            for name, units in self.input_variables.items()
+        ]
 
         block = pyo.Block(concrete=True)
         block.time = pyo.Set(initialize=time_values, ordered=True)
         block.coefficient_vars: dict[str, object] = {}
+        block.coefficients = CoefficientRegistry()
 
-        deterministic_name = parsed.deterministic_name
-        if parsed.deterministic is not None:
+        deterministic_name = self.config.deterministic
+        if deterministic_name is not None:
             block.add_component(
                 deterministic_name,
                 pyo.Var(
-                    initialize=parsed.deterministic,
+                    initialize=coefficients.deterministic,
                     doc=(
                         "ARIMA level intercept magnitude"
                         if d == 0
@@ -822,68 +646,51 @@ class ArimaSurrogate(Surrogate):
                 ),
             )
             deterministic_var = block.find_component(deterministic_name)
-            deterministic_var.fix(parsed.deterministic)
             block.coefficient_vars[deterministic_name] = deterministic_var
+            block.coefficients.register_coefficient(
+                deterministic_name, deterministic_var
+            )
 
         if p > 0:
-            ar_values = parsed.ar_coefs
+            bound = self.config.max_ar_coeff
             block.ar_coefs = pyo.Var(
                 range(1, p + 1),
-                initialize={index: ar_values[index - 1] for index in range(1, p + 1)},
-                bounds=(
-                    (None, None)
-                    if self._max_ar_coeff is None
-                    else (-self._max_ar_coeff, self._max_ar_coeff)
-                ),
+                initialize={lag: coefficients.ar[lag - 1] for lag in range(1, p + 1)},
+                bounds=(None, None) if bound is None else (-bound, bound),
                 doc="Dimensionless autoregressive coefficients",
             )
-            for index, value in enumerate(ar_values, start=1):
-                block.ar_coefs[index].fix(value)
             block.coefficient_vars["ar_coefs"] = block.ar_coefs
+            for lag in range(1, p + 1):
+                block.coefficients.register_coefficient(
+                    f"ar.L{lag}", block.ar_coefs[lag]
+                )
 
         if q > 0:
-            ma_values = parsed.ma_coefs
             block.ma_coefs = pyo.Var(
                 range(1, q + 1),
-                initialize={index: ma_values[index - 1] for index in range(1, q + 1)},
+                initialize={lag: coefficients.ma[lag - 1] for lag in range(1, q + 1)},
                 doc="Dimensionless moving-average coefficients",
             )
-            for index, value in enumerate(ma_values, start=1):
-                block.ma_coefs[index].fix(value)
             block.coefficient_vars["ma_coefs"] = block.ma_coefs
+            for lag in range(1, q + 1):
+                block.coefficients.register_coefficient(
+                    f"ma.L{lag}", block.ma_coefs[lag]
+                )
 
         if exog_names:
             block.exog_coefs = pyo.Var(
                 range(1, len(exog_names) + 1),
                 initialize={
-                    index: exog_coefs[index - 1]
+                    index: coefficients.exog[index - 1]
                     for index in range(1, len(exog_names) + 1)
                 },
                 doc="Exogenous coefficient magnitudes in declared data units",
             )
-            for index, value in enumerate(exog_coefs, start=1):
-                block.exog_coefs[index].fix(value)
             block.coefficient_vars["exog_coefs"] = block.exog_coefs
-
-        block.coefficients = CoefficientRegistry()
-        if deterministic_name in block.coefficient_vars:
-            block.coefficients.register_coefficient(
-                deterministic_name, block.coefficient_vars[deterministic_name]
-            )
-        if p > 0:
-            for index in range(1, p + 1):
+            for index, name in enumerate(exog_names, start=1):
                 block.coefficients.register_coefficient(
-                    f"ar.L{index}", block.ar_coefs[index]
+                    f"exog.{name}", block.exog_coefs[index]
                 )
-        if q > 0:
-            for index in range(1, q + 1):
-                block.coefficients.register_coefficient(
-                    f"ma.L{index}", block.ma_coefs[index]
-                )
-        for index, name in enumerate(exog_names, start=1):
-            block.coefficients.register_coefficient(
-                f"exog.{name}", block.exog_coefs[index]
-            )
 
         block.eta_history_index = pyo.Set(
             initialize=range(len(eta_history)), ordered=True
@@ -942,7 +749,7 @@ class ArimaSurrogate(Surrogate):
                 raise FlexConfigError(
                     f"ARIMA disturbance lag at local position {position} exceeds "
                     f"the {len(eta_history)} stored eta_history values.",
-                    field="history.eta_values",
+                    field="config.history.eta_values",
                     value=position,
                 )
             return block.initial_eta_history[history_index]
@@ -960,7 +767,7 @@ class ArimaSurrogate(Surrogate):
                 raise FlexConfigError(
                     f"ARIMA innovation lag at local position {position} "
                     f"exceeds the {len(eps_history)} stored eps_history values.",
-                    field="history.eps_values",
+                    field="config.history.eps_values",
                     value=position,
                 )
             return block.initial_eps_history[history_index]
@@ -969,7 +776,7 @@ class ArimaSurrogate(Surrogate):
             position = time_positions[t]
             current_exog = exog_at(position)
             mean = 0.0 * output_units
-            if deterministic_name in block.coefficient_vars:
+            if deterministic_name is not None:
                 mean += block.coefficient_vars[deterministic_name] * output_units
             if p > 0:
                 for lag in range(1, p + 1):
@@ -990,41 +797,29 @@ class ArimaSurrogate(Surrogate):
 
         return block, body
 
-    def get_surrogate_spec(self, block, target) -> dict:
-        """Extract coefficients and the complete dated solved history.
+    def solved_history(self, block, target) -> dict[str, Any]:
+        """Return the history a solve implies, without recording it.
 
-        The returned ``history`` spans the whole local horizon.
+        The history begins with the ``max(p + d, q)`` initialization lags the
+        block was built with (the solved values in regression mode), followed
+        by the solved horizon's disturbances and innovations, and starts at the
+        horizon's first point. Rebuilding the same horizon from it reproduces
+        the same initial state; a later horizon starts from the solved values.
 
         Args:
-            block: The block returned by :meth:`build`, after a solve.
+            block: The block :meth:`~flexops.surrogates.base.Surrogate.build` returned,
+                after a solve.
             target: The time-indexed output variable passed to
-                :meth:`build`.
+                :meth:`~flexops.surrogates.base.Surrogate.build`.
 
         Returns:
-            A ``data`` dict in this class's persisted contract, suitable for
-            constructing a fresh :class:`ArimaSurrogate` for the next
-            horizon.
+            A ``history`` mapping for ``config``.
+
+        Raises:
+            FlexConfigError: If the block has values missing (it has not been
+                solved).
         """
         p, d, q = block._order
-        coefficients: dict[str, object] = {"order": [p, d, q]}
-        if p > 0:
-            coefficients["ar_coefs"] = [
-                float(pyo.value(block.ar_coefs[index])) for index in range(1, p + 1)
-            ]
-        if q > 0:
-            coefficients["ma_coefs"] = [
-                float(pyo.value(block.ma_coefs[index])) for index in range(1, q + 1)
-            ]
-        if len(block._exog_names) > 0:
-            coefficients["exog_coefs"] = {
-                name: float(pyo.value(block.exog_coefs[index]))
-                for index, name in enumerate(block._exog_names, start=1)
-            }
-        deterministic_name = "intercept" if d == 0 else "drift"
-        deterministic_var = block.find_component(deterministic_name)
-        if deterministic_var is not None:
-            coefficients[deterministic_name] = float(pyo.value(deterministic_var))
-
         output_units = block._output_units
         unit = target.parent_block()
         exogenous = [
@@ -1034,40 +829,49 @@ class ArimaSurrogate(Surrogate):
             )
             for name in block._exog_names
         ]
+        unsolved = [
+            component.name
+            for component in (target, block.eps, block.initial_eta_history)
+            if any(component[index].value is None for index in component)
+        ]
+        if unsolved:
+            raise FlexConfigError(
+                f"Cannot record ARIMA state: {unsolved} have no values yet. Call "
+                "update_surrogate_state() after a successful solve.",
+                field="history",
+                value=unsolved,
+            )
+
+        def magnitude(expression) -> float:
+            return float(pyo.value(expression / output_units))
 
         eta_values = [
-            float(
-                pyo.value(
-                    pyunits.convert(
-                        target[t] - _exog_contribution(block, exogenous, t),
-                        output_units,
-                    )
-                    / output_units
+            magnitude(
+                pyunits.convert(
+                    target[t] - _exog_contribution(block, exogenous, t), output_units
                 )
             )
             for t in block._time_values
         ]
+        eps_values = [magnitude(block.eps[t]) for t in block._time_values]
         previous_eta = [
-            float(pyo.value(block.initial_eta_history[index] / output_units))
+            magnitude(block.initial_eta_history[index])
             for index in block.eta_history_index
         ]
-        eps_values = [
-            float(pyo.value(block.eps[t] / output_units)) for t in block._time_values
-        ]
         previous_eps = [
-            float(pyo.value(block.initial_eps_history[index] / output_units))
+            magnitude(block.initial_eps_history[index])
             for index in block.eps_history_index
         ]
-        history_prefix = _history_prefix(p, d, q)
+        prefix = _history_prefix(p, d, q)
         if previous_eta:
             previous_eta = [previous_eta[0]] * (
-                history_prefix - len(previous_eta)
+                prefix - len(previous_eta)
             ) + previous_eta
         else:
-            previous_eta = [0.0] * history_prefix
-        previous_eps = [0.0] * (history_prefix - len(previous_eps)) + previous_eps
+            previous_eta = [0.0] * prefix
+        previous_eps = [0.0] * (prefix - len(previous_eps)) + previous_eps
         time_block = find_time_block(target.model())
-        history = {
+        return {
             "start_date": time_block.datetime_index[0].isoformat(),
             "time_step_seconds": float(
                 pyo.value(
@@ -1078,9 +882,22 @@ class ArimaSurrogate(Surrogate):
             "eps_values": previous_eps + eps_values,
         }
 
-        return {
-            "input_variables": self.input_variables,
-            "output_variables": self.output_variables,
-            "coefficients": coefficients,
-            "history": history,
-        }
+    def update_state(self, block, target) -> None:
+        """Rewrite ``config.history`` from the solved horizon.
+
+        See :meth:`solved_history`. The spec then initializes the next horizon
+        from the solve. Parameters are untouched; read them with
+        :meth:`~flexops.surrogates.base.Surrogate.read_spec`.
+
+        Args:
+            block: The block :meth:`~flexops.surrogates.base.Surrogate.build` returned,
+                after a solve.
+            target: The time-indexed output variable passed to
+                :meth:`~flexops.surrogates.base.Surrogate.build`.
+
+        Raises:
+            FlexConfigError: If the block has not been solved.
+        """
+        config = {**self.spec.config, "history": self.solved_history(block, target)}
+        self.config = self.config_model.model_validate(config)
+        self.spec = self.spec.model_copy(update={"config": config})
