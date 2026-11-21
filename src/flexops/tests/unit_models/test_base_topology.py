@@ -110,3 +110,14 @@ def test_a_subclass_naming_dict_renames_only_the_roles_it_overrides():
 
     ports = {p.local_name for p in m.unit.component_objects(Port)}
     assert ports == {"inlet", "outlet"}
+
+
+@pytest.mark.unit
+def test_sido_split_fraction_stays_a_regressable_scalar():
+    """The generic SIDO split is one scalar Var, registered as regressable."""
+    m = dummy_time_block(3)
+    m.unit = SIDOBlock(property_package=m.properties, split_fraction=0.4)
+
+    assert not m.unit.split_fraction.is_indexed()
+    regressable = {r.name for r in m.unit._io_registry.parameters if r.regressable}
+    assert "split_fraction" in regressable
