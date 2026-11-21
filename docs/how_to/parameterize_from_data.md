@@ -104,6 +104,13 @@ fitted `LinearRegressor`'s `SurrogateSpec` works identically to a hand
 built one in sections 4a and 4b below. You don't need to change anything
 there.
 
+To fit a cross term, add a column named after the product, such as
+`"flow_out*outlet_state.pressure"`, holding the product of the two columns.
+Its coefficient is stored under that name. Its factors (`flow_out` and
+`outlet_state.pressure`) become the spec's `input_variables`, so
+`input_units` needs an entry for each factor but none for the product
+column.
+
 `get_regressor(surrogate_type)` resolves a
 {py:class}`~flexcore.config.schema.SurrogateType` (member or its string
 value) to the regressor class that fits it. This is the config driven

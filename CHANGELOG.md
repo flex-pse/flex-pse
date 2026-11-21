@@ -27,6 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **`LinearRegressor` fits cross terms that build on the unit.** A product column named `"a*b"` used to be copied into the spec's `input_variables`, so `MultilinearSurrogate.build` looked for a variable called `"a*b"` on the unit and failed. The product's factors are now the spec's inputs and `"a*b"` is only a term. `fit` needs `input_units` for each factor and none for the product column.
 - **A flowsheet spec can build an `arima` surrogate element.** Building one raised `KeyError: 'order'`, because ARIMA nested its coefficients under keys that its block registry names differently. With values now keyed by registry name, there is nothing to translate.
 - **Emitted surrogate specs describe the live model.** `emit_model` reads each surrogate's spec back from its active block, so the spec carries the current values and fixed flags, and no raw-path `fix`/`unfix` patches are written for surrogates. Several bugs are fixed with it:
   - After `switch_surrogate_block`, emit wrote the surrogate swapped in last rather than the one switched to, so the rebuild built the wrong surrogate.
