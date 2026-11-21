@@ -102,3 +102,44 @@ def test_linear_surrogate_spec_applies_in_place():
         assert pyo.value(
             unit.surrogate_power_electrical.fitted[0].body
         ) == pytest.approx(-_predicted(regressor, flow, pressure), rel=1e-6)
+
+
+@pytest.mark.component
+def test_cross_term_spec_builds_on_unit():
+    """A fit with a flow*pressure column applies and evaluates on the unit."""
+    m, unit = build_plant(has_pressure=True)
+    data = evaluate_data(unit)
+    flows = [2.0 + i for i in range(20)]
+    pressures = [1.0e5 + 2.0e4 * (i % 7) for i in range(20)]
+    X = pd.DataFrame(
+        {
+            "flow_out": flows,
+            "outlet_state.pressure": pressures,
+            "flow_out*outlet_state.pressure": [
+                f * p for f, p in zip(flows, pressures, strict=True)
+            ],
+        }
+    )
+    y = pd.DataFrame(
+        {
+            "power_electrical": [
+                1.0 + 0.4 * f + 1e-5 * p + 2e-6 * f * p
+                for f, p in zip(flows, pressures, strict=True)
+            ]
+        }
+    )
+    spec = (
+        LinearRegressor()
+        .fit(X, y, input_units=INPUT_UNITS, output_units="kW")
+        .to_surrogate_spec()
+    )
+
+    apply_to_model(m, data, ALIASED, surrogates={unit.name: spec})
+
+    unit.flow_out[0].set_value(10.0)
+    unit.outlet_state.pressure[0].set_value(3.0e5)
+    unit.power_electrical[0].set_value(0.0)
+    # power - (1.0 + 0.4*10 + 1e-5*3e5 + 2e-6*10*3e5) == -(1 + 4 + 3 + 6)
+    assert pyo.value(unit.surrogate_power_electrical.fitted[0].body) == pytest.approx(
+        -14.0, rel=1e-6
+    )

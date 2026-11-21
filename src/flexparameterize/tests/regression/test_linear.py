@@ -106,3 +106,81 @@ def test_sklearn_absent_raises(monkeypatch):
     y = pd.DataFrame({"power": [1.0, 2.0, 3.0]})
     with pytest.raises(FlexConfigError, match=r"flex-pse\[parameterize\]"):
         LinearRegressor().fit(X, y, input_units={"flow": "m^3/hr"}, output_units="kW")
+
+
+def _cross_term_frames():
+    """Noise-free ``y = 1 + 2a + 3b + 4ab`` with an engineered ``a*b`` column."""
+    rng = np.random.default_rng(11)
+    a = rng.uniform(0.0, 1.0, size=50)
+    b = rng.uniform(0.0, 1.0, size=50)
+    X = pd.DataFrame({"a": a, "b": b, "a*b": a * b})
+    y = pd.DataFrame({"y": 1.0 + 2.0 * a + 3.0 * b + 4.0 * a * b})
+    return X, y
+
+
+@pytest.mark.unit
+def test_cross_term_fit_recovers_known_coefficients():
+    """A product column is fitted as a cross-term coefficient."""
+    pytest.importorskip("sklearn")
+    X, y = _cross_term_frames()
+
+    regressor = LinearRegressor().fit(
+        X, y, input_units={"a": "m^3/s", "b": "dimensionless"}, output_units="W"
+    )
+
+    expected = {"intercept": 1.0, "a": 2.0, "b": 3.0, "a*b": 4.0}
+    for key, value in expected.items():
+        assert regressor.coefficients[key] == pytest.approx(value, abs=1e-10)
+
+
+@pytest.mark.unit
+def test_cross_term_spec_lists_factors_as_input_variables():
+    """The spec's inputs are the factors; the product is only a coefficient key."""
+    pytest.importorskip("sklearn")
+    X, y = _cross_term_frames()
+
+    spec = (
+        LinearRegressor()
+        .fit(X, y, input_units={"a": "m^3/s", "b": "dimensionless"}, output_units="W")
+        .to_surrogate_spec()
+    )
+
+    assert spec.data["input_variables"] == {"a": "m^3/s", "b": "dimensionless"}
+    assert "a*b" in spec.data["coefficients"]
+
+
+@pytest.mark.unit
+def test_cross_term_needs_units_only_for_factors():
+    """A product column needs no units of its own, but every factor does."""
+    pytest.importorskip("sklearn")
+    X, y = _cross_term_frames()
+    product_only = X[["a*b"]]
+
+    regressor = LinearRegressor().fit(
+        product_only,
+        y,
+        input_units={"a": "m^3/s", "b": "dimensionless"},
+        output_units="W",
+    )
+    assert list(regressor.to_surrogate_spec().data["input_variables"]) == ["a", "b"]
+
+    with pytest.raises(FlexConfigError, match="'b'"):
+        LinearRegressor().fit(X, y, input_units={"a": "m^3/s"}, output_units="W")
+
+
+@pytest.mark.unit
+def test_badly_scaled_columns_recover_coefficients():
+    """Inputs on very different scales (m^3/s next to Pa) still fit exactly."""
+    pytest.importorskip("sklearn")
+    a, b = np.meshgrid(np.linspace(1e-3, 5e-3, 6), np.linspace(1e5, 5e5, 6))
+    a, b = a.ravel(), b.ravel()
+    X = pd.DataFrame({"a": a, "b": b, "a*b": a * b})
+    y = pd.DataFrame({"y": 0.1 + 50.0 * a + 1e-6 * b + 2e-3 * a * b})
+
+    regressor = LinearRegressor().fit(
+        X, y, input_units={"a": "m^3/s", "b": "Pa"}, output_units="kW"
+    )
+
+    expected = {"intercept": 0.1, "a": 50.0, "b": 1e-6, "a*b": 2e-3}
+    for key, value in expected.items():
+        assert regressor.coefficients[key] == pytest.approx(value, rel=1e-8)

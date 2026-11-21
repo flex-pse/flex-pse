@@ -21,6 +21,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **`LinearRegressor` fits inputs on very different scales.** scikit-learn's `LinearRegression` drops singular values below its `tol` (1e-6), so inputs in units like m^3/s next to Pa came back with wrong coefficients. `fit` now scales each column to unit standard deviation before fitting and scales the coefficients back.
+- **`LinearRegressor` fits cross terms that build on the unit.** A product column named `"a*b"` used to be copied into the spec's `input_variables`, so `MultilinearSurrogate.build` looked for a variable called `"a*b"` on the unit and failed. The product's factors are now the spec's inputs and `"a*b"` is only a coefficient key. `fit` needs `input_units` for each factor and none for the product column.
 - **`Tank` and electrolyzer separator holdups now include the first time step.** `Tank.holdup` and the electrolyzer's `liquid_holdup` were written only for `t = 1, ..., N-1`, with `volume[0]` (`liquid_volume[0]`) pinned to the initial value, so the flows at `t = 0` were in no balance and the first step's water entered or left for free. Both balances now cover every `t`, with the starting volume as the predecessor of `t = 0`, as `BatteryModel.charge_balance` already did. `initial_volume_eq` and `initial_liquid_volume_eq` are removed. `initial_volume` and `initial_liquid_volume` are now the level before step 0's flows, and `volume[0]` is the level after the first step. Results of models with a tank or electrolyzer change slightly, since the first step's flows now count.
 
 ## [0.3.0] - 2026-11-06
