@@ -107,12 +107,18 @@ def _fit_output(
     residual = float(((predicted - actual) ** 2).sum())
     holdout_r2 = 1.0 - residual / float(((actual - actual.mean()) ** 2).sum())
     max_rel_error = float(((predicted - actual) / actual).abs().max())
+    rel_rmse = (residual / len(actual)) ** 0.5 / float(actual.abs().mean())
     limits = config.acceptance
-    if not (holdout_r2 >= limits.r2_min and max_rel_error <= limits.max_rel_error):
+    if not (
+        max_rel_error <= limits.max_rel_error
+        and rel_rmse <= limits.max_rel_rmse
+        and (limits.r2_min is None or holdout_r2 >= limits.r2_min)
+    ):
         raise FlexDataError(
-            f"output {name!r} misses the holdout limits: R^2 {holdout_r2:.6g} "
-            f"(min {limits.r2_min}), max relative error {max_rel_error:.3g} "
-            f"(max {limits.max_rel_error}).",
+            f"output {name!r} misses the holdout limits: max relative error "
+            f"{max_rel_error:.3g} (max {limits.max_rel_error}), relative RMSE "
+            f"{rel_rmse:.3g} (max {limits.max_rel_rmse}), R^2 {holdout_r2:.6g} "
+            f"(min {limits.r2_min}).",
             field="acceptance",
         )
 
@@ -127,7 +133,11 @@ def _fit_output(
                     for f in factors
                 },
                 "metrics": regressor.metrics
-                | {"holdout_r2": holdout_r2, "holdout_max_rel_error": max_rel_error},
+                | {
+                    "holdout_r2": holdout_r2,
+                    "holdout_max_rel_error": max_rel_error,
+                    "holdout_rel_rmse": rel_rmse,
+                },
             }
         }
     )
