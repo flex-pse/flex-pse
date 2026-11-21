@@ -88,8 +88,36 @@ Protocol, and reduces its fit to a shared
 
 .. autofunction:: get_regressor
 
-Examples
---------
+Sweep configuration
+-------------------
+
+.. currentmodule:: flexparameterize.config
+
+Everything a parameter sweep and its fit need: the swept inputs, the recorded
+outputs and the flex-pse relations they are fitted to, the sampler, the
+solver, and the holdout and acceptance limits.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   ParameterizeConfig
+   SweepInput
+   SweepOutput
+   SamplerType
+   SamplerConfig
+   SolverConfig
+   HoldoutConfig
+   AcceptanceConfig
+
+.. autofunction:: config_hash
+
+Fitting sweep results
+---------------------
+
+.. currentmodule:: flexparameterize.sweep
+
+.. autofunction:: fit_sweep
 
 Applying a fit to a live model
 ------------------------------

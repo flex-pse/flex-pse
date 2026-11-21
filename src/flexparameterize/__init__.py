@@ -13,6 +13,7 @@ provided its columns are mapped to model aliases by a
 from importlib.metadata import version as _dist_version
 
 from flexparameterize.apply import ApplyReport, apply_to_model
+from flexparameterize.config import ParameterizeConfig
 from flexparameterize.regression import (
     ConstantIntensityRegressor,
     FitResult,
@@ -35,6 +36,7 @@ __all__ = [
     "FitResult",
     "IOPairStatus",
     "LinearRegressor",
+    "ParameterizeConfig",
     "Regressor",
     "SufficiencyReport",
     "TagMap",
