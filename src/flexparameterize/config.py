@@ -184,9 +184,18 @@ class HoldoutConfig(_StrictModel):
 class AcceptanceConfig(_StrictModel):
     """Limits the holdout rows must meet for a fit to be returned."""
 
-    r2_min: float = Field(description="Minimum holdout R^2.")
     max_rel_error: float = Field(
-        gt=0.0, description="Maximum holdout |predicted - actual| / |actual|."
+        default=0.1,
+        gt=0.0,
+        description="Maximum holdout |predicted - actual| / |actual|.",
+    )
+    max_rel_rmse: float = Field(
+        default=0.1,
+        gt=0.0,
+        description="Maximum holdout RMSE divided by the mean |actual|.",
+    )
+    r2_min: float | None = Field(
+        default=None, description="Minimum holdout R^2, or None to skip the check."
     )
 
 
@@ -215,7 +224,9 @@ class ParameterizeConfig(_StrictModel):
         description="Largest fraction of failed points a fit accepts.",
     )
     holdout: HoldoutConfig = Field(description="Rows held out of the fit.")
-    acceptance: AcceptanceConfig = Field(description="Limits on the holdout rows.")
+    acceptance: AcceptanceConfig = Field(
+        default_factory=AcceptanceConfig, description="Limits on the holdout rows."
+    )
 
     @model_validator(mode="after")
     def _outputs_match_inputs(self) -> "ParameterizeConfig":
