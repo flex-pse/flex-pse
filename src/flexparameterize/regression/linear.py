@@ -113,18 +113,20 @@ class LinearRegressor:
                 field="X",
             )
 
-        fitted = LinearRegression(fit_intercept=True).fit(
-            paired[list(X.columns)], paired["__y__"]
-        )
-        predicted = fitted.predict(paired[list(X.columns)])
+        # Scale columns to unit spread: sklearn drops singular values below its tol.
+        scale = paired[list(X.columns)].std(ddof=0).replace(0.0, 1.0)
+        scaled = paired[list(X.columns)] / scale
+        fitted = LinearRegression(fit_intercept=True).fit(scaled, paired["__y__"])
+        predicted = fitted.predict(scaled)
         residual_ss = float(((paired["__y__"] - predicted) ** 2).sum())
 
-        self.coefficients = dict(zip(X.columns, fitted.coef_, strict=True)) | {
-            "intercept": float(fitted.intercept_)
-        }
+        self.coefficients = {
+            name: float(coef / scale[name])
+            for name, coef in zip(X.columns, fitted.coef_, strict=True)
+        } | {"intercept": float(fitted.intercept_)}
         self.n_samples = len(paired)
         self.metrics = {
-            "r2": float(fitted.score(paired[list(X.columns)], paired["__y__"])),
+            "r2": float(fitted.score(scaled, paired["__y__"])),
             "rmse": math.sqrt(residual_ss / len(paired)),
         }
         self.data_window = (paired.index.min(), paired.index.max())

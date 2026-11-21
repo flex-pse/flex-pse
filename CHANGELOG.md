@@ -27,6 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **`LinearRegressor` fits inputs on very different scales.** scikit-learn's `LinearRegression` drops singular values below its `tol` (1e-6), so inputs in units like m^3/s next to Pa came back with wrong coefficients. `fit` now scales each column to unit standard deviation before fitting and scales the coefficients back.
 - **`LinearRegressor` fits cross terms that build on the unit.** A product column named `"a*b"` used to be copied into the spec's `input_variables`, so `MultilinearSurrogate.build` looked for a variable called `"a*b"` on the unit and failed. The product's factors are now the spec's inputs and `"a*b"` is only a term. `fit` needs `input_units` for each factor and none for the product column.
 - **A flowsheet spec can build an `arima` surrogate element.** Building one raised `KeyError: 'order'`, because ARIMA nested its coefficients under keys that its block registry names differently. With values now keyed by registry name, there is nothing to translate.
 - **Emitted surrogate specs describe the live model.** `emit_model` reads each surrogate's spec back from its active block, so the spec carries the current values and fixed flags, and no raw-path `fix`/`unfix` patches are written for surrogates. Several bugs are fixed with it:
