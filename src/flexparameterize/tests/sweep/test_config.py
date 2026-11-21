@@ -85,3 +85,16 @@ def test_config_hash_is_stable_and_tracks_changes():
     assert config_hash(toy_config()) == config_hash(toy_config())
     reseeded = toy_config(sampler={"type": "lhs", "n": 20, "seed": 1})
     assert config_hash(reseeded) != config_hash(toy_config())
+
+
+@pytest.mark.unit
+def test_acceptance_defaults_to_ten_percent_errors():
+    """Without acceptance limits, relative error and RMSE default to 10%, no R^2."""
+    config = toy_config().model_copy(update={"acceptance": None})
+    raw = config.model_dump(mode="json", exclude={"acceptance"})
+
+    acceptance = ParameterizeConfig.model_validate(raw).acceptance
+
+    assert acceptance.max_rel_error == 0.1
+    assert acceptance.max_rel_rmse == 0.1
+    assert acceptance.r2_min is None

@@ -140,3 +140,29 @@ def test_missing_column_raises():
     """Data without a configured column raises naming it."""
     with pytest.raises(FlexDataError, match="'b'"):
         fit_sweep(toy_config(), toy_frame().drop(columns="b"))
+
+
+@pytest.mark.unit
+def test_relative_rmse_limit_raises():
+    """A holdout relative RMSE above max_rel_rmse raises even when R^2 is unchecked."""
+    data = toy_frame()
+    data["power_electrical"] += np.random.default_rng(5).normal(0.0, 50.0, len(data))
+    loose = {"max_rel_error": 10.0, "max_rel_rmse": 1e-6}
+
+    with pytest.raises(FlexDataError, match="relative RMSE"):
+        fit_sweep(toy_config(acceptance=loose), data)
+
+
+@pytest.mark.unit
+def test_default_acceptance_passes_a_close_fit():
+    """Noise of about 1% passes the default 10% limits and records the RMSE."""
+    data = toy_frame()
+    data["power_electrical"] *= 1 + np.random.default_rng(5).normal(
+        0.0, 0.01, len(data)
+    )
+    raw = toy_config().model_dump(mode="json", exclude={"acceptance"})
+    config = toy_config().model_validate(raw)
+
+    spec = _spec(config, data)
+
+    assert spec.provenance["metrics"]["holdout_rel_rmse"] < 0.1
