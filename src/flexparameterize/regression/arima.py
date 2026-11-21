@@ -57,9 +57,10 @@ from datetime import timedelta
 
 import pandas as pd
 
-from flexcore.config.schema import SurrogateSpec, SurrogateType
+from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError, FlexDataError
 from flexcore.logger import get_logger
+from flexops.surrogates.arima import ArimaSurrogate
 from flexparameterize.regression.base import (
     FitResult,
     require_frame,
@@ -77,7 +78,6 @@ from flexparameterize.regression.utils.arima_utils import (
     ma_max_root,
     parse_forecast_horizon,
     step_seconds,
-    surrogate_coefficients,
 )
 
 _log = get_logger(__name__)
@@ -493,9 +493,10 @@ class ArimaRegressor:
         - ``output_variables``: the output variable name and its units.
         - ``coefficients``: ``order``; ``intercept`` (``d=0``) or ``drift``
           (``d=1``) when the fit has a deterministic term, omitted entirely
-          when it does not; and ``ar_coefs``, ``ma_coefs``, ``exog_coefs``
-          in lag/column order for each non-empty block. ``exog_coefs`` is
-          the last ``beta`` the fit estimated (see the class docstring).
+          when it does not; ``ar_coefs`` and ``ma_coefs`` in lag order; and
+          ``exog_coefs`` as a ``{column: coefficient}`` mapping, each only
+          when non-empty. ``exog_coefs`` is the last ``beta`` the fit
+          estimated (see the class docstring).
         - ``history``: ``start_date``, ``time_step_seconds``, and the
           disturbance/innovation series the surrogate replays to seed its
           pre-horizon lags, covering the last ``history_length`` of the
@@ -537,25 +538,25 @@ class ArimaRegressor:
                 field="input_units",
                 value=missing,
             )
-        return SurrogateSpec(
-            surrogate_type=SurrogateType.ARIMA,
-            data={
-                "input_variables": {
-                    name: self.input_units[name] for name in self.exogenous_variables
-                },
-                "output_variables": {self.output_variable: self.output_units},
-                "coefficients": surrogate_coefficients(
-                    self.model.params, self.model.terms
-                ),
-                "history": history_payload(
-                    self.model.eta,
-                    self.model.resid,
-                    self.model.terms,
-                    start_date=self._training_index[0].isoformat(),
-                    time_step_seconds=time_step_seconds,
-                    history_steps=steps,
-                ),
+        terms = self.model.terms
+        return ArimaSurrogate.make_spec(
+            order=(terms.p, terms.d, terms.q),
+            deterministic=(
+                "intercept" if terms.has_const else "drift" if terms.has_drift else None
+            ),
+            input_variables={
+                name: self.input_units[name] for name in self.exogenous_variables
             },
+            output_variables={self.output_variable: self.output_units},
+            values=self.coefficients,
+            history=history_payload(
+                self.model.eta,
+                self.model.resid,
+                terms,
+                start_date=self._training_index[0].isoformat(),
+                time_step_seconds=time_step_seconds,
+                history_steps=steps,
+            ),
         )
 
     def fit_diagnostics(self) -> dict[str, float]:

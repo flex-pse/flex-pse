@@ -6,7 +6,13 @@ import pytest
 from flexcore.config.schema import SurrogateSpec, SurrogateType
 from flexcore.exceptions import FlexConfigError
 from flexops.core.registration import CoefficientRegistry
-from flexops.surrogates import MultilinearSurrogate, surrogate_from_spec
+from flexops.surrogates import (
+    SURROGATES,
+    ConstantIntensitySurrogate,
+    MultilinearSurrogate,
+    is_registered,
+    surrogate_from_spec,
+)
 
 _MULTILINEAR_DATA = {
     "input_variables": {"flow_out": "m^3/hr"},
@@ -16,24 +22,94 @@ _MULTILINEAR_DATA = {
 
 
 @pytest.mark.unit
+def test_every_surrogate_type_has_a_registered_class():
+    """Each SurrogateType resolves to the class implementing its contract."""
+    assert set(SURROGATES) == set(SurrogateType)
+    for surrogate_type, cls in SURROGATES.items():
+        assert cls.surrogate_type is surrogate_type
+
+
+@pytest.mark.unit
 def test_surrogate_from_spec_builds_a_multilinear_surrogate():
-    """The one implemented class is resolved and validated in one step."""
-    spec = SurrogateSpec(
-        surrogate_type=SurrogateType.MULTILINEAR, data=_MULTILINEAR_DATA
-    )
+    """The class is resolved and the spec validated in one step."""
+    spec = MultilinearSurrogate.make_spec(**_MULTILINEAR_DATA)
 
     surrogate = surrogate_from_spec(spec)
 
     assert isinstance(surrogate, MultilinearSurrogate)
-    assert surrogate.data == _MULTILINEAR_DATA
+    assert surrogate.spec == spec
+    assert is_registered(surrogate)
 
 
 @pytest.mark.unit
-def test_surrogate_from_spec_rejects_constant_intensity():
-    """constant_intensity has no class: it fixes a parameter, not a Constraint."""
-    spec = SurrogateSpec(surrogate_type=SurrogateType.CONSTANT_INTENSITY, data={})
-    with pytest.raises(FlexConfigError, match="constant_intensity"):
+def test_surrogate_from_spec_builds_a_constant_intensity_that_swaps_nothing():
+    """constant_intensity has a class, but it sets a parameter, not a relation."""
+    spec = ConstantIntensitySurrogate.make_spec(energy_intensity=0.5)
+    surrogate = surrogate_from_spec(spec)
+    assert isinstance(surrogate, ConstantIntensitySurrogate)
+    assert surrogate.replaces_relation is False
+
+
+@pytest.mark.unit
+def test_a_subclass_of_a_registered_class_is_not_registered():
+    """Only the registered class can be rebuilt from a spec, so emitted."""
+
+    class Custom(MultilinearSurrogate):
+        pass
+
+    assert not is_registered(
+        Custom(MultilinearSurrogate.make_spec(**_MULTILINEAR_DATA))
+    )
+
+
+@pytest.mark.unit
+def test_a_surrogate_refuses_a_spec_for_another_type():
+    """Constructing a class from another type's spec says which to use."""
+    spec = ConstantIntensitySurrogate.make_spec(energy_intensity=0.5)
+    with pytest.raises(FlexConfigError, match="surrogate_from_spec"):
+        MultilinearSurrogate(spec)
+
+
+@pytest.mark.unit
+def test_a_surrogate_refuses_the_old_data_layout():
+    """A pre-0.2.0 data dict points to the migration helper."""
+    with pytest.raises(FlexConfigError, match="migrate_surrogate_spec"):
+        MultilinearSurrogate({"data": _MULTILINEAR_DATA})
+
+
+@pytest.mark.unit
+def test_a_newer_config_version_is_refused():
+    """A spec from a newer build's config format asks for an upgrade."""
+    spec = MultilinearSurrogate.make_spec(**_MULTILINEAR_DATA).model_copy(
+        update={"config_version": 2}
+    )
+    with pytest.raises(FlexConfigError, match="Upgrade flex-pse"):
         surrogate_from_spec(spec)
+
+
+@pytest.mark.unit
+def test_an_older_config_version_is_migrated_on_construction(monkeypatch):
+    """A type that bumps config_version upgrades older configs it is given."""
+
+    def migrate(cls, version, config):
+        assert version == 1
+        return {**config, "terms": [term.upper() for term in config["terms"]]}
+
+    monkeypatch.setattr(MultilinearSurrogate, "config_version", 2)
+    monkeypatch.setattr(MultilinearSurrogate, "migrate_config", classmethod(migrate))
+    old = SurrogateSpec(
+        surrogate_type="multilinear",
+        config_version=1,
+        config={
+            "input_variables": {"FLOW_OUT": "m^3/hr"},
+            "output_variables": {"power_electrical": "kW"},
+            "terms": ["flow_out"],
+        },
+        parameters={"intercept": {"value": 0.0}, "FLOW_OUT": {"value": 1.0}},
+    )
+    surrogate = surrogate_from_spec(old)
+    assert surrogate.spec.config_version == 2
+    assert surrogate.config.terms == ["FLOW_OUT"]
 
 
 @pytest.mark.unit
@@ -47,7 +123,7 @@ def test_surrogate_from_spec_rejects_constant_intensity():
 )
 def test_surrogate_from_spec_stubs_raise_not_implemented(surrogate_type):
     """Reserved types without a full implementation raise NotImplementedError."""
-    spec = SurrogateSpec(surrogate_type=surrogate_type, data={})
+    spec = SurrogateSpec(surrogate_type=surrogate_type, config={})
     with pytest.raises(NotImplementedError, match="MultilinearSurrogate"):
         surrogate_from_spec(spec)
 
@@ -82,15 +158,55 @@ def test_coefficient_registry_register_coefficient_non_var_raises():
 
 
 @pytest.mark.unit
-def test_coefficient_registry_register_coefficient_rejects_indexed_var():
-    """A whole indexed Var must go through register_coefficients instead."""
+def test_coefficient_registry_registers_an_indexed_var_as_one_array():
+    """A whole indexed Var is one array parameter, read and set as a list."""
     m = pyo.ConcreteModel()
-    m.coefs = pyo.Var(["a", "b"], initialize=1.0)
+    m.coefs = pyo.Var(["a", "b"], initialize={"a": 1.0, "b": 2.0})
 
     registry = CoefficientRegistry()
-    with pytest.raises(FlexConfigError, match="indexed Var.*register_coefficients"):
-        registry.register_coefficient("coefs", m.coefs)
-    assert len(registry) == 0
+    registry.register_coefficient("coefs", m.coefs)
+    assert registry.names() == ["coefs"]
+    assert registry.shape("coefs") == (2,)
+    assert registry.value("coefs") == [1.0, 2.0]
+
+    registry.set_value("coefs", [3.0, 4.0])
+    assert m.coefs["b"].value == 4.0
+    with pytest.raises(FlexConfigError, match=r"shape \(2,\)"):
+        registry.set_value("coefs", [[3.0, 4.0]])
+
+
+@pytest.mark.unit
+def test_coefficient_registry_array_shape_folds_nested_lists_row_major():
+    """A (2, 3) array reads and writes nested lists in its index order."""
+    m = pyo.ConcreteModel()
+    m.w = pyo.Var(range(2), range(3), initialize=0.0)
+    registry = CoefficientRegistry()
+    registry.register_coefficient("w", m.w, shape=(2, 3))
+    registry.set_value("w", [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    assert m.w[1, 0].value == 4.0
+    assert registry.value("w") == [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+    with pytest.raises(FlexConfigError, match="does not fill shape"):
+        registry.register_coefficient("w2", m.w, shape=(4, 2))
+    with pytest.raises(FlexConfigError, match="scalar Var"):
+        registry.register_coefficient("s", pyo.Var(initialize=0.0), shape=(1,))
+
+
+@pytest.mark.unit
+def test_coefficient_registry_fixes_one_name_or_all():
+    """fix/unfix take a name; an array's flag covers every entry."""
+    m = pyo.ConcreteModel()
+    m.w = pyo.Var(range(2), initialize=0.0)
+    m.c = pyo.Var(initialize=1.0)
+    registry = CoefficientRegistry()
+    registry.register_coefficient("w", m.w)
+    registry.register_coefficient("c", m.c)
+
+    registry.fix("w")
+    assert registry.is_fixed("w") and not registry.is_fixed("c")
+    m.w[0].unfix()
+    assert not registry.is_fixed("w") and registry.is_partially_fixed("w")
+    registry.fix()
+    assert registry.is_fixed("w") and registry.is_fixed("c")
 
 
 @pytest.mark.unit

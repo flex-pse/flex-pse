@@ -1,12 +1,12 @@
 """NeuralNetworkSurrogate: not yet implemented."""
 
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from flexcore.config.schema import SurrogateType
-from flexops.surrogates.base import Surrogate
+from flexops.surrogates._stub import StubSurrogate
 
 
-class NeuralNetworkSurrogate(Surrogate):
+class NeuralNetworkSurrogate(StubSurrogate):
     """A neural-network (e.g. ReLU big-M or ICNN) forward-pass relationship.
 
     Not yet implemented; use
@@ -15,29 +15,8 @@ class NeuralNetworkSurrogate(Surrogate):
     """
 
     surrogate_type: ClassVar[SurrogateType] = SurrogateType.NEURAL_NETWORK
-
-    def _validate(self) -> None:
-        """Raise: neural-network surrogates are not yet implemented.
-
-        Raises:
-            NotImplementedError: Always.
-        """
-        raise NotImplementedError(
-            "NeuralNetworkSurrogate is not yet implemented. Use "
-            "MultilinearSurrogate (surrogate_type='multilinear') for a "
-            "relationship expressible without a network."
-        )
-
-    @property
-    def input_variables(self) -> dict[str, str]:
-        """Never reached -- ``_validate`` always raises first."""
-        raise NotImplementedError
-
-    @property
-    def output_variables(self) -> dict[str, str]:
-        """Never reached -- ``_validate`` always raises first."""
-        raise NotImplementedError
-
-    def build(self, unit, target) -> tuple[None, Any]:
-        """Never reached -- ``_validate`` always raises first."""
-        raise NotImplementedError
+    not_implemented: ClassVar[str] = (
+        "NeuralNetworkSurrogate is not yet implemented. Use "
+        "MultilinearSurrogate (surrogate_type='multilinear') for a "
+        "relationship expressible without a network."
+    )

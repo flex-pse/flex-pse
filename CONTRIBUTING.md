@@ -121,6 +121,16 @@ Many processes are best characterized by a detailed simulator (e.g. an IDAES/Wat
 - **Declare and enforce the fitted domain.** A surrogate is valid only over the range of its training data. Put that range on the input variables as bounds, so the optimizer can't extrapolate into regions the fit never saw.
 - **Prefer surrogate shapes that keep the problem class.** A multilinear fit with fixed inputs keeps an LP an LP, while a neural network makes it an NLP. Black-box models with their own derivatives can be embedded with Pyomo's `ExternalGreyBoxModel` (`pyomo.contrib.pynumero`), but that limits the model to interior-point NLP solvers. Say so in the docs.
 
+#### Developing a surrogate
+
+A surrogate type is defined by its contract, so build the contract first and the regression tooling second:
+
+1. **Contract.** In `flexops.surrogates`, subclass `Surrogate`. Define `config_model` (a pydantic model of everything the surrogate needs besides its fitted values), `parameter_shapes(config)` (the parameters a config implies, with their shapes) and a typed `make_spec(...)`. Decide which fitted values are scalar parameters, each fixed or freed on its own, and which are arrays, fixed or freed as a whole. Add the class to `SURROGATES`.
+2. **Build and read back.** Implement `_build`, registering every parameter in a `CoefficientRegistry`. The base class checks the registry against the contract and applies each parameter's value and fixed flag. Override `update_state` and the in-place hooks only if the type carries state that evolves with a solve, as ARIMA's history does.
+3. **Contract tests.** Add an example to `EXAMPLES` in `src/flexops/tests/surrogates/test_contract.py` so the shared checks cover the type, add type-specific tests, and add a JSON round trip to `src/flexops/tests/core/test_surrogate_roundtrip.py`. Surrogate tests always go through emit, `dump_spec`, `load_spec` and a rebuild.
+4. **Format changes.** A later change to the type's `config` bumps its `config_version` and adds a `migrate_config` step, with a test. It doesn't change the flowsheet `SCHEMA_VERSION`.
+5. **Regression tooling.** Only then add a regressor in flexparameterize. It fits values and calls `make_spec`, and never constructs `SurrogateSpec(...)` itself. `src/flexparameterize/tests/regression/test_spec_contract.py` enforces that.
+
 #### Validation and references
 
 flex-pse models inform real operating decisions, so every modeling choice has to be traceable to evidence.

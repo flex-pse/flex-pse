@@ -244,29 +244,101 @@ raises `NotImplementedError` when the model is built (`quadratic`,
 `arima` is implemented by {class}`~flexops.surrogates.arima.ArimaSurrogate`
 and fitted by {class}`~flexparameterize.regression.arima.ArimaRegressor`.
 
+Every surrogate element carries the same envelope, whichever type it is and
+whether a fit, a live model or a person wrote it:
+
+- `surrogate_type` picks the class that defines and validates the rest.
+- `config` holds everything the surrogate needs besides its fitted values:
+  variables and units, structure, options, and any state. Its shape belongs to
+  the class (see {doc}`../reference/flexops/surrogates`).
+- `config_version` is the version of that type's config format. A class
+  migrates older versions of its own config when the surrogate is built.
+- `parameters` maps each fitted value, by the name the built block registers,
+  to `{"value": ..., "fixed": true|false}`. A value is a number or a list
+  (nested lists for a matrix). `fixed` covers the whole parameter, defaults to
+  `true`, and is always written on emit. A free parameter may leave out
+  `value` to start from the class's documented initial guess. The names must
+  match the class's parameters exactly, so a typo is an error rather than a
+  silently fixed coefficient.
+- `provenance` is free-form fit metadata.
+
 The `multilinear` class
 ({class}`~flexops.surrogates.multilinear.MultilinearSurrogate`) is a constant
-plus a sum of `coefficient * (product of distinct declared inputs)`. A
-coefficient key is a `*`-separated product of names from `input_variables`,
-each at most once. The reserved key `intercept` is the constant term.
+plus a sum of `coefficient * (product of distinct declared inputs)`. Each entry
+of `terms` is a `*`-separated product of names from `input_variables`, each at
+most once. The parameters are `intercept`, the constant term, plus one per
+term, named by the term.
 
 ```json
 {
   "kind": "surrogate",
   "unit": "plant.pump",
   "surrogate_type": "multilinear",
-  "data": {
+  "config_version": 1,
+  "config": {
     "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
     "output_variables": {"power_electrical": "kW"},
-    "coefficients": {
-      "intercept": 5.0,
-      "flow_out": 0.42,
-      "outlet_state.pressure": 1.1e-5,
-      "flow_out*outlet_state.pressure": 2.3e-6
-    }
+    "terms": ["flow_out", "outlet_state.pressure", "flow_out*outlet_state.pressure"]
+  },
+  "parameters": {
+    "intercept": {"value": 5.0, "fixed": true},
+    "flow_out": {"value": 0.42, "fixed": true},
+    "outlet_state.pressure": {"value": 1.1e-5, "fixed": true},
+    "flow_out*outlet_state.pressure": {"value": 2.3e-6, "fixed": true}
   }
 }
 ```
+
+An `arima` surrogate puts its order, deterministic term, options and
+pre-horizon history in `config`, and names its coefficients `intercept` (or
+`drift`), `ar.L1`, `ma.L1` and `exog.<input>`. Naming each exogenous
+coefficient after its input keeps the pair together even if a JSON tool
+reorders `input_variables`. Here one coefficient is left free for estimation:
+
+```json
+{
+  "kind": "surrogate",
+  "unit": "plant.ro",
+  "relation": "power_electrical_relation",
+  "surrogate_type": "arima",
+  "config_version": 1,
+  "config": {
+    "order": [1, 0, 1],
+    "deterministic": "intercept",
+    "input_variables": {"permeate": "m^3/hr"},
+    "output_variables": {"power_electrical": "kW"},
+    "history": {
+      "start_date": "2025-01-01T00:00:00",
+      "time_step_seconds": 3600.0,
+      "eta_values": [1.0],
+      "eps_values": [0.0]
+    }
+  },
+  "parameters": {
+    "intercept": {"value": 2.0, "fixed": true},
+    "ar.L1": {"value": 0.5, "fixed": false},
+    "ma.L1": {"value": 0.2, "fixed": true},
+    "exog.permeate": {"value": 0.8, "fixed": true}
+  }
+}
+```
+
+A `constant_intensity` surrogate swaps no relation. It sets the unit's own
+`energy_intensity`, its one parameter:
+
+```json
+{
+  "kind": "surrogate",
+  "unit": "plant.pump",
+  "surrogate_type": "constant_intensity",
+  "parameters": {"energy_intensity": {"value": 0.9, "fixed": true}}
+}
+```
+
+A unit can carry several surrogates, one element per relation. An RO skid can
+have one on `split_definition` and another on `power_electrical_relation`.
+Building, applying or emitting a surrogate logs which of its parameters are
+free, at INFO when any are and at DEBUG when all are fixed.
 
 The declared units are the basis the relationship was fitted in. Each input
 converts from the model's units into its declared ones before the coefficient
@@ -288,6 +360,14 @@ Every spec carries a mandatory `schema_version`, a semantic version string
 or too-new version raises a `FlexConfigError`, and an older one steps through
 {data}`~flexcore.config.io.MIGRATIONS` before validation. Pydantic models in
 `flexcore.config.spec` are the schema authority and reject undocumented keys.
+
+Schema 0.2.0 replaced each surrogate element's `data` with `config` and
+`parameters`. A 0.1.1 file still loads: every coefficient the old build
+created becomes a fixed parameter at the value the old build gave it, so the
+migrated spec builds the same model. A saved standalone surrogate spec can be
+upgraded with {func}`~flexcore.config.surrogate_migration.migrate_surrogate_spec`.
+Changes to one surrogate type's `config` don't change the schema version; that
+type bumps its own `config_version` instead.
 Their exported JSON Schema is checked in under `src/flexcore/config/schemas/`,
 so schema changes show up in review and other tools can validate against it.
 Changing the default fix policy is a breaking change and needs a new version.
