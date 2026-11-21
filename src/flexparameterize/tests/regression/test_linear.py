@@ -166,3 +166,21 @@ def test_cross_term_needs_units_only_for_factors():
 
     with pytest.raises(FlexConfigError, match="'b'"):
         LinearRegressor().fit(X, y, input_units={"a": "m^3/s"}, output_units="W")
+
+
+@pytest.mark.unit
+def test_badly_scaled_columns_recover_coefficients():
+    """Inputs on very different scales (m^3/s next to Pa) still fit exactly."""
+    pytest.importorskip("sklearn")
+    a, b = np.meshgrid(np.linspace(1e-3, 5e-3, 6), np.linspace(1e5, 5e5, 6))
+    a, b = a.ravel(), b.ravel()
+    X = pd.DataFrame({"a": a, "b": b, "a*b": a * b})
+    y = pd.DataFrame({"y": 0.1 + 50.0 * a + 1e-6 * b + 2e-3 * a * b})
+
+    regressor = LinearRegressor().fit(
+        X, y, input_units={"a": "m^3/s", "b": "Pa"}, output_units="kW"
+    )
+
+    expected = {"intercept": 0.1, "a": 50.0, "b": 1e-6, "a*b": 2e-3}
+    for key, value in expected.items():
+        assert regressor.coefficients[key] == pytest.approx(value, rel=1e-8)
