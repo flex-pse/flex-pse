@@ -6,6 +6,7 @@ into RO vocabulary (``recovery``, ``feed``, ``permeate``, ``brine``), bounds
 the recovery, and adds a constant electrical intensity.
 """
 
+import pyomo.environ as pyo
 from idaes.core import declare_process_block_class
 from pyomo.common.config import ConfigValue
 from pyomo.environ import units as pyunits
@@ -26,16 +27,18 @@ class ReverseOsmosisData(SIDOBlockData):
 
     .. math::
 
-        \dot{V}_{perm}[t] &= \text{recovery} \cdot \dot{V}_{feed}[t] \\
+        \dot{V}_{perm}[t] &= \text{recovery}[t] \cdot \dot{V}_{feed}[t] \\
         P_{elec}[t] &= \text{energy\_intensity} \cdot \dot{V}_{perm}[t]
 
-    ``recovery_min``/``recovery_max`` are the recovery Var's bounds, defaulted
-    to the seawater-RO window. They bind once the Var is unfixed — by a design
-    mode or a regression — where they keep the fitted recovery inside what the
-    membrane train can actually deliver; a brackish or high-recovery train
-    raises ``recovery_max``. An inverted window, or one that cannot hold the
-    configured ``recovery``, raises ``FlexConfigError`` at build time rather
-    than producing a Var whose bounds contradict its value.
+    Unlike the generic SIDO split, ``recovery[t]`` is indexed by time and is
+    not a regressable parameter: it is fixed at the configured recovery at
+    every step, and operations or a design study may unfix individual steps.
+    ``recovery_min``/``recovery_max`` are its bounds, defaulted to the
+    seawater-RO window, and bind once a step is unfixed; a brackish or
+    high-recovery train raises ``recovery_max``. An inverted window, or one
+    that cannot hold the configured ``recovery``, raises ``FlexConfigError``
+    at build time rather than producing a Var whose bounds contradict its
+    value.
 
     The RO names are registered by passing ``naming_dict`` up to the SIDO
     ``build()``; the ports (``inlet``/``outlet_a``/``outlet_b``) keep their
@@ -111,6 +114,34 @@ class ReverseOsmosisData(SIDOBlockData):
             kind=nm.PowerKind.ELECTRICAL,
             intensity=self.config.energy_intensity,
         )
+
+    def _declare_split_parameter(self, name: str) -> pyo.Var:
+        """Declare recovery as a per-step Var fixed at the configured value.
+
+        Not registered as a regressable parameter: operations or a design
+        study may unfix individual steps, and a fitted recovery relationship
+        comes in through a surrogate instead.
+
+        Args:
+            name: The component name of the recovery (``recovery``).
+
+        Returns:
+            The fixed, time-indexed recovery Var.
+        """
+        self.add_component(
+            name,
+            pyo.Var(
+                self._find_time_block().time_index,
+                initialize=self._split_parameter_value(),
+                bounds=self._split_parameter_bounds(),
+                units=pyunits.dimensionless,
+                doc="Water recovery at each time step: the permeate fraction "
+                "of the feed. Fixed at the configured value.",
+            ),
+        )
+        recovery = self.find_component(name)
+        recovery.fix()
+        return recovery
 
     def _split_parameter_value(self) -> float:
         """Return the configured recovery — RO's name for the split parameter.
