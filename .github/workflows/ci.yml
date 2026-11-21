@@ -125,6 +125,24 @@ jobs:
           if [ "$exit_code" -eq 5 ]; then exit 0; fi
           exit "$exit_code"
 
+  watertap:
+    name: watertap example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      # WaterTAP is not a flex-pse dependency; it is installed only here to run
+      # the sweep example against a public RO flowsheet.
+      - run: uv pip install --system -e ".[dev,parameterize,sweep,solvers]" "watertap>=1.8"
+      - uses: ./.github/actions/setup-ipopt
+      - run: pytest -m integration src/flexparameterize/tests/sweep -q
+
   build-wheel:
     name: build-wheel
     runs-on: ubuntu-latest
