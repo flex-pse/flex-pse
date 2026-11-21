@@ -51,3 +51,28 @@ def toy_frame(n: int = 6) -> pd.DataFrame:
             "solve_successful": True,
         }
     )
+
+
+def build_toy_model():
+    """A square Pyomo model whose output ``z`` is ``toy_output(a, b)`` plus offset."""
+    import pyomo.environ as pyo
+
+    m = pyo.ConcreteModel()
+    m.a = pyo.Var(initialize=3e-3, units=pyo.units.m**3 / pyo.units.s)
+    m.b = pyo.Var(initialize=3e5, units=pyo.units.Pa)
+    m.a.fix()
+    m.b.fix()
+    m.offset = pyo.Param(initialize=0.0, mutable=True, units=pyo.units.W)
+    m.z = pyo.Var(initialize=0.0, units=pyo.units.W)
+    m.c = pyo.Constraint(expr=m.z == m.offset + toy_output(m.a, m.b))
+    return m
+
+
+def initialize_toy(m) -> None:
+    """Start ``z`` from zero, so no solve depends on an earlier one."""
+    m.z.set_value(0.0)
+
+
+def optimize_toy(m, solver):
+    """Solve the toy model and return the solver results."""
+    return solver.solve(m)

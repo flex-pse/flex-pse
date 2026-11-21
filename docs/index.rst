@@ -35,6 +35,7 @@ schedule flexible industrial energy operations.
    how_to/build_a_plant
    how_to/round_trip_a_model
    how_to/parameterize_from_data
+   how_to/fit_a_surrogate_from_a_sweep
    how_to/run_a_design_study
 
 .. toctree::

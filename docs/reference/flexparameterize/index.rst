@@ -112,10 +112,17 @@ solver, and the holdout and acceptance limits.
 
 .. autofunction:: config_hash
 
-Fitting sweep results
----------------------
+Running and fitting sweeps
+--------------------------
 
 .. currentmodule:: flexparameterize.sweep
+
+``run_sweep`` and ``solve_point`` need the ``[sweep]`` extra. See
+:doc:`../../how_to/fit_a_surrogate_from_a_sweep`.
+
+.. autofunction:: run_sweep
+
+.. autofunction:: solve_point
 
 .. autofunction:: fit_sweep
 
