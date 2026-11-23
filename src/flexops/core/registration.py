@@ -492,3 +492,27 @@ def iter_swapped_relations(model) -> Iterator[tuple[Any, RelationRecord]]:
         for record in registry.relations:
             if record.fitted is not None:
                 yield block, record
+
+
+def same_variable(first, second) -> bool:
+    """Return whether two components refer to (some of) the same variables.
+
+    A ``Reference`` and the indexed Var it slices share their data objects, so
+    ``flow_out`` (a Reference to ``outlet_state.flow_vol_phase[:, "Liq"]``)
+    and ``outlet_state.flow_vol_phase`` are the same variable here, while two
+    distinct Vars never are.
+
+    Args:
+        first: A Pyomo component, indexed or scalar.
+        second: Another.
+
+    Returns:
+        ``True`` when they share at least one data object.
+    """
+
+    def data(component) -> set[int]:
+        if component.is_indexed():
+            return {id(member) for member in component.values()}
+        return {id(component)}
+
+    return not data(first).isdisjoint(data(second))

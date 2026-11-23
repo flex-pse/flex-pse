@@ -96,7 +96,7 @@ def test_pyomo_matches_direct_fit_for_multiple_arima_orders():
                         + np.random.normal(0, 0.05)
                     )
 
-        y = pd.DataFrame({"biogas": y_values}, index=idx)
+        y = pd.DataFrame({"biogas_m3_hour": y_values}, index=idx)
 
         regressor = ArimaRegressor(order=order, max_ar_persistence=None).fit(
             pd.DataFrame({"feed": feed}),
@@ -312,7 +312,7 @@ def test_arima_roundtrip(order, auto, auto_kwargs):
     for t in range(1, n_train):
         eta[t] = 0.1 + 0.5 * eta[t - 1] + np.random.normal(0, 0.05)
     y_values = 0.8 * feed.values + eta
-    y = pd.DataFrame({"biogas": y_values}, index=idx)
+    y = pd.DataFrame({"biogas_m3_hour": y_values}, index=idx)
     X = pd.DataFrame({"feed": feed})
 
     regressor = ArimaRegressor(
@@ -341,7 +341,7 @@ def test_arima_roundtrip(order, auto, auto_kwargs):
     direct_fcst = sm_all[n_insample:]
 
     mean_feed = float(X["feed"].mean())
-    target_biogas = float(y.iloc[-n_insample:]["biogas"].mean())
+    target_biogas = float(y.iloc[-n_insample:]["biogas_m3_hour"].mean())
 
     m = pyo.ConcreteModel()
     start_idx = idx[n_train - n_insample]
@@ -454,7 +454,7 @@ def test_arima_roundtrip_d1_at_offset_zero():
             eta[t] = eta[t - 1] + 0.3 * (eta[t - 1] - eta[t - 2])
         eta[t] += np.random.normal(0, 0.02)
     y_values = 2.0 * feed.values + eta
-    y = pd.DataFrame({"biogas": y_values}, index=idx)
+    y = pd.DataFrame({"biogas_m3_hour": y_values}, index=idx)
     X = pd.DataFrame({"feed": feed})
 
     regressor = ArimaRegressor(order=(1, 1, 0), max_ar_persistence=None).fit(
@@ -488,7 +488,7 @@ def test_arima_roundtrip_d1_at_offset_zero():
     direct_fcst = sm_fcst[-n_fcst:]
 
     mean_feed = float(X["feed"].mean())
-    target_biogas = float(y.iloc[-n_insample:]["biogas"].mean())
+    target_biogas = float(y.iloc[-n_insample:]["biogas_m3_hour"].mean())
 
     m = pyo.ConcreteModel()
     start_idx = idx[seed_count]
@@ -590,7 +590,7 @@ def test_arima_roundtrip_d1_with_drift():
             eta[t] = eta[t - 1] - 0.05 + 0.3 * (eta[t - 1] - eta[t - 2])
         eta[t] += np.random.normal(0, 0.02)
     y_values = 2.0 * feed.values + eta
-    y = pd.DataFrame({"biogas": y_values}, index=idx)
+    y = pd.DataFrame({"biogas_m3_hour": y_values}, index=idx)
     X = pd.DataFrame({"feed": feed})
 
     regressor = ArimaRegressor(order=(1, 1, 0), max_ar_persistence=None).fit(
@@ -620,7 +620,7 @@ def test_arima_roundtrip_d1_with_drift():
     direct_fcst = sm_all[n_insample:]
 
     mean_feed = float(X["feed"].mean())
-    target_biogas = float(y.iloc[-n_insample:]["biogas"].mean())
+    target_biogas = float(y.iloc[-n_insample:]["biogas_m3_hour"].mean())
 
     m = pyo.ConcreteModel()
     start_idx = idx[-n_insample]

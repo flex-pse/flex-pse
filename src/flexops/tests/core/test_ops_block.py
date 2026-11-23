@@ -48,7 +48,7 @@ def _multilinear(coefficients, input_variables=None, output_variables=None):
     """A MultilinearSurrogate over ``coefficients``, with sensible defaults.
 
     Args:
-        coefficients: The ``data['coefficients']`` mapping.
+        coefficients: The intercept and term values, by name.
         input_variables: ``{name: units}``; defaults to every non-intercept
             factor named in ``coefficients``, in m^3/hr.
         output_variables: ``{name: units}``; defaults to
@@ -1686,7 +1686,8 @@ class _DispatchSurrogate(_CustomSurrogate):
 
     @property
     def output_variables(self):
-        return {"flow_out": "m^3/hr"}
+        # Swapped onto several relations, so it names no output to check.
+        return {}
 
     def __init__(self, *, spec=False, objective=None):
         super().__init__({})

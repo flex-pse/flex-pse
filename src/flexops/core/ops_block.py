@@ -52,6 +52,7 @@ from flexops.core.registration import (
     ParameterRecord,
     PowerRecord,
     RelationRecord,
+    same_variable,
 )
 from flexops.core.time_block import TimeBlockData, find_time_block
 from flexops.surrogates import Surrogate, surrogate_from_spec
@@ -823,32 +824,49 @@ class OpsBlockData(UnitModelBlockData):
         ):
             self.swap_relation(relation_name, surrogate_from_spec(spec))
 
-    def resolve_variable(self, name: str, *, field: str):
+    def resolve_variable(self, name: str, *, field: str, model_wide: bool = False):
         """Return the variable ``name`` refers to on this unit.
 
         Part of the documented contract a :class:`~flexops.surrogates.base.Surrogate`
-        uses to resolve its declared input variables at build time (dotted
-        names into a sub-block, e.g. ``"outlet_state.pressure"``, resolve too).
+        uses to resolve its declared variables at build time (dotted names
+        into a sub-block, e.g. ``"outlet_state.pressure"``, resolve too). A
+        mistyped name, or one naming a block or constraint, is refused here so
+        it never reaches a build.
 
         Args:
             name: A component name, possibly dotted into a sub-block.
             field: The surrogate field the name came from, for the error.
+            model_wide: Also accept a name qualified from the model root (a
+                :func:`~flexparameterize.tags.model_alias`, such as
+                ``"plant.unit.flow_out"``) when it is not a name on this unit.
 
         Returns:
-            The resolved Pyomo component.
+            The resolved Var, Expression or Param.
 
         Raises:
-            FlexConfigError: If the name is not a component on this unit.
+            FlexConfigError: If the name is not a component on this unit (or
+                the model, with ``model_wide``), or names something other than
+                a Var, Expression or Param.
         """
-        var = self.find_component(name)
-        if var is None:
+        component = self.find_component(name)
+        if component is None and model_wide:
+            component = self.model().find_component(name)
+        if component is None:
             raise FlexConfigError(
-                f"Fitted relationship names input {name!r}, which is not a "
-                f"variable on {self.name!r}.",
+                f"{field} names {name!r}, which is not a variable on "
+                f"{self.name!r}. Check the spelling against the unit's "
+                f"variables.",
                 field=field,
                 value=name,
             )
-        return var
+        if component.ctype not in (pyo.Var, pyo.Expression, pyo.Param):
+            raise FlexConfigError(
+                f"{field} names {name!r}, which is a {component.ctype.__name__} "
+                f"on {self.name!r}, not a variable.",
+                field=field,
+                value=name,
+            )
+        return component
 
     def register_relation(self, constraint, target) -> None:
         """Declare ``constraint`` swappable: a relationship determining ``target``.
@@ -968,6 +986,17 @@ class OpsBlockData(UnitModelBlockData):
             )
         for name in surrogate.input_variables:
             self.resolve_variable(name, field="input_variables")
+        for name in surrogate.output_variables:
+            output = self.resolve_variable(name, field="output_variables")
+            if not same_variable(output, record.target):
+                raise FlexConfigError(
+                    f"{surrogate.surrogate_type.value} surrogate names output "
+                    f"{name!r}, but {relation_name!r} on {self.name!r} determines "
+                    f"{record.target.local_name!r}. Name that variable as the "
+                    f"output.",
+                    field="output_variables",
+                    value=name,
+                )
 
         (record.fitted if record.fitted is not None else record.constraint).deactivate()
         for component in record.components:

@@ -847,3 +847,82 @@ def test_array_parameters_update_fix_and_reject_wrong_shapes(array_surrogate):
 def test_copy_of_full_is_untouched():
     """The module-level elements are never mutated by the tests."""
     assert copy.deepcopy(FULL) == FULL
+
+
+# --- Named variables must exist, and be the right ones ---------------------
+
+
+@pytest.mark.component
+@pytest.mark.parametrize("make", [arima, multilinear], ids=["arima", "multilinear"])
+@pytest.mark.parametrize(
+    ("inp", "out", "match"),
+    [
+        ("flow_outt", "power_electrical", "input_variables names 'flow_outt'"),
+        ("flow_out", "power_electrcal", "output_variables names 'power_electrcal'"),
+        ("flow_out", "flow_in", "names output 'flow_in', but"),
+        ("outlet_state", "power_electrical", "which is a Block"),
+    ],
+    ids=["input-typo", "output-typo", "wrong-output", "input-not-a-variable"],
+)
+def test_a_surrogate_naming_a_missing_or_wrong_variable_is_not_built(
+    make, inp, out, match
+):
+    """A spec whose variable names don't resolve to the relation's is refused."""
+    spec = make(inp, "m^3/hr", out, "kW")
+    el = element("p.pump", "power_electrical_relation", spec)
+    with pytest.raises(FlexConfigError, match=match):
+        build(el)
+    model = build()
+    with pytest.raises(FlexConfigError, match=match):
+        apply_spec(model, [el])
+    # The refused swap left the unit's own relation in place.
+    assert model.p.pump.power_electrical_relation.active
+    assert model.p.pump.current_surrogate_block() is None
+
+
+@pytest.mark.component
+@pytest.mark.parametrize(
+    ("inp", "out", "match"),
+    [
+        ("flow_outt", "power_electrical", "input_variables names 'flow_outt'"),
+        ("flow_out", "power_electrcal", "output_variables names 'power_electrcal'"),
+        ("flow_in", "power_electrical", "names input 'flow_in', but"),
+        ("flow_out", "flow_in", "names output 'flow_in', but"),
+    ],
+    ids=["input-typo", "output-typo", "wrong-input", "wrong-output"],
+)
+def test_a_constant_intensity_naming_a_missing_or_wrong_variable_is_refused(
+    inp, out, match
+):
+    """The recorded names must be the unit's intensity basis and power draw."""
+    spec = ConstantIntensitySurrogate.make_spec(
+        energy_intensity=0.9,
+        input_variables={inp: "m^3/hr"},
+        output_variables={out: "kW"},
+    )
+    with pytest.raises(FlexConfigError, match=match):
+        build(element("p.pump", "power_electrical_relation", spec))
+    model = build()
+    before = pyo.value(model.p.pump.energy_intensity)
+    with pytest.raises(FlexConfigError, match=match):
+        apply_relation_spec(model.p.pump, spec)
+    assert pyo.value(model.p.pump.energy_intensity) == before
+
+
+@pytest.mark.component
+@pytest.mark.parametrize(
+    "names",
+    [("flow_out", "power_electrical"), ("p.pump.flow_out", "p.pump.power_electrical")],
+    ids=["unit-local", "model-alias"],
+)
+def test_a_constant_intensity_accepts_local_names_and_model_aliases(names, tmp_path):
+    """apply_to_model records model aliases; hand-written specs use local names."""
+    inp, out = names
+    spec = ConstantIntensitySurrogate.make_spec(
+        energy_intensity=0.9,
+        input_variables={inp: "m^3/hr"},
+        output_variables={out: "kW"},
+    )
+    model = build(element("p.pump", "power_electrical_relation", spec))
+    assert pyo.value(model.p.pump.energy_intensity) == pytest.approx(0.9)
+    assert_round_trips(model, tmp_path)

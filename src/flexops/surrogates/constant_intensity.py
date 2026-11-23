@@ -14,6 +14,7 @@ from pydantic import ConfigDict, model_validator
 from flexcore import nomenclature as nm
 from flexcore.config.schema import SurrogateSpec, SurrogateType, _StrictModel
 from flexcore.exceptions import FlexConfigError
+from flexops.core.registration import same_variable
 from flexops.surrogates._config import _check_units
 from flexops.surrogates.base import Surrogate
 
@@ -24,8 +25,10 @@ INTENSITY = nm.INTENSITY_VARS[nm.PowerKind.ELECTRICAL]
 class ConstantIntensityConfig(_StrictModel):
     """A constant-intensity surrogate's config: the variables, for reference.
 
-    The relationship's variables are the unit's own, so these are recorded for
-    documentation (which columns a fit used) and are not resolved at build.
+    The relationship's variables are the unit's own, so these record which
+    columns a fit used rather than wiring anything. They are still checked
+    when the spec is applied: each must name the unit's intensity basis flow
+    or its electrical power draw.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -141,9 +144,12 @@ class ConstantIntensitySurrogate(Surrogate):
             The intensity component.
 
         Raises:
-            FlexConfigError: If the unit has no regressable intensity, or the
-                spec frees an intensity that is a Param (which can't be free).
+            FlexConfigError: If a named variable is not on the unit or is not
+                the one its intensity relates, if the unit has no regressable
+                intensity, or if the spec frees an intensity that is a Param
+                (which can't be free).
         """
+        self._check_variables(unit)
         parameter = self.parameter_of(unit)
         state = self.spec.parameters[INTENSITY]
         if state.value is not None:
@@ -161,6 +167,42 @@ class ConstantIntensitySurrogate(Surrogate):
                 value=False,
             )
         return parameter
+
+    def _check_variables(self, unit) -> None:
+        """Raise unless each named variable is on ``unit`` and is the right one.
+
+        The names aren't used to build anything, since the relation's
+        variables are the unit's own, but a mistyped or wrong name would
+        record a fit against the wrong column. Each must resolve on the unit
+        (or, as :func:`~flexparameterize.apply.apply_to_model` writes them,
+        from the model root). The input must be the flow the intensity is
+        metered on, and the output the unit's electrical power draw.
+        """
+        kind = nm.PowerKind.ELECTRICAL
+        registry = unit._io_registry
+        basis = registry.intensity_basis.get(kind)
+        powers = [record.var for record in registry.power if record.kind is kind]
+        expected = {
+            "input_variables": unit.find_component(basis) if basis else None,
+            "output_variables": powers[0] if len(powers) == 1 else None,
+        }
+        for field, names in (
+            ("input_variables", self.config.input_variables),
+            ("output_variables", self.config.output_variables),
+        ):
+            for name in names:
+                var = unit.resolve_variable(name, field=field, model_wide=True)
+                target = expected[field]
+                if target is not None and not same_variable(var, target):
+                    role = field.split("_")[0]
+                    raise FlexConfigError(
+                        f"constant_intensity names {role} {name!r}, but "
+                        f"{unit.name!r}'s energy intensity relates "
+                        f"{target.local_name!r}. Name that variable as the "
+                        f"{role}.",
+                        field=field,
+                        value=name,
+                    )
 
     def read_from_unit(self, unit) -> SurrogateSpec:
         """Return this surrogate's spec with ``unit``'s live intensity.
