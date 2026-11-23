@@ -32,6 +32,7 @@ def _flow() -> pd.DataFrame:
 
 
 def _linear():
+    pytest.importorskip("sklearn")
     flow = _flow()
     power = pd.DataFrame({"power": 0.5 * flow["flow"] + 2.0}, index=_INDEX)
     regressor = LinearRegressor().fit(

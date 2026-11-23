@@ -86,6 +86,10 @@ nitpick_ignore_regex = [
     # pydantic Field constraints (ge=, gt=, min_length=) render as annotated_types
     # metadata classes, which have no intersphinx target.
     ("py:class", r"annotated_types\..*"),
+    # Field(allow_inf_nan=False) renders as pydantic's AllowInfNan metadata
+    # class (newer pydantic; older ones use a private class Sphinx skips),
+    # which pydantic's docs don't publish as an intersphinx target.
+    ("py:class", r"(pydantic\.(types|fields)\.)?AllowInfNan"),
 ]
 
 html_theme = "furo"
