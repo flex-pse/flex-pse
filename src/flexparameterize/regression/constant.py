@@ -5,14 +5,15 @@ import math
 import pandas as pd
 
 from flexcore import nomenclature as nm
-from flexcore.config.schema import SurrogateSpec, SurrogateType
+from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError, FlexDataError
+from flexops.surrogates import ConstantIntensitySurrogate
 from flexparameterize.regression.base import FitResult, single_column
 
 COEFFICIENT_NAME = nm.INTENSITY_VARS[nm.PowerKind.ELECTRICAL]
-"""str: key the fitted coefficient is stored under in a ``SurrogateSpec``'s
-``data['coefficients']``; it is also the name of the process parameter the fit
-determines on a unit."""
+"""str: the parameter the fitted coefficient is stored under in a
+``SurrogateSpec``'s ``parameters``; it is also the name of the process
+parameter the fit determines on a unit."""
 
 
 def constant_intensity_coefficient(surrogate: SurrogateSpec) -> float:
@@ -29,19 +30,19 @@ def constant_intensity_coefficient(surrogate: SurrogateSpec) -> float:
         The intensity, in kWh/m^3.
 
     Raises:
-        FlexConfigError: If the spec carries no coefficient under
+        FlexConfigError: If the spec carries no value for
             :data:`COEFFICIENT_NAME`.
     """
-    coefficients = surrogate.data.get("coefficients", {})
-    if COEFFICIENT_NAME not in coefficients:
+    state = surrogate.parameters.get(COEFFICIENT_NAME)
+    if state is None or state.value is None:
         raise FlexConfigError(
-            f"A 'constant_intensity' relationship must carry its coefficient "
-            f"under data['coefficients'][{COEFFICIENT_NAME!r}]; got "
-            f"{sorted(coefficients)}.",
-            field="data",
-            value=sorted(coefficients),
+            f"A 'constant_intensity' relationship must carry a value for its "
+            f"parameter {COEFFICIENT_NAME!r}; got parameters "
+            f"{sorted(surrogate.parameters)}.",
+            field="parameters",
+            value=sorted(surrogate.parameters),
         )
-    return coefficients[COEFFICIENT_NAME]
+    return state.value
 
 
 class ConstantIntensityRegressor:
@@ -171,10 +172,11 @@ class ConstantIntensityRegressor:
         """Return the fit as a persistable ``SurrogateSpec``.
 
         The one place a constant-intensity fit becomes a spec, which
-        :func:`~flexparameterize.apply.apply_to_model` consumes. ``constant_intensity``
-        has no surrogate class (it fixes a process parameter rather than
-        swapping a Constraint), so unlike a real surrogate's declared units,
-        these are recorded for documentation, not enforced by a build.
+        :func:`~flexparameterize.apply.apply_to_model` consumes. Built through
+        :meth:`~flexops.surrogates.constant_intensity.ConstantIntensitySurrogate.make_spec`.
+        A constant intensity sets a process parameter rather than swapping a
+        Constraint, so unlike a real surrogate's declared units, these are
+        recorded for documentation, not enforced by a build.
 
         Args:
             input_units: Units of the fitted input column, as a string (the
@@ -195,11 +197,8 @@ class ConstantIntensityRegressor:
                 "ConstantIntensityRegressor has no fit yet; call fit(X, y) "
                 "before to_surrogate_spec()."
             )
-        return SurrogateSpec(
-            surrogate_type=SurrogateType.CONSTANT_INTENSITY,
-            data={
-                "coefficients": {COEFFICIENT_NAME: self.coefficient},
-                "input_variables": {self.input_variable: input_units},
-                "output_variables": {self.output_variable: output_units},
-            },
+        return ConstantIntensitySurrogate.make_spec(
+            energy_intensity=self.coefficient,
+            input_variables={self.input_variable: input_units},
+            output_variables={self.output_variable: output_units},
         )

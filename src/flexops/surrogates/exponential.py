@@ -1,12 +1,12 @@
 """ExponentialSurrogate: not yet implemented."""
 
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from flexcore.config.schema import SurrogateType
-from flexops.surrogates.base import Surrogate
+from flexops.surrogates._stub import StubSurrogate
 
 
-class ExponentialSurrogate(Surrogate):
+class ExponentialSurrogate(StubSurrogate):
     """An exponential relationship in its inputs.
 
     Not yet implemented; use
@@ -15,29 +15,8 @@ class ExponentialSurrogate(Surrogate):
     """
 
     surrogate_type: ClassVar[SurrogateType] = SurrogateType.EXPONENTIAL
-
-    def _validate(self) -> None:
-        """Raise: exponential surrogates are not yet implemented.
-
-        Raises:
-            NotImplementedError: Always.
-        """
-        raise NotImplementedError(
-            "ExponentialSurrogate is not yet implemented. Use "
-            "MultilinearSurrogate (surrogate_type='multilinear') for a "
-            "relationship linear in each input."
-        )
-
-    @property
-    def input_variables(self) -> dict[str, str]:
-        """Never reached -- ``_validate`` always raises first."""
-        raise NotImplementedError
-
-    @property
-    def output_variables(self) -> dict[str, str]:
-        """Never reached -- ``_validate`` always raises first."""
-        raise NotImplementedError
-
-    def build(self, unit, target) -> tuple[None, Any]:
-        """Never reached -- ``_validate`` always raises first."""
-        raise NotImplementedError
+    not_implemented: ClassVar[str] = (
+        "ExponentialSurrogate is not yet implemented. Use "
+        "MultilinearSurrogate (surrogate_type='multilinear') for a "
+        "relationship linear in each input."
+    )

@@ -27,6 +27,10 @@ from flexcore.config.spec import (
     SourceRef,
     element_target,
 )
+from flexcore.config.surrogate_migration import (
+    is_legacy_surrogate,
+    migrate_surrogate_spec,
+)
 from flexcore.exceptions import FlexConfigError, FlexMigrationWarning
 
 
@@ -72,26 +76,21 @@ def _migrate_0_1_0(data: dict) -> dict:
     return {**migrated, "schema_version": "0.1.1"}
 
 
-def _migrate_0_1_1(data: dict) -> dict:
+def _drop_dr_placeholder(elements: list) -> None:
     """Drop an empty ``costing.dr`` and refuse one that names an events file.
 
-    Version 0.1.2 replaced the ``costing.dr = {"events_source": ...}``
+    Version 0.2.0 replaced the ``costing.dr = {"events_source": ...}``
     placeholder with a full demand-response program. An empty placeholder meant
     "no program", so it is dropped. One that names an events file cannot be
     translated: the program also needs meter history, a baseline and a payment.
 
     Args:
-        data: A parsed 0.1.1 spec; left unchanged.
-
-    Returns:
-        A copy of the spec at version 0.1.2.
+        elements: The spec's elements, edited in place.
 
     Raises:
         FlexConfigError: If a costing element sets ``dr.events_source``.
     """
-    migrated = copy.deepcopy(data)
-    raw = migrated.get("elements")
-    for element in raw if isinstance(raw, list) else []:
+    for element in elements:
         if not isinstance(element, dict) or element.get("kind") != "costing":
             continue
         program = element.get("dr")
@@ -101,7 +100,7 @@ def _migrate_0_1_1(data: dict) -> dict:
             name = element.get("name")
             raise FlexConfigError(
                 f"The costing element {name!r} sets dr.events_source, which "
-                "schema_version 0.1.2 replaced with a full demand-response "
+                "schema_version 0.2.0 replaced with a full demand-response "
                 "program (events, historical_power, baseline and payment). "
                 "Replace dr with that program; see "
                 "docs/explanation/demand_response.md.",
@@ -110,7 +109,64 @@ def _migrate_0_1_1(data: dict) -> dict:
             )
         if set(program) <= {"events_source"}:
             del element["dr"]
-    return {**migrated, "schema_version": "0.1.2"}
+
+
+def _migrate_0_1_1(data: dict) -> dict:
+    """Replace the demand-response placeholder and split surrogate ``data``.
+
+    An empty ``costing.dr`` placeholder is dropped; one that names an events
+    file is refused (see :func:`_drop_dr_placeholder`). Every surrogate
+    element's ``data`` is split into ``config`` and ``parameters``; see
+    :func:`~flexcore.config.surrogate_migration.migrate_surrogate_spec` for
+    the per-type translation. The migrated spec builds the same model as
+    before, with every coefficient fixed.
+
+    Args:
+        data: A parsed 0.1.1 spec; left unchanged.
+
+    Returns:
+        A copy of the spec at version 0.2.0.
+
+    Raises:
+        FlexConfigError: If a costing element sets ``dr.events_source``, or a
+            surrogate element cannot be translated faithfully; the message
+            names the element.
+    """
+    migrated = copy.deepcopy(data)
+    raw = migrated.get("elements")
+    elements = raw if isinstance(raw, list) else []
+    _drop_dr_placeholder(elements)
+    count = 0
+    for position, el in enumerate(elements):
+        if not (isinstance(el, dict) and el.get("kind") == "surrogate"):
+            continue
+        if not is_legacy_surrogate(el):
+            continue
+        try:
+            elements[position] = migrate_surrogate_spec(el)
+        except FlexConfigError as exc:
+            target = (
+                f"{el.get('unit')}.{el.get('relation', 'power_electrical_relation')}"
+            )
+            raise FlexConfigError(
+                f"Cannot migrate the surrogate element on {target} to schema_version "
+                f"0.2.0: {exc}",
+                field=f"elements.{position}.{exc.field}" if exc.field else None,
+                value=exc.value,
+            ) from exc
+        count += 1
+
+    if count:
+        warnings.warn(
+            f"The spec was migrated from schema_version 0.1.1 to 0.2.0. {count} "
+            "surrogate element(s) had their 'data' split into 'config' and "
+            "'parameters' (each parameter now records its value and whether it "
+            "is fixed). Please re-export your config files.",
+            FlexMigrationWarning,
+            stacklevel=3,
+        )
+
+    return {**migrated, "schema_version": "0.2.0"}
 
 
 MIGRATIONS: dict[str, Callable[[dict], dict]] = {

@@ -206,6 +206,7 @@ Shared building blocks
    IOVariableSpec
    SurrogateSpec
    SurrogateType
+   ParameterState
    ExternalDispatchSpec
    UnitCommitmentConfig
    DegradationSpec
@@ -241,6 +242,15 @@ Config I/O
 .. autodata:: MIGRATIONS
 
 .. autofunction:: export_json_schemas
+
+Surrogate migration
+~~~~~~~~~~~~~~~~~~~
+
+.. currentmodule:: flexcore.config.surrogate_migration
+
+.. autofunction:: migrate_surrogate_spec
+
+.. autofunction:: is_legacy_surrogate
 
 Nomenclature
 ------------

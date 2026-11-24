@@ -12,12 +12,18 @@ from pyomo.network import Arc
 from pyomo.opt import assert_optimal_termination
 
 from flexcore.config.io import load_spec
-from flexcore.config.spec import STAGE_ORDER, DispatchElement, SurrogateElement
+from flexcore.config.spec import (
+    SCHEMA_VERSION,
+    STAGE_ORDER,
+    DispatchElement,
+    SurrogateElement,
+)
 from flexcore.exceptions import FlexConfigError
 from flexcore.solvers import get_solver
-from flexops import apply_spec, build_model
+from flexops import apply_spec, build_model, emit_model
 from flexops.core.compare import assert_models_equivalent
 from flexops.core.stages import STAGES, elements_of
+from flexops.surrogates import ArimaSurrogate, MultilinearSurrogate
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 FREEZE = FIXTURES / "api_freeze"
@@ -63,7 +69,7 @@ def spec_dict(*elements, name="site", objective=True) -> dict:
     """Return a spec of the base elements plus ``elements``."""
     base = [TIME, COSTING, PACKAGE, *([OBJECTIVE] if objective else [])]
     return {
-        "schema_version": "0.1.2",
+        "schema_version": SCHEMA_VERSION,
         "name": name,
         "elements": copy.deepcopy([*base, *elements]),
     }
@@ -122,7 +128,11 @@ def freeze_spec(directory: Path) -> Path:
     path = directory / "freeze.json"
     path.write_text(
         json.dumps(
-            {"schema_version": "0.1.2", "name": "waterfacility", "elements": elements}
+            {
+                "schema_version": SCHEMA_VERSION,
+                "name": "waterfacility",
+                "elements": elements,
+            }
         )
     )
     return path
@@ -399,14 +409,11 @@ def test_missing_destination_port_lists_destination_ports():
     assert "['inlet', 'outlet']" in str(excinfo.value)
 
 
-def surrogate_element(unit_name="p.pump"):
+def surrogate_element(unit_name="p.pump", data=SURROGATE_DATA):
     """Return a multilinear surrogate element dict for a pump."""
-    return {
-        "kind": "surrogate",
-        "unit": unit_name,
-        "surrogate_type": "multilinear",
-        "data": SURROGATE_DATA,
-    }
+    return SurrogateElement.from_surrogate_spec(
+        MultilinearSurrogate.make_spec(**data), unit=unit_name
+    ).model_dump(mode="json")
 
 
 @pytest.mark.unit
@@ -421,6 +428,76 @@ def test_surrogate_applied_post_construction():
     assert model.p.pump.config.flexops_config.surrogate is None
     assert not model.p.pump.power_electrical_relation[0].active
     assert model.p.pump.surrogate_power_electrical.fitted is not None
+
+
+ARIMA = ArimaSurrogate.make_spec(
+    order=(1, 0, 1),
+    deterministic="intercept",
+    input_variables={"flow_out": "m^3/hr"},
+    output_variables={"power_electrical": "kW"},
+    values={"intercept": 2.0, "ar.L1": 0.5, "ma.L1": 0.2, "exog.flow_out": 0.8},
+    history={
+        "start_date": "2025-01-01T00:00:00",
+        "time_step_seconds": 3600.0,
+        "eta_values": [1.0],
+        "eps_values": [0.0],
+    },
+)
+
+
+def arima_spec() -> dict:
+    """Return a pump spec whose power relation is an ARIMA(1, 0, 1) surrogate."""
+    return spec_dict(
+        {"kind": "plant", "name": "p"},
+        pump("p.pump"),
+        SurrogateElement.from_surrogate_spec(ARIMA, unit="p.pump").model_dump(
+            mode="json"
+        ),
+    )
+
+
+@pytest.mark.unit
+def test_arima_surrogate_element_builds_with_fixed_coefficients():
+    """An ARIMA element builds from a spec with every coefficient fixed."""
+    model = build_model(arima_spec())
+
+    coefficients = model.p.pump.surrogate_power_electrical.coefficients
+    values = {name: pyo.value(var) for name, var in coefficients.items()}
+    assert values == pytest.approx(
+        {"intercept": 2.0, "ar.L1": 0.5, "ma.L1": 0.2, "exog.flow_out": 0.8}
+    )
+    assert all(var.fixed for _, var in coefficients.items())
+    assert not model.p.pump.power_electrical_relation[0].active
+
+
+@pytest.mark.unit
+def test_arima_surrogate_element_survives_emit_and_rebuild():
+    """emit_model writes the ARIMA element back out and it rebuilds the same."""
+    model = build_model(arima_spec())
+    assert_models_equivalent(model, build_model(emit_model(model)))
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_arima_surrogate_element_solves_its_recursion():
+    """The solved power follows the ARIMA recursion from the stored history.
+
+    With eps fixed at 0: eta[t] = 2 + 0.5 * eta[t-1] from eta[-1] = 1, and
+    power[t] = eta[t] + 0.8 * flow_out[t].
+    """
+    model = build_model(arima_spec())
+    pump_unit = model.p.pump
+    time_index = list(model.time_block.time_index)
+    for t in time_index:
+        pump_unit.inlet_state.flow_vol_phase[t, "Liq"].fix(10.0)
+    assert_optimal_termination(get_solver(model=model).solve(model))
+
+    eta, expected = 1.0, []
+    for _ in time_index:
+        eta = 2.0 + 0.5 * eta
+        expected.append(eta + 0.8 * 10.0)
+    power = [pyo.value(pump_unit.power_electrical[t]) for t in time_index]
+    assert power == pytest.approx(expected)
 
 
 def dispatch_spec(values) -> dict:
@@ -579,16 +656,32 @@ def test_apply_spec_surrogate_on_live_model():
 
 
 @pytest.mark.unit
-def test_second_surrogate_deactivates_the_first():
-    """Applying a second surrogate to the same relation replaces the first."""
+def test_second_surrogate_with_the_same_config_updates_in_place():
+    """Applying new values for the same surrogate updates the block in place."""
     model = build_model(
         spec_dict({"kind": "plant", "name": "p"}, pump("p.pump"), surrogate_element())
     )
-    second = surrogate_element()
-    second["data"] = {
-        **SURROGATE_DATA,
-        "coefficients": {"flow_out": 0.9, "intercept": 0.0},
-    }
+    second = surrogate_element(
+        data={**SURROGATE_DATA, "coefficients": {"flow_out": 0.9, "intercept": 0.0}}
+    )
+
+    apply_spec(model, [second])
+
+    names = model.p.pump.list_surrogate_blocks("power_electrical_relation")
+    assert names == ["surrogate_power_electrical"]
+    registry = model.p.pump.surrogate_power_electrical.coefficients
+    assert registry.value("flow_out") == pytest.approx(0.9)
+
+
+@pytest.mark.unit
+def test_second_surrogate_with_a_new_config_deactivates_the_first():
+    """Applying a surrogate with a different config swaps a new block in."""
+    model = build_model(
+        spec_dict({"kind": "plant", "name": "p"}, pump("p.pump"), surrogate_element())
+    )
+    second = surrogate_element(
+        data={**SURROGATE_DATA, "input_variables": {"flow_out": "m^3/s"}}
+    )
 
     apply_spec(model, [second])
 

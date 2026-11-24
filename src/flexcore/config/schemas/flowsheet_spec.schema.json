@@ -1357,6 +1357,45 @@
       "title": "ParallelGroupElement",
       "type": "object"
     },
+    "ParameterState": {
+      "additionalProperties": false,
+      "description": "One surrogate parameter's value and whether the model holds it fixed. A parameter is a scalar or an array (a list, or nested lists for a matrix); the surrogate class declares each parameter's shape. fixed applies to the whole parameter. A free parameter may omit value, in which case the surrogate starts it from its documented initial guess.",
+      "properties": {
+        "fixed": {
+          "default": true,
+          "description": "Whether the model holds the parameter fixed (true) or leaves it free for estimation (false). Always written on emit.",
+          "title": "Fixed",
+          "type": "boolean"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParameterValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The parameter's value: a number, a list, or nested lists. Required when fixed is true."
+        }
+      },
+      "title": "ParameterState",
+      "type": "object"
+    },
+    "ParameterValue": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "items": {
+            "$ref": "#/$defs/ParameterValue"
+          },
+          "type": "array"
+        }
+      ]
+    },
     "PlantElement": {
       "additionalProperties": false,
       "description": "A plant of units.",
@@ -1866,13 +1905,20 @@
     },
     "SurrogateElement": {
       "additionalProperties": false,
-      "description": "A fitted relationship swapped into a unit after it is built.",
+      "description": "A surrogate placed on one relation of a unit after the unit is built. It carries a unit and relation plus exactly the fields of a SurrogateSpec (surrogate_type, config_version, config, parameters, provenance).",
       "properties": {
-        "data": {
+        "config": {
           "additionalProperties": true,
-          "description": "The relationship's data, in the shape surrogate_type's class defines.",
-          "title": "Data",
+          "description": "Everything the surrogate needs besides its parameters (variables and units, structure, options, state such as an ARIMA history), in the shape surrogate_type's class defines and validates. Opaque to the schema; see the flexops.surrogates reference page for each class's config.",
+          "title": "Config",
           "type": "object"
+        },
+        "config_version": {
+          "default": 1,
+          "description": "Version of this surrogate type's config format. Each surrogate class migrates older versions of its own config when it is built. Always written on emit.",
+          "minimum": 1,
+          "title": "Config Version",
+          "type": "integer"
         },
         "kind": {
           "const": "surrogate",
@@ -1892,6 +1938,14 @@
           "description": "Optional label; not used to build anything.",
           "title": "Name"
         },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ParameterState"
+          },
+          "description": "The surrogate's fitted values, keyed by the names its class registers (for example 'intercept', 'ar.L1', 'exog.feed'). The names must match the class's parameters exactly.",
+          "title": "Parameters",
+          "type": "object"
+        },
         "provenance": {
           "additionalProperties": true,
           "description": "Free-form fit metadata (metrics, data window, versions).",
@@ -1906,7 +1960,7 @@
         },
         "surrogate_type": {
           "$ref": "#/$defs/SurrogateType",
-          "description": "Which predefined surrogate class the data describes."
+          "description": "Which predefined surrogate class this relationship is. The class (flexops.surrogates) validates config and parameters and builds the relationship; a class not yet implemented raises NotImplementedError when the model is built, not when the config is validated."
         },
         "unit": {
           "description": "Name of the unit element it applies to.",
@@ -1915,15 +1969,15 @@
         }
       },
       "required": [
+        "surrogate_type",
         "kind",
-        "unit",
-        "surrogate_type"
+        "unit"
       ],
       "title": "SurrogateElement",
       "type": "object"
     },
     "SurrogateType": {
-      "description": "Which predefined surrogate class a SurrogateSpec's data describes. Each member names a class in flexops.surrogates that validates and builds the relationship; CONSTANT_INTENSITY is the one exception -- it has no class, since it fixes a process parameter rather than swapping a Constraint (see flexops.core.ops_block.OpsBlockData.swap_relation).",
+      "description": "Which predefined surrogate class a SurrogateSpec describes. Each member names a class in flexops.surrogates that defines the surrogate's config, validates its parameters, and builds the relationship.",
       "enum": [
         "constant_intensity",
         "multilinear",

@@ -36,7 +36,8 @@ FLAT = {
             "kind": "surrogate",
             "unit": "site.tank",
             "surrogate_type": "multilinear",
-            "data": {"coefficients": {"intercept": 1.0}},
+            "config": {"terms": []},
+            "parameters": {"intercept": {"value": 1.0, "fixed": True}},
         },
     ],
 }
@@ -76,12 +77,12 @@ def test_load_spec_newer_version_raises():
 @pytest.mark.unit
 def test_load_spec_runs_spec_migrations(monkeypatch):
     """An older flat spec steps through MIGRATIONS to the current version."""
-    monkeypatch.setattr(io_module, "SCHEMA_VERSION", "0.1.3")
+    monkeypatch.setattr(io_module, "SCHEMA_VERSION", "0.2.1")
     monkeypatch.setitem(
-        io_module.MIGRATIONS, "0.1.2", lambda data: {**data, "schema_version": "0.1.3"}
+        io_module.MIGRATIONS, "0.2.0", lambda data: {**data, "schema_version": "0.2.1"}
     )
 
-    assert load_spec({**FLAT, "schema_version": "0.1.2"}).schema_version == "0.1.3"
+    assert load_spec({**FLAT, "schema_version": "0.2.0"}).schema_version == "0.2.1"
 
 
 def _flat_at_0_1_1_with_dr(dr) -> dict:
@@ -219,7 +220,9 @@ def test_dump_spec_sorted_and_minimal(tmp_path):
     ]
     unit = written["elements"][4]
     assert "costing_package" not in unit and "connections" not in unit
-    assert written["elements"][5]["data"] == {"coefficients": {"intercept": 1.0}}
+    surrogate = written["elements"][5]
+    assert surrogate["parameters"] == {"intercept": {"value": 1.0, "fixed": True}}
+    assert surrogate["config_version"] == 1
     reloaded = load_spec(path)
     assert sorted(el.model_dump_json() for el in reloaded.elements) == sorted(
         el.model_dump_json() for el in spec.elements
