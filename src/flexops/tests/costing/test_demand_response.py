@@ -366,11 +366,16 @@ def test_evaluate_dr_revenue_matches_a_direct_eeco_settlement():
     assert len(per_event) == 1
 
 
-def _pump_tank(demand_response=None) -> pyo.ConcreteModel:
-    """Pump -> Tank at a flat 0.10 USD/kWh, objective = operating cost."""
+def _pump_tank(demand_response=None, days: int = 1) -> pyo.ConcreteModel:
+    """Pump -> Tank at a flat 0.10 USD/kWh, objective = operating cost.
+
+    The horizon is ``days`` days of hourly steps starting 2025-07-08.
+    """
     m = pyo.ConcreteModel()
     m.time_block = TimeBlock(
-        start_date="2025-07-08", end_date="2025-07-09", time_step=1 * pyunits.hr
+        start_date="2025-07-08",
+        end_date=f"2025-07-{8 + days:02d}",
+        time_step=1 * pyunits.hr,
     )
     m.properties = SimpleAqueousFlow()
     m.costing = FlexCosting(
@@ -396,7 +401,7 @@ def _pump_tank(demand_response=None) -> pyo.ConcreteModel:
         m.pump.inlet_state.flow_vol_phase[t, "Liq"].setub(300.0)
     m.costing.cost_process()
     m.objective = pyo.Objective(expr=m.costing.aggregate_operating_cost)
-    m.terminal = pyo.Constraint(expr=m.tank.volume[23] >= 200.0)
+    m.terminal = pyo.Constraint(expr=m.tank.volume[24 * days - 1] >= 200.0)
     return m
 
 
@@ -502,6 +507,38 @@ def test_similar_days_dr_settles_against_meter_history():
         in_model, rel=1e-6
     )
     assert np.isfinite(pyo.value(m.objective))
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="EECO 0.5.0 reads a baseline day inside the horizon from the model's own "
+    "power, so the plan can raise its baseline. Remove this marker once EECO stops.",
+)
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_raising_pre_event_load_does_not_raise_revenue():
+    """A baseline day inside the horizon must pay no more than the same day taken
+    from history. The meter history says the site draws 60 kW, and the event bids
+    100 kW, so a history baseline pays at most 600 USD. A baseline day inside the
+    horizon lets the plan raise its own load that day and earn the full 1000 USD,
+    which is why this test is expected to fail until EECO changes."""
+    baseline = {"method": "similar_days", "n_baseline_days": 1} | _NO_ADJUSTMENT
+
+    def revenue(baseline_day: str) -> float:
+        program = _dr_config(
+            baseline,
+            bid_kw=100.0,
+            history_kw=60.0,
+            event_date="2025-07-09",
+            baseline_days=[baseline_day],
+        )
+        m = _pump_tank(program, days=2)
+        _solve(m)
+        return pyo.value(m.costing.opex.dr_revenue)
+
+    from_history = revenue("2025-07-07")
+    inside_horizon = revenue("2025-07-08")
+    assert inside_horizon <= from_history + 1e-6
 
 
 @pytest.mark.component
