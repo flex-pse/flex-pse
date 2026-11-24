@@ -94,7 +94,7 @@ def _fit_output(
         output_units=output.output_units,
     )
 
-    actual = _converted(output, holdout, name)[name]
+    actual = _converted(output, holdout, name)[output.output_name]
     predicted = pd.Series(regressor.coefficients["intercept"], index=holdout.index)
     for column, values in _terms(output, holdout).items():
         predicted += regressor.coefficients[column] * values
@@ -157,11 +157,11 @@ def _terms(output: SweepOutput, rows: pd.DataFrame) -> pd.DataFrame:
 
 
 def _converted(output: SweepOutput, rows: pd.DataFrame, name: str) -> pd.DataFrame:
-    """Return the output column converted from its model units to output_units."""
+    """Return the output column in output_units, named with its flex-pse variable."""
     source, target = parse_units(output.units), parse_units(output.output_units)
     return pd.DataFrame(
         {
-            name: [
+            output.output_name: [
                 pyunits.convert_value(float(v), from_units=source, to_units=target)
                 for v in rows[name]
             ]

@@ -84,6 +84,10 @@ class SweepOutput(_StrictModel):
         default="power_electrical_relation",
         description="Name of the unit's relation the spec replaces.",
     )
+    output_name: str = Field(
+        default="power_electrical",
+        description="Name of the unit's variable that the relation determines.",
+    )
     output_units: str = Field(
         description="Units of the fitted spec's output; values are converted "
         "from units."
