@@ -5,6 +5,7 @@ import logging
 import pyomo.environ as pyo
 import pytest
 
+from flexcore.exceptions import FlexSolverError
 from flexcore.logger import DedupHandler
 from flexcore.solvers import (
     Direct,
@@ -277,3 +278,125 @@ def test_report_gap_is_none_without_objective():
     step = StepResult("direct", "fake", TC.infeasible, None, 1.0, None)
     report = SolveReport(strategy="relax_and_fix", steps=[step], bound=10.0)
     assert report.gap is None
+
+
+@pytest.mark.unit
+def test_rounds_fix_decided_binaries_then_the_most_decided():
+    """Each round re-solves the relaxation; no step is mixed-integer."""
+    m = _model()
+    second = {2: 0.6, 3: 0.3}
+    runner = _ScriptedRunner(
+        m,
+        [
+            (TC.optimal, _RELAXED, 10.0),
+            (TC.optimal, second, 11.0),
+            (TC.optimal, {2: 0.6}, 12.0),
+            (TC.optimal, {}, 13.0),
+        ],
+    )
+    results, report = RelaxAndFix(rounds=True).solve(
+        m, ProblemClass.MILP, runner, warmstart=False
+    )
+    assert results == "results-4"
+    assert [call["fixed"] for call in runner.calls] == [
+        {},
+        {0: 0, 1: 1},
+        {0: 0, 1: 1, 3: 0},  # none within fix_tol, so the most decided one
+        {0: 0, 1: 1, 2: 1, 3: 0},
+    ]
+    assert {call["problem_class"] for call in runner.calls} == {ProblemClass.LP}
+    assert [step.n_fixed for step in report.steps] == [0, 2, 3, 4]
+    assert report.bound == 10.0
+    assert report.objective == 13.0
+    assert not any(m.b[i].fixed for i in m.I)
+    assert all(m.b[i].domain is pyo.Binary for i in m.I)
+    assert [m.b[i].value for i in m.I] == [0, 1, 1, 0]
+
+
+@pytest.mark.unit
+def test_rounds_halve_a_batch_that_is_infeasible():
+    """An infeasible round is undone and retried with half as many binaries."""
+    m = _model()
+    decided = {0: 0.02, 1: 0.97, 2: 0.01, 3: 0.99}
+    runner = _ScriptedRunner(
+        m,
+        [
+            (TC.optimal, decided, 10.0),
+            (TC.infeasible, None, None),
+            (TC.optimal, {}, 11.0),
+            (TC.optimal, {}, 12.0),
+        ],
+    )
+    _, report = RelaxAndFix(rounds=True).solve(
+        m, ProblemClass.MILP, runner, warmstart=False
+    )
+    assert [len(call["fixed"]) for call in runner.calls] == [0, 4, 2, 4]
+    assert runner.calls[2]["fixed"] == {2: 0, 3: 1}  # the two most decided
+    assert report.objective == 12.0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "script",
+    [
+        [(TC.infeasible, None, None)],
+        [(TC.optimal, {0: 0.5, 1: 0.5, 2: 0.5, 3: 0.5}, 1.0)]
+        + [(TC.infeasible, None, None)],
+        [(TC.optimal, {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0}, 1.0)]
+        + [(TC.maxTimeLimit, {}, None)],
+    ],
+    ids=["relaxation", "single binary", "time limit"],
+)
+def test_rounds_that_fail_leave_the_starting_values(script):
+    """Without a solution the model holds no relaxed values and nothing is fixed."""
+    m = _model()
+    for i in m.I:
+        m.b[i].set_value(1)
+    m.x.set_value(7.0)
+    runner = _ScriptedRunner(m, script)
+    results, report = RelaxAndFix(rounds=True).solve(
+        m, ProblemClass.MILP, runner, warmstart=False
+    )
+    assert results == f"results-{len(script)}"
+    assert report.steps[-1].termination is script[-1][0]
+    assert [m.b[i].value for i in m.I] == [1, 1, 1, 1]
+    assert m.x.value == 7.0
+    assert not any(m.b[i].fixed for i in m.I)
+    assert all(m.b[i].domain is pyo.Binary for i in m.I)
+
+
+@pytest.mark.unit
+def test_rounds_claim_no_bound_from_a_local_solver():
+    """An NLP relaxation is solved locally, so its objective bounds nothing."""
+    m = _model()
+    runner = _ScriptedRunner(m, [(TC.optimal, _INTEGRAL, 10.0), (TC.optimal, {}, 11.0)])
+    _, report = RelaxAndFix(rounds=True).solve(
+        m, ProblemClass.MINLP, runner, warmstart=False
+    )
+    assert {call["problem_class"] for call in runner.calls} == {ProblemClass.NLP}
+    assert report.bound is None
+    assert report.gap is None
+
+
+@pytest.mark.unit
+def test_rounds_refuse_general_integers():
+    """Rounds only fix binaries, so other integers would be left relaxed."""
+    m = _model()
+    m.n = pyo.Var(domain=pyo.Integers, bounds=(0, 5))
+    with pytest.raises(FlexSolverError, match="general integer"):
+        RelaxAndFix(rounds=True).solve(
+            m, ProblemClass.MINLP, _ScriptedRunner(m, []), warmstart=False
+        )
+
+
+@pytest.mark.unit
+def test_rounds_leave_user_fixed_binaries_alone():
+    """A binary fixed by the caller stays fixed and is not counted."""
+    m = _model()
+    m.b[0].fix(1)
+    runner = _ScriptedRunner(
+        m, [(TC.optimal, {1: 1.0, 2: 0.0, 3: 0.0}, 1.0), (TC.optimal, {}, 2.0)]
+    )
+    RelaxAndFix(rounds=True).solve(m, ProblemClass.MILP, runner, warmstart=False)
+    assert m.b[0].fixed and m.b[0].value == 1
+    assert not any(m.b[i].fixed for i in (1, 2, 3))
