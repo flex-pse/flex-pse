@@ -10,8 +10,8 @@ written as ``{"value": 15, "units": "min"}`` (or, for the time step, the string
 import pyomo.environ as pyo
 
 from flexcore.config.io import load_spec
-from flexops.core.stages import STAGES, BuildContext, parse_quantity
-from flexops.core.units import parse_units
+from flexops.core.stages import STAGES, BuildContext
+from flexops.core.units import parse_quantity, parse_units
 
 __all__ = ["build_model", "parse_quantity", "parse_units"]
 

@@ -19,6 +19,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from flexcore.config.schema import TimeConfig
 from flexcore.config.spec import (
     KINDS,
     SCHEMA_VERSION,
@@ -75,6 +76,9 @@ def _migrate_0_1_0(data: dict) -> dict:
 MIGRATIONS: dict[str, Callable[[dict], dict]] = {"0.1.0": _migrate_0_1_0}
 """Source version -> upgrade hook, applied in sequence on load. Each hook must
 set the new ``schema_version`` on the dict it returns."""
+
+TimeCheck = Callable[[TimeConfig, str], None]
+"""Refuses (raises for) a series made for other time points than the model's."""
 
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 
@@ -191,28 +195,71 @@ def read_source(source: str, base_dir):
     return json.loads(gzip.decompress(raw) if path.suffix.lower() == ".gz" else raw)
 
 
-def resolve_sources(value, base_dir):
+def _series_values(data, source: str, check_time: TimeCheck | None):
+    """Return the values of a time series document, or other data unchanged.
+
+    Args:
+        data: The parsed JSON data of a ``$source`` file.
+        source: The file's path as written, for error messages.
+        check_time: Called with a document's time and ``source``, or None.
+
+    Raises:
+        FlexConfigError: If a document's ``time`` is not a valid time
+            definition, or ``check_time`` refuses it.
+    """
+    if not (
+        isinstance(data, dict)
+        and {"time", "values"} <= set(data)
+        and isinstance(data["time"], dict)
+    ):
+        return data
+    try:
+        time = TimeConfig.model_validate(data["time"])
+    except ValidationError as exc:
+        raise FlexConfigError(
+            f"The 'time' of $source file {source!r} is not a time definition. "
+            f"{_format_validation_error(exc)}",
+            field="$source",
+            value=source,
+        ) from exc
+    if check_time is not None:
+        check_time(time, source)
+    return data["values"]
+
+
+def resolve_sources(value, base_dir, check_time: TimeCheck | None = None):
     """Replace every ``$source`` reference in ``value`` with the data it names.
+
+    A file may hold a time series document, ``{"time": {...}, "values": [...]}``,
+    whose ``time`` has the fields of a spec's time element. It is replaced by its
+    ``values``; other keys, such as notes on where the data came from, are ignored.
 
     Args:
         value: A :class:`~flexcore.config.spec.SourceRef`, a
             ``{"$source": path}`` mapping, or any JSON data containing them.
         base_dir: Directory a relative path resolves against, or None.
+        check_time: Called with each document's time and path, to refuse a series
+            made for other time points. None skips the check.
 
     Returns:
         ``value`` with each reference replaced; the input is not mutated.
 
     Raises:
-        FlexConfigError: If a referenced file cannot be read.
+        FlexConfigError: If a referenced file cannot be read, or a document's
+            ``time`` is invalid or refused.
     """
     if isinstance(value, SourceRef):
-        return read_source(value.source, base_dir)
+        value = {"$source": value.source}
     if isinstance(value, dict):
         if set(value) == {"$source"}:
-            return read_source(value["$source"], base_dir)
-        return {key: resolve_sources(item, base_dir) for key, item in value.items()}
+            source = value["$source"]
+            return _series_values(read_source(source, base_dir), source, check_time)
+        return {
+            key: resolve_sources(item, base_dir, check_time)
+            for key, item in value.items()
+        }
     if isinstance(value, list):
-        return [resolve_sources(item, base_dir) for item in value]
+        return [resolve_sources(item, base_dir, check_time) for item in value]
     return value
 
 
@@ -276,11 +323,34 @@ def load_spec(source) -> FlowsheetSpec:
     return spec
 
 
-def dump_spec(spec: FlowsheetSpec, path) -> None:
-    """Write a flat spec to disk as indented JSON, elements in canonical order.
+def dumps_spec(spec: FlowsheetSpec) -> str:
+    """Return a flat spec as indented JSON, elements in canonical order.
 
     Elements are sorted by build stage, kind and name so files diff cleanly;
     defaults are left out.
+
+    Args:
+        spec: The spec to serialize; it is not reordered.
+
+    Returns:
+        The text :func:`dump_spec` writes.
+    """
+    ordered = sorted(
+        spec.elements,
+        key=lambda el: (
+            STAGE_ORDER.index(KINDS[el.kind][0]),
+            el.kind,
+            getattr(el, "name", None) or "",
+            element_target(el),
+        ),
+    )
+    return spec.model_copy(update={"elements": ordered}).model_dump_json(
+        indent=2, by_alias=True, exclude_defaults=True
+    )
+
+
+def dump_spec(spec: FlowsheetSpec, path) -> None:
+    """Write a flat spec to disk in the form :func:`dumps_spec` returns.
 
     Args:
         spec: The spec to serialize; it is not reordered.
@@ -296,19 +366,7 @@ def dump_spec(spec: FlowsheetSpec, path) -> None:
             ".json file.",
             value=str(path),
         )
-    ordered = sorted(
-        spec.elements,
-        key=lambda el: (
-            STAGE_ORDER.index(KINDS[el.kind][0]),
-            el.kind,
-            getattr(el, "name", None) or "",
-            element_target(el),
-        ),
-    )
-    text = spec.model_copy(update={"elements": ordered}).model_dump_json(
-        indent=2, by_alias=True, exclude_defaults=True
-    )
-    path.write_text(text)
+    path.write_text(dumps_spec(spec))
 
 
 def _plain_descriptions(node) -> None:

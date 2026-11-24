@@ -13,24 +13,11 @@ from flexcore.config.design import (
     PlanningYear,
     RepresentativeMonth,
 )
+from flexcore.config.overrides import deep_merge
 from flexcore.config.spec import FlowsheetSpec
 from flexcore.exceptions import FlexConfigError
 from flexops import build_model
 from flexops.costing import capital_recovery_factor
-
-
-def _deep_merge(target: dict, patch: dict) -> None:
-    """Merge ``patch`` into ``target`` in place, recursing into nested dicts.
-
-    Args:
-        target: The dictionary to change.
-        patch: The values to merge in; a non-dict value replaces the target's.
-    """
-    for key, value in patch.items():
-        if isinstance(value, dict) and isinstance(target.get(key), dict):
-            _deep_merge(target[key], value)
-        else:
-            target[key] = value
 
 
 def expand_horizons(spec: DesignSpec) -> dict[tuple[int, int], FlowsheetSpec]:
@@ -51,7 +38,7 @@ def expand_horizons(spec: DesignSpec) -> dict[tuple[int, int], FlowsheetSpec]:
                 continue
             if change.months is not None and month.month not in change.months:
                 continue
-            _deep_merge(named[change.element], change.values)
+            deep_merge(named[change.element], change.values)
         start = date(year.year, month.month, 1)
         end = (
             (start + timedelta(days=32)).replace(day=1)
@@ -122,6 +109,24 @@ def _month_scale(month: RepresentativeMonth, year: int) -> float:
     if month.days is None:
         return month.weight
     return month.weight * calendar.monthrange(year, month.month)[1] / month.days
+
+
+def _year_scale(months: list[RepresentativeMonth], year: int) -> float:
+    """Return the factor that makes the weighted months add up to the year's days.
+
+    Weights count months, so months longer or shorter than average stand in for too
+    many or too few days: January and July at 6 each make 372.
+
+    Args:
+        months: The representative months.
+        year: The calendar year modeled.
+
+    Returns:
+        The year's days over the days the weighted months cover; 1 when every
+        month of the year is modeled.
+    """
+    covered = sum(m.weight * calendar.monthrange(year, m.month)[1] for m in months)
+    return (366 if calendar.isleap(year) else 365) / covered
 
 
 def _capacity_var(block: pyo.Block, decision: CapacitySpec) -> pyo.Var:
@@ -234,13 +239,19 @@ def build_design_model(spec: DesignSpec) -> pyo.ConcreteModel:
             * block.capital_cost
         )
 
-    m.annual_operating_cost = pyo.Expression(
-        years,
-        rule=lambda _, y: sum(
-            _month_scale(month, y) * costing[y, month.month].aggregate_operating_cost
-            for month in spec.months
-        ),
-    )
+    def annual_operating_cost(_, y):
+        total = 0 * currency
+        for month in spec.months:
+            block = costing[y, month.month]
+            # Monthly charges come 12 to the year, whatever the months' lengths.
+            monthly = block.opex.monthly_charge
+            by_time = block.aggregate_operating_cost - monthly
+            total += _month_scale(month, y) * (
+                _year_scale(spec.months, y) * by_time + monthly
+            )
+        return total
+
+    m.annual_operating_cost = pyo.Expression(years, rule=annual_operating_cost)
     factors = present_worth_factors(spec.years, rate)
     m.annualized_operating_cost = pyo.Expression(
         expr=sum(factors[y] * m.annual_operating_cost[y] for y in years)

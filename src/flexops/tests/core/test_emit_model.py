@@ -12,7 +12,7 @@ from pyomo.environ import units as pyunits
 from pyomo.network import Arc
 
 import flexops as fo
-from flexcore.config.io import dump_spec
+from flexcore.config.io import dump_spec, dumps_spec
 from flexcore.exceptions import FlexConfigError, FlexEmitWarning
 from flexops import apply_spec, build_model, emit_model, logic
 from flexops.core.compare import assert_models_equivalent
@@ -684,3 +684,58 @@ def test_bounds_changed_in_code_warn():
 
     with pytest.warns(FlexEmitWarning, match="ub"):
         emit_model(m)
+
+
+def _solar_site(values) -> pyo.ConcreteModel:
+    """Return a site with one solar unit driven by ``values``."""
+    m = base_model(len(values))
+    m.p.pv = fo.GenericRenewables(
+        capacity=10 * pyunits.kW, capacity_factor=values, costing_package=m.costing
+    )
+    return m
+
+
+@pytest.mark.unit
+def test_sources_reference_the_file_an_option_was_read_from(tmp_path):
+    """A named option is written as a $source and rebuilds the same model."""
+    values = [0.0, 0.5, 1.0]
+    (tmp_path / "raw").mkdir()
+    (tmp_path / "raw" / "pv.json").write_text(json.dumps(values))
+    spec = emit_quietly(
+        _solar_site(values),
+        relative_to=tmp_path,
+        sources={"p.pv.capacity_factor": "raw/pv.json"},
+    )
+    options = elements(spec, "unit")["p.pv"].construction_options
+    assert options["capacity_factor"] == {"$source": "raw/pv.json"}
+    dump_spec(spec, tmp_path / "spec.json")
+    assert (tmp_path / "spec.json").read_text() == dumps_spec(spec)
+    assert_models_equivalent(
+        _processed(_solar_site(values)), build_model(tmp_path / "spec.json")
+    )
+
+
+def _processed(model):
+    """Return ``model`` with its costing processed."""
+    model.costing.cost_process()
+    return model
+
+
+@pytest.mark.unit
+def test_sources_refuse_a_file_with_other_data(tmp_path):
+    """A file that doesn't hold the model's values can't stand in for them."""
+    (tmp_path / "pv.json").write_text(json.dumps([0.0, 0.5, 0.9]))
+    with pytest.raises(FlexConfigError, match="differs from the data"):
+        emit_quietly(
+            _solar_site([0.0, 0.5, 1.0]),
+            relative_to=tmp_path,
+            sources={"p.pv.capacity_factor": "pv.json"},
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", ["p.pv.missing", "p.other.capacity_factor", "x"])
+def test_sources_refuse_an_unknown_option(tmp_path, key):
+    """A key that is no option of a unit raises."""
+    with pytest.raises(FlexConfigError, match="not an option"):
+        emit_quietly(_solar_site([0.0, 0.5, 1.0]), sources={key: "pv.json"})

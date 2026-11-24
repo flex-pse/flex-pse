@@ -49,6 +49,23 @@ retry starts from the same relaxed values and hands more decisions back to the
 solver. The last rung fixes nothing, so it is the exact problem. Every rung is
 recorded in `solver.last_report.steps`.
 
+### Fixing in rounds
+
+The last stage above needs a solver for the mixed-integer class. An on/off unit
+next to any bilinear term makes a model a MINLP, and IPOPT can't take that. With
+`RelaxAndFix(rounds=True)` no stage is mixed-integer. After the relaxation, the
+strategy fixes the binaries within `fix_tol` of 0 or 1 (or the most decided 5% if
+none are), re-solves the relaxation so the rest can adapt, and repeats until all
+are fixed. A round with no solution is undone and retried with half as many.
+
+It can fail where a schedule exists: if a single binary can't be fixed, the
+failing step's results are returned and the model keeps its starting values.
+Models with integer variables that aren't binary are refused. The relaxation
+only counts as a bound when it is an LP.
+
+`get_solver` uses this on its own for a MINLP when no MINLP solver is installed,
+with a warning (see [Relaxation policies](relaxation_policies.md)).
+
 ### How good is the answer?
 
 Relax and fix is a heuristic. The schedule it returns satisfies every

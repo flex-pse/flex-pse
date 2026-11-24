@@ -101,12 +101,22 @@ total.
 
 For a penalty named `wear`, term `k` builds `wear_k_quantity` (the
 watched quantity), `wear_k_excess` (the hinge), the constraints
-`wear_k_up`/`wear_k_down`, and mutable parameters `wear_k_price`,
-`wear_k_deadband`, and the reference or bounds. The penalty builds
+`wear_k_up`/`wear_k_down`, the fixed Var `wear_k_deadband`, and mutable
+parameters `wear_k_price` and the reference or bounds. The penalty builds
 `wear_rate`, `wear_total`, `wear_billable`, and, if a budget is given,
 `wear_budget`. Every parameter is registered, so
 `unit.update_parameters({"wear_0_price": 3.0})` retunes a built model in
 place.
+
+A deadband can follow a size being chosen, such as a C-rate band of a battery
+in a design study. Unfix it and tie it to the size with one constraint:
+
+```python
+battery.wear_0_deadband.unfix()
+battery.wear_0_band = pyo.Constraint(
+    expr=battery.wear_0_deadband == 0.5 * battery.power_capacity
+)
+```
 
 ## Richer wear relationships
 

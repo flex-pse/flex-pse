@@ -14,7 +14,14 @@ import pytest
 
 from flexcore.exceptions import FlexSolverError
 from flexcore.logger import DedupHandler
-from flexcore.solvers import ProblemClass, SolverFacade, facade, get_solver
+from flexcore.solvers import (
+    Direct,
+    ProblemClass,
+    RelaxAndFix,
+    SolverFacade,
+    facade,
+    get_solver,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -205,3 +212,49 @@ def test_get_solver_passes_strategy_and_profile_through(monkeypatch):
     )
     assert chosen.strategy is strategy
     assert chosen.settings is SolverSettings.UNIT_COMMITMENT
+
+
+_NO_MINLP = {
+    "highs": {ProblemClass.LP, ProblemClass.MILP},
+    "ipopt": {ProblemClass.NLP, ProblemClass.QP},
+}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("strategy", [None, RelaxAndFix(fix_tol=0.2)])
+def test_minlp_without_a_solver_falls_back_to_rounds_and_warns(monkeypatch, strategy):
+    """The fallback runs on the NLP solver, keeps fix_tol and is never silent."""
+    monkeypatch.setattr(facade, "available_solvers", lambda: _NO_MINLP)
+    capture = _LogCapture()
+    logger = logging.getLogger("flexcore.solvers.facade")
+    logger.addHandler(capture)
+    try:
+        chosen = get_solver(problem_class=ProblemClass.MINLP, strategy=strategy)
+    finally:
+        logger.removeHandler(capture)
+    assert chosen.name == "ipopt"
+    assert chosen.problem_class is ProblemClass.MINLP
+    assert chosen.strategy == RelaxAndFix(
+        fix_tol=0.1 if strategy is None else 0.2, rounds=True
+    )
+    assert any("No MINLP solver" in r.getMessage() for r in capture.records)
+
+
+@pytest.mark.unit
+def test_explicit_direct_minlp_without_a_solver_still_raises(monkeypatch):
+    """Asking for the exact model is never replaced by a heuristic."""
+    monkeypatch.setattr(facade, "available_solvers", lambda: _NO_MINLP)
+    with pytest.raises(FlexSolverError, match="MINLP"):
+        get_solver(problem_class=ProblemClass.MINLP, strategy=Direct())
+
+
+@pytest.mark.unit
+def test_rounds_use_a_solver_for_the_relaxation(monkeypatch):
+    """Rounds need no mixed-integer solver even when one is installed."""
+    available = {**_NO_MINLP, "scip": {ProblemClass.MILP, ProblemClass.MINLP}}
+    monkeypatch.setattr(facade, "available_solvers", lambda: available)
+    rounds = RelaxAndFix(rounds=True)
+    minlp = get_solver(problem_class=ProblemClass.MINLP, strategy=rounds)
+    assert (minlp.name, minlp.strategy) == ("ipopt", rounds)
+    assert get_solver(problem_class=ProblemClass.MILP, strategy=rounds).name == "highs"
+    assert get_solver(problem_class=ProblemClass.MINLP).strategy == Direct()

@@ -9,7 +9,7 @@ from pydantic import TypeAdapter
 from pyomo.network import Arc, Port
 
 from flexcore import nomenclature as nm
-from flexcore.config.io import resolve_source_path, resolve_sources
+from flexcore.config.io import resolve_source_path
 from flexcore.config.schema import SurrogateSpec, SurrogateType, UnitConfig
 from flexcore.config.spec import (
     AUTO,
@@ -32,8 +32,9 @@ from flexops.core.fixing import FixReport, apply_state
 from flexops.core.network_block import NetworkBlock
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.plant_block import PlantBlock
+from flexops.core.sources import resolve_model_sources
 from flexops.core.time_block import TimeBlock
-from flexops.core.units import parse_units
+from flexops.core.units import parse_quantity, parse_units
 from flexops.costing import FlexCosting
 from flexops.properties import PROPERTY_PACKAGES
 from flexops.surrogates import surrogate_from_spec
@@ -70,54 +71,6 @@ class BuildContext:
     base_dir: Path | None
     expand_arcs: bool = False
     members: dict[str, list[OpsBlockData]] = field(default_factory=dict)
-
-
-def parse_quantity(value, *, strict: bool = True):
-    """Turn a persisted units-carrying value into a Pyomo expression.
-
-    Args:
-        value: Either a ``{"value": ..., "units": ...}`` mapping (a list
-            ``value`` gives a list of quantities), a list of such mappings, a
-            ``"<number> <units>"`` string (the form ``TimeConfig.time_step``
-            uses), or any other value, which is returned unchanged.
-        strict: Whether a string with no numeric magnitude is an error. Pass
-            ``False`` where a plain string is itself a legal value — a
-            construction option naming an enum member (``"polarization"``) is
-            not a botched quantity — and it is returned unchanged instead.
-
-    Returns:
-        A units-carrying Pyomo expression, or ``value`` itself.
-
-    Raises:
-        FlexConfigError: If ``strict`` and a quantity string has no numeric
-            magnitude.
-    """
-    if isinstance(value, dict) and set(value) == {"value", "units"}:
-        units = parse_units(value["units"])
-        if isinstance(value["value"], list):
-            return [item * units for item in value["value"]]
-        return value["value"] * units
-    if (
-        isinstance(value, list)
-        and value
-        and all(
-            isinstance(item, dict) and set(item) == {"value", "units"} for item in value
-        )
-    ):
-        return [parse_quantity(item) for item in value]
-    if isinstance(value, str):
-        magnitude, _, units = value.strip().partition(" ")
-        try:
-            return float(magnitude) * parse_units(units)
-        except ValueError as exc:
-            if not strict:
-                return value
-            raise FlexConfigError(
-                f"Could not read {value!r} as a quantity; write it as a number "
-                "and its units, e.g. '15 min'.",
-                value=value,
-            ) from exc
-    return value
 
 
 def elements_of(spec: FlowsheetSpec, *kinds: str) -> list:
@@ -605,7 +558,7 @@ def _build_costing(model, element: CostingElement, ctx: BuildContext):
         return {
             name: parse_quantity(
                 {
-                    "value": resolve_sources(price.value, ctx.base_dir),
+                    "value": resolve_model_sources(model, price.value, ctx.base_dir),
                     "units": price.units,
                 }
             )
@@ -646,7 +599,8 @@ def _build_unit(model, spec: FlowsheetSpec, element: UnitElement, ctx: BuildCont
     unit_config = UnitConfig(
         unit_model_class=element.unit_model_class,
         construction_options=_with_packages(
-            model, resolve_sources(element.construction_options, ctx.base_dir)
+            model,
+            resolve_model_sources(model, element.construction_options, ctx.base_dir),
         ),
         io_variables=element.io_variables,
         unit_commitment=element.unit_commitment,
@@ -771,7 +725,7 @@ def _apply_surrogate(model, element: SurrogateElement, ctx: BuildContext) -> Non
     """
     relation = SurrogateSpec(
         surrogate_type=element.surrogate_type,
-        data=resolve_sources(element.data, ctx.base_dir),
+        data=resolve_model_sources(model, element.data, ctx.base_dir),
         provenance=element.provenance,
     )
     for member in _members(model, ctx, element.unit):

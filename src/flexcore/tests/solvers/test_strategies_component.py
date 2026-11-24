@@ -305,3 +305,39 @@ def test_highs_warmstart_solves_cold_without_appsi_highs(monkeypatch, facade_log
     )
     assert "warmstart" not in fake.calls[0]
     assert any("warm" in r.getMessage() for r in facade_log.records)
+
+
+def _sized_unit_commitment() -> pyo.ConcreteModel:
+    """A MINLP: on/off running of a unit whose capacity is also a decision."""
+    m = pyo.ConcreteModel()
+    m.T = pyo.RangeSet(0, 7)
+    demand = [4, 6, 9, 12, 11, 7, 5, 3]
+    m.on = pyo.Var(m.T, domain=pyo.Binary)
+    m.size = pyo.Var(bounds=(1, 10), initialize=5)
+    m.buy = pyo.Var(m.T, bounds=(0, None))
+    m.meet = pyo.Constraint(
+        m.T, rule=lambda m, t: m.size * m.on[t] + m.buy[t] >= demand[t]
+    )
+    m.obj = pyo.Objective(
+        expr=3 * m.size + sum(4 * m.on[t] + 2 * m.buy[t] for t in m.T)
+    )
+    return m
+
+
+@pytest.mark.component
+@pytest.mark.needs_ipopt
+def test_rounds_solve_a_minlp_with_ipopt_alone():
+    """The answer is integral, feasible and no worse than never running the unit."""
+    m = _sized_unit_commitment()
+    solver = get_solver(model=m, strategy=RelaxAndFix(rounds=True))
+    assert solver.problem_class is ProblemClass.MINLP
+    assert solver.name == "ipopt"
+    assert pyo.check_optimal_termination(solver.solve(m))
+    assert all(m.on[t].value in (0, 1) for t in m.T)
+    assert all(m.on[t].domain is pyo.Binary and not m.on[t].fixed for t in m.T)
+    for t in m.T:
+        assert pyo.value(m.meet[t].body) >= pyo.value(m.meet[t].lower) - 1e-6
+    relaxation, *rounds = solver.last_report.steps
+    assert relaxation.objective - 1e-6 <= solver.last_report.objective
+    assert solver.last_report.objective <= 3 * 1 + 2 * 57
+    assert {step.solver for step in rounds} == {"ipopt"}

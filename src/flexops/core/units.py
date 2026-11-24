@@ -56,3 +56,51 @@ def parse_units(text: str):
                 unit = currency_units(name)
             result = result * unit ** (side * exponent)
     return result
+
+
+def parse_quantity(value, *, strict: bool = True):
+    """Turn a persisted units-carrying value into a Pyomo expression.
+
+    Args:
+        value: Either a ``{"value": ..., "units": ...}`` mapping (a list
+            ``value`` gives a list of quantities), a list of such mappings, a
+            ``"<number> <units>"`` string (the form ``TimeConfig.time_step``
+            uses), or any other value, which is returned unchanged.
+        strict: Whether a string with no numeric magnitude is an error. Pass
+            ``False`` where a plain string is itself a legal value — a
+            construction option naming an enum member (``"polarization"``) is
+            not a botched quantity — and it is returned unchanged instead.
+
+    Returns:
+        A units-carrying Pyomo expression, or ``value`` itself.
+
+    Raises:
+        FlexConfigError: If ``strict`` and a quantity string has no numeric
+            magnitude.
+    """
+    if isinstance(value, dict) and set(value) == {"value", "units"}:
+        units = parse_units(value["units"])
+        if isinstance(value["value"], list):
+            return [item * units for item in value["value"]]
+        return value["value"] * units
+    if (
+        isinstance(value, list)
+        and value
+        and all(
+            isinstance(item, dict) and set(item) == {"value", "units"} for item in value
+        )
+    ):
+        return [parse_quantity(item) for item in value]
+    if isinstance(value, str):
+        magnitude, _, units = value.strip().partition(" ")
+        try:
+            return float(magnitude) * parse_units(units)
+        except ValueError as exc:
+            if not strict:
+                return value
+            raise FlexConfigError(
+                f"Could not read {value!r} as a quantity; write it as a number "
+                "and its units, e.g. '15 min'.",
+                value=value,
+            ) from exc
+    return value

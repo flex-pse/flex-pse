@@ -173,3 +173,21 @@ def test_demand_charge_reduces_peak():
     peak_without = _peak(no_demand)
     # Demand charges flatten the profile -> a strictly lower peak.
     assert peak_with < peak_without - 1e-6
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_monthly_charge_is_the_bill_less_energy():
+    """At the optimum, monthly_charge holds the demand and customer charges."""
+    m = _build_headline()
+    assert_optimal_termination(pyo.SolverFactory("appsi_highs").solve(m))
+    energy = sum(
+        (0.18 if t in _PEAK_HOURS else 0.09)
+        * pyo.value(m.costing.aggregate_power[t, "electrical"])
+        for t in m.time_block.time_index
+    )
+    monthly = pyo.value(m.costing.opex.monthly_charge)
+    assert monthly > 150.0 * 24 / 744  # the customer charge, plus demand
+    assert pyo.value(m.costing.aggregate_operating_cost) == pytest.approx(
+        energy + monthly
+    )

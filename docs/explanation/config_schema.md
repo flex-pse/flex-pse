@@ -130,7 +130,20 @@ or a fixed demand profile, can live beside the spec:
 ```
 
 A `$source` also works anywhere in a unit's `construction_options`. A `$source` path is relative to the spec file and names a `.json` or gzipped
-`.json.gz` file. `emit_model(data_dir=..., inline_limit=2000)` writes every list
+`.json.gz` file. A time series can carry the time points it was made for, with
+the fields of the `time` element:
+
+```json
+{"time": {"start_date": "2025-06-01", "end_date": "2025-06-15", "time_step": "15 min"},
+ "values": [0.0, 0.0, 0.07]}
+```
+
+Building then refuses a series made for other dates or another step. A plain list
+is only checked for length.
+
+`emit_model(sources={"plant.pv.capacity_factor": "raw/solar.json"})` references
+the file an option was read from instead of copying its values into the spec.
+`emit_model(data_dir=..., inline_limit=2000)` writes every list
 longer than `inline_limit` this way, and `relative_to=` writes paths relative to
 where the spec will be saved.
 
