@@ -5,6 +5,7 @@ import json
 import math
 import re
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
 
 import pyomo.environ as pyo
@@ -14,7 +15,7 @@ from pyomo.core.base.componentuid import ComponentUID
 from pyomo.environ import units as pyunits
 from pyomo.network import Arc
 
-from flexcore.config.io import resolve_sources
+from flexcore.config.layout import ConfigLayout
 from flexcore.config.spec import (
     AUTO,
     SCHEMA_VERSION,
@@ -48,6 +49,7 @@ from flexops.core.network_block import NetworkBlock
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.plant_block import PlantBlock
 from flexops.core.serialize import to_jsonable, units_to_str
+from flexops.core.sources import resolve_model_sources
 from flexops.core.time_block import find_time_block
 from flexops.costing import FlexCosting
 from flexops.properties import PROPERTY_PACKAGES
@@ -59,9 +61,11 @@ def emit_model(
     model,
     *,
     data_dir: Path | None = None,
+    config_dir: Path | None = None,
     inline_limit: int = 2000,
     check: bool = True,
     relative_to: Path | None = None,
+    sources: Mapping[str, str | Path] | None = None,
 ) -> FlowsheetSpec:
     """Read the flat spec a live model was (or could have been) built from.
 
@@ -69,10 +73,20 @@ def emit_model(
         model: The built Pyomo model.
         data_dir: Directory to write lists longer than ``inline_limit`` to, as
             ``.json.gz`` files the spec references with ``$source``.
+        config_dir: Config folder the spec will be saved in (see
+            :mod:`flexcore.config.layout`). Long lists go to its data
+            subfolders by element kind, e.g. prices to ``price/``; kinds with
+            no subfolder, such as ``fix``, keep their values in the spec. Paths
+            are written relative to it. Not with ``data_dir`` or
+            ``relative_to``.
         inline_limit: Longest list kept inside the spec.
         check: Rebuild the spec and warn about every difference from ``model``.
         relative_to: Directory the spec will be saved in; file paths under it
             are written relative to it.
+        sources: Existing data files to reference with ``$source`` in place of
+            the values read from them, keyed by unit option, e.g.
+            ``{"plant.pv.capacity_factor": "raw/solar.json"}``. Relative paths
+            resolve against ``relative_to``.
 
     Returns:
         The validated :class:`~flexcore.config.spec.FlowsheetSpec`.
@@ -80,7 +94,10 @@ def emit_model(
     Raises:
         FlexConfigError: If the model holds something the spec can't express
             and that would change the model if left out (an option with no
-            spec form, indexed members that differ, an arc no template fits).
+            spec form, indexed members that differ, an arc no template fits),
+            or a ``sources`` entry names no unit option or a file whose data
+            differs from the model's, or ``config_dir`` is passed with
+            ``data_dir`` or ``relative_to``.
 
     Warns:
         FlexEmitWarning: For anything left out of the spec: a custom surrogate,
@@ -89,6 +106,18 @@ def emit_model(
             has not run ``cost_process()``, fixes that can't be found because
             the model doesn't rebuild, and every difference the check finds.
     """
+    layout = None
+    if config_dir is not None:
+        if data_dir is not None or relative_to is not None:
+            raise FlexConfigError(
+                "Pass config_dir alone: it sets where data files go and what "
+                "their paths are relative to, so data_dir and relative_to "
+                "would conflict with it.",
+                field="config_dir",
+                value=str(config_dir),
+            )
+        layout = ConfigLayout(config_dir)
+        relative_to = layout.root
     packages, costings = {}, {}
     for block in model.component_objects(pyo.Block, descend_into=False):
         if isinstance(block, FlexCosting):
@@ -121,8 +150,9 @@ def emit_model(
     elements += extensions
     elements += _objectives(model, costings, bool(extensions))
     base_dir = relative_to or (None if data_dir is None else Path(data_dir).parent)
+    _reference_sources(model, unit_elements, sources or {}, base_dir)
     elements += _state_elements(model, elements, base_dir)
-    _offload(elements, data_dir, inline_limit, base_dir)
+    _offload(elements, data_dir, inline_limit, base_dir, layout)
     spec = FlowsheetSpec(
         schema_version=SCHEMA_VERSION, name=model.name, elements=elements
     )
@@ -130,6 +160,42 @@ def emit_model(
     if check:
         _check(model, spec)
     return spec
+
+
+def _reference_sources(model, unit_elements: dict, sources, base_dir) -> None:
+    """Replace unit options with references to the files they were read from.
+
+    Args:
+        model: The model.
+        unit_elements: Unit elements by name; their options are changed in place.
+        sources: File paths keyed by ``"<unit>.<option>"``.
+        base_dir: Directory the written ``$source`` paths are relative to.
+
+    Raises:
+        FlexConfigError: If a key names no unit option set on the model, or the
+            file can't be read, is dated for other time points, or holds other
+            data than the model does.
+    """
+    for key, path in sources.items():
+        unit, _, option = key.rpartition(".")
+        element = unit_elements.get(unit)
+        if element is None or option not in element.construction_options:
+            raise FlexConfigError(
+                f"sources names {key!r}, which is not an option set on a unit of "
+                "the model. Write it as '<unit name>.<option>'.",
+                field="sources",
+                value=key,
+            )
+        reference = {"$source": _relative_path(path, base_dir)}
+        data = resolve_model_sources(model, reference, base_dir)
+        if data != element.construction_options[option]:
+            raise FlexConfigError(
+                f"{key} differs from the data in {str(path)!r}, so the spec can't "
+                "reference that file. Build the model from it first.",
+                field="sources",
+                value=key,
+            )
+        element.construction_options[option] = reference
 
 
 def _package_element(name: str, block) -> PropertyPackageElement:
@@ -722,7 +788,9 @@ def _state_elements(model, elements: list, base_dir) -> list:
         (
             e
             if e.kind == "unfix"
-            else e.model_copy(update={"value": resolve_sources(e.value, base)})
+            else e.model_copy(
+                update={"value": resolve_model_sources(model, e.value, base)}
+            )
         )
         for e, base in recorded
         if _agrees(model, e, base)
@@ -943,7 +1011,9 @@ def _slug(text: str) -> str:
     return re.sub(r"[^\w-]", "_", text)
 
 
-def _offload(elements: list, data_dir, inline_limit: int, base_dir) -> None:
+def _offload(
+    elements: list, data_dir, inline_limit: int, base_dir, layout=None
+) -> None:
     """Move every list longer than ``inline_limit`` into a ``.json.gz`` file.
 
     Args:
@@ -951,15 +1021,24 @@ def _offload(elements: list, data_dir, inline_limit: int, base_dir) -> None:
         data_dir: Directory for the files, or None to keep lists inline.
         inline_limit: Longest list kept inline.
         base_dir: Directory the written ``$source`` paths are relative to.
+        layout: A :class:`~flexcore.config.layout.ConfigLayout` that picks the
+            directory by element kind, in place of ``data_dir``.
 
     Warns:
-        FlexEmitWarning: For a long list when ``data_dir`` is None.
+        FlexEmitWarning: For a long list when neither ``data_dir`` nor
+            ``layout`` gives it a directory, except for a kind the layout keeps
+            in the spec.
     """
 
-    def write(owner: str, field: str, values: list):
+    def write(owner: str, field: str, values: list, kind: str):
         if len(values) <= inline_limit:
             return None
-        if data_dir is None:
+        directory = data_dir
+        if layout is not None:
+            directory = layout.emit_dir(kind)
+            if directory is None:
+                return None
+        if directory is None:
             warnings.warn(
                 f"{owner}.{field} has {len(values)} values; pass data_dir to "
                 "write it to a file beside the spec",
@@ -967,7 +1046,7 @@ def _offload(elements: list, data_dir, inline_limit: int, base_dir) -> None:
                 stacklevel=4,
             )
             return None
-        path = Path(data_dir) / f"{_slug(owner)}.{field}.json.gz"
+        path = Path(directory) / f"{_slug(owner)}.{field}.json.gz"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(gzip.compress(json.dumps(values).encode(), mtime=0))
         return _relative_path(path, base_dir)
@@ -976,7 +1055,7 @@ def _offload(elements: list, data_dir, inline_limit: int, base_dir) -> None:
         if isinstance(value, dict):
             return {k: walk(owner, f"{field}.{k}", v) for k, v in value.items()}
         if isinstance(value, list):
-            source = write(owner, field, value)
+            source = write(owner, field, value, "surrogate")
             return value if source is None else {"$source": source}
         return value
 
@@ -985,15 +1064,19 @@ def _offload(elements: list, data_dir, inline_limit: int, base_dir) -> None:
             for field in ("energy_prices", "export_prices"):
                 for carrier, price in (getattr(element, field) or {}).items():
                     if isinstance(price.value, list):
-                        source = write(element.name, f"{field}.{carrier}", price.value)
+                        source = write(
+                            element.name, f"{field}.{carrier}", price.value, "costing"
+                        )
                         if source is not None:
                             price.value = SourceRef(source=source)
         elif element.kind == "fix" and isinstance(element.value, list):
-            source = write(element.variable, "value", element.value)
+            source = write(element.variable, "value", element.value, "fix")
             if source is not None:
                 element.value = SourceRef(source=source)
         elif element.kind == "dispatch" and isinstance(element.values, list):
-            source = write(".".join(element_target(element)), "values", element.values)
+            source = write(
+                ".".join(element_target(element)), "values", element.values, "dispatch"
+            )
             if source is not None:
                 element.values = SourceRef(source=source)
         elif element.kind == "surrogate":

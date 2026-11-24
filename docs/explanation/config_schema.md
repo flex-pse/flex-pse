@@ -141,9 +141,43 @@ the fields of the `time` element:
 Building then refuses a series made for other dates or another step. A plain list
 is only checked for length.
 
+`emit_model(sources={"plant.pv.capacity_factor": "raw/solar.json"})` references
+the file an option was read from instead of copying its values into the spec.
 `emit_model(data_dir=..., inline_limit=2000)` writes every list
 longer than `inline_limit` this way, and `relative_to=` writes paths relative to
 where the spec will be saved.
+
+### The config folder
+
+A model with long data is saved as a folder. The spec sits at the top as
+`config.json`, and each kind of `$source` file has its own subfolder:
+
+```text
+config/
+  config.json   the spec, fix, unfix and dispatch values included
+  price/        energy and export price series, tariff files, DR events
+  opsdata/      historian series and tag maps
+  sweep/        parameter sweep results and surrogate fit data
+```
+
+`emit_model(config_dir="config")` writes long lists into this layout by element
+kind (`flexcore.config.layout.EMIT_CATEGORIES`): costing prices go to `price/`
+and surrogate data to `sweep/`. Kinds with no subfolder keep their values in
+`config.json`. `dump_spec(spec, "config")` writes `config/config.json`, and
+`load_spec("config")` and `build_model("config")` read it.
+
+The layout is a convention, not a rule. A `$source` path is still relative to
+`config.json`, so a spec whose files sit elsewhere loads the same way.
+
+A module that brings a new kind of data registers its own subfolder, and can
+name the element kinds whose long lists `emit_model` writes there:
+
+```python
+from flexcore.config.layout import register_data_category
+
+# "dr_program" stands for an element kind the module adds to KINDS.
+register_data_category("dr", "Demand-response programs.", kinds=("dr_program",))
+```
 
 A unit that takes several property packages receives them as
 `{"$package": "biogas"}` construction options, which name a `property_package`
