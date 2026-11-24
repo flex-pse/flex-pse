@@ -39,7 +39,7 @@ inside it:
 
 ```json
 {
-  "schema_version": "0.1.1",
+  "schema_version": "0.1.2",
   "name": "waterfacility",
   "elements": [
     {"kind": "unit", "name": "waterfacility.plant",
@@ -48,8 +48,7 @@ inside it:
     {"kind": "objective", "name": "objective", "expression": "cost"},
     {"kind": "unit", "name": "waterfacility.tank", "unit_model_class": "Tank",
      "connections": [{"port": "outlet", "to": "waterfacility.plant.inlet"}]},
-    {"kind": "costing", "name": "costing", "tariff_source": "tariff.json",
-     "dr": {"events_source": "dr_events.json"}},
+    {"kind": "costing", "name": "costing", "tariff_source": "tariff.json"},
     {"kind": "plant", "name": "waterfacility"},
     {"kind": "time", "start_date": "2025-01-01", "end_date": "2025-01-30",
      "time_step": "15 min"},
@@ -293,7 +292,11 @@ so schema changes show up in review and other tools can validate against it.
 Changing the default fix policy is a breaking change and needs a new version.
 Version 0.1.1 renames the `BatteryModel` `capacity` option and Var to
 `energy_capacity`; a 0.1.0 spec is rewritten on load, except for extension
-functions, which are user code.
+functions, which are user code. Version 0.1.2 replaces the `costing.dr`
+placeholder `{"events_source": ...}` with a full demand-response program (see
+{doc}`demand_response`). An empty placeholder is dropped on load, but one that
+names an events file cannot be translated, so loading it raises a
+`FlexConfigError` that says to write the program.
 
 ## The FlexParameterize and FlexOps seam
 

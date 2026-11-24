@@ -72,7 +72,51 @@ def _migrate_0_1_0(data: dict) -> dict:
     return {**migrated, "schema_version": "0.1.1"}
 
 
-MIGRATIONS: dict[str, Callable[[dict], dict]] = {"0.1.0": _migrate_0_1_0}
+def _migrate_0_1_1(data: dict) -> dict:
+    """Drop an empty ``costing.dr`` and refuse one that names an events file.
+
+    Version 0.1.2 replaced the ``costing.dr = {"events_source": ...}``
+    placeholder with a full demand-response program. An empty placeholder meant
+    "no program", so it is dropped. One that names an events file cannot be
+    translated: the program also needs meter history, a baseline and a payment.
+
+    Args:
+        data: A parsed 0.1.1 spec; left unchanged.
+
+    Returns:
+        A copy of the spec at version 0.1.2.
+
+    Raises:
+        FlexConfigError: If a costing element sets ``dr.events_source``.
+    """
+    migrated = copy.deepcopy(data)
+    raw = migrated.get("elements")
+    for element in raw if isinstance(raw, list) else []:
+        if not isinstance(element, dict) or element.get("kind") != "costing":
+            continue
+        program = element.get("dr")
+        if not isinstance(program, dict):
+            continue
+        if program.get("events_source") is not None:
+            name = element.get("name")
+            raise FlexConfigError(
+                f"The costing element {name!r} sets dr.events_source, which "
+                "schema_version 0.1.2 replaced with a full demand-response "
+                "program (events, historical_power, baseline and payment). "
+                "Replace dr with that program; see "
+                "docs/explanation/demand_response.md.",
+                field=f"{name}.dr.events_source",
+                value=program["events_source"],
+            )
+        if set(program) <= {"events_source"}:
+            del element["dr"]
+    return {**migrated, "schema_version": "0.1.2"}
+
+
+MIGRATIONS: dict[str, Callable[[dict], dict]] = {
+    "0.1.0": _migrate_0_1_0,
+    "0.1.1": _migrate_0_1_1,
+}
 """Source version -> upgrade hook, applied in sequence on load. Each hook must
 set the new ``schema_version`` on the dict it returns."""
 

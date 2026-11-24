@@ -1,10 +1,17 @@
 """flex-pse costing: the thin interface around the external EECO package.
 
 The tariff/operating-cost engine is EECO (``eeco`` on PyPI); this package wraps
-it. All ``eeco`` calls are collected in :mod:`flexops.costing.opex` (the sole
-import point).
+it. Tariff ``eeco`` calls are collected in :mod:`flexops.costing.opex` and
+demand-response calls in :mod:`flexops.costing.demand_response`.
 """
 
+from flexops.costing.demand_response import (
+    add_dr_revenue,
+    dr_baseline_method,
+    dr_payment_structure,
+    evaluate_dr_revenue,
+    historical_power_series,
+)
 from flexops.costing.flex_costing import (
     CapitalCostBreakdown,
     CostReport,
@@ -14,7 +21,6 @@ from flexops.costing.flex_costing import (
     capital_recovery_factor,
 )
 from flexops.costing.opex import (
-    DRConfig,
     OperatingCostHandles,
     add_electricity_cost,
     add_fuel_cost,
@@ -23,7 +29,6 @@ from flexops.costing.opex import (
     evaluate_cost,
     evaluate_fuel_cost,
     is_peak,
-    load_dr_program,
     load_tariff,
     merge_tariffs,
     monthly_scale_factor,
@@ -37,7 +42,6 @@ from flexops.costing.opex import (
 __all__ = [
     "load_tariff",
     "merge_tariffs",
-    "load_dr_program",
     "tariff_csv_to_dict",
     "tariff_currency_units",
     "currency_units",
@@ -52,7 +56,11 @@ __all__ = [
     "OperatingCostHandles",
     "evaluate_cost",
     "evaluate_fuel_cost",
-    "DRConfig",
+    "add_dr_revenue",
+    "evaluate_dr_revenue",
+    "dr_baseline_method",
+    "dr_payment_structure",
+    "historical_power_series",
     "FlexCosting",
     "capital_recovery_factor",
     "CostReport",

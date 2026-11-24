@@ -26,7 +26,7 @@ _DATA = _FIXTURES / "data"
 
 
 def _in_fixture_dir(tmp_path, monkeypatch) -> None:
-    """Copy the tariff/DR data fixtures into ``tmp_path`` and chdir there.
+    """Copy the tariff data fixture into ``tmp_path`` and chdir there.
 
     The frozen script loads bare filenames (``"tariff.json"``), so it runs with
     the working directory set to where those fixtures live.

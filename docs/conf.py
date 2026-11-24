@@ -76,6 +76,8 @@ nitpick_ignore_regex = [
     # pydantic Field constraints (ge=, gt=, min_length=) render as annotated_types
     # metadata classes, which have no intersphinx target.
     ("py:class", r"annotated_types\..*"),
+    ("py:class", r"tuple\[.*"),
+    ("py:obj", r"typing\.Annotated\[.*"),
 ]
 
 html_theme = "furo"
