@@ -39,7 +39,15 @@ The baseline needs meter history from before the horizon. The spec carries it in
 `historical_power` as a start time, a time step and a list of kW values. That
 list is usually long, so it is normally kept in a `$source` file beside the
 spec. Baseline days that fall inside the optimization horizon are taken from the
-model's own power instead, so the plan can't inflate its baseline.
+model's own power instead of the history. With EECO 0.5.0 that lets the plan
+raise its load on those days to inflate the baseline, so keep baseline days
+before the horizon.
+
+The history's time step has to fit the settlement interval. With no
+`baseline.resolution`, EECO settles at the model's time step, so
+`time_step_minutes` must equal it. With `resolution` set, such as `"1h"`, both the
+history step and the model step must divide it evenly. A program can list at most
+one event per date, because a site can't join two events in one day.
 
 ## Where the revenue appears
 

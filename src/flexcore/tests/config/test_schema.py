@@ -206,6 +206,116 @@ def test_dr_rejects_empty_baseline_days_and_history():
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"bid_capacity_kW": 0.0}, "bid_capacity_kW"),
+        ({"bid_capacity_kW": -50.0}, "bid_capacity_kW"),
+        ({"duration_hours": 0.0}, "duration_hours"),
+        ({"duration_hours": -1.0}, "duration_hours"),
+        ({"start_hour": -1.0}, "start_hour"),
+        ({"start_hour": 24.0}, "start_hour"),
+        ({"start_hour": 22.0, "duration_hours": 3.0}, "past midnight"),
+    ],
+)
+def test_dr_event_rejects_out_of_range_values(changes, message):
+    """A non-positive bid or duration, or an event outside its day, is rejected."""
+    with pytest.raises(ValidationError, match=message):
+        DREvent.model_validate(_dr_event(**changes))
+
+
+@pytest.mark.unit
+def test_dr_event_may_end_exactly_at_midnight():
+    """An event that ends at 24:00 stays inside its day."""
+    event = DREvent.model_validate(_dr_event(start_hour=21.0, duration_hours=3.0))
+    assert event.start_hour + event.duration_hours == 24.0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("regions", "message"),
+    [
+        # x1 must be below x2
+        ([{"x1": 1.0, "x2": 1.0, "y1": 0.0, "y2": 1.0}], "region 0 must have x1 < x2"),
+        ([{"x1": 2.0, "x2": 1.0, "y1": 0.0, "y2": 1.0}], "region 0 must have x1 < x2"),
+        # a gap between regions
+        (
+            [
+                {"x1": 0.0, "x2": 0.5, "y1": 0.0, "y2": 0.5},
+                {"x1": 0.6, "x2": None, "y1": 1.0, "y2": 1.0},
+            ],
+            "regions 0 and 1 must meet",
+        ),
+        # an overlap between regions
+        (
+            [
+                {"x1": 0.0, "x2": 0.8, "y1": 0.0, "y2": 0.8},
+                {"x1": 0.6, "x2": None, "y1": 1.0, "y2": 1.0},
+            ],
+            "regions 0 and 1 must meet",
+        ),
+        # regions listed out of order
+        (
+            [
+                {"x1": 1.0, "x2": None, "y1": 1.0, "y2": 1.0},
+                {"x1": 0.0, "x2": 1.0, "y1": 0.0, "y2": 1.0},
+            ],
+            "must",
+        ),
+        # an unbounded end in the middle of the schedule
+        (
+            [
+                {"x1": 0.0, "x2": None, "y1": 0.0, "y2": 1.0},
+                {"x1": 1.0, "x2": None, "y1": 1.0, "y2": 1.0},
+            ],
+            "regions 0 and 1 must meet",
+        ),
+    ],
+)
+def test_dr_payment_rejects_disordered_regions(regions, message):
+    """Regions must have x1 < x2 and meet end to end in ascending order."""
+    with pytest.raises(ValidationError, match=message):
+        DRPayment(kind="capacity", regions=regions)
+
+
+@pytest.mark.unit
+def test_dr_payment_accepts_contiguous_regions_with_open_ends():
+    """Contiguous regions pass, including an unbounded first x1 and last x2."""
+    payment = DRPayment(
+        kind="capacity",
+        regions=[
+            {"x1": None, "x2": 0.0, "y1": 0.0, "y2": 0.0},
+            {"x1": 0.0, "x2": 1.0, "y1": 0.0, "y2": 1.0},
+            {"x1": 1.0, "x2": None, "y1": 1.0, "y2": 1.0},
+        ],
+    )
+    assert len(payment.regions) == 3
+
+
+@pytest.mark.unit
+def test_dr_baseline_rejects_an_inverted_adjustment_clip():
+    """The adjustment clip is (low, high) and low may not exceed high."""
+    with pytest.raises(ValidationError, match="adjustment_clip"):
+        DRBaseline(method="similar_days", adjustment_clip=(1.2, 0.8))
+    assert DRBaseline(method="similar_days", adjustment_clip=(1.0, 1.0)).method
+
+
+@pytest.mark.unit
+def test_dr_rejects_two_events_on_one_date():
+    """A second event on a date is rejected, naming the date and the fix."""
+    events = [_dr_event(), _dr_event(start_hour=20)]
+    with pytest.raises(ValidationError, match=r"2025-07-08.*one .*event per day"):
+        DRConfig.model_validate(_dr_config(events=events))
+
+
+@pytest.mark.unit
+def test_dr_accepts_events_on_different_dates():
+    """Events on different dates, in any order, are fine."""
+    events = [_dr_event(event_date="2025-07-10"), _dr_event()]
+    assert len(DRConfig.model_validate(_dr_config(events=events)).events) == 2
+
+
+@pytest.mark.unit
 def test_costing_config_takes_a_dr_config():
     """CostingConfig.dr holds the full demand-response config."""
     cfg = CostingConfig(tariff_source="tariff.json", dr=_dr_config())

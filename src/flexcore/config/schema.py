@@ -16,6 +16,7 @@ line-break art — rendering is the documentation builder's job.
 
 import datetime
 import enum
+import math
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, model_validator
@@ -318,8 +319,10 @@ class DREvent(_StrictModel):
     """One demand-response event, in local wall-clock time."""
 
     event_date: datetime.date = Field(description="Calendar date of the event.")
-    start_hour: float = Field(description="Hour of day (0-24) the event begins.")
-    duration_hours: float = Field(description="Length of the event in hours.")
+    start_hour: float = Field(
+        ge=0, lt=24, description="Hour of day (0-24) the event begins."
+    )
+    duration_hours: float = Field(gt=0, description="Length of the event in hours.")
     notification_hours: float = Field(
         default=0.0, description="Advance notice before the event, in hours."
     )
@@ -328,7 +331,7 @@ class DREvent(_StrictModel):
         description="Candidate days the baseline may average over; exclude other "
         "event days.",
     )
-    bid_capacity_kW: float = Field(description="Bid capacity in kW.")
+    bid_capacity_kW: float = Field(gt=0, description="Bid capacity in kW.")
     capacity_price: float = Field(
         description="Capacity price in USD/kW, or USD/kW-hour with the per_hour "
         "basis, or USD/kW-month with the monthly_share basis."
@@ -349,6 +352,17 @@ class DREvent(_StrictModel):
         "this event, which removes its region-choice binaries; omit to let the "
         "optimizer choose.",
     )
+
+    @model_validator(mode="after")
+    def _ends_by_midnight(self) -> "DREvent":
+        """Require the event to end by midnight of its date."""
+        if self.start_hour + self.duration_hours > 24:
+            raise ValueError(
+                f"the event on {self.event_date.isoformat()} runs past midnight "
+                f"(start_hour {self.start_hour:g} + duration_hours "
+                f"{self.duration_hours:g} > 24); shorten it or start it earlier."
+            )
+        return self
 
 
 class DRBaseline(_StrictModel):
@@ -417,6 +431,17 @@ class DRBaseline(_StrictModel):
             raise ValueError("the fixed_level baseline needs firm_level_kW.")
         return self
 
+    @model_validator(mode="after")
+    def _clip_is_ordered(self) -> "DRBaseline":
+        """Require adjustment_clip to be (low, high) with low <= high."""
+        low, high = self.adjustment_clip
+        if low > high:
+            raise ValueError(
+                f"adjustment_clip must be (low, high) with low <= high, got "
+                f"({low:g}, {high:g})."
+            )
+        return self
+
 
 class DRPaymentRegion(_StrictModel):
     """One region of a payment schedule, mapping delivered ratio to payment ratio."""
@@ -473,6 +498,38 @@ class DRPayment(_StrictModel):
             raise ValueError("the capacity_energy payment needs energy_price.")
         return self
 
+    @model_validator(mode="after")
+    def _regions_are_ordered_and_contiguous(self) -> "DRPayment":
+        """Require ascending regions that meet end to end.
+
+        A missing ``x1`` or ``x2`` is unbounded, so only the first region may
+        omit ``x1`` and only the last may omit ``x2``.
+        """
+        regions = self.regions or []
+        bounds = [
+            (
+                -math.inf if region.x1 is None else region.x1,
+                math.inf if region.x2 is None else region.x2,
+            )
+            for region in regions
+        ]
+        for i, (low, high) in enumerate(bounds):
+            if not low < high:
+                raise ValueError(
+                    f"payment region {i} must have x1 < x2, got x1={low:g} and "
+                    f"x2={high:g}."
+                )
+        for i, ((_, end), (start, _)) in enumerate(
+            zip(bounds, bounds[1:], strict=False)
+        ):
+            if not math.isclose(end, start, rel_tol=0.0, abs_tol=1e-9):
+                raise ValueError(
+                    f"payment regions {i} and {i + 1} must meet: region {i} ends "
+                    f"at {end:g} and region {i + 1} starts at {start:g}. List the "
+                    "regions in ascending order with no gap or overlap."
+                )
+        return self
+
 
 class HistoricalPower(_StrictModel):
     """Evenly spaced meter history the baseline is computed from."""
@@ -495,6 +552,25 @@ class DRConfig(_StrictModel):
     )
     baseline: DRBaseline = Field(description="How the baseline is computed.")
     payment: DRPayment = Field(description="How the reduction is paid.")
+
+    @model_validator(mode="after")
+    def _one_event_per_date(self) -> "DRConfig":
+        """Reject two events on one date.
+
+        A site cannot join more than one demand-response event a day, and EECO
+        fixes a payment region per date, so a second event would silently take
+        the first one's region.
+        """
+        seen: set[datetime.date] = set()
+        for event in self.events:
+            if event.event_date in seen:
+                raise ValueError(
+                    f"two events are on {event.event_date.isoformat()}, but a site "
+                    "can join only one demand-response event per day; merge them "
+                    "or move one to another date."
+                )
+            seen.add(event.event_date)
+        return self
 
 
 class PriceSpec(_StrictModel):

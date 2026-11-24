@@ -63,7 +63,7 @@ def spec_dict(*elements, name="site", objective=True) -> dict:
     """Return a spec of the base elements plus ``elements``."""
     base = [TIME, COSTING, PACKAGE, *([OBJECTIVE] if objective else [])]
     return {
-        "schema_version": "0.1.1",
+        "schema_version": "0.1.2",
         "name": name,
         "elements": copy.deepcopy([*base, *elements]),
     }
@@ -122,7 +122,7 @@ def freeze_spec(directory: Path) -> Path:
     path = directory / "freeze.json"
     path.write_text(
         json.dumps(
-            {"schema_version": "0.1.1", "name": "waterfacility", "elements": elements}
+            {"schema_version": "0.1.2", "name": "waterfacility", "elements": elements}
         )
     )
     return path

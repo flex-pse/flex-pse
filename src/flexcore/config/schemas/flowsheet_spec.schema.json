@@ -480,6 +480,259 @@
       "title": "DRBaseline",
       "type": "object"
     },
+    "DRBaselineMethod": {
+      "description": "How a demand-response baseline (the load the site would have drawn) is set.",
+      "enum": [
+        "similar_days",
+        "top_usage_days",
+        "fixed_level",
+        "unilateral_interruption"
+      ],
+      "title": "DRBaselineMethod",
+      "type": "string"
+    },
+    "DREvent": {
+      "additionalProperties": false,
+      "description": "One demand-response event, in local wall-clock time.",
+      "properties": {
+        "adjustment_factor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Day-of adjustment factor to apply as is; omit to compute it from meter history.",
+          "title": "Adjustment Factor"
+        },
+        "baseline_days": {
+          "description": "Candidate days the baseline may average over; exclude other event days.",
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Baseline Days",
+          "type": "array"
+        },
+        "bid_capacity_kW": {
+          "description": "Bid capacity in kW.",
+          "exclusiveMinimum": 0,
+          "title": "Bid Capacity Kw",
+          "type": "number"
+        },
+        "capacity_price": {
+          "description": "Capacity price in USD/kW, or USD/kW-hour with the per_hour basis, or USD/kW-month with the monthly_share basis.",
+          "title": "Capacity Price",
+          "type": "number"
+        },
+        "duration_hours": {
+          "description": "Length of the event in hours.",
+          "exclusiveMinimum": 0,
+          "title": "Duration Hours",
+          "type": "number"
+        },
+        "event_date": {
+          "description": "Calendar date of the event.",
+          "format": "date",
+          "title": "Event Date",
+          "type": "string"
+        },
+        "monthly_called_capacity_kWh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Called capacity summed over every event hour in the month, for the monthly_share basis; omit to sum it over the given events.",
+          "title": "Monthly Called Capacity Kwh"
+        },
+        "notification_hours": {
+          "default": 0.0,
+          "description": "Advance notice before the event, in hours.",
+          "title": "Notification Hours",
+          "type": "number"
+        },
+        "region_x1": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lower delivered-ratio bound of the payment region to fix for this event, which removes its region-choice binaries; omit to let the optimizer choose.",
+          "title": "Region X1"
+        },
+        "start_hour": {
+          "description": "Hour of day (0-24) the event begins.",
+          "exclusiveMaximum": 24,
+          "minimum": 0,
+          "title": "Start Hour",
+          "type": "number"
+        }
+      },
+      "required": [
+        "event_date",
+        "start_hour",
+        "duration_hours",
+        "baseline_days",
+        "bid_capacity_kW",
+        "capacity_price"
+      ],
+      "title": "DREvent",
+      "type": "object"
+    },
+    "DRPayment": {
+      "additionalProperties": false,
+      "description": "How a demand-response program pays for the delivered reduction.",
+      "properties": {
+        "energy_price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "capacity_energy kind: payment in USD/kWh for energy curtailed.",
+          "title": "Energy Price"
+        },
+        "kind": {
+          "$ref": "#/$defs/DRPaymentKind",
+          "description": "The payment structure."
+        },
+        "payment_basis": {
+          "$ref": "#/$defs/DRPaymentBasis",
+          "default": "per_event",
+          "description": "Basis the capacity price is paid on."
+        },
+        "payout": {
+          "default": 0.0,
+          "description": "Flat participation payment in USD per kW of bid capacity.",
+          "title": "Payout",
+          "type": "number"
+        },
+        "payout_basis": {
+          "$ref": "#/$defs/DRPaymentBasis",
+          "default": "per_event",
+          "description": "Basis the payout is paid on."
+        },
+        "regions": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DRPaymentRegion"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Piecewise-linear payment schedule; omit for a payout-only program. Each region adds binaries to the model unless the event fixes region_x1.",
+          "title": "Regions"
+        },
+        "settlement": {
+          "$ref": "#/$defs/DRSettlement",
+          "default": "interval",
+          "description": "Settle each interval's reduction, or the event-mean reduction."
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DRPayment",
+      "type": "object"
+    },
+    "DRPaymentBasis": {
+      "description": "Whether a price is paid per event, per event hour, or as a monthly share.",
+      "enum": [
+        "per_event",
+        "per_hour",
+        "monthly_share"
+      ],
+      "title": "DRPaymentBasis",
+      "type": "string"
+    },
+    "DRPaymentKind": {
+      "description": "How a demand-response program pays for a delivered reduction.",
+      "enum": [
+        "capacity",
+        "capacity_energy"
+      ],
+      "title": "DRPaymentKind",
+      "type": "string"
+    },
+    "DRPaymentRegion": {
+      "additionalProperties": false,
+      "description": "One region of a payment schedule, mapping delivered ratio to payment ratio.",
+      "properties": {
+        "x1": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lower delivered-ratio bound (reduction over bid capacity); null means unbounded below.",
+          "title": "X1"
+        },
+        "x2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Upper delivered-ratio bound; null means unbounded above, where the region pays a flat y1.",
+          "title": "X2"
+        },
+        "y1": {
+          "description": "Payment ratio at x1.",
+          "title": "Y1",
+          "type": "number"
+        },
+        "y2": {
+          "description": "Payment ratio at x2.",
+          "title": "Y2",
+          "type": "number"
+        }
+      },
+      "required": [
+        "y1",
+        "y2"
+      ],
+      "title": "DRPaymentRegion",
+      "type": "object"
+    },
+    "DRSettlement": {
+      "description": "Whether a payment settles each interval or the event-mean reduction.",
+      "enum": [
+        "interval",
+        "average"
+      ],
+      "title": "DRSettlement",
+      "type": "string"
+    },
     "DegradationElement": {
       "additionalProperties": false,
       "description": "A priced degradation (wear) penalty on a unit's variables.",
@@ -657,255 +910,6 @@
       ],
       "title": "DegradationTermSpec",
       "type": "object"
-    },
-    "DRBaselineMethod": {
-      "description": "How a demand-response baseline (the load the site would have drawn) is set.",
-      "enum": [
-        "similar_days",
-        "top_usage_days",
-        "fixed_level",
-        "unilateral_interruption"
-      ],
-      "title": "DRBaselineMethod",
-      "type": "string"
-    },
-    "DREvent": {
-      "additionalProperties": false,
-      "description": "One demand-response event, in local wall-clock time.",
-      "properties": {
-        "adjustment_factor": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Day-of adjustment factor to apply as is; omit to compute it from meter history.",
-          "title": "Adjustment Factor"
-        },
-        "baseline_days": {
-          "description": "Candidate days the baseline may average over; exclude other event days.",
-          "items": {
-            "format": "date",
-            "type": "string"
-          },
-          "minItems": 1,
-          "title": "Baseline Days",
-          "type": "array"
-        },
-        "bid_capacity_kW": {
-          "description": "Bid capacity in kW.",
-          "title": "Bid Capacity Kw",
-          "type": "number"
-        },
-        "capacity_price": {
-          "description": "Capacity price in USD/kW, or USD/kW-hour with the per_hour basis, or USD/kW-month with the monthly_share basis.",
-          "title": "Capacity Price",
-          "type": "number"
-        },
-        "duration_hours": {
-          "description": "Length of the event in hours.",
-          "title": "Duration Hours",
-          "type": "number"
-        },
-        "event_date": {
-          "description": "Calendar date of the event.",
-          "format": "date",
-          "title": "Event Date",
-          "type": "string"
-        },
-        "monthly_called_capacity_kWh": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Called capacity summed over every event hour in the month, for the monthly_share basis; omit to sum it over the given events.",
-          "title": "Monthly Called Capacity Kwh"
-        },
-        "notification_hours": {
-          "default": 0.0,
-          "description": "Advance notice before the event, in hours.",
-          "title": "Notification Hours",
-          "type": "number"
-        },
-        "region_x1": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Lower delivered-ratio bound of the payment region to fix for this event, which removes its region-choice binaries; omit to let the optimizer choose.",
-          "title": "Region X1"
-        },
-        "start_hour": {
-          "description": "Hour of day (0-24) the event begins.",
-          "title": "Start Hour",
-          "type": "number"
-        }
-      },
-      "required": [
-        "event_date",
-        "start_hour",
-        "duration_hours",
-        "baseline_days",
-        "bid_capacity_kW",
-        "capacity_price"
-      ],
-      "title": "DREvent",
-      "type": "object"
-    },
-    "DRPayment": {
-      "additionalProperties": false,
-      "description": "How a demand-response program pays for the delivered reduction.",
-      "properties": {
-        "energy_price": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "capacity_energy kind: payment in USD/kWh for energy curtailed.",
-          "title": "Energy Price"
-        },
-        "kind": {
-          "$ref": "#/$defs/DRPaymentKind",
-          "description": "The payment structure."
-        },
-        "payment_basis": {
-          "$ref": "#/$defs/DRPaymentBasis",
-          "default": "per_event",
-          "description": "Basis the capacity price is paid on."
-        },
-        "payout": {
-          "default": 0.0,
-          "description": "Flat participation payment in USD per kW of bid capacity.",
-          "title": "Payout",
-          "type": "number"
-        },
-        "payout_basis": {
-          "$ref": "#/$defs/DRPaymentBasis",
-          "default": "per_event",
-          "description": "Basis the payout is paid on."
-        },
-        "regions": {
-          "anyOf": [
-            {
-              "items": {
-                "$ref": "#/$defs/DRPaymentRegion"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Piecewise-linear payment schedule; omit for a payout-only program. Each region adds binaries to the model unless the event fixes region_x1.",
-          "title": "Regions"
-        },
-        "settlement": {
-          "$ref": "#/$defs/DRSettlement",
-          "default": "interval",
-          "description": "Settle each interval's reduction, or the event-mean reduction."
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "title": "DRPayment",
-      "type": "object"
-    },
-    "DRPaymentBasis": {
-      "description": "Whether a price is paid per event, per event hour, or as a monthly share.",
-      "enum": [
-        "per_event",
-        "per_hour",
-        "monthly_share"
-      ],
-      "title": "DRPaymentBasis",
-      "type": "string"
-    },
-    "DRPaymentKind": {
-      "description": "How a demand-response program pays for a delivered reduction.",
-      "enum": [
-        "capacity",
-        "capacity_energy"
-      ],
-      "title": "DRPaymentKind",
-      "type": "string"
-    },
-    "DRPaymentRegion": {
-      "additionalProperties": false,
-      "description": "One region of a payment schedule, mapping delivered ratio to payment ratio.",
-      "properties": {
-        "x1": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Lower delivered-ratio bound (reduction over bid capacity); null means unbounded below.",
-          "title": "X1"
-        },
-        "x2": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Upper delivered-ratio bound; null means unbounded above, where the region pays a flat y1.",
-          "title": "X2"
-        },
-        "y1": {
-          "description": "Payment ratio at x1.",
-          "title": "Y1",
-          "type": "number"
-        },
-        "y2": {
-          "description": "Payment ratio at x2.",
-          "title": "Y2",
-          "type": "number"
-        }
-      },
-      "required": [
-        "y1",
-        "y2"
-      ],
-      "title": "DRPaymentRegion",
-      "type": "object"
-    },
-    "DRSettlement": {
-      "description": "Whether a payment settles each interval or the event-mean reduction.",
-      "enum": [
-        "interval",
-        "average"
-      ],
-      "title": "DRSettlement",
-      "type": "string"
     },
     "DispatchElement": {
       "additionalProperties": false,

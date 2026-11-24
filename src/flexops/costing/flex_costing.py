@@ -65,7 +65,12 @@ from flexcore.config.schema import DRConfig
 from flexcore.exceptions import FlexConfigError, FlexSolverError
 from flexcore.logger import get_logger
 from flexops.core.registration import iter_io_registry
-from flexops.costing.demand_response import add_dr_revenue, evaluate_dr_revenue
+from flexops.costing.demand_response import (
+    add_dr_revenue,
+    check_dr_history,
+    check_dr_resolution,
+    evaluate_dr_revenue,
+)
 from flexops.costing.opex import (
     _ELECTRIC,
     _GAS,
@@ -1184,6 +1189,10 @@ class FlexCostingData(FlowsheetCostingBlockData):
         if program is None:
             opex.eq_dr_revenue = pyo.Constraint(expr=opex.dr_revenue == 0 * cur)
             return
+
+        dt_minutes = pyo.value(pyunits.convert(tb.dt, pyunits.min))
+        check_dr_resolution(program, dt_minutes)
+        check_dr_history(program, tb.datetime_index, dt_minutes)
 
         # EECO takes bare kW numbers, so normalize the net electrical power first.
         opex.dr = pyo.Block(doc="EECO demand-response baseline and payment.")

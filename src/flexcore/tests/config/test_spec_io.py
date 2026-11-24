@@ -7,7 +7,7 @@ import pytest
 from flexcore.config import io as io_module
 from flexcore.config.io import dump_spec, load_spec
 from flexcore.config.spec import SCHEMA_VERSION, FlowsheetSpec
-from flexcore.exceptions import FlexConfigError
+from flexcore.exceptions import FlexConfigError, FlexMigrationWarning
 
 FLAT = {
     "schema_version": SCHEMA_VERSION,
@@ -76,12 +76,84 @@ def test_load_spec_newer_version_raises():
 @pytest.mark.unit
 def test_load_spec_runs_spec_migrations(monkeypatch):
     """An older flat spec steps through MIGRATIONS to the current version."""
-    monkeypatch.setattr(io_module, "SCHEMA_VERSION", "0.1.2")
+    monkeypatch.setattr(io_module, "SCHEMA_VERSION", "0.1.3")
     monkeypatch.setitem(
-        io_module.MIGRATIONS, "0.1.1", lambda data: {**data, "schema_version": "0.1.2"}
+        io_module.MIGRATIONS, "0.1.2", lambda data: {**data, "schema_version": "0.1.3"}
     )
 
-    assert load_spec({**FLAT, "schema_version": "0.1.1"}).schema_version == "0.1.2"
+    assert load_spec({**FLAT, "schema_version": "0.1.2"}).schema_version == "0.1.3"
+
+
+def _flat_at_0_1_1_with_dr(dr) -> dict:
+    """Return FLAT at version 0.1.1 with ``dr`` set on its costing element."""
+    elements = [
+        {**el, "dr": dr} if el["kind"] == "costing" else el for el in FLAT["elements"]
+    ]
+    return {**FLAT, "schema_version": "0.1.1", "elements": elements}
+
+
+def _costing_element(spec: FlowsheetSpec):
+    """Return the spec's costing element."""
+    return next(el for el in spec.elements if el.kind == "costing")
+
+
+@pytest.mark.unit
+def test_0_1_1_spec_without_dr_migrates_to_the_current_version():
+    """A 0.1.1 spec with no demand-response placeholder loads as is."""
+    spec = load_spec({**FLAT, "schema_version": "0.1.1"})
+
+    assert spec.schema_version == SCHEMA_VERSION
+    assert _costing_element(spec).dr is None
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("placeholder", [{}, {"events_source": None}])
+def test_0_1_1_migration_drops_an_empty_dr_placeholder(placeholder):
+    """An empty ``dr`` meant no program, so it is dropped."""
+    spec = load_spec(_flat_at_0_1_1_with_dr(placeholder))
+
+    assert spec.schema_version == SCHEMA_VERSION
+    assert _costing_element(spec).dr is None
+
+
+@pytest.mark.unit
+def test_0_1_1_migration_refuses_an_events_source_and_says_how_to_migrate():
+    """A ``dr.events_source`` cannot be translated; the error names it and the fix."""
+    with pytest.raises(FlexConfigError, match="events_source") as exc:
+        load_spec(_flat_at_0_1_1_with_dr({"events_source": "dr_events.json"}))
+
+    assert exc.value.field == "costing.dr.events_source"
+    assert exc.value.value == "dr_events.json"
+    message = str(exc.value)
+    assert "historical_power" in message
+    assert "docs/explanation/demand_response.md" in message
+
+
+@pytest.mark.unit
+def test_0_1_1_migration_leaves_the_callers_dict_alone():
+    """Migrating does not mutate the mapping passed in."""
+    data = _flat_at_0_1_1_with_dr({})
+    before = json.loads(json.dumps(data))
+
+    load_spec(data)
+
+    assert data == before
+
+
+@pytest.mark.unit
+def test_a_0_1_0_spec_with_an_events_source_is_refused_after_its_own_migration():
+    """The 0.1.0 and 0.1.1 migrations chain, so an old events_source still fails
+    with the migration message."""
+    data = {
+        **_flat_at_0_1_1_with_dr({"events_source": "e.json"}),
+        "schema_version": "0.1.0",
+    }
+
+    with (
+        pytest.warns(FlexMigrationWarning),
+        pytest.raises(FlexConfigError, match="demand-response program"),
+    ):
+        load_spec(data)
 
 
 @pytest.mark.unit

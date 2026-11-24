@@ -171,9 +171,9 @@ subtracted from ``opex.total_operating_cost`` as ``opex.dr_revenue``::
    becomes a MILP. Setting ``region_x1`` on every event fixes them and keeps the
    model an LP. See :doc:`../../explanation/demand_response`.
 
-The demand-response functions need an ``eeco`` release that ships
-``eeco.demandresponse`` (newer than 0.4.2); they raise
-:class:`~flexcore.exceptions.FlexConfigError` otherwise.
+The demand-response functions need ``eeco`` 0.5.0 or newer, which ships
+``eeco.demandresponse``; they raise
+:class:`~flexcore.exceptions.FlexConfigError` if it is missing or fails to import.
 
 In-objective vs. reported cost
 ------------------------------

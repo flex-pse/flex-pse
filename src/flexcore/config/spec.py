@@ -34,7 +34,7 @@ from flexcore.config.schema import (
     _StrictModel,
 )
 
-SCHEMA_VERSION = "0.1.1"
+SCHEMA_VERSION = "0.1.2"
 """str: the schema version this build writes and validates against."""
 
 KINDS: dict[str, tuple[str, bool]] = {

@@ -640,7 +640,7 @@ def test_long_fixed_series_goes_to_a_sidecar(tmp_path):
 def test_fix_from_the_spec_changed_in_code_writes_the_new_value():
     m = build_model(
         {
-            "schema_version": "0.1.1",
+            "schema_version": "0.1.2",
             "name": "site",
             "elements": [
                 {
