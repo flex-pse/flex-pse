@@ -166,3 +166,27 @@ def test_default_acceptance_passes_a_close_fit():
     spec = _spec(config, data)
 
     assert spec.provenance["metrics"]["holdout_rel_rmse"] < 0.1
+
+
+@pytest.mark.unit
+def test_output_name_is_the_spec_output_variable():
+    """The spec's output is output_name, whatever key labels the output."""
+    raw = toy_config().model_dump(mode="json")["outputs"]["power_electrical"]
+    config = toy_config(outputs={"z_power": raw | {"output_name": "power_thermal"}})
+    data = toy_frame().rename(columns={"power_electrical": "z_power"})
+
+    spec = _spec(config, data)
+
+    assert spec.config["output_variables"] == {"power_thermal": "kW"}
+    assert spec.parameters["flow_out"].value == pytest.approx(50.0, rel=1e-8)
+
+
+@pytest.mark.unit
+def test_output_name_defaults_to_electrical_power():
+    """Without output_name, the spec's output is power_electrical, not the key."""
+    raw = toy_config().model_dump(mode="json")["outputs"]["power_electrical"]
+    raw.pop("output_name", None)
+    config = toy_config(outputs={"z_power": raw})
+    data = toy_frame().rename(columns={"power_electrical": "z_power"})
+
+    assert _spec(config, data).config["output_variables"] == {"power_electrical": "kW"}
