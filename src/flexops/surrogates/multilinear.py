@@ -3,168 +3,159 @@ their pairwise cross terms -- the expanded multilinear form that also covers
 what used to be called ``linear`` (no cross terms) and ``bilinear`` (one).
 """
 
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import pyomo.environ as pyo
+from pydantic import field_validator, model_validator
 from pyomo.core.base.units_container import UnitsError
 from pyomo.environ import units as pyunits
 
-from flexcore.config.schema import SurrogateType
+from flexcore.config.schema import SurrogateSpec, SurrogateType
 from flexcore.exceptions import FlexConfigError
 from flexops.core.registration import CoefficientRegistry
 from flexops.core.units import parse_units
+from flexops.surrogates._config import VariablesConfig
 from flexops.surrogates.base import Surrogate
 
-_INTERCEPT = "intercept"
-"""str: reserved coefficient key naming the relationship's constant term."""
+INTERCEPT = "intercept"
+"""str: the parameter naming the relationship's constant term."""
 
-_DATA_KEYS = ("input_variables", "output_variables", "coefficients")
+
+class MultilinearConfig(VariablesConfig):
+    """A multilinear surrogate's config: its variables and its product terms.
+
+    Each term is a ``*``-separated product of distinct input names, e.g.
+    ``"flow_out*outlet_state.pressure"``. Each input appears at most once per
+    term and carries no exponent; that is what makes the form *multi*-linear
+    rather than polynomial.
+    """
+
+    terms: list[str]
+
+    @field_validator("input_variables")
+    @classmethod
+    def _some_inputs(cls, value: dict[str, str]) -> dict[str, str]:
+        if not value:
+            raise ValueError("must declare at least one input")
+        return value
+
+    @model_validator(mode="after")
+    def _terms_are_multilinear(self) -> "MultilinearConfig":
+        if len(set(self.terms)) != len(self.terms):
+            raise ValueError(f"terms repeat an entry: {self.terms}")
+        for term in self.terms:
+            if term == INTERCEPT:
+                raise ValueError(
+                    f"{INTERCEPT!r} is always a parameter; don't list it in terms"
+                )
+            factors = term.split("*")
+            if any("^" in factor for factor in factors):
+                raise ValueError(
+                    f"term {term!r} carries a '^' exponent; multilinear terms are "
+                    "degree 1 in each factor. Use a surrogate_type that admits "
+                    "higher degree (e.g. 'quadratic')."
+                )
+            if len(set(factors)) != len(factors):
+                raise ValueError(
+                    f"term {term!r} repeats a factor; multilinear terms admit each "
+                    "input at most once. Use a surrogate_type that admits higher "
+                    "degree (e.g. 'quadratic')."
+                )
+            unknown = [
+                factor for factor in factors if factor not in self.input_variables
+            ]
+            if unknown:
+                raise ValueError(
+                    f"term {term!r} names {unknown}, not in input_variables "
+                    f"({sorted(self.input_variables)})"
+                )
+        return self
 
 
 class MultilinearSurrogate(Surrogate):
     """A constant plus a sum of coefficient * (product of distinct inputs).
 
-    ``data`` is::
+    The spec is::
 
-        {"input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
-         "output_variables": {"power_electrical": "kW"},
-         "coefficients": {"intercept": 5.0, "flow_out": 0.4,
-                           "flow_out*outlet_state.pressure": 1.2e-5}}
+        {"surrogate_type": "multilinear",
+         "config": {
+             "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
+             "output_variables": {"power_electrical": "kW"},
+             "terms": ["flow_out", "flow_out*outlet_state.pressure"]},
+         "parameters": {
+             "intercept": {"value": 5.0, "fixed": true},
+             "flow_out": {"value": 0.4, "fixed": true},
+             "flow_out*outlet_state.pressure": {"value": 1.2e-5, "fixed": true}}}
 
-    A coefficient key is a ``*``-separated product of names from
-    ``input_variables``, each appearing at most once (no ``^`` exponent, no
-    repeated factor -- that is what makes it *multi*\\ linear rather than
-    polynomial); the reserved key ``"intercept"`` is the constant term, read
-    in the declared output units. Each variable is resolved on the unit at
-    build time and converted from its own units into the units declared here
-    before use, so a coefficient is read in the basis the fit declared, not
-    whatever units the model happens to carry.
+    The parameters are ``"intercept"`` (the constant term, read in the
+    declared output units) plus one scalar per term, named by the term. A
+    free parameter without a value starts at ``0.0``.
     """
 
     surrogate_type: ClassVar[SurrogateType] = SurrogateType.MULTILINEAR
+    config_model: ClassVar[type[MultilinearConfig]] = MultilinearConfig
 
-    def _validate(self) -> None:
-        """Validate the multilinear ``data`` contract (see class docstring).
+    @classmethod
+    def parameter_shapes(cls, config: MultilinearConfig) -> dict[str, tuple]:
+        """Return ``intercept`` plus one scalar per term."""
+        return {INTERCEPT: (), **{term: () for term in config.terms}}
+
+    @classmethod
+    def make_spec(
+        cls,
+        *,
+        input_variables: dict[str, str],
+        output_variables: dict[str, str],
+        coefficients: dict[str, float],
+        fixed: dict[str, bool] | None = None,
+        provenance: dict[str, Any] | None = None,
+    ) -> SurrogateSpec:
+        """Return a validated multilinear spec.
+
+        Args:
+            input_variables: ``{name: units}`` of every input.
+            output_variables: ``{name: units}`` of the one output.
+            coefficients: ``{term: value}``; each key other than
+                ``"intercept"`` becomes a term, in this order. A missing
+                ``"intercept"`` is ``0.0``.
+            fixed: ``{name: False}`` for each parameter to leave free; every
+                other parameter is fixed.
+            provenance: Free-form fit metadata.
+
+        Returns:
+            The spec.
 
         Raises:
-            FlexConfigError: If a key is missing, an extra key is present, a
-                units string does not parse, ``output_variables`` does not
-                have exactly one entry, a coefficient key names a factor not
-                in ``input_variables``, or a coefficient key carries a ``^``
-                exponent or repeats a factor.
+            FlexConfigError: If the result does not match the contract.
         """
-        unknown = sorted(set(self.data) - set(_DATA_KEYS))
-        if unknown:
-            raise FlexConfigError(
-                f"multilinear surrogate data carries unknown key(s) {unknown}; "
-                f"it may only have {_DATA_KEYS}.",
-                field="data",
-                value=unknown,
-            )
-        missing = sorted(set(_DATA_KEYS) - set(self.data))
-        if missing:
-            raise FlexConfigError(
-                f"multilinear surrogate data is missing key(s) {missing}; it "
-                f"must have {_DATA_KEYS}.",
-                field="data",
-                value=missing,
-            )
-
-        inputs = self.data["input_variables"]
-        if not isinstance(inputs, dict) or not inputs:
-            raise FlexConfigError(
-                "multilinear surrogate 'input_variables' must be a non-empty "
-                f"{{name: units}} mapping, got {inputs!r}.",
-                field="input_variables",
-                value=inputs,
-            )
-        outputs = self.data["output_variables"]
-        if not isinstance(outputs, dict) or len(outputs) != 1:
-            raise FlexConfigError(
-                "multilinear surrogate 'output_variables' must be a single "
-                f"{{name: units}} entry -- a registered relation has one "
-                f"target -- got {outputs!r}.",
-                field="output_variables",
-                value=outputs,
-            )
-        declared_fields = (("input_variables", inputs), ("output_variables", outputs))
-        for field, mapping in declared_fields:
-            for name, units in mapping.items():
-                if not name or not isinstance(units, str) or not units:
-                    raise FlexConfigError(
-                        f"multilinear surrogate {field!r} entry {name!r} must "
-                        f"map to a non-empty units string, got {units!r}.",
-                        field=field,
-                        value=units,
-                    )
-                parse_units(units)
-
-        coefficients = self.data["coefficients"]
-        if not isinstance(coefficients, dict) or not coefficients:
-            raise FlexConfigError(
-                "multilinear surrogate 'coefficients' must be a non-empty "
-                f"mapping, got {coefficients!r}.",
-                field="coefficients",
-                value=coefficients,
-            )
-        for key, value in coefficients.items():
-            try:
-                float(value)
-            except (TypeError, ValueError) as exc:
-                raise FlexConfigError(
-                    f"multilinear surrogate coefficient {key!r} must be a "
-                    f"number, got {value!r}.",
-                    field="coefficients",
-                    value=key,
-                ) from exc
-            if key == _INTERCEPT:
-                continue
-            factors = key.split("*")
-            if any("^" in factor for factor in factors):
-                raise FlexConfigError(
-                    f"Coefficient term {key!r} carries a '^' exponent; "
-                    "multilinear terms are degree 1 in each factor. Use a "
-                    "surrogate_type that admits higher degree (e.g. "
-                    "'quadratic').",
-                    field="coefficients",
-                    value=key,
-                )
-            if len(set(factors)) != len(factors):
-                raise FlexConfigError(
-                    f"Coefficient term {key!r} repeats a factor; multilinear "
-                    "terms admit each input at most once. Use a "
-                    "surrogate_type that admits higher degree (e.g. "
-                    "'quadratic').",
-                    field="coefficients",
-                    value=key,
-                )
-            unknown_factors = [factor for factor in factors if factor not in inputs]
-            if unknown_factors:
-                raise FlexConfigError(
-                    f"Coefficient term {key!r} names {unknown_factors}, not in "
-                    f"'input_variables' ({sorted(inputs)}).",
-                    field="coefficients",
-                    value=key,
-                )
+        values = {INTERCEPT: 0.0, **coefficients}
+        return cls._make(
+            config={
+                "input_variables": dict(input_variables),
+                "output_variables": dict(output_variables),
+                "terms": [key for key in coefficients if key != INTERCEPT],
+            },
+            values=values,
+            fixed=fixed,
+            provenance=provenance,
+        )
 
     @property
     def input_variables(self) -> dict[str, str]:
         """Return the declared input variable names and their units."""
-        return dict(self.data["input_variables"])
+        return dict(self.config.input_variables)
 
     @property
     def output_variables(self) -> dict[str, str]:
         """Return the one declared output variable name and its units."""
-        return dict(self.data["output_variables"])
+        return dict(self.config.output_variables)
 
-    def build(self, unit, target):
+    def _build(self, unit, target):
         """Return ``(block, body(t))`` in this surrogate's declared output units.
 
         The returned block is a ``pyo.Block(concrete=True)`` carrying a
-        ``coefficient_vars`` indexed ``pyo.Var`` (keyed by coefficient name
-        plus the reserved ``"intercept"`` key) and a ``coefficients``
-        ``CoefficientRegistry`` over that indexed Var. The block is returned
-        un-added; ``swap_relation`` attaches it to ``unit`` itself.
+        ``coefficient_vars`` Var indexed by parameter name and a
+        ``coefficients`` registry with one scalar parameter per entry.
 
         Args:
             unit: The unit the relationship is built on.
@@ -172,9 +163,7 @@ class MultilinearSurrogate(Surrogate):
                 units -- but part of every builder's signature.
 
         Returns:
-            A tuple ``(block, body)`` where ``block`` is the surrogate's
-            coefficient block (or ``None`` if no coefficients are present),
-            and ``body`` is a callable taking a time index and returning a
+            ``(block, body)``, ``body`` taking a time index and returning a
             Pyomo expression in the declared output units.
         """
         del target
@@ -187,31 +176,22 @@ class MultilinearSurrogate(Surrogate):
             for name, units in self.input_variables.items()
         }
 
-        coefficients_data = self.data["coefficients"]
-        all_keys = list(coefficients_data.keys())
-        if _INTERCEPT not in all_keys:
-            all_keys.append(_INTERCEPT)
-
-        index_set = pyo.Set(initialize=all_keys)
-        coefficient_vars = pyo.Var(index_set, initialize=1.0)
+        names = list(self.parameter_shapes(self.config))
         block = pyo.Block(concrete=True)
-        block.coefficient_vars = coefficient_vars
-
-        for key in all_keys:
-            value = float(coefficients_data.get(key, 0.0))
-            coefficient_vars[key].set_value(value)
-            coefficient_vars[key].fix()
-
+        block.coefficient_vars = pyo.Var(
+            pyo.Set(initialize=names, ordered=True),
+            initialize={name: float(self.value_of(name)) for name in names},
+        )
+        coefficient_vars = block.coefficient_vars
         block.coefficients = CoefficientRegistry()
         block.coefficients.register_coefficients(coefficient_vars)
+        terms = list(self.config.terms)
 
         def body(t):
-            total = coefficient_vars[_INTERCEPT]
-            for key, _ in coefficients_data.items():
-                if key == _INTERCEPT:
-                    continue
-                term = coefficient_vars[key]
-                for name in key.split("*"):
+            total = coefficient_vars[INTERCEPT]
+            for term in terms:
+                product = coefficient_vars[term]
+                for name in term.split("*"):
                     var, units = declared[name]
                     try:
                         converted = pyunits.convert(var[t], units)
@@ -223,8 +203,8 @@ class MultilinearSurrogate(Surrogate):
                             field="input_variables",
                             value=name,
                         ) from exc
-                    term = term * (converted / units)
-                total = total + term
+                    product = product * (converted / units)
+                total = total + product
             return total * output_units
 
         return block, body

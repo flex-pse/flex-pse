@@ -3,6 +3,7 @@
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import pyomo.environ as pyo
 from pydantic import TypeAdapter
@@ -10,7 +11,7 @@ from pyomo.network import Arc, Port
 
 from flexcore import nomenclature as nm
 from flexcore.config.io import resolve_source_path, resolve_sources
-from flexcore.config.schema import SurrogateSpec, SurrogateType, UnitConfig
+from flexcore.config.schema import SurrogateSpec, UnitConfig
 from flexcore.config.spec import (
     AUTO,
     KINDS,
@@ -37,6 +38,7 @@ from flexops.core.units import parse_units
 from flexops.costing import FlexCosting
 from flexops.properties import PROPERTY_PACKAGES
 from flexops.surrogates import surrogate_from_spec
+from flexops.surrogates.base import log_parameter_state
 
 LOGIC_ORDER: tuple[str, ...] = (
     "status",
@@ -498,75 +500,66 @@ STAGES = (
 
 def apply_relation_spec(
     unit, spec: SurrogateSpec, relation_name: str = ENERGY_RELATION
-) -> tuple[bool, dict[str, float]]:
-    """Write a relationship spec into a live unit as ``relation_name``.
+) -> tuple[bool, dict[str, Any]]:
+    """Write a surrogate spec into a live unit as ``relation_name``.
 
-    A ``constant_intensity`` spec fixes the unit's intensity parameter; any
-    richer form swaps the named relation in place.
+    A ``constant_intensity`` spec sets the unit's intensity parameter. Any
+    other spec updates the relation's active surrogate in place when that
+    surrogate allows it (same type and config, so only parameter values and
+    fixed flags change), and otherwise swaps a new surrogate block in. Each
+    parameter's value and fixed flag come from the spec.
 
     Args:
         unit: The built unit to mutate.
-        spec: The relationship to attach.
-        relation_name: The relation a richer spec replaces.
+        spec: The surrogate to attach.
+        relation_name: The relation the surrogate replaces.
 
     Returns:
-        ``(swapped, fixed values)``: whether the Constraint was swapped, and the
-        parameters that were fixed.
+        ``(swapped, values)``: whether the relation is now a swapped surrogate
+        (``False`` for ``constant_intensity``), and every parameter's value by
+        name.
 
     Raises:
-        FlexConfigError: If a ``constant_intensity`` spec carries no
-            coefficient, or the unit does not register one as a regressable
-            process parameter.
+        FlexConfigError: If the spec does not match its surrogate's contract,
+            or a ``constant_intensity`` spec targets a unit without a
+            regressable intensity.
     """
-    registry = unit._io_registry
-    if spec.surrogate_type is not SurrogateType.CONSTANT_INTENSITY:
-        surrogate_block = unit.swap_relation(relation_name, surrogate_from_spec(spec))
-        coefficients = getattr(surrogate_block, "coefficients", None)
-        if coefficients is not None and hasattr(coefficients, "items"):
-            coef_names = {name for name, _ in coefficients.items()}
+    surrogate = surrogate_from_spec(spec)
+    target = f"{unit.name}.{relation_name}"
+    if not surrogate.replaces_relation:
+        parameter = surrogate.apply_to_unit(unit)
+        unit._io_registry.applied_surrogates[relation_name] = surrogate
+        log_parameter_state(target, surrogate.read_from_unit(unit), "applied")
+        return False, {INTENSITY_PARAMETER: pyo.value(parameter)}
+
+    record = unit._relation_record(relation_name)
+    current = record.surrogate_instance
+    block = record.surrogate_block
+    if (
+        current is not None
+        and block is not None
+        and block.active
+        and type(current) is type(surrogate)
+        and current.can_update_in_place(surrogate.spec)
+    ):
+        current.update_in_place(block, surrogate.spec)
+        log_parameter_state(
+            target, current.read_spec(block, record.target), "updated in place"
+        )
+    else:
+        block = unit.swap_relation(relation_name, surrogate)
+        coefficients = getattr(block, "coefficients", None)
+        if coefficients is not None:
             already_registered = any(
-                p.relation_name == relation_name and p.name in coef_names
-                for p in registry.parameters
+                p.relation_name == relation_name and p.name in coefficients
+                for p in unit._io_registry.parameters
             )
             if not already_registered:
                 unit.register_surrogate_coefficients(relation_name)
-            for coef_name, coef_value in spec.data["coefficients"].items():
-                var = coefficients[coef_name]
-                var.set_value(coef_value)
-                var.fix()
-        return True, dict(spec.data.get("coefficients", {}))
-
-    given = spec.data.get("coefficients", {})
-    if INTENSITY_PARAMETER not in given:
-        raise FlexConfigError(
-            f"A 'constant_intensity' relationship must carry its coefficient "
-            f"under data['coefficients'][{INTENSITY_PARAMETER!r}]; got "
-            f"{sorted(given)}.",
-            field="data",
-            value=sorted(given),
-        )
-    coefficient = given[INTENSITY_PARAMETER]
-    regressable = {
-        record.name: record.param
-        for record in registry.parameters
-        if record.regressable
-    }
-    if INTENSITY_PARAMETER not in regressable:
-        raise FlexConfigError(
-            f"A 'constant_intensity' relationship determines "
-            f"{INTENSITY_PARAMETER!r}, which {unit.name!r} does not register as a "
-            f"regressable process parameter (it registers "
-            f"{sorted(regressable)}). Supply this unit's relationship through "
-            "surrogates= instead.",
-            field=INTENSITY_PARAMETER,
-            value=unit.name,
-        )
-
-    unit.update_parameters({INTENSITY_PARAMETER: coefficient})
-    parameter = regressable[INTENSITY_PARAMETER]
-    if parameter.is_variable_type():
-        parameter.fix()
-    return False, {INTENSITY_PARAMETER: coefficient}
+    coefficients = getattr(block, "coefficients", None)
+    if coefficients is None:
+        return True, {}
+    return True, {name: coefficients.value(name) for name in coefficients}
 
 
 def _resolve_source(source, base_dir):
@@ -767,12 +760,10 @@ def _apply_surrogate(model, element: SurrogateElement, ctx: BuildContext) -> Non
         ctx: The shared build context.
 
     Raises:
-        FlexConfigError: If the unit is missing or the data is invalid.
+        FlexConfigError: If the unit is missing or the spec is invalid.
     """
-    relation = SurrogateSpec(
-        surrogate_type=element.surrogate_type,
-        data=resolve_sources(element.data, ctx.base_dir),
-        provenance=element.provenance,
+    relation = element.to_surrogate_spec().model_copy(
+        update={"config": resolve_sources(element.config, ctx.base_dir)}
     )
     for member in _members(model, ctx, element.unit):
         apply_relation_spec(member, relation, relation_name=element.relation)

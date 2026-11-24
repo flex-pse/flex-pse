@@ -8,8 +8,6 @@ from pyomo.opt import assert_optimal_termination
 
 from flexcore import nomenclature as nm
 from flexcore.config.schema import (
-    SurrogateSpec,
-    SurrogateType,
     UnitCommitmentConfig,
     UnitConfig,
 )
@@ -285,11 +283,13 @@ def test_swap_relation_deactivates_without_deleting(relation_name, inputs, outpu
     _, unit = _boiler()
     original = unit.find_component(relation_name)
     surrogate = MultilinearSurrogate(
-        {
-            "input_variables": inputs,
-            "output_variables": output,
-            "coefficients": {"intercept": 1.0, next(iter(inputs)): 2.0},
-        }
+        MultilinearSurrogate.make_spec(
+            **{
+                "input_variables": inputs,
+                "output_variables": output,
+                "coefficients": {"intercept": 1.0, next(iter(inputs)): 2.0},
+            }
+        )
     )
     unit.swap_relation(relation_name, surrogate)
     assert unit.find_component(relation_name) is original
@@ -299,9 +299,8 @@ def test_swap_relation_deactivates_without_deleting(relation_name, inputs, outpu
 @pytest.mark.unit
 def test_config_surrogate_swaps_power_electrical_relation():
     """A config-file surrogate replaces the aux electrical relation."""
-    spec = SurrogateSpec(
-        surrogate_type=SurrogateType.MULTILINEAR,
-        data={
+    spec = MultilinearSurrogate.make_spec(
+        **{
             "input_variables": {"flow_out": "m^3/hr"},
             "output_variables": {"power_electrical": "kW"},
             "coefficients": {"intercept": 5.0, "flow_out": 0.01},

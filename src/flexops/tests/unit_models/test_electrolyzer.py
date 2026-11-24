@@ -751,11 +751,13 @@ def test_power_relation_swaps_to_a_fitted_polarization_surrogate():
     unit.swap_relation(
         "power_electrical_relation",
         MultilinearSurrogate(
-            {
-                "input_variables": {"current": "A"},
-                "output_variables": {"power_electrical": "kW"},
-                "coefficients": {"intercept": 1.0, "current": 0.02},
-            }
+            MultilinearSurrogate.make_spec(
+                **{
+                    "input_variables": {"current": "A"},
+                    "output_variables": {"power_electrical": "kW"},
+                    "coefficients": {"intercept": 1.0, "current": 0.02},
+                }
+            )
         ),
     )
     _solve_with_inputs_fixed(m, unit)
@@ -770,11 +772,13 @@ def test_swapped_faradaic_relation_leaves_the_remaining_charge_to_hydrogen():
     unit.swap_relation(
         "faradaic_relation_CO",
         MultilinearSurrogate(
-            {
-                "input_variables": {"current": "A"},
-                "output_variables": {"production_CO": "mol/s"},
-                "coefficients": {"intercept": 0.0, "current": co / CURRENT},
-            }
+            MultilinearSurrogate.make_spec(
+                **{
+                    "input_variables": {"current": "A"},
+                    "output_variables": {"production_CO": "mol/s"},
+                    "coefficients": {"intercept": 0.0, "current": co / CURRENT},
+                }
+            )
         ),
     )
     _solve_with_inputs_fixed(m, unit)

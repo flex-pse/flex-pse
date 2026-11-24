@@ -36,11 +36,13 @@ def _surrogate_on(m, unit) -> MultilinearSurrogate:
         m.time_block.time_index, initialize=0.5, units=pyunits.dimensionless
     )
     return MultilinearSurrogate(
-        {
-            "input_variables": {"irradiance": "dimensionless"},
-            "output_variables": {"power_generated": "kW"},
-            "coefficients": {"intercept": _INTERCEPT, "irradiance": _SLOPE},
-        }
+        MultilinearSurrogate.make_spec(
+            **{
+                "input_variables": {"irradiance": "dimensionless"},
+                "output_variables": {"power_generated": "kW"},
+                "coefficients": {"intercept": _INTERCEPT, "irradiance": _SLOPE},
+            }
+        )
     )
 
 
