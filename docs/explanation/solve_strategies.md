@@ -63,6 +63,9 @@ failing step's results are returned and the model keeps its starting values.
 Models with integer variables that aren't binary are refused. The relaxation
 only counts as a bound when it is an LP.
 
+`get_solver` uses this on its own for a MINLP when no MINLP solver is installed,
+with a warning (see [Relaxation policies](relaxation_policies.md)).
+
 ### How good is the answer?
 
 Relax and fix is a heuristic. The schedule it returns satisfies every

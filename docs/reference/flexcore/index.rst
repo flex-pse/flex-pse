@@ -10,7 +10,7 @@ Solvers
 .. currentmodule:: flexcore.solvers
 
 The solver layer classifies a model, detects which solvers are installed, and
-selects one. It errors loudly rather than transforming the model (see
+selects one. It errors or warns rather than transforming a model silently (see
 :doc:`../../explanation/relaxation_policies`).
 
 .. autofunction:: get_solver
@@ -53,8 +53,8 @@ Solve strategies
 ~~~~~~~~~~~~~~~~
 
 A facade's strategy decides how one ``solve`` call becomes solver calls. The
-default, :class:`Direct`, solves once. :class:`RelaxAndFix` is an opt-in MIP
-heuristic (see :doc:`../../explanation/solve_strategies`). Every ``solve``
+default, :class:`Direct`, solves once. :class:`RelaxAndFix` is a MIP heuristic,
+opt-in except for a MINLP when no MINLP solver is installed (see :doc:`../../explanation/solve_strategies`). Every ``solve``
 leaves a :class:`SolveReport` on ``SolverFacade.last_report``.
 
 .. code-block:: python
