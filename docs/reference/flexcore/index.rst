@@ -232,6 +232,15 @@ Config I/O
 
 .. autofunction:: export_json_schemas
 
+Overrides
+~~~~~~~~~
+
+.. currentmodule:: flexcore.config.overrides
+
+.. autofunction:: apply_overrides
+
+.. autofunction:: deep_merge
+
 Surrogate migration
 ~~~~~~~~~~~~~~~~~~~
 

@@ -13,24 +13,11 @@ from flexcore.config.design import (
     PlanningYear,
     RepresentativeMonth,
 )
+from flexcore.config.overrides import deep_merge
 from flexcore.config.spec import FlowsheetSpec
 from flexcore.exceptions import FlexConfigError
 from flexops import build_model
 from flexops.costing import capital_recovery_factor
-
-
-def _deep_merge(target: dict, patch: dict) -> None:
-    """Merge ``patch`` into ``target`` in place, recursing into nested dicts.
-
-    Args:
-        target: The dictionary to change.
-        patch: The values to merge in; a non-dict value replaces the target's.
-    """
-    for key, value in patch.items():
-        if isinstance(value, dict) and isinstance(target.get(key), dict):
-            _deep_merge(target[key], value)
-        else:
-            target[key] = value
 
 
 def expand_horizons(spec: DesignSpec) -> dict[tuple[int, int], FlowsheetSpec]:
@@ -51,7 +38,7 @@ def expand_horizons(spec: DesignSpec) -> dict[tuple[int, int], FlowsheetSpec]:
                 continue
             if change.months is not None and month.month not in change.months:
                 continue
-            _deep_merge(named[change.element], change.values)
+            deep_merge(named[change.element], change.values)
         start = date(year.year, month.month, 1)
         end = (
             (start + timedelta(days=32)).replace(day=1)
