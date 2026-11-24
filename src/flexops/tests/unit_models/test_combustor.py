@@ -7,7 +7,7 @@ from pyomo.environ import units as pyunits
 from pyomo.network import Port
 
 from flexcore import nomenclature as nm
-from flexcore.config.schema import SurrogateSpec, SurrogateType, UnitConfig
+from flexcore.config.schema import SurrogateSpec, UnitConfig
 from flexcore.exceptions import FlexConfigError
 from flexops.properties.simple_gas import SimpleGasFlowData
 from flexops.surrogates import MultilinearSurrogate
@@ -55,9 +55,8 @@ def _fix(unit, name: str, t, value: float) -> None:
 
 def _surrogate_spec() -> SurrogateSpec:
     """A multilinear relationship for ``power_generated``, in magnitude space."""
-    return SurrogateSpec(
-        surrogate_type=SurrogateType.MULTILINEAR,
-        data={
+    return MultilinearSurrogate.make_spec(
+        **{
             "input_variables": {"flow_in_fuel": "m^3/hr"},
             "output_variables": {"power_generated": "kW"},
             "coefficients": {"intercept": _INTERCEPT, "flow_in_fuel": _SLOPE},
@@ -72,7 +71,7 @@ def _surrogate_config() -> UnitConfig:
 
 def _multilinear_surrogate() -> MultilinearSurrogate:
     """The built surrogate, for a direct ``swap_relation`` call."""
-    return MultilinearSurrogate(_surrogate_spec().data)
+    return MultilinearSurrogate(_surrogate_spec())
 
 
 class TestCombustorConstantIntensity(UnitModelTestHarness):

@@ -18,6 +18,11 @@ _DATA = {
 }
 
 
+def _ml(data):
+    """A MultilinearSurrogate from an old-style data dict, via make_spec."""
+    return MultilinearSurrogate(MultilinearSurrogate.make_spec(**data))
+
+
 def _unit(has_pressure: bool = False):
     """A bare OpsBlock carrying ``flow_out`` and a constant-intensity relation."""
     m = pyo.ConcreteModel()
@@ -45,7 +50,7 @@ def _unit(has_pressure: bool = False):
 def test_builds_the_intercept_and_one_linear_term():
     """A single-input term matches the old 'linear' form's numeric behavior."""
     _, unit = _unit()
-    surrogate = MultilinearSurrogate(_DATA)
+    surrogate = _ml(_DATA)
 
     _, body = surrogate.build(unit, unit.power_electrical)
     unit.flow_out[0].set_value(3.0)
@@ -62,7 +67,7 @@ def test_builds_the_cross_term_of_two_distinct_inputs():
     exercise.
     """
     _, unit = _unit(has_pressure=True)
-    surrogate = MultilinearSurrogate(
+    surrogate = _ml(
         {
             "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
             "output_variables": {"power_electrical": "kW"},
@@ -87,7 +92,7 @@ def test_builds_the_cross_term_of_two_distinct_inputs():
 def test_build_reads_a_declared_basis_differing_from_the_model():
     """A coefficient fitted in m^3/s attaches to a m^3/hr model variable."""
     _, unit = _unit()
-    surrogate = MultilinearSurrogate(
+    surrogate = _ml(
         {
             "input_variables": {"flow_out": "m^3/s"},
             "output_variables": {"power_electrical": "kW"},
@@ -106,7 +111,7 @@ def test_build_raises_on_a_dimensionally_incompatible_declaration():
     """A declared basis with the wrong dimension is a config error, not a
     silent (wrong) rescale."""
     _, unit = _unit()
-    surrogate = MultilinearSurrogate(
+    surrogate = _ml(
         {
             "input_variables": {"flow_out": "kW"},
             "output_variables": {"power_electrical": "kW"},
@@ -128,7 +133,7 @@ def test_build_places_coefficient_vars_on_the_block_with_sanitized_names():
     index entry on a single ``coefficient_vars`` ``pyo.Var``.
     """
     _, unit = _unit(has_pressure=True)
-    surrogate = MultilinearSurrogate(
+    surrogate = _ml(
         {
             "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
             "output_variables": {"power_electrical": "kW"},
@@ -156,83 +161,152 @@ def test_build_places_coefficient_vars_on_the_block_with_sanitized_names():
     ) == pytest.approx(5e-4)
 
 
-# -- __init__ / _validate ----------------------------------------------------
+# -- contract validation ------------------------------------------------------
+
+
+def _spec(config=None, parameters=None):
+    """A multilinear spec dict, with _DATA's contract unless overridden."""
+    return {
+        "config": {
+            "input_variables": {"flow_out": "m^3/hr"},
+            "output_variables": {"power_electrical": "kW"},
+            "terms": ["flow_out"],
+            **(config or {}),
+        },
+        "parameters": parameters
+        or {"intercept": {"value": 1.0}, "flow_out": {"value": 2.0}},
+    }
 
 
 @pytest.mark.unit
-def test_rejects_an_unknown_data_key():
-    with pytest.raises(FlexConfigError, match="unknown key"):
-        MultilinearSurrogate({**_DATA, "extra": 1})
+def test_make_spec_records_terms_and_fixes_every_parameter():
+    """make_spec turns coefficient keys into terms; intercept defaults to 0."""
+    spec = MultilinearSurrogate.make_spec(
+        input_variables={"flow_out": "m^3/hr"},
+        output_variables={"power_electrical": "kW"},
+        coefficients={"flow_out": 2.0},
+    )
+    assert spec.config["terms"] == ["flow_out"]
+    assert {n: (s.value, s.fixed) for n, s in spec.parameters.items()} == {
+        "intercept": (0.0, True),
+        "flow_out": (2.0, True),
+    }
 
 
 @pytest.mark.unit
-def test_rejects_a_missing_data_key():
-    data = dict(_DATA)
-    del data["output_variables"]
-    with pytest.raises(FlexConfigError, match="missing"):
-        MultilinearSurrogate(data)
+def test_rejects_an_unknown_config_key():
+    with pytest.raises(FlexConfigError, match="config.extra"):
+        MultilinearSurrogate(_spec({"extra": 1}))
+
+
+@pytest.mark.unit
+def test_rejects_a_missing_config_key():
+    spec = _spec()
+    del spec["config"]["output_variables"]
+    with pytest.raises(FlexConfigError, match="config.output_variables"):
+        MultilinearSurrogate(spec)
 
 
 @pytest.mark.unit
 def test_rejects_empty_input_variables():
     with pytest.raises(FlexConfigError, match="input_variables"):
-        MultilinearSurrogate({**_DATA, "input_variables": {}})
+        MultilinearSurrogate(_spec({"input_variables": {}, "terms": []}))
 
 
 @pytest.mark.unit
 def test_rejects_output_variables_with_more_than_one_entry():
     with pytest.raises(FlexConfigError, match="output_variables"):
         MultilinearSurrogate(
-            {
-                **_DATA,
-                "output_variables": {"power_electrical": "kW", "flow_out": "m^3/hr"},
-            }
+            _spec(
+                {"output_variables": {"power_electrical": "kW", "flow_out": "m^3/hr"}}
+            )
         )
 
 
 @pytest.mark.unit
 def test_rejects_an_unparsable_units_string():
-    with pytest.raises(FlexConfigError):
-        MultilinearSurrogate({**_DATA, "input_variables": {"flow_out": "bogus_unit"}})
+    with pytest.raises(FlexConfigError, match="bogus_unit"):
+        MultilinearSurrogate(_spec({"input_variables": {"flow_out": "bogus_unit"}}))
 
 
 @pytest.mark.unit
-def test_rejects_empty_coefficients():
-    with pytest.raises(FlexConfigError, match="coefficients"):
-        MultilinearSurrogate({**_DATA, "coefficients": {}})
+@pytest.mark.parametrize(
+    ("parameters", "message"),
+    [
+        ({"flow_out": {"value": 2.0}}, r"missing=\['intercept'\]"),
+        (
+            {
+                "intercept": {"value": 1.0},
+                "flow_out": {"value": 2.0},
+                "x": {"value": 1},
+            },
+            r"unknown=\['x'\]",
+        ),
+        ({"intercept": {"value": 1.0}}, r"missing=\['flow_out'\]"),
+    ],
+)
+def test_rejects_parameters_that_dont_match_the_terms(parameters, message):
+    """Parameters are exactly the intercept plus one per term."""
+    with pytest.raises(FlexConfigError, match=message):
+        MultilinearSurrogate(_spec(parameters=parameters))
 
 
 @pytest.mark.unit
 def test_rejects_a_non_numeric_coefficient():
-    with pytest.raises(FlexConfigError, match="number"):
-        MultilinearSurrogate(
-            {**_DATA, "coefficients": {"intercept": 1.0, "flow_out": "fast"}}
-        )
+    with pytest.raises(FlexConfigError, match="valid number"):
+        _ml({**_DATA, "coefficients": {"intercept": 1.0, "flow_out": "fast"}})
+
+
+@pytest.mark.unit
+def test_rejects_an_array_value_for_a_scalar_parameter():
+    with pytest.raises(FlexConfigError, match=r"shape \(\)"):
+        _ml({**_DATA, "coefficients": {"intercept": 1.0, "flow_out": [2.0]}})
 
 
 @pytest.mark.unit
 def test_rejects_a_squared_term():
     """The old 'quadratic' spec shape is now a construction-time rejection."""
     with pytest.raises(FlexConfigError, match=r"flow_out\^2"):
-        MultilinearSurrogate(
-            {**_DATA, "coefficients": {"intercept": 1.0, "flow_out^2": 0.5}}
-        )
+        _ml({**_DATA, "coefficients": {"intercept": 1.0, "flow_out^2": 0.5}})
 
 
 @pytest.mark.unit
 def test_rejects_a_repeated_factor():
     with pytest.raises(FlexConfigError, match="repeats a factor"):
-        MultilinearSurrogate(
-            {**_DATA, "coefficients": {"intercept": 1.0, "flow_out*flow_out": 0.5}}
-        )
+        _ml({**_DATA, "coefficients": {"intercept": 1.0, "flow_out*flow_out": 0.5}})
 
 
 @pytest.mark.unit
 def test_rejects_a_coefficient_factor_not_in_input_variables():
     with pytest.raises(FlexConfigError, match="not in"):
-        MultilinearSurrogate(
-            {**_DATA, "coefficients": {"intercept": 1.0, "flow_out*nope": 0.5}}
-        )
+        _ml({**_DATA, "coefficients": {"intercept": 1.0, "flow_out*nope": 0.5}})
+
+
+@pytest.mark.unit
+def test_free_parameter_without_a_value_starts_at_zero():
+    """A free parameter left without a value starts at 0.0, and stays free."""
+    _, unit = _unit()
+    spec = _spec(parameters={"intercept": {"value": 1.0}, "flow_out": {"fixed": False}})
+    block, _ = MultilinearSurrogate(spec).build(unit, unit.power_electrical)
+    assert block.coefficients.value("flow_out") == 0.0
+    assert not block.coefficients.is_fixed("flow_out")
+    assert block.coefficients.is_fixed("intercept")
+
+
+@pytest.mark.unit
+def test_read_spec_returns_live_values_and_fixed_flags():
+    """read_spec reflects changes made on the built block."""
+    _, unit = _unit()
+    surrogate = _ml(_DATA)
+    block, _ = surrogate.build(unit, unit.power_electrical)
+    block.coefficients.set_value("flow_out", 3.5)
+    block.coefficients.unfix("intercept")
+    spec = surrogate.read_spec(block, unit.power_electrical)
+    assert {n: (s.value, s.fixed) for n, s in spec.parameters.items()} == {
+        "intercept": (1.0, False),
+        "flow_out": (3.5, True),
+    }
+    assert spec.config == surrogate.spec.config
 
 
 @pytest.mark.component
@@ -274,7 +348,7 @@ def test_regression_recovers_multilinear_coefficients():
         "outlet_state.pressure": 1e-3,
         "flow_out*outlet_state.pressure": 5e-4,
     }
-    true_spec = MultilinearSurrogate(
+    true_spec = _ml(
         {
             "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
             "output_variables": {"power_electrical": "kW"},
@@ -303,7 +377,7 @@ def test_regression_recovers_multilinear_coefficients():
         "outlet_state.pressure": 1,
         "flow_out*outlet_state.pressure": 1,
     }
-    fit_spec = MultilinearSurrogate(
+    fit_spec = _ml(
         {
             "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
             "output_variables": {"power_electrical": "kW"},

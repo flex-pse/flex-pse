@@ -9,6 +9,7 @@ Class docstrings and field descriptions here are exported verbatim into the
 JSON Schema, so keep them plain text.
 """
 
+import copy
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -17,6 +18,7 @@ from pydantic import (
     Field,
     PrivateAttr,
     field_validator,
+    model_serializer,
     model_validator,
 )
 
@@ -27,13 +29,14 @@ from flexcore.config.schema import (
     IOVariableSpec,
     PriceSpec,
     PropertyPackageSpec,
-    SurrogateType,
+    SurrogateSpec,
     TimeConfig,
     UnitCommitmentConfig,
     _StrictModel,
+    _SurrogateFields,
 )
 
-SCHEMA_VERSION = "0.1.1"
+SCHEMA_VERSION = "0.2.0"
 """str: the schema version this build writes and validates against."""
 
 KINDS: dict[str, tuple[str, bool]] = {
@@ -254,8 +257,15 @@ class UnitElement(_StrictModel):
     )
 
 
-class SurrogateElement(_StrictModel):
-    """A fitted relationship swapped into a unit after it is built."""
+_PLACEMENT_FIELDS = ("kind", "unit", "relation", "name")
+
+
+class SurrogateElement(_SurrogateFields):
+    """A surrogate placed on one relation of a unit after the unit is built.
+
+    It carries a unit and relation plus exactly the fields of a SurrogateSpec
+    (surrogate_type, config_version, config, parameters, provenance).
+    """
 
     kind: Literal["surrogate"]
     unit: str = Field(description="Name of the unit element it applies to.")
@@ -263,21 +273,55 @@ class SurrogateElement(_StrictModel):
         default="power_electrical_relation",
         description="Name of the unit's relation to replace.",
     )
-    surrogate_type: SurrogateType = Field(
-        description="Which predefined surrogate class the data describes."
-    )
-    data: dict[str, Any] = Field(
-        default_factory=dict,
-        description="The relationship's data, in the shape surrogate_type's "
-        "class defines.",
-    )
-    provenance: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Free-form fit metadata (metrics, data window, versions).",
-    )
     name: str | None = Field(
         default=None, description="Optional label; not used to build anything."
     )
+
+    @model_serializer(mode="wrap")
+    def _placement_first(self, handler):
+        dumped = handler(self)
+        dumped["config_version"] = self.config_version
+        placement = {key: dumped.pop(key) for key in _PLACEMENT_FIELDS if key in dumped}
+        return {**placement, **dumped}
+
+    def to_surrogate_spec(self) -> SurrogateSpec:
+        """Return this element's surrogate, without its placement.
+
+        Returns:
+            A :class:`~flexcore.config.schema.SurrogateSpec` with this element's
+            type, config version, config, parameters, and provenance.
+        """
+        fields = {
+            name: copy.deepcopy(getattr(self, name))
+            for name in _SurrogateFields.model_fields
+        }
+        return SurrogateSpec(**fields)
+
+    @classmethod
+    def from_surrogate_spec(
+        cls,
+        spec: SurrogateSpec,
+        *,
+        unit: str,
+        relation: str = "power_electrical_relation",
+        name: str | None = None,
+    ) -> "SurrogateElement":
+        """Place ``spec`` on ``relation`` of ``unit``.
+
+        Args:
+            spec: The surrogate to place.
+            unit: Name of the unit element it applies to.
+            relation: Name of the unit's relation to replace.
+            name: Optional label.
+
+        Returns:
+            The surrogate element.
+        """
+        fields = {
+            field: copy.deepcopy(getattr(spec, field))
+            for field in _SurrogateFields.model_fields
+        }
+        return cls(kind="surrogate", unit=unit, relation=relation, name=name, **fields)
 
 
 class DispatchElement(_StrictModel):

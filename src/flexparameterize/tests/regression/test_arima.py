@@ -272,7 +272,7 @@ def test_provenance_populated():
     y = pd.DataFrame({"y": vals}, index=idx)
 
     regressor = ArimaRegressor(order=(1, 0, 0), max_ar_persistence=None).fit(
-        pd.DataFrame(index=idx), y
+        pd.DataFrame(index=idx), y, output_units="m^3/hr"
     )
     result = regressor.to_fit_result()
     assert np.isfinite(result.metrics["aic"])
@@ -291,7 +291,7 @@ def test_provenance_populated():
 
 @pytest.mark.unit
 def test_surrogate_spec_data_contract():
-    """SurrogateSpec.data contains all keys the ArimaSurrogate build needs."""
+    """The spec carries the config and parameters the ArimaSurrogate needs."""
     pytest.importorskip("scipy")
 
     rng = np.random.default_rng(3)
@@ -309,22 +309,41 @@ def test_surrogate_spec_data_contract():
     )
     spec = regressor.to_surrogate_spec()
 
-    data = spec.data
-    assert set(data) == {
+    config = spec.config
+    assert set(config) == {
+        "order",
+        "deterministic",
         "input_variables",
         "output_variables",
-        "coefficients",
         "history",
     }
-    assert data["coefficients"]["order"] == [0, 0, 0]
-    assert "intercept" in data["coefficients"]
-    assert "exog_coefs" in data["coefficients"]
-    assert len(data["coefficients"]["exog_coefs"]) == 1
-    assert isinstance(data["coefficients"]["intercept"], float)
-    assert isinstance(data["coefficients"]["exog_coefs"], list)
-    assert len(data["coefficients"]["exog_coefs"]) == 1
-    assert len(data["history"]["eta_values"]) == n
-    assert len(data["history"]["eps_values"]) == n
+    assert config["order"] == [0, 0, 0]
+    assert config["deterministic"] == "intercept"
+    # One parameter per term, the exog one named by its input column.
+    assert list(spec.parameters) == ["intercept", "exog.feed"]
+    assert isinstance(spec.parameters["intercept"].value, float)
+    assert spec.parameters["exog.feed"].value == pytest.approx(
+        regressor.coefficients["exog.feed"]
+    )
+    assert spec.free_parameters() == []
+    assert len(config["history"]["eta_values"]) == n
+    assert len(config["history"]["eps_values"]) == n
+    ArimaSurrogate(spec)
+
+
+@pytest.mark.unit
+def test_surrogate_spec_without_output_units_is_refused_on_export():
+    """A spec the surrogate couldn't build is refused when it is made."""
+    pytest.importorskip("scipy")
+
+    n = 40
+    idx = pd.date_range("2024-01-01", periods=n, freq="1h")
+    y = pd.DataFrame({"y": np.zeros(n)}, index=idx)
+    regressor = ArimaRegressor(order=(1, 0, 0), max_ar_persistence=None).fit(
+        pd.DataFrame(index=idx), y
+    )
+    with pytest.raises(FlexConfigError, match="output_variables"):
+        regressor.to_surrogate_spec()
 
 
 # -- to_fit_result / to_surrogate_spec guards ---------------------------------
@@ -352,10 +371,11 @@ def test_surrogate_spec_omits_intercept_without_a_deterministic_term():
     ).fit(pd.DataFrame(index=idx), y, output_units="m^3/hr")
 
     spec = regressor.to_surrogate_spec()
-    assert "intercept" not in spec.data["coefficients"]
-    assert "drift" not in spec.data["coefficients"]
+    assert spec.config["deterministic"] is None
+    assert "intercept" not in spec.parameters
+    assert "drift" not in spec.parameters
     assert "intercept" not in regressor.to_fit_result().coefficients
-    ArimaSurrogate(spec.data)
+    ArimaSurrogate(spec)
 
 
 @pytest.mark.unit
@@ -375,8 +395,9 @@ def test_surrogate_spec_keeps_a_zero_valued_fitted_intercept():
         pd.DataFrame(index=idx), y, output_units="m^3/hr"
     )
 
-    coefficients = regressor.to_surrogate_spec().data["coefficients"]
-    assert coefficients["intercept"] == pytest.approx(0.0)
+    spec = regressor.to_surrogate_spec()
+    assert spec.config["deterministic"] == "intercept"
+    assert spec.parameters["intercept"].value == pytest.approx(0.0)
     assert regressor.to_fit_result().coefficients["intercept"] == pytest.approx(0.0)
 
 
@@ -532,7 +553,7 @@ def test_fits_biogas_with_feed_and_ts_exog():
     regressor = ArimaRegressor(order=(1, 0, 1), max_ar_persistence=None).fit(
         X,
         y,
-        input_units={"feed_volume_kg": "kg", "TS_pct": "%"},
+        input_units={"feed_volume_kg": "kg", "TS_pct": "dimensionless"},
         output_units="m^3/hr",
     )
 
@@ -546,9 +567,12 @@ def test_fits_biogas_with_feed_and_ts_exog():
 
     spec = regressor.to_surrogate_spec()
     assert spec.surrogate_type == SurrogateType.ARIMA
-    assert spec.data["coefficients"]["order"] == [1, 0, 1]
-    assert len(spec.data["coefficients"]["exog_coefs"]) == 2
-    assert spec.data["output_variables"] == {"biogas_m3_hour": "m^3/hr"}
+    assert spec.config["order"] == [1, 0, 1]
+    assert [name for name in spec.parameters if name.startswith("exog.")] == [
+        "exog.feed_volume_kg",
+        "exog.TS_pct",
+    ]
+    assert spec.config["output_variables"] == {"biogas_m3_hour": "m^3/hr"}
 
 
 @pytest.mark.unit
@@ -566,24 +590,29 @@ def test_biogas_surrogate_spec_has_all_keys():
     regressor = ArimaRegressor(order=(2, 0, 1), max_ar_persistence=None).fit(
         X,
         y,
-        input_units={"feed_volume_kg": "kg", "TS_pct": "%"},
+        input_units={"feed_volume_kg": "kg", "TS_pct": "dimensionless"},
         output_units="m^3/hr",
     )
     spec = regressor.to_surrogate_spec()
 
-    data = spec.data
-    assert "input_variables" in data
-    assert "output_variables" in data
-    assert "coefficients" in data
-    assert "order" in data["coefficients"]
-    assert "intercept" in data["coefficients"]
-    assert "ar_coefs" in data["coefficients"]
-    assert "ma_coefs" in data["coefficients"]
-    assert "exog_coefs" in data["coefficients"]
+    config = spec.config
+    assert "input_variables" in config
+    assert "output_variables" in config
+    assert config["order"] == [2, 0, 1]
+    assert config["deterministic"] == "intercept"
+    assert "history" in config
 
-    assert len(data["coefficients"]["ar_coefs"]) == 2  # AR(2)
-    assert len(data["coefficients"]["ma_coefs"]) == 1  # MA(1)
-    assert len(data["coefficients"]["exog_coefs"]) == 2  # two exogenous columns
+    # AR(2), MA(1), the intercept and one coefficient per exogenous column,
+    # each named by its column; every one fixed.
+    assert list(spec.parameters) == [
+        "intercept",
+        "ar.L1",
+        "ar.L2",
+        "ma.L1",
+        "exog.feed_volume_kg",
+        "exog.TS_pct",
+    ]
+    assert spec.free_parameters() == []
 
 
 # -- cross-validation against statsmodels on real biogas data -----------------
@@ -656,7 +685,7 @@ def test_biogas_matches_statsmodels_insample_and_forecast(order):
     regressor = ArimaRegressor(order=order, max_ar_persistence=None).fit(
         X_train,
         y_train,
-        input_units={"feed_volume_kg": "kg", "TS_pct": "%"},
+        input_units={"feed_volume_kg": "kg", "TS_pct": "dimensionless"},
         output_units="m^3/hr",
     )
 
@@ -743,7 +772,7 @@ def test_biogas_auto_arima_matches_statsmodels():
     ).fit(
         X_train,
         y_train,
-        input_units={"feed_volume_kg": "kg", "TS_pct": "%"},
+        input_units={"feed_volume_kg": "kg", "TS_pct": "dimensionless"},
         output_units="m^3/hr",
     )
     assert regressor.fitted is True
@@ -802,9 +831,12 @@ def test_d1_default_mean_uses_constant_drift_for_pyomo_contract():
     assert "intercept" not in regressor.coefficients
     assert regressor.coefficients["drift"] == pytest.approx(0.35, abs=0.03)
     spec = regressor.to_surrogate_spec()
-    assert "const" not in spec.data["coefficients"]
-    assert "drift" in spec.data["coefficients"]
-    ArimaSurrogate(spec.data)
+    assert spec.config["deterministic"] == "drift"
+    assert "intercept" not in spec.parameters
+    assert spec.parameters["drift"].value == pytest.approx(
+        regressor.coefficients["drift"]
+    )
+    ArimaSurrogate(spec)
 
 
 @pytest.mark.unit
@@ -1438,8 +1470,8 @@ def test_output_error_spec_satisfies_the_surrogate_contract():
     spec = regressor.to_surrogate_spec()
 
     assert spec.surrogate_type == SurrogateType.ARIMA
-    assert spec.data["coefficients"]["order"] == [1, 0, 1]
-    ArimaSurrogate(spec.data)
+    assert spec.config["order"] == [1, 0, 1]
+    ArimaSurrogate(spec)
     assert np.isfinite(regressor.to_fit_result().metrics["free_run_rmse"])
 
 
@@ -1588,14 +1620,14 @@ def _initial_state_at(spec, start: pd.Timestamp):
         end_date=(start + pd.Timedelta(hours=3)).isoformat(),
         time_step=1 * pyunits.hr,
     )
-    return ArimaSurrogate(spec.data)._initial_state(model.time_block)
+    return ArimaSurrogate(spec)._initial_state(model.time_block)
 
 
 @pytest.mark.unit
 def test_surrogate_spec_default_history_keeps_one_week():
     regressor, idx = _fitted_arimax()
 
-    history = regressor.to_surrogate_spec().data["history"]
+    history = regressor.to_surrogate_spec().config["history"]
 
     # 168 hourly points plus the max(p + d, q) = 2 lags ahead of them.
     assert len(history["eta_values"]) == 168 + 2
@@ -1632,8 +1664,8 @@ def test_zero_history_holds_the_terminal_state_for_forecasting(monkeypatch):
     terminal = regressor.to_surrogate_spec(history_length=0)
     after_training = idx[-1] + pd.Timedelta(hours=1)
 
-    assert len(terminal.data["history"]["eta_values"]) == 2
-    assert pd.Timestamp(terminal.data["history"]["start_date"]) == after_training
+    assert len(terminal.config["history"]["eta_values"]) == 2
+    assert pd.Timestamp(terminal.config["history"]["start_date"]) == after_training
     for full_lags, terminal_lags in zip(
         _initial_state_at(full, after_training),
         _initial_state_at(terminal, after_training),

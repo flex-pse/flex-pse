@@ -13,6 +13,7 @@ from pyomo.network import Arc
 
 import flexops as fo
 from flexcore.config.io import dump_spec
+from flexcore.config.spec import SCHEMA_VERSION, SurrogateElement
 from flexcore.exceptions import FlexConfigError, FlexEmitWarning
 from flexops import apply_spec, build_model, emit_model, logic
 from flexops.core.compare import assert_models_equivalent
@@ -332,14 +333,36 @@ def test_check_warns_when_the_rebuild_fails(tmp_path):
 
 @pytest.mark.unit
 def test_custom_surrogate_object_warns():
+    """A subclass of a registered class can't be rebuilt from a spec."""
+
+    class Custom(MultilinearSurrogate):
+        pass
+
     m = base_model()
     m.p.pump = fo.Pump(property_package=m.properties)
     m.p.pump.swap_relation(
-        "power_electrical_relation", MultilinearSurrogate(SURROGATE_DATA)
+        "power_electrical_relation",
+        Custom(MultilinearSurrogate.make_spec(**SURROGATE_DATA)),
     )
 
     with pytest.warns(FlexEmitWarning, match="custom Surrogate object"):
         emit_model(m, check=False)
+
+
+@pytest.mark.unit
+def test_directly_constructed_surrogate_is_emitted():
+    """A registered class built by its constructor is written like any other."""
+    m = base_model()
+    m.p.pump = fo.Pump(property_package=m.properties)
+    spec = MultilinearSurrogate.make_spec(**SURROGATE_DATA)
+    m.p.pump.swap_relation("power_electrical_relation", MultilinearSurrogate(spec))
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        emitted = emit_model(m, check=False)
+    assert not [w for w in caught if "custom Surrogate" in str(w.message)]
+    surrogate = elements(emitted, "surrogate")[("p.pump", "power_electrical_relation")]
+    assert surrogate.to_surrogate_spec() == spec
 
 
 @pytest.mark.unit
@@ -349,12 +372,9 @@ def test_spec_built_surrogate_swapped_in_code_is_emitted():
     apply_spec(
         m,
         [
-            {
-                "kind": "surrogate",
-                "unit": "p.pump",
-                "surrogate_type": "multilinear",
-                "data": SURROGATE_DATA,
-            }
+            SurrogateElement.from_surrogate_spec(
+                MultilinearSurrogate.make_spec(**SURROGATE_DATA), unit="p.pump"
+            )
         ],
     )
 
@@ -362,7 +382,9 @@ def test_spec_built_surrogate_swapped_in_code_is_emitted():
         ("p.pump", "power_electrical_relation")
     ]
 
-    assert surrogate.data == SURROGATE_DATA
+    assert surrogate.to_surrogate_spec() == MultilinearSurrogate.make_spec(
+        **SURROGATE_DATA
+    )
 
 
 @pytest.mark.unit
@@ -378,7 +400,7 @@ def test_constant_intensity_applied_with_apply_spec_is_emitted(tmp_path):
                 "kind": "surrogate",
                 "unit": "p.pump",
                 "surrogate_type": "constant_intensity",
-                "data": {"coefficients": {INTENSITY_PARAMETER: 0.7}},
+                "parameters": {INTENSITY_PARAMETER: {"value": 0.7}},
             }
         ],
     )
@@ -386,7 +408,8 @@ def test_constant_intensity_applied_with_apply_spec_is_emitted(tmp_path):
     spec = emit_quietly(m)
 
     (surrogate,) = spec.of_kind("surrogate")
-    assert surrogate.data == {"coefficients": {INTENSITY_PARAMETER: 0.7}}
+    assert surrogate.parameters[INTENSITY_PARAMETER].value == 0.7
+    assert surrogate.parameters[INTENSITY_PARAMETER].fixed
     dump_spec(spec, tmp_path / "spec.json")
     assert_models_equivalent(m, build_model(tmp_path / "spec.json"))
 
@@ -640,7 +663,7 @@ def test_long_fixed_series_goes_to_a_sidecar(tmp_path):
 def test_fix_from_the_spec_changed_in_code_writes_the_new_value():
     m = build_model(
         {
-            "schema_version": "0.1.1",
+            "schema_version": SCHEMA_VERSION,
             "name": "site",
             "elements": [
                 {
