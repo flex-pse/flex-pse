@@ -13,6 +13,7 @@ from flexcore.exceptions import FlexConfigError
 from flexcore.logger import CONFIGURATION_SIMPLIFICATIONS, DedupHandler
 from flexops.properties.simple_aqueous import SimpleAqueousFlow
 from flexops.properties.simple_gas import SimpleGasFlow, SimpleGasFlowData
+from flexops.surrogates import MultilinearSurrogate
 from flexops.testing import (
     UnitModelTestHarness,
     dummy_gas_time_block,
@@ -428,13 +429,11 @@ def test_digestor_is_in_the_unit_model_registry():
 def test_digestor_swaps_biogas_relation_with_linear_surrogate():
     """A linear surrogate deactivates biogas_relation and adds
     biogas_relation_fitted."""
-    from flexcore.config.schema import SurrogateSpec
     from flexops.surrogates import surrogate_from_spec
 
     _, unit = _digestor_aqueous(3)
-    spec = SurrogateSpec(
-        surrogate_type="multilinear",
-        data={
+    spec = MultilinearSurrogate.make_spec(
+        **{
             "input_variables": {"flow_in_feed": "m^3/hr"},
             "output_variables": {"biogas_volume": "m^3/hr"},
             "coefficients": {"flow_in_feed": 0.08, "intercept": 0.0},
@@ -451,13 +450,11 @@ def test_digestor_swaps_biogas_relation_with_linear_surrogate():
 @pytest.mark.unit
 def test_digestor_rejects_surrogate_naming_unknown_variable():
     """A surrogate that names a non-existent input variable is rejected."""
-    from flexcore.config.schema import SurrogateSpec
     from flexops.surrogates import surrogate_from_spec
 
     _, unit = _digestor_aqueous(3)
-    spec = SurrogateSpec(
-        surrogate_type="multilinear",
-        data={
+    spec = MultilinearSurrogate.make_spec(
+        **{
             "input_variables": {"nonexistent_var": "m^3/hr"},
             "output_variables": {"biogas_volume": "m^3/hr"},
             "coefficients": {"nonexistent_var": 1.0, "intercept": 0.0},

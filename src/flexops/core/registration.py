@@ -15,17 +15,62 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
-from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError
 from flexcore.nomenclature import PowerKind
+
+
+def value_leaves(value: Any) -> list[Any]:
+    """Return the scalars of a number or nested list, row-major."""
+    if isinstance(value, (list, tuple)):
+        return [leaf for item in value for leaf in value_leaves(item)]
+    return [value]
+
+
+def value_shape(value: Any) -> tuple[int, ...] | None:
+    """Return the shape of a number or rectangular nested list, else ``None``.
+
+    Args:
+        value: A number, a list, or nested lists.
+
+    Returns:
+        ``()`` for a number, ``(n,)`` for a list of numbers, ``(n, m)`` for a
+        list of ``n`` equal-length lists, and so on; ``None`` for a ragged or
+        empty-inner nesting, whose shape is ambiguous.
+    """
+    if not isinstance(value, (list, tuple)):
+        return ()
+    if not value:
+        return (0,)
+    shapes = {value_shape(item) for item in value}
+    if len(shapes) != 1 or None in shapes:
+        return None
+    return (len(value), *shapes.pop())
+
+
+def _nest(flat: list[Any], shape: tuple[int, ...]) -> Any:
+    """Fold a row-major flat list into nested lists of ``shape``."""
+    if not shape:
+        return flat[0]
+    if len(shape) == 1:
+        return list(flat)
+    stride = len(flat) // shape[0]
+    return [
+        _nest(flat[i * stride : (i + 1) * stride], shape[1:]) for i in range(shape[0])
+    ]
 
 
 class CoefficientRegistry:
     """A dict-like ``name -> Var`` container for a surrogate block's coefficients.
 
-    Every entry is one scalar Var or one entry of an indexed Var. To register
-    all entries of an indexed Var at once, pass it to
-    :meth:`register_coefficients`, which names each entry by its index.
+    Each registered name is one surrogate parameter, the unit a spec's
+    ``parameters`` addresses. A parameter is either a scalar (a scalar Var or
+    one entry of an indexed Var) or an array (a whole indexed Var, one name
+    for many values, e.g. an ML weight matrix). An array's values map onto the
+    Var's index set in its iteration order, read row-major for nested lists;
+    one ``fixed`` flag covers the whole array.
+
+    To register every entry of an indexed Var as its own scalar parameter,
+    named by its index, pass it to :meth:`register_coefficients`.
 
     The registry dynamically expands as coefficients are registered. It is
     attached to every surrogate block as ``block.coefficients`` before
@@ -37,19 +82,28 @@ class CoefficientRegistry:
 
     def __init__(self) -> None:
         self._vars: dict[Any, Any] = {}
+        self._shapes: dict[Any, tuple[int, ...]] = {}
 
-    def register_coefficient(self, name: str, var: Any) -> None:
-        """Add a single named coefficient Var.
+    def register_coefficient(
+        self, name: str, var: Any, *, shape: tuple[int, ...] | None = None
+    ) -> None:
+        """Add one named parameter: a scalar Var entry, or a whole indexed Var.
 
         Args:
-            name: The coefficient name used by ``body(t)`` and
+            name: The parameter name used by specs, ``update_parameters`` and
                 ``register_surrogate_coefficients``.
-            var: A scalar Pyomo Var, or one entry of an indexed Var.
+            var: A scalar Pyomo Var or one entry of an indexed Var (a scalar
+                parameter), or a whole indexed Var (an array parameter).
+            shape: An array parameter's shape, e.g. ``(3, 2)``. Defaults to
+                ``(len(var),)`` for an indexed Var; must be ``()`` or omitted
+                for a scalar.
 
         Raises:
             FlexConfigError: If ``name`` is already registered, ``var`` is
-                not a Pyomo Var, or ``var`` is a whole indexed Var.
+                not a Pyomo Var, or ``shape`` does not match ``var``'s size.
         """
+        import math
+
         import pyomo.environ as pyo
         from pyomo.core.base.var import VarData
 
@@ -63,23 +117,35 @@ class CoefficientRegistry:
                 f"got {type(var).__name__}."
             )
         if var.is_indexed():
+            shape = (len(var),) if shape is None else tuple(shape)
+            if not shape or math.prod(shape) != len(var):
+                raise FlexConfigError(
+                    f"Array coefficient {name!r} has {len(var)} entries, which "
+                    f"does not fill shape {shape}.",
+                    field=name,
+                    value=shape,
+                )
+        elif shape not in (None, ()):
             raise FlexConfigError(
-                f"Coefficient {name!r} is an indexed Var; register its "
-                "entries individually or pass it to register_coefficients()."
+                f"Coefficient {name!r} is a scalar Var, so it cannot have "
+                f"shape {shape}.",
+                field=name,
+                value=shape,
             )
         self._vars[name] = var
+        self._shapes[name] = shape if var.is_indexed() else ()
 
     def register_coefficients(self, mapping) -> None:
-        """Bulk-add coefficients from a name->Var mapping or a single indexed Var.
+        """Bulk-add scalar parameters from a name->Var mapping or an indexed Var.
 
         Args:
-            mapping: Either a dict of coefficient name to Pyomo Var, or a
-                single indexed ``pyo.Var`` whose index set supplies the
-                coefficient names.
+            mapping: Either a dict of parameter name to Pyomo Var, or a single
+                indexed ``pyo.Var`` whose entries each become a scalar
+                parameter named by its index.
 
         Raises:
             FlexConfigError: If any name is already registered or any value
-                is not a scalar Pyomo Var or Var entry.
+                is not a Pyomo Var or Var entry.
         """
         if hasattr(mapping, "is_indexed") and mapping.is_indexed():
             for idx in mapping.index_set():
@@ -89,8 +155,63 @@ class CoefficientRegistry:
             self.register_coefficient(name, var)
 
     def items(self):
-        """Return the registered (name, Var) pairs."""
+        """Return the registered (name, Var) pairs; an array's Var is indexed."""
         return self._vars.items()
+
+    def names(self) -> list[str]:
+        """Return the registered parameter names, in registration order."""
+        return list(self._vars)
+
+    def shape(self, name: str) -> tuple[int, ...]:
+        """Return a parameter's shape: ``()`` for a scalar."""
+        return self._shapes[name]
+
+    def _entries(self, name: str) -> list[Any]:
+        var = self._vars[name]
+        return [var[index] for index in var] if var.is_indexed() else [var]
+
+    def value(self, name: str) -> Any:
+        """Return a parameter's current value: a float, or nested lists of floats.
+
+        An entry whose Var has no value yet reads as ``None``.
+        """
+        flat = [
+            None if entry.value is None else float(entry.value)
+            for entry in self._entries(name)
+        ]
+        return _nest(flat, self._shapes[name])
+
+    def set_value(self, name: str, value: Any) -> None:
+        """Set a parameter's value without changing whether it is fixed.
+
+        Args:
+            name: A registered parameter.
+            value: A number for a scalar; for an array, nested lists matching
+                its shape.
+
+        Raises:
+            FlexConfigError: If ``value``'s shape does not match the
+                parameter's.
+        """
+        shape = self._shapes[name]
+        if value_shape(value) != shape:
+            raise FlexConfigError(
+                f"Parameter {name!r} has shape {shape}, but the value given has "
+                f"shape {value_shape(value)}.",
+                field=name,
+                value=value,
+            )
+        for entry, leaf in zip(self._entries(name), value_leaves(value), strict=True):
+            entry.set_value(leaf)
+
+    def is_fixed(self, name: str) -> bool:
+        """Return whether every entry of a parameter is fixed."""
+        return all(entry.fixed for entry in self._entries(name))
+
+    def is_partially_fixed(self, name: str) -> bool:
+        """Return whether an array parameter has some entries fixed and some free."""
+        states = {entry.fixed for entry in self._entries(name)}
+        return len(states) > 1
 
     def __getitem__(self, name: str) -> Any:
         return self._vars[name]
@@ -104,15 +225,17 @@ class CoefficientRegistry:
     def __len__(self) -> int:
         return len(self._vars)
 
-    def unfix(self) -> None:
-        """Unfix every registered coefficient Var."""
-        for var in self._vars.values():
-            var.unfix()
+    def unfix(self, name: str | None = None) -> None:
+        """Unfix one parameter, or every registered parameter when ``name`` is None."""
+        for key in self._vars if name is None else [name]:
+            for entry in self._entries(key):
+                entry.unfix()
 
-    def fix(self) -> None:
-        """Fix every registered coefficient Var at its current value."""
-        for var in self._vars.values():
-            var.fix()
+    def fix(self, name: str | None = None) -> None:
+        """Fix one parameter, or every one when ``name`` is None, at its value."""
+        for key in self._vars if name is None else [name]:
+            for entry in self._entries(key):
+                entry.fix()
 
 
 class BoundaryKind(enum.StrEnum):
@@ -236,9 +359,8 @@ class RelationRecord:
             ``surrogate_block`` is ``None`` (no swap yet, or the active
             surrogate built no block). Used by
             :meth:`~flexops.core.ops_block.OpsBlockData.get_surrogate_spec`
-            to delegate spec extraction without depending on block attributes.
-        spec: The spec the current surrogate was built from, or ``None`` for a
-            surrogate built by hand (which a spec can't describe).
+            to read its spec back (``read_spec``) without depending on block
+            attributes; it is the one source of the relation's spec.
     """
 
     constraint: Any
@@ -252,7 +374,6 @@ class RelationRecord:
     surrogate_blocks: list = field(default_factory=list)
     surrogate_instances: list = field(default_factory=list)
     surrogate_instance: Any = None
-    spec: SurrogateSpec | None = None
 
 
 @dataclass
@@ -293,6 +414,10 @@ class IORegistry:
         relations: Registered swappable relationships (see
             :class:`RelationRecord`).
         boundary: Registered boundary flows (feeds and products).
+        applied_surrogates: Per relation name, the surrogate applied without a
+            swap (a ``constant_intensity`` that sets the unit's own intensity),
+            so its spec can be read back; swapped surrogates live on their
+            :class:`RelationRecord` instead.
     """
 
     io_variables: list[IOVariableRecord] = field(default_factory=list)
@@ -302,6 +427,7 @@ class IORegistry:
     intensity_basis: dict[PowerKind, str] = field(default_factory=dict)
     relations: list[RelationRecord] = field(default_factory=list)
     boundary: list[BoundaryRecord] = field(default_factory=list)
+    applied_surrogates: dict[str, Any] = field(default_factory=dict)
 
     def is_empty(self) -> bool:
         """Return True if nothing has been registered on this block."""
@@ -366,3 +492,27 @@ def iter_swapped_relations(model) -> Iterator[tuple[Any, RelationRecord]]:
         for record in registry.relations:
             if record.fitted is not None:
                 yield block, record
+
+
+def same_variable(first, second) -> bool:
+    """Return whether two components refer to (some of) the same variables.
+
+    A ``Reference`` and the indexed Var it slices share their data objects, so
+    ``flow_out`` (a Reference to ``outlet_state.flow_vol_phase[:, "Liq"]``)
+    and ``outlet_state.flow_vol_phase`` are the same variable here, while two
+    distinct Vars never are.
+
+    Args:
+        first: A Pyomo component, indexed or scalar.
+        second: Another.
+
+    Returns:
+        ``True`` when they share at least one data object.
+    """
+
+    def data(component) -> set[int]:
+        if component.is_indexed():
+            return {id(member) for member in component.values()}
+        return {id(component)}
+
+    return not data(first).isdisjoint(data(second))

@@ -139,9 +139,9 @@ rebuilt = build_model("pump_fitted.json")
 ```
 
 {func}`~flexops.core.emit.emit_model` writes the model `apply_to_model`
-mutated as a flat spec: a fitted intensity becomes a `fix` element, and a
-swapped relationship becomes a `surrogate` element carrying its
-`SurrogateSpec` and provenance. The rebuilt model describes the same behavior
+mutated as a flat spec. Each fitted relationship, a constant intensity
+included, becomes a `surrogate` element carrying its `SurrogateSpec`: the
+current parameter values, whether each is fixed, and provenance. The rebuilt model describes the same behavior
 as the mutated one.
 
 ## Supplying a relationship you already know
@@ -153,41 +153,35 @@ directly. No data, no sufficiency check, and no regressor get involved for
 that unit.
 
 ```python
-from flexcore.config.schema import SurrogateSpec, SurrogateType
+from flexops.surrogates import MultilinearSurrogate
 
-vendor = SurrogateSpec(
-    surrogate_type=SurrogateType.MULTILINEAR,
-    data={
-        "input_variables": {"flow_out": "m^3/hr"},
-        "output_variables": {"power_electrical": "kW"},
-        "coefficients": {"flow_out": 0.38, "intercept": 12.0},
-    },
+vendor = MultilinearSurrogate.make_spec(
+    input_variables={"flow_out": "m^3/hr"},
+    output_variables={"power_electrical": "kW"},
+    coefficients={"flow_out": 0.38, "intercept": 12.0},
     provenance={"source": "vendor_datasheet"},
 )
 
 apply_to_model(m, raw, tagmap, surrogates={"facility.skid": vendor})
 ```
 
-`surrogate_type` names a predefined surrogate class
-({class}`~flexops.surrogates.multilinear.MultilinearSurrogate` here).
-`data` is that class's own contract, validated when the surrogate is
-realized. A coefficient key names the **term** it multiplies, a
-`*` separated product of distinct names from `input_variables`, plus the
-reserved `intercept`. A draw that depends on outlet flow *and* outlet
-pressure together adds their cross term.
+Each surrogate class builds its own specs with `make_spec`
+({class}`~flexops.surrogates.multilinear.MultilinearSurrogate` here), which
+validates the result against the class's contract right away. A coefficient
+key names the **term** it multiplies, a `*` separated product of distinct
+names from `input_variables`, plus `intercept`. Every coefficient is fixed
+unless `fixed={"name": False}` leaves it free. A draw that depends on outlet
+flow *and* outlet pressure together adds their cross term.
 
 ```python
-multilinear = SurrogateSpec(
-    surrogate_type=SurrogateType.MULTILINEAR,
-    data={
-        "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
-        "output_variables": {"power_electrical": "kW"},
-        "coefficients": {
-            "intercept": 12.0,
-            "flow_out": 0.38,
-            "outlet_state.pressure": 1.1e-5,
-            "flow_out*outlet_state.pressure": 2.3e-6,
-        },
+multilinear = MultilinearSurrogate.make_spec(
+    input_variables={"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
+    output_variables={"power_electrical": "kW"},
+    coefficients={
+        "intercept": 12.0,
+        "flow_out": 0.38,
+        "outlet_state.pressure": 1.1e-5,
+        "flow_out*outlet_state.pressure": 2.3e-6,
     },
 )
 apply_to_model(m, raw, tagmap, surrogates={"facility.skid": multilinear})
@@ -219,17 +213,14 @@ explicitly by passing a `{relation_name: spec}` mapping instead of a bare
 spec.
 
 ```python
-recovery = SurrogateSpec(
-    surrogate_type=SurrogateType.MULTILINEAR,
-    data={
-        "input_variables": {"feed": "m^3/hr", "inlet_state.pressure": "Pa"},
-        "output_variables": {"permeate": "m^3/hr"},
-        "coefficients": {
-            "intercept": 0.3,
-            "feed": 0.01,
-            "inlet_state.pressure": 1e-6,
-            "feed*inlet_state.pressure": 1e-7,
-        },
+recovery = MultilinearSurrogate.make_spec(
+    input_variables={"feed": "m^3/hr", "inlet_state.pressure": "Pa"},
+    output_variables={"permeate": "m^3/hr"},
+    coefficients={
+        "intercept": 0.3,
+        "feed": 0.01,
+        "inlet_state.pressure": 1e-6,
+        "feed*inlet_state.pressure": 1e-7,
     },
 )
 apply_to_model(m, raw, tagmap, surrogates={"facility.ro": {"split_definition": recovery}})
@@ -362,7 +353,8 @@ Before switching, know the following:
   test and inside each `auto` candidate, by OLS as the warm start, jointly with
   the ARIMA terms in the one-step fit, and again by the refinement when
   `forecast_horizon > 1`.  Only the last is kept.  It is the `beta` in
-  `coefficients`, in the spec's `exog_coefs`, and in the spec's history.
+  `coefficients`, in the spec's `exog.<column>` parameters, and in the spec's
+  history.
 
 ### Build the Pyomo surrogate
 
@@ -401,9 +393,15 @@ m.unit.add_component(
 )
 m.unit.register_relation(m.unit.biogas_m3_hour_relation, target=m.unit.biogas_m3_hour)
 
-surrogate = ArimaSurrogate(spec.data)
+surrogate = ArimaSurrogate(spec)
 m.unit.swap_relation("biogas_m3_hour_relation", surrogate)
 ```
+
+After a solve, record the solved horizon as the surrogate's new history with
+`m.unit.update_surrogate_state()`, then read the spec that starts the next
+horizon from it with `m.unit.get_surrogate_spec()`. The two are separate
+calls: `get_surrogate_spec()` only reads, so calling it never changes the
+surrogate.
 
 `swap_relation` is the only place the ARIMA equality constraint is built.
 Calling `ArimaSurrogate.build()` directly does **not** add an enforcing

@@ -4,10 +4,9 @@ import pyomo.environ as pyo
 import pytest
 from pyomo.environ import units as pyunits
 
-from flexcore.config.schema import SurrogateSpec, SurrogateType
 from flexcore.exceptions import FlexConfigError
 from flexops import SimpleAqueousFlow, TimeBlock
-from flexops.surrogates import surrogate_from_spec
+from flexops.surrogates import MultilinearSurrogate, surrogate_from_spec
 from flexops.testing import UnitModelTestHarness, dummy_time_block
 from flexops.unit_models import Pump
 
@@ -108,9 +107,8 @@ def test_pump_energy_relation_is_swappable():
     m.unit.swap_relation(
         "power_electrical_relation",
         surrogate_from_spec(
-            SurrogateSpec(
-                surrogate_type=SurrogateType.MULTILINEAR,
-                data={
+            MultilinearSurrogate.make_spec(
+                **{
                     "input_variables": {"flow_out": "m^3/hr"},
                     "output_variables": {"power_electrical": "kW"},
                     "coefficients": {"flow_out": 2.0, "intercept": 1.0},

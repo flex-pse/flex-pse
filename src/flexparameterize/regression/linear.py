@@ -10,8 +10,9 @@ import math
 
 import pandas as pd
 
-from flexcore.config.schema import SurrogateSpec, SurrogateType
+from flexcore.config.schema import SurrogateSpec
 from flexcore.exceptions import FlexConfigError, FlexDataError
+from flexops.surrogates import MultilinearSurrogate
 from flexparameterize.regression.base import (
     FitResult,
     require_frame,
@@ -157,10 +158,10 @@ class LinearRegressor:
         Uses the ``input_units``/``output_units`` recorded by :meth:`fit`.
 
         Returns:
-            A ``SurrogateType.MULTILINEAR`` spec whose ``data`` is exactly
-            :class:`~flexops.surrogates.multilinear.MultilinearSurrogate`'s
-            contract: the fitted column names, verbatim, are both the
-            ``input_variables`` keys and the (single-factor) coefficient keys.
+            A ``SurrogateType.MULTILINEAR`` spec built by
+            :meth:`~flexops.surrogates.multilinear.MultilinearSurrogate.make_spec`:
+            the fitted column names, verbatim, are both the ``input_variables``
+            keys and the (single-factor) terms, and every parameter is fixed.
 
         Raises:
             FlexDataError: If :meth:`fit` has not been called.
@@ -170,13 +171,10 @@ class LinearRegressor:
                 "LinearRegressor has no fit yet; call fit(X, y) before "
                 "to_surrogate_spec()."
             )
-        return SurrogateSpec(
-            surrogate_type=SurrogateType.MULTILINEAR,
-            data={
-                "input_variables": {
-                    name: self.input_units[name] for name in self.input_variables
-                },
-                "output_variables": {self.output_variable: self.output_units},
-                "coefficients": self.coefficients,
+        return MultilinearSurrogate.make_spec(
+            input_variables={
+                name: self.input_units[name] for name in self.input_variables
             },
+            output_variables={self.output_variable: self.output_units},
+            coefficients=self.coefficients,
         )

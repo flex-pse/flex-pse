@@ -65,6 +65,14 @@ nitpick_ignore = [
     ("py:class", "_PydanticGeneralMetadata"),
     ("py:class", "FieldInfo"),
     ("py:class", "NoneType"),
+    # Strict/bounded Field metadata (strict=True, ge=, gt=, le=) on surrogate
+    # config models renders by its bare annotated_types/pydantic class name.
+    ("py:class", "Strict"),
+    ("py:class", "Ge"),
+    ("py:class", "Gt"),
+    ("py:class", "Le"),
+    # A recursive type alias (number or nested lists) is not a class target.
+    ("py:class", "flexcore.config.schema.ParameterValue"),
 ]
 
 # autodoc renders the subscripted generics in a pydantic model's constructor
@@ -73,9 +81,15 @@ nitpick_ignore = [
 # resolve fine; ignore only these signature-parsing fragments.
 nitpick_ignore_regex = [
     ("py:class", r"dict\[.*"),
+    # The same comma split of an Annotated[...] field type.
+    ("py:obj", r"typing\.Annotated\[.*"),
     # pydantic Field constraints (ge=, gt=, min_length=) render as annotated_types
     # metadata classes, which have no intersphinx target.
     ("py:class", r"annotated_types\..*"),
+    # Field(allow_inf_nan=False) renders as pydantic's AllowInfNan metadata
+    # class (newer pydantic; older ones use a private class Sphinx skips),
+    # which pydantic's docs don't publish as an intersphinx target.
+    ("py:class", r"(pydantic\.(types|fields)\.)?AllowInfNan"),
 ]
 
 html_theme = "furo"

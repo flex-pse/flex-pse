@@ -16,6 +16,7 @@ import pandas as pd
 import pytest
 
 from flexcore.exceptions import FlexConfigError, FlexDataError
+from flexops.surrogates.arima import arima_parameter_names
 from flexparameterize.regression.utils.arima_utils import (
     KPSS_CRITICAL_5PCT,
     ArimaTerms,
@@ -36,7 +37,6 @@ from flexparameterize.regression.utils.arima_utils import (
     parse_forecast_horizon,
     seed_history,
     select_differencing,
-    surrogate_coefficients,
 )
 
 # select_differencing runs ADF from statsmodels, the [parameterize] extra.
@@ -356,27 +356,34 @@ def test_forecast_horizon_converts_durations_to_whole_steps(horizon, expected):
 
 
 @pytest.mark.unit
-def test_surrogate_coefficients_name_the_deterministic_term_by_order():
-    """``intercept`` for d=0, ``drift`` for d=1, and nothing without one."""
-    with_const = ArimaTerms(p=1, d=0, q=0, n_exog=1, has_const=True, has_drift=False)
-    with_drift = ArimaTerms(p=0, d=1, q=1, n_exog=0, has_const=False, has_drift=True)
-    bare = ArimaTerms(p=1, d=0, q=0, n_exog=0, has_const=False, has_drift=False)
+@pytest.mark.parametrize(
+    ("terms", "exog", "deterministic"),
+    [
+        (
+            ArimaTerms(1, 0, 0, 1, has_const=True, has_drift=False),
+            ["feed"],
+            "intercept",
+        ),
+        (ArimaTerms(0, 1, 1, 0, has_const=False, has_drift=True), [], "drift"),
+        (ArimaTerms(1, 0, 0, 0, has_const=False, has_drift=False), [], None),
+        (ArimaTerms(2, 0, 2, 2, has_const=False, has_drift=False), ["a", "b"], None),
+    ],
+)
+def test_param_names_are_the_surrogates_parameter_names(terms, exog, deterministic):
+    """The fit names theta exactly as ArimaSurrogate names its parameters.
 
-    assert surrogate_coefficients(np.array([0.1, 0.5, 2.0]), with_const) == {
-        "order": [1, 0, 0],
-        "intercept": 0.1,
-        "ar_coefs": [0.5],
-        "exog_coefs": [2.0],
-    }
-    assert surrogate_coefficients(np.array([0.1, 0.3]), with_drift) == {
-        "order": [0, 1, 1],
-        "drift": 0.1,
-        "ma_coefs": [0.3],
-    }
-    assert surrogate_coefficients(np.array([0.5]), bare) == {
-        "order": [1, 0, 0],
-        "ar_coefs": [0.5],
-    }
+    ``intercept`` for d=0, ``drift`` for d=1, nothing without a deterministic
+    term, and one ``exog.<column>`` per exogenous column, in order; one name
+    per entry of theta.
+    """
+    names = terms.param_names(exog)
+    assert names == arima_parameter_names(
+        (terms.p, terms.d, terms.q), deterministic, exog
+    )
+    assert len(names) == terms.n_params
+    assert [name for name in names if name.startswith("exog.")] == [
+        f"exog.{column}" for column in exog
+    ]
 
 
 # -- auto order search -------------------------------------------------------

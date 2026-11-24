@@ -204,6 +204,7 @@ Shared building blocks
    IOVariableSpec
    SurrogateSpec
    SurrogateType
+   ParameterState
    ExternalDispatchSpec
    UnitCommitmentConfig
    DegradationSpec
@@ -241,6 +242,15 @@ Overrides
 .. autofunction:: apply_overrides
 
 .. autofunction:: deep_merge
+
+Surrogate migration
+~~~~~~~~~~~~~~~~~~~
+
+.. currentmodule:: flexcore.config.surrogate_migration
+
+.. autofunction:: migrate_surrogate_spec
+
+.. autofunction:: is_legacy_surrogate
 
 Nomenclature
 ------------

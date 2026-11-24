@@ -292,11 +292,13 @@ def test_quantity_and_rate_relations_are_swappable():
     assert {"wear_0_quantity_relation", "wear_rate_relation"} <= names
 
     surrogate = MultilinearSurrogate(
-        {
-            "input_variables": {"x": "kW"},
-            "output_variables": {"wear_0_quantity": "kW"},
-            "coefficients": {"intercept": 0.0, "x": 2.0},
-        }
+        MultilinearSurrogate.make_spec(
+            **{
+                "input_variables": {"x": "kW"},
+                "output_variables": {"wear_0_quantity": "kW"},
+                "coefficients": {"intercept": 0.0, "x": 2.0},
+            }
+        )
     )
     unit.swap_relation("wear_0_quantity_relation", surrogate)
     assert not unit.wear_0_quantity_relation.active

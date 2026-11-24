@@ -28,6 +28,10 @@ from flexcore.config.spec import (
     SourceRef,
     element_target,
 )
+from flexcore.config.surrogate_migration import (
+    is_legacy_surrogate,
+    migrate_surrogate_spec,
+)
 from flexcore.exceptions import FlexConfigError, FlexMigrationWarning
 
 
@@ -73,7 +77,63 @@ def _migrate_0_1_0(data: dict) -> dict:
     return {**migrated, "schema_version": "0.1.1"}
 
 
-MIGRATIONS: dict[str, Callable[[dict], dict]] = {"0.1.0": _migrate_0_1_0}
+def _migrate_0_1_1(data: dict) -> dict:
+    """Split every surrogate element's ``data`` into ``config`` and ``parameters``.
+
+    See :func:`~flexcore.config.surrogate_migration.migrate_surrogate_spec` for
+    the per-type translation. The migrated spec builds the same model as
+    before, with every coefficient fixed.
+
+    Args:
+        data: A parsed 0.1.1 spec; left unchanged.
+
+    Returns:
+        A copy of the spec at version 0.2.0.
+
+    Raises:
+        FlexConfigError: If a surrogate element cannot be translated
+            faithfully; the message names the element.
+    """
+    migrated = copy.deepcopy(data)
+    raw = migrated.get("elements")
+    elements = raw if isinstance(raw, list) else []
+    count = 0
+    for position, el in enumerate(elements):
+        if not (isinstance(el, dict) and el.get("kind") == "surrogate"):
+            continue
+        if not is_legacy_surrogate(el):
+            continue
+        try:
+            elements[position] = migrate_surrogate_spec(el)
+        except FlexConfigError as exc:
+            target = (
+                f"{el.get('unit')}.{el.get('relation', 'power_electrical_relation')}"
+            )
+            raise FlexConfigError(
+                f"Cannot migrate the surrogate element on {target} to schema_version "
+                f"0.2.0: {exc}",
+                field=f"elements.{position}.{exc.field}" if exc.field else None,
+                value=exc.value,
+            ) from exc
+        count += 1
+
+    if count:
+        warnings.warn(
+            f"The spec was migrated from schema_version 0.1.1 to 0.2.0. {count} "
+            "surrogate element(s) had their 'data' split into 'config' and "
+            "'parameters' (each parameter now records its value and whether it "
+            "is fixed). Please re-export your config files.",
+            FlexMigrationWarning,
+            stacklevel=3,
+        )
+
+    return {**migrated, "schema_version": "0.2.0"}
+
+
+MIGRATIONS: dict[str, Callable[[dict], dict]] = {
+    "0.1.0": _migrate_0_1_0,
+    "0.1.1": _migrate_0_1_1,
+}
 """Source version -> upgrade hook, applied in sequence on load. Each hook must
 set the new ``schema_version`` on the dict it returns."""
 

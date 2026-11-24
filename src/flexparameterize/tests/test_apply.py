@@ -3,11 +3,12 @@
 import pyomo.environ as pyo
 import pytest
 from idaes.core.util.model_statistics import degrees_of_freedom
+from pydantic import BaseModel, ConfigDict
 from pyomo.environ import units as pyunits
 
 from flexcore.config.schema import SurrogateSpec, SurrogateType
 from flexcore.exceptions import FlexDataError
-from flexops.surrogates import surrogate_from_spec
+from flexops.surrogates import MultilinearSurrogate, surrogate_from_spec
 from flexops.surrogates.base import Surrogate
 from flexops.unit_models import ConstantEnergyIntensityModel, ReverseOsmosis
 from flexparameterize.apply import apply_to_model
@@ -20,9 +21,8 @@ ALIASED = TagMap({})
 
 def _multilinear_spec(coefficient: float) -> SurrogateSpec:
     """A hand-built multilinear relationship on the unit's ``flow_in`` reference."""
-    return SurrogateSpec(
-        surrogate_type=SurrogateType.MULTILINEAR,
-        data={
+    return MultilinearSurrogate.make_spec(
+        **{
             "input_variables": {"flow_in": "m^3/hr"},
             "output_variables": {"power_electrical": "kW"},
             "coefficients": {"flow_in": coefficient, "intercept": 0.0},
@@ -83,9 +83,8 @@ def test_apply_swaps_energy_relation_to_multilinear():
     """Net draw as a function of outlet flow, outlet pressure and their product."""
     m, unit = build_plant(has_pressure=True)
     data = evaluate_data(unit)
-    spec = SurrogateSpec(
-        surrogate_type=SurrogateType.MULTILINEAR,
-        data={
+    spec = MultilinearSurrogate.make_spec(
+        **{
             "input_variables": {"flow_out": "m^3/hr", "outlet_state.pressure": "Pa"},
             "output_variables": {"power_electrical": "kW"},
             "coefficients": {
@@ -160,9 +159,8 @@ def test_apply_swaps_a_named_relation():
     fitted_unit.energy_intensity.unfix()
     m.facility.ro = ReverseOsmosis(property_package=m.properties)
     ro = m.facility.ro
-    recovery_spec = SurrogateSpec(
-        surrogate_type=SurrogateType.MULTILINEAR,
-        data={
+    recovery_spec = MultilinearSurrogate.make_spec(
+        **{
             "input_variables": {"feed": "m^3/hr"},
             "output_variables": {"permeate": "m^3/hr"},
             "coefficients": {"feed": 0.01, "intercept": 0.4},
@@ -209,11 +207,22 @@ def test_apply_switches_to_active_block():
     assert unit.surrogate_power_electrical.fitted is not None
 
 
+class _AnyConfig(BaseModel):
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+
 class _NoCoefSurrogate(Surrogate):
     """A surrogate whose block carries no ``coefficients`` registry."""
 
-    def _validate(self):
-        pass
+    surrogate_type = SurrogateType.MULTILINEAR
+    config_model = _AnyConfig
+
+    @classmethod
+    def parameter_shapes(cls, config):
+        return {}
+
+    def _build(self, unit, target):
+        raise NotImplementedError
 
     @property
     def input_variables(self):
@@ -246,17 +255,14 @@ def test_apply_surrogate_without_coefficients_skips_registry():
 
     no_coef_spec = SurrogateSpec(
         surrogate_type=SurrogateType.MULTILINEAR,
-        data={
-            "input_variables": {},
-            "output_variables": {"power_electrical": "kW"},
-        },
+        config={"input_variables": {}, "output_variables": {"power_electrical": "kW"}},
     )
 
     original_surrogate_from_spec = surrogate_from_spec
 
     def _fake_surrogate_from_spec(spec):
         if spec is no_coef_spec:
-            return _NoCoefSurrogate(spec.data)
+            return _NoCoefSurrogate(spec)
         return original_surrogate_from_spec(spec)
 
     import flexops.core.stages as stages_module

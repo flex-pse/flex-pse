@@ -691,10 +691,15 @@ SURROGATE = {
     "unit": "site.pump",
     "relation": "power_electrical_relation",
     "surrogate_type": "multilinear",
-    "data": {
+    "config_version": 1,
+    "config": {
         "input_variables": {"flow_out": "m^3/hr"},
         "output_variables": {"power_electrical": "kW"},
-        "coefficients": {"flow_out": 0.8, "intercept": 1.5},
+        "terms": ["flow_out"],
+    },
+    "parameters": {
+        "intercept": {"value": 1.5, "fixed": True},
+        "flow_out": {"value": 0.8, "fixed": True},
     },
     "provenance": {"source": "datasheet"},
 }

@@ -52,6 +52,8 @@ from flexops.core.sources import resolve_model_sources
 from flexops.core.time_block import find_time_block
 from flexops.costing import FlexCosting
 from flexops.properties import PROPERTY_PACKAGES
+from flexops.surrogates import is_registered
+from flexops.surrogates.base import log_parameter_state
 
 
 def emit_model(
@@ -622,35 +624,75 @@ def _mutable_elements(model, units: dict) -> list:
     return list(targets.values())
 
 
+def _live_surrogate_specs(unit: str, member) -> dict:
+    """Return ``{relation: SurrogateSpec}`` read from a member's live surrogates.
+
+    Swapped surrogates are read from their active block; a surrogate applied
+    without a swap (``constant_intensity``) from the unit. A surrogate whose
+    class is not the registered one for its type can't be rebuilt from a spec,
+    so it is left out with a warning.
+    """
+    specs = {}
+    for record in member._io_registry.relations:
+        if record.fitted is None or not record.fitted.active:
+            continue
+        surrogate = record.surrogate_instance
+        if surrogate is None or not is_registered(surrogate):
+            warnings.warn(
+                f"{unit}.{record.name} was swapped with a custom Surrogate "
+                "object; it can't be written to a spec",
+                FlexEmitWarning,
+                stacklevel=5,
+            )
+            continue
+        specs[record.name] = surrogate.read_spec(record.surrogate_block, record.target)
+    for relation, surrogate in member._io_registry.applied_surrogates.items():
+        if relation not in specs:
+            specs[relation] = surrogate.read_from_unit(member)
+    return specs
+
+
 def _surrogates(unit: str, members: list) -> list[SurrogateElement]:
-    """Return the surrogate elements of a unit's active swapped relations."""
-    per_member = []
-    for member in members:
-        specs = {}
-        for record in member._io_registry.relations:
-            if record.fitted is None or not record.fitted.active:
-                continue
-            if record.spec is None:
-                warnings.warn(
-                    f"{unit}.{record.name} was swapped with a custom Surrogate "
-                    "object; it can't be written to a spec",
-                    FlexEmitWarning,
-                    stacklevel=4,
-                )
-                continue
-            specs[record.name] = record.spec.model_dump(mode="json")
-        per_member.append((member.getname(fully_qualified=True), specs))
-    return [
-        SurrogateElement(
-            kind="surrogate",
-            unit=unit,
-            relation=relation,
-            surrogate_type=spec["surrogate_type"],
-            data=spec["data"],
-            provenance=spec["provenance"],
-        )
-        for relation, spec in _shared(unit, per_member).items()
+    """Return the surrogate elements of a unit's live surrogates.
+
+    Each element is read back from the live block, so it carries the current
+    parameter values and fixed flags and any recorded state. Members of an
+    indexed unit must share each surrogate's type and config; their parameter
+    values may differ, in which case the first member's are written and the
+    rebuild check patches the rest.
+
+    Raises:
+        FlexConfigError: If members of an indexed unit carry surrogates of
+            different types or configs.
+    """
+    per_member = [
+        (member.getname(fully_qualified=True), _live_surrogate_specs(unit, member))
+        for member in members
     ]
+    _shared(
+        unit,
+        [
+            (
+                label,
+                {
+                    relation: spec.model_dump(
+                        mode="json",
+                        include={"surrogate_type", "config_version", "config"},
+                    )
+                    for relation, spec in specs.items()
+                },
+            )
+            for label, specs in per_member
+        ],
+    )
+    elements = []
+    for relation, spec in per_member[0][1].items():
+        target = f"{unit}.{relation}"
+        log_parameter_state(target, spec, "written")
+        elements.append(
+            SurrogateElement.from_surrogate_spec(spec, unit=unit, relation=relation)
+        )
+    return elements
 
 
 def _dispatches(unit: str, members: list) -> list[DispatchElement]:
@@ -772,7 +814,10 @@ def _code_state(model, pristine) -> list:
     }
     time_index = find_time_block(model).time_index
     fixes, unfixes = {}, {}
-    for point in model.component_data_objects(pyo.Var, descend_into=True):
+    # Only active blocks: a deactivated block (an earlier surrogate a swap
+    # replaced) is history a spec doesn't describe, and its paths can match a
+    # different, active block in the rebuild.
+    for point in model.component_data_objects(pyo.Var, active=True, descend_into=True):
         other = rebuilt.get(point.name)
         if other is None:
             continue
@@ -999,7 +1044,9 @@ def _offload(elements: list, data_dir, inline_limit: int, base_dir) -> None:
             if source is not None:
                 element.values = SourceRef(source=source)
         elif element.kind == "surrogate":
-            element.data = walk(".".join(element_target(element)), "data", element.data)
+            element.config = walk(
+                ".".join(element_target(element)), "config", element.config
+            )
 
 
 def _arcs_expanded(model) -> bool:
