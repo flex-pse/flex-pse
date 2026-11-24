@@ -1,11 +1,10 @@
 """The ``get_solver`` facade and the thin :class:`SolverFacade` wrapper.
 
 ``get_solver`` picks the best available solver for a problem class and errors
-loudly when none qualifies — it **never** transforms the model: no integrality
-relaxation, no decomposition, no trust regions. MINLP routes to SCIP (the
-default open-source MINLP solver) when installed; with no MINLP-capable
-solver available it is a hard error pointing at SCIP or
-``flexschedule.SolveSequence``, not silent model surgery.
+loudly when none qualifies. MINLP routes to SCIP (the default open-source MINLP
+solver) when installed. With no MINLP-capable solver but an NLP solver, it warns
+and solves by ``RelaxAndFix(rounds=True)``, which returns an integer-feasible
+schedule or a failure, never a relaxed one; with neither it is an error.
 
 IPOPT is bound to idaes's HSL-built binary (``idaes.bin_directory/ipopt``, whose
 default linear solver is ``ma27``) when idaes is importable, rather than the
@@ -293,8 +292,9 @@ def get_solver(
     falls through to the priority list. SCIP is tried before HiGHS, so MILP
     routes to SCIP when installed (benchmark-preferred); pure LP still routes to
     HiGHS since SCIP is not LP-capable. In particular MINLP routes to SCIP (the
-    default open-source MINLP solver) when it is installed; only when no
-    MINLP-capable solver is available does MINLP raise.
+    default open-source MINLP solver) when it is installed. Without one, a MINLP
+    whose strategy is unset or a :class:`RelaxAndFix` is solved by
+    ``RelaxAndFix(rounds=True)`` on an NLP solver, with a warning.
 
     Args:
         model: A Pyomo model to classify; mutually exclusive with
@@ -303,7 +303,9 @@ def get_solver(
             with ``model``.
         prefer: A solver name to try first.
         settings: The tuning settings applied to every solver call.
-        strategy: How to solve, e.g. :class:`RelaxAndFix`; defaults to :class:`Direct`.
+        strategy: How to solve, e.g. :class:`RelaxAndFix`; defaults to
+            :class:`Direct`, which with no MINLP solver must be passed explicitly
+            to make a MINLP raise rather than fall back.
 
     Returns:
         A :class:`SolverFacade` bound to the chosen solver.
@@ -328,7 +330,7 @@ def get_solver(
     elif problem_class is None:
         problem_class = ProblemClass.LP
 
-    strategy = Direct() if strategy is None else strategy
+    strategy = _runnable_strategy(strategy, problem_class)
     # In rounds no step is mixed-integer, so the solver only needs the relaxation.
     in_rounds = isinstance(strategy, RelaxAndFix) and strategy.rounds
     solved_class = (
@@ -340,3 +342,30 @@ def get_solver(
         settings=settings,
         strategy=strategy,
     )
+
+
+def _runnable_strategy(
+    strategy: SolveStrategy | None, problem_class: ProblemClass
+) -> SolveStrategy:
+    """Return ``strategy``, or relax and fix in rounds for a MINLP no solver takes.
+
+    Args:
+        strategy: The caller's strategy, or None for the default.
+        problem_class: The class to solve.
+
+    Returns:
+        The strategy to use. A caller's strategy other than
+        :class:`RelaxAndFix` is always kept.
+    """
+    if problem_class is ProblemClass.MINLP and (
+        strategy is None or (isinstance(strategy, RelaxAndFix) and not strategy.rounds)
+    ):
+        capable = set().union(*available_solvers().values())
+        if ProblemClass.MINLP not in capable and ProblemClass.NLP in capable:
+            _log.warning(
+                "No MINLP solver is installed; solving by relax and fix in rounds "
+                "on an NLP solver. The answer is integer-feasible but not proven "
+                "optimal."
+            )
+            return dataclasses.replace(strategy or RelaxAndFix(), rounds=True)
+    return Direct() if strategy is None else strategy
