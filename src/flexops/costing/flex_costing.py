@@ -1036,6 +1036,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
         )
         opex = self.opex
 
+        monthly_charges = []
         # --- electricity: a native price, or EECO against the tariff --------
         self._require_priced("electrical", _ELECTRIC)
         opex.electricity_cost = pyo.Var(
@@ -1102,11 +1103,12 @@ class FlexCostingData(FlowsheetCostingBlockData):
             opex.eq_electricity_cost = pyo.Constraint(
                 expr=opex.electricity_cost == elec.total_operating_cost * cur
             )
+            monthly_charges.append(elec.demand_charge + elec.customer_charge)
 
         # --- fuels: bill each discovered fuel on its own sub-block ---------
         fuel_names = self._fuel_names
         for name in fuel_names:
-            self._build_fuel_leg(tb, cur, dt_hours, name)
+            monthly_charges += self._build_fuel_leg(tb, cur, dt_hours, name)
 
         opex.fuel_cost = pyo.Var(
             initialize=0.0, units=cur, doc="Total EECO fuel cost (base currency)."
@@ -1157,6 +1159,13 @@ class FlexCostingData(FlowsheetCostingBlockData):
         opex.eq_total_operating_cost = pyo.Constraint(
             expr=opex.total_operating_cost
             == sum((getattr(opex, n) for n in line_items), 0 * cur)
+        )
+
+        # Already inside the totals above; a design study scales it to the year
+        # by months, and everything else by days.
+        opex.monthly_charge = pyo.Expression(
+            expr=sum(monthly_charges) * cur,
+            doc="Tariff charges assessed per month: demand and customer.",
         )
 
         self._build_dr()  # no-op in v0
@@ -1274,13 +1283,17 @@ class FlexCostingData(FlowsheetCostingBlockData):
             total = price * sum(quantity(t) for t in index)
         return total * dt_hours * pyunits.hr
 
-    def _build_fuel_leg(self, tb, cur, dt_hours, name: str) -> None:
+    def _build_fuel_leg(self, tb, cur, dt_hours, name: str) -> list:
         """Bill one fuel: natively on its own price, or EECO's gas leg on the tariff.
 
         ``aggregate_fuel_usage`` is already in EECO's units, so the native path
         bills it directly through a ``Reference``. The tariff path normalizes it to
         a bare number first, as EECO bills magnitudes, not units-carrying
         expressions. No heating value is applied either way.
+
+        Returns:
+            The fuel's monthly tariff charges, as bare numbers; empty when it is
+            priced natively.
         """
         opex = self.opex
         self._require_priced(name, _GAS)
@@ -1298,7 +1311,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
                     == self._native_cost(usage, name, cur / pyunits.m**3, tb, dt_hours)
                 ),
             )
-            return
+            return []
 
         gas_charges = self._tariff[self._tariff["utility"] == "gas"]
         if (
@@ -1351,6 +1364,7 @@ class FlexCostingData(FlowsheetCostingBlockData):
             f"eq_fuel_cost_{name}",
             pyo.Constraint(expr=cost == fuel.total_operating_cost * cur),
         )
+        return [fuel.demand_charge + fuel.customer_charge]
 
     def _build_scalar_leg(self, tb, cur, dt_hours, name: str) -> None:
         """Build one native scalar-cost line item (price × Σ quantity × dt)."""

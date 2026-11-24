@@ -17,7 +17,7 @@ With effective annual rate {math}`r`, and study years counted from 1 at the end 
 where {math}`K_y` holds the calendar years that modeled year {math}`y` represents. Then:
 
 ```{math}
-\text{annual opex}_y = \sum_m w_m \, s_{y,m} \, \text{bill}_{y,m}
+\text{annual opex}_y = \sum_m w_m \, s_{y,m} \left( n_y \, \text{timed}_{y,m} + \text{monthly}_{y,m} \right)
 ```
 
 ```{math}
@@ -28,7 +28,15 @@ where {math}`K_y` holds the calendar years that modeled year {math}`y` represent
 \text{annualized capital} = \sum_d \mathrm{CRF}(r, L_d) \, c_d \, \text{size}_d
 ```
 
-Here {math}`w_m` is the month's weight, {math}`c_d` is overnight cost per unit, and {math}`L_d` is the decision's lifetime. {math}`s_{y,m}` is 1 for a whole month, or the days in that month divided by `days` for a prorated one. In a one-year study {math}`\mathrm{AF}` cancels, leaving that year's operating cost plus capital times CRF.
+Here {math}`w_m` is the month's weight, {math}`c_d` is overnight cost per unit, and {math}`L_d` is the decision's lifetime. {math}`s_{y,m}` is 1 for a whole month, or the days in that month divided by `days` for a prorated one.
+
+A bill splits into monthly charges (a tariff's demand and customer charges) and the rest, which grows with time. Weights count months, so monthly charges come to exactly 12 a year. They don't count days, though: January and July at 6 months each cover 372 days. {math}`n_y` corrects the rest of the bill to the year's 365 or 366 days:
+
+```{math}
+n_y = \frac{\text{days in year } y}{\sum_m w_m \, \text{days in month}_{y,m}}
+```
+
+It is 1 when all 12 months are modeled. In a one-year study {math}`\mathrm{AF}` cancels, leaving that year's operating cost plus capital times CRF.
 
 ## Lifetime and study length
 
@@ -45,7 +53,7 @@ The rate comes from the costing element, and every horizon must share it. With o
 
 ## Representative months and bills
 
-Weights apply to whole bills, which is valid because a whole calendar month bills a real monthly demand charge. A month shortened with `days` is scaled up to the full month. Its monthly charges follow `prorate_monthly_charges`, and its peak only reflects the days modeled.
+A whole calendar month bills a real monthly demand charge. Demand charges assessed daily are counted with the monthly charges. A month shortened with `days` is scaled up to the full month. Its monthly charges follow `prorate_monthly_charges`, and its peak only reflects the days modeled.
 
 ## Reading the report
 

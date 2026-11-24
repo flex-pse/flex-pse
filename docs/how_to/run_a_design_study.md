@@ -45,7 +45,7 @@ print(design_results(m).summary())
 ## Choose years and months
 
 - **`years`** sets how many years are modeled. `represents` says how many calendar years each one stands in for, and the study length is the sum. Modeled years must be consecutive under it: 2026 representing 5 must be followed by 2031.
-- **`months`** sets how many representative months each year runs. `weight` says how many months of the year each one stands in for, and weights must sum to 12.
+- **`months`** sets how many representative months each year runs. `weight` says how many months of the year each one stands in for, and weights must sum to 12. Costs that grow with time are scaled to the year's actual days, and monthly charges to 12 months (see {doc}`../explanation/design_annualization`).
 
 The model holds one horizon per year and month, so its size is the product of the two. Start small: a 5-year, 4-month hourly study is 20 months of constraints.
 

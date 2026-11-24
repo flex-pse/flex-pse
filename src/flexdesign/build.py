@@ -124,6 +124,24 @@ def _month_scale(month: RepresentativeMonth, year: int) -> float:
     return month.weight * calendar.monthrange(year, month.month)[1] / month.days
 
 
+def _year_scale(months: list[RepresentativeMonth], year: int) -> float:
+    """Return the factor that makes the weighted months add up to the year's days.
+
+    Weights count months, so months longer or shorter than average stand in for too
+    many or too few days: January and July at 6 each make 372.
+
+    Args:
+        months: The representative months.
+        year: The calendar year modeled.
+
+    Returns:
+        The year's days over the days the weighted months cover; 1 when every
+        month of the year is modeled.
+    """
+    covered = sum(m.weight * calendar.monthrange(year, m.month)[1] for m in months)
+    return (366 if calendar.isleap(year) else 365) / covered
+
+
 def _capacity_var(block: pyo.Block, decision: CapacitySpec) -> pyo.Var:
     """Return the scalar Var a decision sizes on one horizon.
 
@@ -234,13 +252,19 @@ def build_design_model(spec: DesignSpec) -> pyo.ConcreteModel:
             * block.capital_cost
         )
 
-    m.annual_operating_cost = pyo.Expression(
-        years,
-        rule=lambda _, y: sum(
-            _month_scale(month, y) * costing[y, month.month].aggregate_operating_cost
-            for month in spec.months
-        ),
-    )
+    def annual_operating_cost(_, y):
+        total = 0 * currency
+        for month in spec.months:
+            block = costing[y, month.month]
+            # Monthly charges come 12 to the year, whatever the months' lengths.
+            monthly = block.opex.monthly_charge
+            by_time = block.aggregate_operating_cost - monthly
+            total += _month_scale(month, y) * (
+                _year_scale(spec.months, y) * by_time + monthly
+            )
+        return total
+
+    m.annual_operating_cost = pyo.Expression(years, rule=annual_operating_cost)
     factors = present_worth_factors(spec.years, rate)
     m.annualized_operating_cost = pyo.Expression(
         expr=sum(factors[y] * m.annual_operating_cost[y] for y in years)
