@@ -26,12 +26,10 @@ def test_unmarked_test_fails_collection(
 ):
     """A test with no tier marker fails collection with an actionable message."""
     _install_root_conftest(pytester, request)
-    pytester.makepyfile(
-        """
+    pytester.makepyfile("""
         def test_nothing():
             pass
-        """
-    )
+        """)
     result = pytester.runpytest()
     assert "exactly one tier marker" in "\n".join(result.outlines + result.errlines)
 
@@ -42,15 +40,13 @@ def test_double_marked_test_fails_collection(
 ):
     """A test with two tier markers fails collection with an actionable message."""
     _install_root_conftest(pytester, request)
-    pytester.makepyfile(
-        """
+    pytester.makepyfile("""
         import pytest
 
         @pytest.mark.unit
         @pytest.mark.component
         def test_both():
             pass
-        """
-    )
+        """)
     result = pytester.runpytest()
     assert "exactly one tier marker" in "\n".join(result.outlines + result.errlines)
