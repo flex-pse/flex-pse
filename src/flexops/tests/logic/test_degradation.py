@@ -439,3 +439,33 @@ def test_hard_budget_caps_wear_even_when_it_is_free_in_the_objective():
     x, obj = _solve_against_demand(_spec(covered_cost=1e6, horizon_budget=0.0))
     assert x == pytest.approx([10.0] * _N)
     assert obj == pytest.approx(60.0)
+
+
+@pytest.mark.unit
+def test_deadband_is_a_fixed_non_negative_var():
+    """The deadband is a Var fixed at the spec value, not a free decision."""
+    m, unit = _unit()
+    add_degradation(unit, _spec(_term(DegradationTerm.THROUGHPUT, deadband=3.0)))
+    deadband = unit.wear_0_deadband
+    assert deadband.ctype is pyo.Var
+    assert deadband.fixed
+    assert deadband.value == 3.0
+    assert deadband.lb == 0.0
+    assert_units_equivalent(deadband, pyunits.kW)
+
+
+@pytest.mark.component
+@pytest.mark.needs_highs
+def test_deadband_can_follow_a_sized_quantity():
+    """Tied to a size by one constraint, the deadband grows until wear is free."""
+    m, unit = _unit()
+    add_degradation(unit, _spec(_term(DegradationTerm.THROUGHPUT, price=2.0)))
+    unit.x.fix(10.0)
+    unit.size = pyo.Var(bounds=(0, 100), units=pyunits.kW)
+    unit.wear_0_deadband.unfix()
+    unit.link = pyo.Constraint(expr=unit.wear_0_deadband == 0.5 * unit.size)
+    # Cheap size: pay for 20 kW, whose deadband covers the 10 kW throughput.
+    m.obj = pyo.Objective(expr=unit.wear_total + 0.01 * unit.size / pyunits.kW)
+    assert_optimal_termination(pyo.SolverFactory("appsi_highs").solve(m))
+    assert pyo.value(unit.size) == pytest.approx(20.0)
+    assert pyo.value(unit.wear_total) == pytest.approx(0.0, abs=1e-6)

@@ -199,7 +199,15 @@ def _add_term(unit, prefix: str, term: DegradationTermSpec, tb):
     price_units = 1 / var_units if per_step else 1 / (var_units * pyunits.hr)
     price = _add_param(unit, f"{prefix}_price", term.price, price_units)
     if term.kind is not DegradationTerm.EXCEEDANCE:
-        a = _add_param(unit, f"{prefix}_deadband", term.deadband, var_units)
+        # A fixed Var, not a Param, so a design study can tie it to a sized quantity.
+        a = unit.declare_process_parameter(
+            f"{prefix}_deadband",
+            term.deadband,
+            var_units,
+            f"Uncharged {term.variable} of term {prefix}.",
+            bounds=(0, None),
+            regressable=False,
+        )
     w = term.window
     index = [t for t in time if t >= w] if per_step else list(time)
     unit.add_component(
