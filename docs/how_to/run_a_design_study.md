@@ -94,7 +94,7 @@ Everything that varies goes through `changes`. An entry names a base element and
 A forecast is a capacity factor series: output per kW of nameplate, from 0 to 1, with one value per time step. It has to be normalized because output is `capacity_factor[t] * capacity`, which is what lets it scale as the size changes. A forecast for a 1 kW system is already in this form. Otherwise, divide by the system's rated kW.
 
 ```{warning}
-Forecast files are matched by position, starting at the first time step of the month, and only their length is checked. January and July both have 744 hours, so swapping those files builds and solves with wrong results.
+A forecast file holding a plain list is matched by position, starting at the first time step of the month, and only its length is checked. January and July both have 744 hours, so swapping those files builds and solves with wrong results. Write the file as a time series document, `{"time": {...}, "values": [...]}`, and building refuses a forecast made for another month (see {doc}`../explanation/config_schema`).
 ```
 
 By default solar output cannot be curtailed, so all generation has to go somewhere. Limiting exports to zero with `GridConnection` can then make a model infeasible. Set `"curtailable": true` on the `GenericRenewables` unit to let the optimizer spill the excess.
