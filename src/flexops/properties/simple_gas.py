@@ -63,8 +63,10 @@ class SimpleGasFlowData(PhysicalParameterBlock):
         self.gas = Component()
         self.gas_mw = self.config.gas_mw
         if not check_units_equivalent(self.gas_mw, pyunits.g / pyunits.mol):
-            raise TypeError(f"""Gas molecular weight must be in units of mass/mole,
-                got {self.gas_mw}""")
+            raise TypeError(
+                f"""Gas molecular weight must be in units of mass/mole,
+                got {self.gas_mw}"""
+            )
 
     def get_flow_basis_var_name(self) -> str:
         """Return the name of this package's extensive flow state variable.

@@ -10,12 +10,14 @@ from flexops.testing import dummy_time_block
 @pytest.mark.unit
 def test_base_class_not_collected(pytester):
     """Pytest collects zero tests from the bare harness (its configure() raises)."""
-    pytester.makepyfile("""
+    pytester.makepyfile(
+        """
         from flexops.testing import UnitModelTestHarness
 
         class NotATest(UnitModelTestHarness):
             pass
-        """)
+        """
+    )
     result = pytester.runpytest("-p", "no:cacheprovider")
     result.assert_outcomes(passed=0, failed=0, errors=0)
 
