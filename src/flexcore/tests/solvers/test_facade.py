@@ -14,7 +14,14 @@ import pytest
 
 from flexcore.exceptions import FlexSolverError
 from flexcore.logger import DedupHandler
-from flexcore.solvers import ProblemClass, SolverFacade, facade, get_solver
+from flexcore.solvers import (
+    Direct,
+    ProblemClass,
+    RelaxAndFix,
+    SolverFacade,
+    facade,
+    get_solver,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -205,3 +212,21 @@ def test_get_solver_passes_strategy_and_profile_through(monkeypatch):
     )
     assert chosen.strategy is strategy
     assert chosen.settings is SolverSettings.UNIT_COMMITMENT
+
+
+_NO_MINLP = {
+    "highs": {ProblemClass.LP, ProblemClass.MILP},
+    "ipopt": {ProblemClass.NLP, ProblemClass.QP},
+}
+
+
+@pytest.mark.unit
+def test_rounds_use_a_solver_for_the_relaxation(monkeypatch):
+    """Rounds need no mixed-integer solver even when one is installed."""
+    available = {**_NO_MINLP, "scip": {ProblemClass.MILP, ProblemClass.MINLP}}
+    monkeypatch.setattr(facade, "available_solvers", lambda: available)
+    rounds = RelaxAndFix(rounds=True)
+    minlp = get_solver(problem_class=ProblemClass.MINLP, strategy=rounds)
+    assert (minlp.name, minlp.strategy) == ("ipopt", rounds)
+    assert get_solver(problem_class=ProblemClass.MILP, strategy=rounds).name == "highs"
+    assert get_solver(problem_class=ProblemClass.MINLP).strategy == Direct()

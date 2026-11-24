@@ -35,11 +35,14 @@ from flexcore.solvers.registry import (
     available_solvers,
 )
 from flexcore.solvers.strategies import (
+    RELAXED_CLASS,
     Direct,
+    RelaxAndFix,
     SolveReport,
     SolveStrategy,
     StepResult,
     _is_infeasible,
+    _is_solved,
 )
 
 _log = get_logger(__name__)
@@ -163,7 +166,7 @@ class SolverFacade:
         ) -> tuple[Any, StepResult]:
             name = self.name
             if problem_class not in available_solvers().get(name, set()):
-                name = get_solver(problem_class=problem_class).name
+                name = _select(problem_class)
             step_options = options
             if options and name != self.name:
                 _log.warning(
@@ -219,13 +222,7 @@ class SolverFacade:
                 wall_time=wall_time,
                 solver_time=None if solver_time is None else float(solver_time),
             )
-            ok = termination in (
-                pyo.TerminationCondition.optimal,
-                pyo.TerminationCondition.locallyOptimal,
-                pyo.TerminationCondition.globallyOptimal,
-                pyo.TerminationCondition.feasible,
-            )
-            (_log.info if ok else _log.warning)(
+            (_log.info if _is_solved(termination) else _log.warning)(
                 "%s solve with %s: %s in %.2f s.", label, name, termination, wall_time
             )
             return results, step
@@ -234,6 +231,48 @@ class SolverFacade:
             model, self.problem_class, run_step, warmstart
         )
         return results
+
+
+def _select(problem_class: ProblemClass, prefer: str | None = None) -> str:
+    """Return the name of the best available solver for a problem class.
+
+    Args:
+        problem_class: The class to solve.
+        prefer: A solver name to try first.
+
+    Returns:
+        The Pyomo solver name.
+
+    Raises:
+        FlexSolverError: If no available solver supports the class.
+    """
+    available = available_solvers()
+    if prefer is not None:
+        if problem_class in available.get(prefer, set()):
+            return prefer
+        _log.warning(
+            "Preferred solver %r cannot solve %s (unavailable or incapable); "
+            "falling back to the default priority list.",
+            prefer,
+            problem_class.value,
+        )
+    for name in _PRIORITY:
+        if problem_class in available.get(name, set()):
+            return name
+    if problem_class is ProblemClass.MINLP:
+        raise FlexSolverError(
+            "this model is MINLP; install a MINLP-capable solver (SCIP: "
+            "'conda install -c conda-forge scip'), or an NLP solver (IPOPT: "
+            "'idaes get-extensions') to solve it by RelaxAndFix(rounds=True), or "
+            "compose a `flexschedule.SolveSequence` (relax -> MIP -> fix -> NLP).",
+            problem_class=ProblemClass.MINLP.value,
+        )
+    raise FlexSolverError(
+        f"No available solver supports {problem_class.value}. Install a capable "
+        "solver (HiGHS via the 'highspy' wheel, or IPOPT with "
+        "'idaes get-extensions') or pass prefer=<installed solver>.",
+        problem_class=problem_class.value,
+    )
 
 
 def get_solver(
@@ -271,9 +310,7 @@ def get_solver(
 
     Raises:
         ValueError: If both ``model`` and ``problem_class`` are given.
-        FlexSolverError: If no available solver supports the problem class. For
-            ``MINLP`` the message points at ``flexschedule.SolveSequence``;
-            the facade never relaxes integrality itself.
+        FlexSolverError: If no available solver supports the problem class.
 
     Example:
         >>> from flexcore.solvers import get_solver, ProblemClass
@@ -291,42 +328,15 @@ def get_solver(
     elif problem_class is None:
         problem_class = ProblemClass.LP
 
-    available = available_solvers()
     strategy = Direct() if strategy is None else strategy
-
-    def _facade(name: str) -> SolverFacade:
-        return SolverFacade(
-            name=name, problem_class=problem_class, settings=settings, strategy=strategy
-        )
-
-    def _capable(name: str) -> bool:
-        caps = available.get(name)
-        return caps is not None and problem_class in caps
-
-    if prefer is not None:
-        if _capable(prefer):
-            return _facade(prefer)
-        _log.warning(
-            "Preferred solver %r cannot solve %s (unavailable or incapable); "
-            "falling back to the default priority list.",
-            prefer,
-            problem_class.value,
-        )
-
-    for name in _PRIORITY:
-        if _capable(name):
-            return _facade(name)
-
-    if problem_class is ProblemClass.MINLP:
-        raise FlexSolverError(
-            "this model is MINLP; install a MINLP-capable solver (SCIP: "
-            "'conda install -c conda-forge scip') or compose a "
-            "`flexschedule.SolveSequence` (relax -> MIP -> fix -> NLP).",
-            problem_class=ProblemClass.MINLP.value,
-        )
-    raise FlexSolverError(
-        f"No available solver supports {problem_class.value}. Install a capable "
-        "solver (HiGHS via the 'highspy' wheel, or IPOPT with "
-        "'idaes get-extensions') or pass prefer=<installed solver>.",
-        problem_class=problem_class.value,
+    # In rounds no step is mixed-integer, so the solver only needs the relaxation.
+    in_rounds = isinstance(strategy, RelaxAndFix) and strategy.rounds
+    solved_class = (
+        RELAXED_CLASS.get(problem_class, problem_class) if in_rounds else problem_class
+    )
+    return SolverFacade(
+        name=_select(solved_class, prefer),
+        problem_class=problem_class,
+        settings=settings,
+        strategy=strategy,
     )
