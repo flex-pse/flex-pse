@@ -16,6 +16,7 @@ schedule flexible industrial energy operations.
    :caption: Explanation
 
    explanation/time_and_dynamics
+   explanation/time_alignment
    explanation/model_and_block_structure
    explanation/relaxation_policies
    explanation/solve_strategies

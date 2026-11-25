@@ -6,7 +6,8 @@ builds an ordered Pyomo `Set` of indices `0..N-1`, a step size `dt` that
 carries units, and a `pandas.DatetimeIndex` mirror for aligning tariffs and
 other time series. Time points mark interval starts. Point `i` is the
 timestamp `start_date + i * dt`, and `end_date` is the exclusive end of the
-horizon. A single `TimeBlock` spans at most one calendar month. Longer
+horizon. See {doc}`time_alignment` for what a value at a time point means,
+and for how to line measured data up with it. A single `TimeBlock` spans at most one calendar month. Longer
 studies compose several `TimeBlock`s through the rolling horizon driver or
 the design mode wrapper.
 
@@ -19,10 +20,11 @@ need `t`, `t-1`, and `t+k` to be plain integers, so that difference
 equations and dwell counters stay exact. So every dynamic relationship in
 flex-pse, tank holdup, battery state of charge, gets written by hand as a
 *difference equation* against `time_block.dt`. It always takes the
-**backward (implicit)** form. The state ending period `t` is written in
-terms of the rates sampled at `t`, indexed `t = 1 … N-1`, with the initial
-condition as its own constraint. For tank holdup that reads
-`V[t] = V[t-1] + dt * (inflow[t] - outflow[t])`. One direction, applied
+**backward (implicit)** form. The state at the end of step `t` is written
+in terms of the rates sampled at `t`, for every `t = 0 … N-1`, and the
+initial state stands in for the state at `t = -1`. For tank holdup that reads
+`V[t] = V[t-1] + dt * (inflow[t] - outflow[t])`, with `V[-1]` the
+`initial_volume`. One direction, applied
 everywhere. No difference equation in the codebase needs to be re-derived
 just to be read. This keeps the discrete index arithmetic that unit
 commitment depends on, keeps the model a clean MILP/MINLP for the solver
