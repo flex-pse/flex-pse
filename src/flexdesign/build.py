@@ -109,19 +109,30 @@ def present_worth_factors(years: list[PlanningYear], rate: float) -> dict[int, f
     return factors
 
 
-def _month_scale(month: RepresentativeMonth, year: int) -> float:
+def _month_scale(
+    month: RepresentativeMonth, year: int, months: list[RepresentativeMonth]
+) -> float:
     """Return the factor taking a horizon's bill to its share of the year.
 
     Args:
         month: The representative month.
         year: The calendar year modeled.
+        months: All representative months in the study, used to normalize their
+            weighted calendar days to the length of this year.
 
     Returns:
-        The month's weight, scaled up from ``days`` to the full month if prorated.
+        The factor taking the sampled horizon's cost to its share of this calendar year.
     """
-    if month.days is None:
-        return month.weight
-    return month.weight * calendar.monthrange(year, month.month)[1] / month.days
+    days_in_year = 366 if calendar.isleap(year) else 365
+    days_in_month = calendar.monthrange(year, month.month)[1]
+    represented_days = sum(
+        representative.weight * calendar.monthrange(year, representative.month)[1]
+        for representative in months
+    )
+    days_in_horizon = month.days or days_in_month
+    return (
+        month.weight * days_in_month / days_in_horizon * days_in_year / represented_days
+    )
 
 
 def _capacity_var(block: pyo.Block, decision: CapacitySpec) -> pyo.Var:
@@ -237,7 +248,8 @@ def build_design_model(spec: DesignSpec) -> pyo.ConcreteModel:
     m.annual_operating_cost = pyo.Expression(
         years,
         rule=lambda _, y: sum(
-            _month_scale(month, y) * costing[y, month.month].aggregate_operating_cost
+            _month_scale(month, y, spec.months)
+            * costing[y, month.month].aggregate_operating_cost
             for month in spec.months
         ),
     )
