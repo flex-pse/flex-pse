@@ -27,6 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Representative-month operating costs scale to 365 or 366 days.** The design model normalizes selected months' weighted calendar days for each modeled year, so two 31-day months no longer make an annual study represent 372 days (#200).
 - **A flowsheet spec can build an `arima` surrogate element.** Building one raised `KeyError: 'order'`, because ARIMA nested its coefficients under keys that its block registry names differently. With values now keyed by registry name, there is nothing to translate.
 - **Emitted surrogate specs describe the live model.** `emit_model` reads each surrogate's spec back from its active block, so the spec carries the current values and fixed flags, and no raw-path `fix`/`unfix` patches are written for surrogates. Several bugs are fixed with it:
   - After `switch_surrogate_block`, emit wrote the surrogate swapped in last rather than the one switched to, so the rebuild built the wrong surrogate.

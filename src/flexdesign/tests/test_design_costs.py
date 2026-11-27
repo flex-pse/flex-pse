@@ -51,13 +51,24 @@ def _solar_model(lifetime_years=20, rate=0.0, years=None):
 
 @pytest.mark.unit
 def test_annual_cost_scales_each_day_to_its_month_and_applies_weights(valued):
-    """January and July both have 31 days, so a bill scales by 31 and its weight."""
+    """January and July each represent half a 365-day year at equal weights."""
     assert pyo.value(valued.annual_operating_cost[2026]) == pytest.approx(
-        6.0 * 31 * (10.0 + 20.0)
+        365.0 / 2 * (10.0 + 20.0)
     )
     assert pyo.value(valued.annual_operating_cost[2031]) == pytest.approx(
-        6.0 * 31 * (30.0 + 40.0)
+        365.0 / 2 * (30.0 + 40.0)
     )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(("year", "expected_days"), [(2025, 365), (2028, 366)])
+def test_representative_months_scale_to_the_calendar_year(year, expected_days):
+    """Weighted January and July horizons represent one calendar year, not 372 days."""
+    model = _solar_model(years=[{"year": year}])
+    for month in (1, 7):
+        model.horizon[year, month].costing.aggregate_operating_cost.set_value(1.0)
+
+    assert pyo.value(model.annual_operating_cost[year]) == pytest.approx(expected_days)
 
 
 @pytest.mark.unit
@@ -70,7 +81,7 @@ def test_february_scales_by_its_leap_year_length():
     )
     m = build_design_model(spec)
     m.horizon[2028, 2].costing.aggregate_operating_cost.set_value(1.0)
-    assert pyo.value(m.annual_operating_cost[2028]) == pytest.approx(12.0 * 29)
+    assert pyo.value(m.annual_operating_cost[2028]) == pytest.approx(366.0)
 
 
 @pytest.mark.unit
@@ -79,7 +90,7 @@ def test_annualized_operating_cost_is_the_discounted_average(valued):
     spec = valued._design_spec
     factors = present_worth_factors(spec.years, 0.07)
     expected = (
-        factors[2026] * 6.0 * 31 * 30.0 + factors[2031] * 6.0 * 31 * 70.0
+        factors[2026] * (365.0 / 2) * 30.0 + factors[2031] * (365.0 / 2) * 70.0
     ) / sum(factors.values())
     assert pyo.value(valued.annualized_operating_cost) == pytest.approx(expected)
 
@@ -114,7 +125,7 @@ def test_one_year_study_reduces_to_annual_opex_plus_crf_capital():
     """With one modeled year, discounting cancels out of the operating cost."""
     m = _solar_model(rate=0.07)
     _set_values(m, {(2026, 1): 1.0, (2026, 7): 2.0}, {"solar": 10.0})
-    annual = 6.0 * 31 * 3.0
+    annual = 365.0 / 2 * 3.0
     capital = capital_recovery_factor(0.07, 20) * 100.0 * 10.0
     assert pyo.value(m.annualized_cost) == pytest.approx(annual + capital)
 
