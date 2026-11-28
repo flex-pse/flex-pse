@@ -23,20 +23,19 @@ from flexparameterize.regression.base import (
 class LinearRegressor:
     """Fits a unit's output as an ordinary-least-squares function of its inputs.
 
-    One output column, any number of input columns, degree 1 in each (no
-    automatic cross terms -- engineer one into an ``X`` column named
-    ``"a*b"`` before fitting if the relationship needs one). Rows with any
-    null across ``X``/``y`` are dropped before fitting.
+    One output column, any number of input columns, degree 1 in each. A
+    column named ``"a*b"`` holds an engineered product and is fitted as a
+    cross-term coefficient whose factors ``a`` and ``b`` become the spec's
+    inputs. Rows with any null across ``X``/``y`` are dropped before fitting.
 
     Attributes:
         coefficients: Fitted column name -> coefficient, plus ``"intercept"``.
         n_samples: Number of rows the fit used, after dropping nulls.
         metrics: ``{"r2": ..., "rmse": ...}`` of the fitted line against ``y``.
         data_window: ``(first, last)`` index value of the rows used.
-        input_variables: Column names of the fitted inputs, in order.
+        input_variables: Factors of the fitted columns, in first-seen order.
         output_variable: Column name of the fitted output.
-        input_units: Units of every fitted input column, keyed by its column
-            name.
+        input_units: Units of every input variable, keyed by its name.
         output_units: Units of the fitted output column.
     """
 
@@ -63,8 +62,8 @@ class LinearRegressor:
         Args:
             X: One or more input columns.
             y: A one-column ``DataFrame`` holding the output.
-            input_units: Units of every fitted input column, keyed by its
-                column name (every column in ``X`` must have an entry).
+            input_units: Units of every factor of ``X``'s columns (a plain
+                column is its own factor; ``"a*b"`` needs ``a`` and ``b``).
                 Recorded for :meth:`to_surrogate_spec`.
             output_units: Units of the fitted output column. Recorded for
                 :meth:`to_surrogate_spec`.
@@ -74,7 +73,7 @@ class LinearRegressor:
 
         Raises:
             FlexConfigError: If scikit-learn is not installed, or if
-                ``input_units`` is missing an entry for one of ``X``'s
+                ``input_units`` is missing an entry for a factor of ``X``'s
                 columns.
             FlexDataError: If ``X`` or ``y`` is not a ``DataFrame``, if
                 ``y`` does not hold exactly one column, or if fewer rows
@@ -91,11 +90,12 @@ class LinearRegressor:
             ) from exc
 
         require_frame(X, regressor=type(self).__name__, role="X")
-        missing = [name for name in X.columns if name not in input_units]
+        factors = list(dict.fromkeys(f for name in X.columns for f in name.split("*")))
+        missing = [name for name in factors if name not in input_units]
         if missing:
             raise FlexConfigError(
-                f"fit is missing input_units for {missing}; every input "
-                f"column ({list(X.columns)}) needs an entry.",
+                f"fit is missing input_units for {missing}; every factor "
+                f"of the input columns ({factors}) needs an entry.",
                 field="input_units",
                 value=missing,
             )
@@ -113,24 +113,26 @@ class LinearRegressor:
                 field="X",
             )
 
-        fitted = LinearRegression(fit_intercept=True).fit(
-            paired[list(X.columns)], paired["__y__"]
-        )
-        predicted = fitted.predict(paired[list(X.columns)])
+        # Scale columns to unit spread: sklearn drops singular values below its tol.
+        scale = paired[list(X.columns)].std(ddof=0).replace(0.0, 1.0)
+        scaled = paired[list(X.columns)] / scale
+        fitted = LinearRegression(fit_intercept=True).fit(scaled, paired["__y__"])
+        predicted = fitted.predict(scaled)
         residual_ss = float(((paired["__y__"] - predicted) ** 2).sum())
 
-        self.coefficients = dict(zip(X.columns, fitted.coef_, strict=True)) | {
-            "intercept": float(fitted.intercept_)
-        }
+        self.coefficients = {
+            name: float(coef / scale[name])
+            for name, coef in zip(X.columns, fitted.coef_, strict=True)
+        } | {"intercept": float(fitted.intercept_)}
         self.n_samples = len(paired)
         self.metrics = {
-            "r2": float(fitted.score(paired[list(X.columns)], paired["__y__"])),
+            "r2": float(fitted.score(scaled, paired["__y__"])),
             "rmse": math.sqrt(residual_ss / len(paired)),
         }
         self.data_window = (paired.index.min(), paired.index.max())
-        self.input_variables = list(X.columns)
+        self.input_variables = factors
         self.output_variable = str(output.name)
-        self.input_units = dict(input_units)
+        self.input_units = {name: input_units[name] for name in factors}
         self.output_units = output_units
         return self
 
@@ -160,8 +162,8 @@ class LinearRegressor:
         Returns:
             A ``SurrogateType.MULTILINEAR`` spec built by
             :meth:`~flexops.surrogates.multilinear.MultilinearSurrogate.make_spec`:
-            the fitted column names, verbatim, are both the ``input_variables``
-            keys and the (single-factor) terms, and every parameter is fixed.
+            the fitted column names, verbatim, are the terms, their factors are
+            the ``input_variables`` keys, and every parameter is fixed.
 
         Raises:
             FlexDataError: If :meth:`fit` has not been called.
