@@ -1,5 +1,6 @@
 """build_model: the config-driven path equals the imperative one."""
 
+import gzip
 import json
 import warnings
 from pathlib import Path
@@ -484,3 +485,80 @@ def test_classify_treats_a_spec_built_battery_as_linear_when_sizes_are_free():
     m.battery.energy_capacity.unfix()
     m.battery.power_capacity.unfix()
     assert classify(m) is ProblemClass.LP
+
+
+def _solar_document(values=(0.0, 0.5, 1.0, 0.25), **time) -> dict:
+    """Return a time series document dated as ``_solar_spec`` unless overridden."""
+    spec_time = next(
+        el for el in _solar_spec([0.0] * 4)["elements"] if el["kind"] == "time"
+    )
+    dated = {k: v for k, v in spec_time.items() if k != "kind"}
+    return {
+        "time": {**dated, **time},
+        "values": list(values),
+        "meta": {"origin": "made up"},
+    }
+
+
+@pytest.mark.unit
+def test_dated_series_builds_the_same_model_as_a_plain_list(tmp_path):
+    """A document dated for the model's time points is replaced by its values."""
+    plain, dated = tmp_path / "plain", tmp_path / "dated"
+    plain.mkdir()
+    dated.mkdir()
+    a = build_model(_write_solar_files(plain, [0.0, 0.5, 1.0, 0.25]))
+    b = build_model(_write_solar_files(dated, _solar_document()))
+    assert_models_equivalent(a, b)
+
+
+@pytest.mark.unit
+def test_dated_series_accepts_equivalent_spellings(tmp_path):
+    """Grids are compared, not text: a date with a time and another time unit match."""
+    document = _solar_document()
+    start = document["time"]["start_date"]
+    minutes = 60 * float(document["time"]["time_step"].split()[0])
+    document["time"].update(start_date=f"{start}T00:00", time_step=f"{minutes:g} min")
+    m = build_model(_write_solar_files(tmp_path, document))
+    assert pyo.value(m.pv._capacity_factor[2]) == pytest.approx(1.0)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "time",
+    [
+        {"start_date": "2025-06-01", "end_date": "2025-06-02"},
+        {"time_step": "15 min"},
+    ],
+)
+def test_dated_series_for_other_time_points_raises(tmp_path, time):
+    """A series of the right length but the wrong dates or step is refused."""
+    path = _write_solar_files(tmp_path, _solar_document(**time))
+    with pytest.raises(FlexConfigError, match="pv.json.*Regenerate"):
+        build_model(path)
+
+
+@pytest.mark.unit
+def test_dated_series_with_a_bad_time_raises(tmp_path):
+    """A document whose time misses a field names the file and the field."""
+    document = _solar_document()
+    del document["time"]["time_step"]
+    with pytest.raises(FlexConfigError, match="(?s)pv.json.*time_step"):
+        build_model(_write_solar_files(tmp_path, document))
+
+
+@pytest.mark.unit
+def test_gzipped_dated_series_is_checked(tmp_path):
+    """The .json.gz form is unwrapped and checked too."""
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(_solar_spec({"$source": "pv.json.gz"})))
+    for document, ok in (
+        (_solar_document(), True),
+        (_solar_document(start_date="2025-06-01", end_date="2025-06-02"), False),
+    ):
+        data = gzip.compress(json.dumps(document).encode())
+        (tmp_path / "pv.json.gz").write_bytes(data)
+        if ok:
+            build_model(path)
+        else:
+            with pytest.raises(FlexConfigError, match="Regenerate"):
+                build_model(path)

@@ -16,9 +16,9 @@ from pyomo.core.base.componentuid import ComponentUID
 from pyomo.core.base.units_container import UnitsError
 from pyomo.environ import units as pyunits
 
-from flexcore.config.io import resolve_sources
 from flexcore.exceptions import FlexConfigError, FlexFixWarning
 from flexcore.logger import get_logger
+from flexops.core.sources import resolve_model_sources
 from flexops.core.time_block import find_time_block
 from flexops.core.units import parse_units
 
@@ -151,7 +151,7 @@ def _fix_values(model, element, base_dir) -> list[tuple]:
         time_index = find_time_block(model).time_index
     except FlexConfigError:
         time_index = None
-    raw = resolve_sources(element.value, base_dir)
+    raw = resolve_model_sources(model, element.value, base_dir)
     if isinstance(raw, dict):
         try:
             raw = {int(key): value for key, value in raw.items()}
@@ -236,7 +236,7 @@ def _dispatch_values(model, element, base_dir) -> list[tuple]:
             field="unit",
             value=element.unit,
         )
-    raw = resolve_sources(element.values, base_dir)
+    raw = resolve_model_sources(model, element.values, base_dir)
     # JSON keys are always strings; integer time indices come back as "0".
     series = (
         dict(enumerate(raw))

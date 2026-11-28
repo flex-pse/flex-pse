@@ -33,6 +33,7 @@ from flexops.core.fixing import FixReport, apply_state
 from flexops.core.network_block import NetworkBlock
 from flexops.core.ops_block import OpsBlockData
 from flexops.core.plant_block import PlantBlock
+from flexops.core.sources import resolve_model_sources
 from flexops.core.time_block import TimeBlock
 from flexops.core.units import parse_quantity, parse_units
 from flexops.costing import FlexCosting
@@ -550,7 +551,7 @@ def _build_costing(model, element: CostingElement, ctx: BuildContext):
         return {
             name: parse_quantity(
                 {
-                    "value": resolve_sources(price.value, ctx.base_dir),
+                    "value": resolve_model_sources(model, price.value, ctx.base_dir),
                     "units": price.units,
                 }
             )
@@ -591,7 +592,8 @@ def _build_unit(model, spec: FlowsheetSpec, element: UnitElement, ctx: BuildCont
     unit_config = UnitConfig(
         unit_model_class=element.unit_model_class,
         construction_options=_with_packages(
-            model, resolve_sources(element.construction_options, ctx.base_dir)
+            model,
+            resolve_model_sources(model, element.construction_options, ctx.base_dir),
         ),
         io_variables=element.io_variables,
         unit_commitment=element.unit_commitment,
@@ -714,6 +716,8 @@ def _apply_surrogate(model, element: SurrogateElement, ctx: BuildContext) -> Non
     Raises:
         FlexConfigError: If the unit is missing or the spec is invalid.
     """
+    # Not checked against the horizon: a surrogate's data, such as an ARIMA history,
+    # has time points of its own.
     relation = element.to_surrogate_spec().model_copy(
         update={"config": resolve_sources(element.config, ctx.base_dir)}
     )
