@@ -19,6 +19,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from flexcore.config.layout import spec_file
 from flexcore.config.schema import TimeConfig
 from flexcore.config.spec import (
     KINDS,
@@ -327,8 +328,10 @@ def load_spec(source) -> FlowsheetSpec:
     """Load and validate a flat spec.
 
     Args:
-        source: A ``.json`` path, a parsed mapping (not mutated), or a
-            :class:`~flexcore.config.spec.FlowsheetSpec` (returned as is).
+        source: A ``.json`` path, a config folder holding ``config.json``
+            (see :mod:`flexcore.config.layout`), a parsed mapping (not
+            mutated), or a :class:`~flexcore.config.spec.FlowsheetSpec`
+            (returned as is).
 
     Returns:
         The validated spec, with its base directory set for relative paths.
@@ -344,6 +347,8 @@ def load_spec(source) -> FlowsheetSpec:
         data, name, base_dir = dict(source), "the config dict", None
     else:
         path = Path(source)
+        if path.is_dir():
+            path = spec_file(path)
         data, name, base_dir = _read(path), str(path), path.parent
 
     version = data.get("schema_version")
@@ -383,26 +388,18 @@ def load_spec(source) -> FlowsheetSpec:
     return spec
 
 
-def dump_spec(spec: FlowsheetSpec, path) -> None:
-    """Write a flat spec to disk as indented JSON, elements in canonical order.
+def dumps_spec(spec: FlowsheetSpec) -> str:
+    """Return a flat spec as indented JSON, elements in canonical order.
 
     Elements are sorted by build stage, kind and name so files diff cleanly;
     defaults are left out.
 
     Args:
         spec: The spec to serialize; it is not reordered.
-        path: Destination path ending in ``.json``.
 
-    Raises:
-        FlexConfigError: For any other suffix.
+    Returns:
+        The text :func:`dump_spec` writes.
     """
-    path = Path(path)
-    if path.suffix.lower() != ".json":
-        raise FlexConfigError(
-            f"Unsupported config format {path.suffix!r} for {path}. Use a "
-            ".json file.",
-            value=str(path),
-        )
     ordered = sorted(
         spec.elements,
         key=lambda el: (
@@ -412,10 +409,32 @@ def dump_spec(spec: FlowsheetSpec, path) -> None:
             element_target(el),
         ),
     )
-    text = spec.model_copy(update={"elements": ordered}).model_dump_json(
+    return spec.model_copy(update={"elements": ordered}).model_dump_json(
         indent=2, by_alias=True, exclude_defaults=True
     )
-    path.write_text(text)
+
+
+def dump_spec(spec: FlowsheetSpec, path) -> None:
+    """Write a flat spec to disk in the form :func:`dumps_spec` returns.
+
+    Args:
+        spec: The spec to serialize; it is not reordered.
+        path: Destination path ending in ``.json``, or a config folder (a path
+            with no suffix), which gets the spec as ``config.json`` and is
+            created if missing.
+
+    Raises:
+        FlexConfigError: For any other suffix.
+    """
+    path = spec_file(path)
+    if path.suffix.lower() != ".json":
+        raise FlexConfigError(
+            f"Unsupported config format {path.suffix!r} for {path}. Use a "
+            ".json file.",
+            value=str(path),
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(dumps_spec(spec))
 
 
 def _plain_descriptions(node) -> None:

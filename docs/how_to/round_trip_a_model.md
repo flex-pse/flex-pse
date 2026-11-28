@@ -101,6 +101,13 @@ both units with their arc, a `status` element, an `extension` element naming
 {"kind": "fix", "variable": "site.pump.status", "value": [0.0], "at": [0]}
 ```
 
+To save a model with a year of prices or a fitted surrogate, write a config
+folder instead of one file. `emit_model(m, config_dir="config")` moves long
+price lists into `config/price/` and long surrogate data into `config/sweep/`,
+keeps fix values in the spec, and `dump_spec(spec, "config")` writes
+`config/config.json`. `fo.build_model("config")` reads it back. See
+"The config folder" in [the config schema](../explanation/config_schema.md).
+
 ## 4. Build it back
 
 ```python

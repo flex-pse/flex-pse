@@ -224,6 +224,8 @@ Config I/O
 
 .. autofunction:: dump_spec
 
+.. autofunction:: dumps_spec
+
 .. autofunction:: read_source
 
 .. autofunction:: resolve_sources
@@ -231,6 +233,29 @@ Config I/O
 .. autodata:: MIGRATIONS
 
 .. autofunction:: export_json_schemas
+
+Config folder layout
+~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: flexcore.config.layout
+   :no-members:
+
+.. currentmodule:: flexcore.config.layout
+
+.. autoclass:: ConfigLayout
+   :members:
+
+.. autofunction:: register_data_category
+
+.. autofunction:: spec_file
+
+.. autodata:: SPEC_FILE
+
+.. autodata:: DATA_CATEGORIES
+   :no-value:
+
+.. autodata:: EMIT_CATEGORIES
+   :no-value:
 
 Surrogate migration
 ~~~~~~~~~~~~~~~~~~~
