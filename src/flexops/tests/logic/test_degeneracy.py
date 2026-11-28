@@ -76,29 +76,29 @@ def test_register_parallel_group_orders_lower_index_first():
 
 @pytest.mark.unit
 def test_register_parallel_group_orders_scalar_variables():
-    """A scalar Var (RO recovery) gets one ordering Constraint per pair."""
+    """A scalar Var (RO energy intensity) gets one ordering Constraint per pair."""
     m = _plant_pump_and_ro_trains()
     for i in range(3):
         ro = m.plant.component(f"ro{i}")
         add_status(ro, ro.power_electrical, 0.0, 100.0)
 
     register_parallel_group(
-        [m.plant.ro0, m.plant.ro1, m.plant.ro2], variables=["recovery"]
+        [m.plant.ro0, m.plant.ro1, m.plant.ro2], variables=["energy_intensity"]
     )
 
-    assert not m.plant.ro1.recovery_ordering.is_indexed()
-    assert not hasattr(m.plant.ro0, "recovery_ordering")
+    assert not m.plant.ro1.energy_intensity_ordering.is_indexed()
+    assert not hasattr(m.plant.ro0, "energy_intensity_ordering")
 
-    # recovery0 >= recovery1 holds.
-    m.plant.ro0.recovery.set_value(0.6)
-    m.plant.ro1.recovery.set_value(0.4)
-    m.plant.ro2.recovery.set_value(0.4)
-    assert _satisfied(m.plant.ro1.recovery_ordering)
-    assert _satisfied(m.plant.ro2.recovery_ordering)
+    # intensity0 >= intensity1 holds.
+    m.plant.ro0.energy_intensity.set_value(6.0)
+    m.plant.ro1.energy_intensity.set_value(4.0)
+    m.plant.ro2.energy_intensity.set_value(4.0)
+    assert _satisfied(m.plant.ro1.energy_intensity_ordering)
+    assert _satisfied(m.plant.ro2.energy_intensity_ordering)
 
-    # recovery0 < recovery1 violates it.
-    m.plant.ro1.recovery.set_value(0.8)
-    assert not _satisfied(m.plant.ro1.recovery_ordering)
+    # intensity0 < intensity1 violates it.
+    m.plant.ro1.energy_intensity.set_value(8.0)
+    assert not _satisfied(m.plant.ro1.energy_intensity_ordering)
 
 
 @pytest.mark.unit
@@ -216,14 +216,14 @@ def test_order_status_false_orders_units_without_a_status_var():
 
     # The one name chains across the whole group: ro0 >= ro1 >= ro2.
     assert not hasattr(m.plant.ro0, "recovery_ordering")
-    m.plant.ro0.recovery.set_value(0.6)
-    m.plant.ro1.recovery.set_value(0.5)
-    m.plant.ro2.recovery.set_value(0.4)
-    assert _satisfied(m.plant.ro1.recovery_ordering)
-    assert _satisfied(m.plant.ro2.recovery_ordering)
+    m.plant.ro0.recovery[0].set_value(0.6)
+    m.plant.ro1.recovery[0].set_value(0.5)
+    m.plant.ro2.recovery[0].set_value(0.4)
+    assert _satisfied(m.plant.ro1.recovery_ordering[0])
+    assert _satisfied(m.plant.ro2.recovery_ordering[0])
 
-    m.plant.ro2.recovery.set_value(0.9)
-    assert not _satisfied(m.plant.ro2.recovery_ordering)
+    m.plant.ro2.recovery[0].set_value(0.9)
+    assert not _satisfied(m.plant.ro2.recovery_ordering[0])
 
 
 @pytest.mark.unit
@@ -260,7 +260,7 @@ def test_order_status_false_leaves_status_unconstrained():
     # -- is left feasible.
     assert cons == []
     assert {c.parent_component().local_name for c in added} == {"recovery_ordering"}
-    assert len(added) == 2
+    assert len(added) == 2 * len(m.time_block.time_index)
     for i in range(3):
         assert not hasattr(m.plant.component(f"ro{i}"), "conditional")
 
@@ -279,14 +279,14 @@ def test_order_status_false_still_orders_variables():
         order_status=False,
     )
 
-    m.plant.ro0.recovery.set_value(0.6)
-    m.plant.ro1.recovery.set_value(0.4)
-    m.plant.ro2.recovery.set_value(0.4)
-    assert _satisfied(m.plant.ro1.recovery_ordering)
-    assert _satisfied(m.plant.ro2.recovery_ordering)
+    m.plant.ro0.recovery[0].set_value(0.6)
+    m.plant.ro1.recovery[0].set_value(0.4)
+    m.plant.ro2.recovery[0].set_value(0.4)
+    assert _satisfied(m.plant.ro1.recovery_ordering[0])
+    assert _satisfied(m.plant.ro2.recovery_ordering[0])
 
-    m.plant.ro1.recovery.set_value(0.8)
-    assert not _satisfied(m.plant.ro1.recovery_ordering)
+    m.plant.ro1.recovery[0].set_value(0.8)
+    assert not _satisfied(m.plant.ro1.recovery_ordering[0])
 
 
 @pytest.mark.unit

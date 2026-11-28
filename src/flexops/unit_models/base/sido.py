@@ -11,7 +11,9 @@ undetermined, so the base also fixes *where* the feed goes with
 ``flow_out_a[t] == split_fraction * flow_in[t]``. ``split_fraction`` is a fixed,
 regressable scalar Var (not time-indexed), which keeps both constraints linear —
 the topology stays LP-representable — and makes the split the natural regression
-target for FlexParameterize. Everything a stream carries other than flow (e.g.
+target for FlexParameterize. A subclass may declare a time-indexed split instead
+(``ReverseOsmosis.recovery[t]``) by overriding ``_declare_split_parameter``.
+Everything a stream carries other than flow (e.g.
 pressure/temperature, when the property package has them) passes straight from
 the inlet to **both** outlets.
 
@@ -112,6 +114,27 @@ class SIDOBlockData(OpsBlockData):
         """
         return self.config.split_fraction
 
+    def _declare_split_parameter(self, name: str) -> pyo.Var:
+        """Declare the split as a fixed, regressable scalar process parameter.
+
+        A subclass whose split varies by time step overrides this to return a
+        Var indexed by the time set instead.
+
+        Args:
+            name: The component name of the split.
+
+        Returns:
+            The fixed split Var.
+        """
+        return self.declare_process_parameter(
+            name,
+            self._split_parameter_value(),
+            pyunits.dimensionless,
+            f"Fraction of the inlet flow leaving through outlet_a ({name}). "
+            "Fixed at the configured value; FlexParameterize may regress it.",
+            bounds=self._split_parameter_bounds(),
+        )
+
     def _build_mass_balance(self) -> None:
         """Build the split parameter, the split definition, and conservation."""
         tb = self._find_time_block()
@@ -132,21 +155,15 @@ class SIDOBlockData(OpsBlockData):
         flow_out_b = self.find_component(self._named("flow_out_b"))
 
         name = self._named("split_fraction")
-        split = self.declare_process_parameter(
-            name,
-            self._split_parameter_value(),
-            pyunits.dimensionless,
-            f"Fraction of the inlet flow leaving through outlet_a ({name}). "
-            "Fixed at the configured value; FlexParameterize may regress it.",
-            bounds=self._split_parameter_bounds(),
-        )
+        split = self._declare_split_parameter(name)
 
         @self.Constraint(
             tb.time_index,
             doc=f"Split definition: outlet_a flow == {name} * inlet flow.",
         )
         def split_definition(b, t):
-            return flow_out_a[t] == split * flow_in[t]
+            fraction = split[t] if split.is_indexed() else split
+            return flow_out_a[t] == fraction * flow_in[t]
 
         self.register_relation(self.split_definition, target=flow_out_a)
 

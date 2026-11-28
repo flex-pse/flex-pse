@@ -94,7 +94,7 @@ def test_reverseosmosis_renames_the_split_fraction_to_recovery():
     m = dummy_time_block(3)
     m.unit = ReverseOsmosis(property_package=m.properties)
 
-    assert pyo.value(m.unit.recovery) == pytest.approx(0.45)
+    assert pyo.value(m.unit.recovery[0]) == pytest.approx(0.45)
     assert m.unit.find_component("split_fraction") is None
     with pytest.raises(ValueError, match="split_fraction"):
         m.rejected = ReverseOsmosis(property_package=m.properties, split_fraction=0.45)
@@ -128,9 +128,36 @@ def test_reverseosmosis_recovery_window_bounds_the_recovery():
         recovery_max=0.6,
     )
 
-    assert m.unit.recovery.bounds == (0.3, 0.6)
-    assert m.unit.recovery.fixed
-    assert pyo.value(m.unit.recovery) == pytest.approx(0.4)
+    for t in m.time_block.time_index:
+        assert m.unit.recovery[t].bounds == (0.3, 0.6)
+        assert m.unit.recovery[t].fixed
+        assert pyo.value(m.unit.recovery[t]) == pytest.approx(0.4)
+
+
+@pytest.mark.unit
+def test_reverseosmosis_recovery_is_time_indexed_and_not_regressable():
+    """``recovery[t]`` is a per-step Var, kept out of the regressable parameters."""
+    m = dummy_time_block(3)
+    m.unit = ReverseOsmosis(property_package=m.properties)
+
+    assert list(m.unit.recovery.index_set()) == list(m.time_block.time_index)
+    regressable = {r.name for r in m.unit._io_registry.parameters if r.regressable}
+    assert "recovery" not in regressable
+    assert "energy_intensity" in regressable
+
+
+@pytest.mark.unit
+def test_reverseosmosis_recovery_can_differ_by_step():
+    """Each step's split definition reads that step's recovery."""
+    m = dummy_time_block(3)
+    m.unit = ReverseOsmosis(property_package=m.properties, recovery=0.45)
+    m.unit.recovery[1].fix(0.55)
+    for t in (0, 1):
+        m.unit.feed[t].set_value(10.0)
+        m.unit.permeate[t].set_value(0.0)
+
+    assert pyo.value(m.unit.split_definition[0].body) == pytest.approx(-4.5)
+    assert pyo.value(m.unit.split_definition[1].body) == pytest.approx(-5.5)
 
 
 @pytest.mark.unit

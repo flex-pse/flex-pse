@@ -135,7 +135,7 @@ def register_parallel_group(
     unit and ordered the same way, ``units[i].<name> >= units[i + 1].<name>``,
     as a Constraint named ``{name}_ordering`` attached beside that pair's
     ``conditional``. Time-indexed Vars are ordered at every index; scalar Vars
-    (a unit's regressable process parameters, e.g. ``ReverseOsmosis.recovery``)
+    (a unit's regressable process parameters, e.g. ``ReverseOsmosis.energy_intensity``)
     get a single Constraint. Such parameters are *fixed* at construction, so an
     ordering over them only binds once a caller or FlexParameterize unfixes
     them — until then it is a trivially satisfied constant.
